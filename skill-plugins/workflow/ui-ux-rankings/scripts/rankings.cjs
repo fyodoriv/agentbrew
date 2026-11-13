@@ -42,8 +42,12 @@ async function settleImages(p) {
       for (const img of document.images) {
         const r = img.getBoundingClientRect();
         if (r.bottom < 0 || r.top > innerHeight * 2 || !img.currentSrc) continue;
-        if (img.complete && img.naturalWidth === 0) { const s = img.src; img.src = ""; img.src = s; n++; }
-        else if (!img.complete) n++;
+        if (img.complete && img.naturalWidth === 0) {
+          const s = img.src;
+          img.src = "";
+          img.src = s;
+          n++;
+        } else if (!img.complete) n++;
       }
       return n;
     });
@@ -150,7 +154,12 @@ const rankings = {
         await p.addScriptTag({ content: COLOR });
         const r = await p.evaluate(() =>
           [...document.querySelectorAll("body *")]
-            .filter((e) => e.offsetParent && (!e.checkVisibility || e.checkVisibility()) && [...e.childNodes].some((t) => t.nodeType === 3 && t.textContent.trim()))
+            .filter(
+              (e) =>
+                e.offsetParent &&
+                (!e.checkVisibility || e.checkVisibility()) &&
+                [...e.childNodes].some((t) => t.nodeType === 3 && t.textContent.trim()),
+            )
             .filter((e) => {
               const st = getComputedStyle(e);
               return st.visibility !== "hidden" && +st.opacity !== 0;
@@ -216,7 +225,13 @@ const rankings = {
       const count = await p.evaluate(
         (sel) =>
           [...document.querySelectorAll(sel)]
-            .filter((e) => e.offsetParent !== null && (!e.checkVisibility || e.checkVisibility()) && !e.disabled && !e.closest("[inert]"))
+            .filter(
+              (e) =>
+                e.offsetParent !== null &&
+                (!e.checkVisibility || e.checkVisibility()) &&
+                !e.disabled &&
+                !e.closest("[inert]"),
+            )
             .map((e, i) => (e.dataset.kbk = i)).length,
         CONTROLS,
       );
@@ -296,7 +311,10 @@ const rankings = {
       const r = await p.evaluate(() =>
         [...document.querySelectorAll("body *")]
           .filter(
-            (e) => e.offsetParent && (!e.checkVisibility || e.checkVisibility()) && [...e.childNodes].some((t) => t.nodeType === 3 && t.textContent.trim().length > 1),
+            (e) =>
+              e.offsetParent &&
+              (!e.checkVisibility || e.checkVisibility()) &&
+              [...e.childNodes].some((t) => t.nodeType === 3 && t.textContent.trim().length > 1),
           )
           .map((e) => {
             const fs = parseFloat(getComputedStyle(e).fontSize);

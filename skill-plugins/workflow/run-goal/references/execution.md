@@ -133,6 +133,11 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
   without changes. Never summarize while copying. Give the store a way to
   replace a bad copy, and name the rows copied by hand in the report.
 
+- **Outside judge out of quota:** when the outside judge tool stops (usage limit, sign-in), use another fresh-context reviewer for the same diff. Do not skip the review and do not grade the work yourself. One run's second reviewer found 3 blockers in a script whose own tests and full gate were green.
+- **Recount before a cutover:** right before a one-way write that copies a live list (issues, PRs, tasks), count the source again and compare it with your export. In one run 2 new issues arrived between the export and the cutover; the recount caught them and the numbering map was rebuilt.
+- **Setup in a scratch copy can move a machine-wide pointer:** a repo's setup script may rewrite a launcher, a symlink or a registration that the whole machine uses. Before you run setup in a scratch clone, read what it writes outside the clone. After it, re-read where the live command points (its `where` or `which` output) and repair it. In one run a scratch-clone setup repointed the app's launcher, so the live command used an empty data folder for a day.
+- **Old work folders before a removal:** when uncommitted work must go, save it first (a patch and an archive of untracked files, plus any ignored folder its tests need), then compare it with the current main item by item. A larger file on main is not proof that the old work landed. Turn what did not land into a task that describes the work, because the saved copy is local.
+
 ## Skill discovery and command identity
 
 After an install or refresh can change relevant skills, use only operations
@@ -175,6 +180,7 @@ commit and push only when it is 0:
 `log="$(mktemp "${TMPDIR:-/tmp}/gate-<name>.XXXXXX")"; gate > "$log" 2>&1; rc=$?; tail -20 "$log"; echo "gate rc=$rc"; [ "$rc" -eq 0 ] && git commit … && git push`.
 When the gate fails, the whole line also exits 1, so a background task reports the failure.
 One run piped a failing suite into `tail`, and its commit and push still ran.
+A subshell hides it the same way: `( gate > "$log"; echo "rc=$?"; tail "$log" ) && git push` pushes after a failed gate, because the subshell ends with `tail`. Keep `rc` outside the subshell and test it.
 A count check such as `grep -c` swaps the gate's 0 and 1: it exits 1 when
 the count is 0 (clean) and 0 when it finds a match; an error exits 2. So
 never put it in the gate slot above, and never chain the next step on it
@@ -308,6 +314,11 @@ start it again after the edits; never report its result for the new code.
 - Hardware goal: probe the transport (BLE, classic, USB) and the device's real
   ID (vendor/product ID, the user's own name for it) before you pick a tool,
   for example `system_profiler SPBluetoothDataType`. Match by ID.
+- A dashboard setting often has an API path too. Before you ask for a
+  browser sign-in, list the credential names (never values) in the repo's
+  `.env` and the CLI's token scopes, then verify a likely token read-only.
+  A dashboard login can fail its bot check in an agent browser, and you may
+  not solve it. Write by API, then read the value back.
 - A connector reconnect runs at turn end. Re-check its status next turn before
   you call it fixed.
 - Demo video: record the live, signed-in tab with CDP `Page.startScreencast`. A new

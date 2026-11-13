@@ -75,6 +75,7 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | [`plans/rust-inventory-source-witness-prediction.md`](plans/rust-inventory-source-witness-prediction.md) | How will the source-limit check preserve the frozen witness? | agent |
 | [`plans/rust-byte-literal-supplement-proposal-20261105.md`](plans/rust-byte-literal-supplement-proposal-20261105.md) | Which separate byte-literal controls qualify strict decoding? | agent |
 | [`plans/rust-legacy-baseline-capture-20261106.md`](plans/rust-legacy-baseline-capture-20261106.md) | What independent legacy output must observer instrumentation preserve? | agent |
+| [`plans/rust-discovery-observer-prediction.md`](plans/rust-discovery-observer-prediction.md) | How will test-only observations preserve legacy discovery? | agent |
 | [`audits/`](audits/) | Drafts and audits for upstream contributions. | agent |
 | [`specs/`](specs/) | Proposed cross-tool conventions, such as managed-section markers. | both |
 | [`human-blocked-actions/`](human-blocked-actions/) | Steps that need a human (logins, approvals). | human |

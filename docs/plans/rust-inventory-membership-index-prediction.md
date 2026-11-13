@@ -42,3 +42,13 @@ Those counts do not measure tree comparisons, allocations or wall time.
 The complete legacy output for C01, P01 and N02a also matched the previously
 captured 3,328-byte record exactly. This is full-report parity for those three
 fixtures, not qualification of N02b or the full corpus.
+
+## Remaining resource boundary
+
+Source inspection found another cost: discovery constructs facts and drains
+the initial source queue before checking `SOURCE_COUNT`. The N02b fixture has
+100,001 Rust sources, so the check does not prevent that initial work. The
+current validator also has edge and registry searches whose cost depends on
+fixture shape. An early refusal could change retained facts and diagnostics;
+it needs a separate prediction and exact behavior review. Do not run N02b or
+claim bounded whole-checker resources from the membership index alone.

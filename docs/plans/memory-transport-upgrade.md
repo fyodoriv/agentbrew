@@ -29,6 +29,20 @@ The earlier 12.8.0 experiments remain historical evidence, not authorization
 to deploy that version. A 12.9.0 candidate needs its own isolation, migration,
 rollback, and client checks before a live change.
 
+### Version 12.9.0 synthetic migration prediction
+
+- **Hypothesis:** The new upstream release retains synthetic facts after a
+  migration from 11.7.0, and a verified pre-migration backup restores those
+  facts for 11.7.0.
+- **Measurement:** Run the existing isolated synthetic migration rehearsal
+  against 12.9.0 with fresh scratch databases and hash embeddings.
+- **Success:** Every synthetic fact is recalled before and after migration and
+  after backup restore; the network and outside-file controls deny access.
+- **Pivot:** If any fact, isolation control, or restore check fails, do not
+  propose 12.9.0 for live installation until the failure is resolved.
+- **Anchor:** [12.9.0 release notes](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.9.0)
+  and the existing 12.8.0 synthetic rehearsal in this plan.
+
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
 

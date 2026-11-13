@@ -23,3 +23,8 @@ Publication is a separate phase. It needs bounded nonblocking framing,
 inconclusive outcomes for partial writes, timeout and crash, and independent
 binding to the run, revision, fixture executable, source, lock and toolchain.
 A digest made by the fixture alone does not authenticate its own evidence.
+
+The standalone encoder and independent reader are preparation only. The
+encoder currently accepts a caller-supplied classification and is not wired
+to a receipt. It must derive that classification from the claimed receipt's
+sticky validity state before it can be used as a receipt export.

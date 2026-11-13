@@ -938,3 +938,21 @@ before treating content update compatibility as established.
   content, fail closed and leave the ledger unchanged.
 - **Anchor:** `src/memory/pack-reconcile.ts`, upstream 11.7 versioned-update
   implementation, and `memory_search` exact mode.
+
+
+### Interrupted version recovery prediction
+
+- **Root cause:** A version can be created before its new ID reaches the
+  ledger. Retrying from the old ID can collide with that existing version.
+  Metadata-only tag replacement can also erase unrelated concurrent tags.
+- **Hypothesis:** Adopting a unique row whose content and pack tags already
+  match the intended record recovers an interrupted update without another
+  write. Refusing unverified tag replacement prevents provenance loss.
+- **Measurement:** Run pack tests for a stale ledger with old and new rows in
+  both orders, ambiguous candidates, and rows with extra or missing tags.
+- **Success:** A unique exact candidate advances the ledger without updating
+  memory; zero ambiguous or tag-replacement cases modify an existing record.
+- **Pivot:** If candidate identity or provenance is not provable, stop and
+  leave the ledger unchanged; require an upstream atomic tag merge.
+- **Anchor:** upstream 11.7 versioned update and metadata replacement behavior,
+  and `src/memory/pack-reconcile.ts`.

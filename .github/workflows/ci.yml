@@ -161,6 +161,11 @@ jobs:
           names='exact_fit_round_trips short_buffer_is_untouched empty_is_inconclusive missing_event_never_writes unknown_is_inconclusive invalid_closed_sequence_never_writes valid_events_can_be_explicitly_inconclusive capacity_is_bounded_and_preserves_tail_canary every_closed_category_has_a_fixed_code_without_canary actual_closed_receipt_round_trips actual_invalid_receipt_exports_only_inconclusive actual_pending_receipt_exports_only_inconclusive short_export_still_invalidates_pending_receipt actual_overflow_receipt_exports_only_inconclusive'
           for name in $names; do test "$(grep -Ec "^test tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/owner-export-tests.log")" -eq 1; done
           grep -Eq '^test result: ok\. 55 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out' "$RUNNER_TEMP/owner-export-tests.log"
+          rustup run 1.97.0 rustc --test rust/src/owner_hosted_frame_capture.rs -o "$RUNNER_TEMP/owner-frame-tests"
+          "$RUNNER_TEMP/owner-frame-tests" --test-threads=1 | tee "$RUNNER_TEMP/owner-frame-tests.log"
+          names='accepts_one_frame_after_clean_eof accepts_every_two_chunk_split rejects_every_truncated_prefix rejects_full_frame_without_clean_eof rejects_delayed_extra_byte_and_duplicate_frame rejects_oversized_input_and_keeps_failure_sticky accepts_maximum_frame_and_rejects_one_more_byte rejects_failure_before_a_complete_frame rejects_read_failure_after_a_complete_frame rejects_empty_and_bad_classification'
+          for name in $names; do test "$(grep -Ec "^test tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/owner-frame-tests.log")" -eq 1; done
+          grep -Eq '^test result: ok\. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out' "$RUNNER_TEMP/owner-frame-tests.log"
           if cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture > "$RUNNER_TEMP/fixture-refusal.log" 2>&1; then exit 1; fi
           grep -Fq 'requires target-scoped owner_hosted_experiment cfg' "$RUNNER_TEMP/fixture-refusal.log"
           cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture -- --cfg owner_hosted_experiment --check-cfg 'cfg(owner_hosted_experiment)'

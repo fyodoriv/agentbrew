@@ -50,3 +50,8 @@ or signals. Diagnostics use fixed categories, not raw identifiers or logs.
 File operations and scheduling can stall. No bounded-completion claim holds
 without a stated and verified filesystem and scheduler boundary. Host failure
 or an unknown writer remains inconclusive; no unowned process is terminated.
+
+The first pure capture keeps at most 263 bytes, rejects overflow and failures,
+and classifies only after a caller-supplied clean EOF. It does not read or
+publish a stream. The flag is not evidence of a clean producer, an owned
+endpoint, or a retained frame; those require the separate boundaries above.

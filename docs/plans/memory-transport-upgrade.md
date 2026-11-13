@@ -55,6 +55,19 @@ versions. The untrusted origin received HTTP 200 and a wildcard preflight on
 port was reachable while the live memory port was denied. This does not prove
 live ONNX behavior, client parity, or a safe daemon handoff.
 
+### Version 12.9.0 local embedding prediction
+
+- **Hypothesis:** The new release retains exact and semantic recall through a
+  migration and backup restore with the existing local ONNX embedding model.
+- **Measurement:** Run the isolated ONNX migration rehearsal with fresh
+  synthetic databases, cached model files, and network access denied.
+- **Success:** Every synthetic fact is recalled exactly and semantically before
+  migration, after migration, and after restore; isolation controls all pass.
+- **Pivot:** On any missing fact, model download attempt, isolation failure, or
+  restore failure, do not use this result to authorize the live upgrade.
+- **Anchor:** The earlier isolated 12.8.0 ONNX rehearsal and upstream
+  [12.9.0 release](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.9.0).
+
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
 

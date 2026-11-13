@@ -1007,3 +1007,20 @@ A real isolated 12.9 list with 101 synthetic records returned the expected
 The draft now compares two complete scans and rejects the synthetic same-total
 replacement case. This adds requests, does not provide a database snapshot,
 and does not rule out concurrent changes between or after the scans.
+
+
+### Existing daemon database identity prediction
+
+- **Root cause:** Matching the package pin alone does not establish that the
+  existing job uses the same HOME, working directory, database path, or
+  database-affecting environment as the generated replacement.
+- **Hypothesis:** Rejecting reconciliation when the existing or loaded job's
+  database identity is custom, mismatched, or unreadable prevents a restart
+  against a different database.
+- **Measurement:** Run scratch LaunchAgent tests for custom paths, changed
+  working directory, mismatched loaded job, and canonical matching jobs.
+- **Success:** Zero custom, mismatched, or unknown fixtures rewrite, unload,
+  load or kick-start; canonical matching jobs remain usable.
+- **Pivot:** If the effective identity cannot be established without guessing,
+  stop reconciliation and leave the existing service untouched.
+- **Anchor:** `src/memory/launchagent.ts` and upstream database-path settings.

@@ -202,7 +202,7 @@ describe("hosted workflows", () => {
         return false;
       return (
         hash(steps[2].run) === "ad73e8930d5592b65a482b3495f86eda76a3a70851ce8a6c7f377443e436bb00" &&
-        hash(steps[3].run) === "6b51c4f78ba0f66ebcb6b9af5e21d13a84157be903c5a0e9205b56f251b22e9a"
+        hash(steps[3].run) === "69124f9e1ac28a117ed4eefb3d4bb0136e1eadc5793b8143b66027574452b724"
       );
     };
     expect(safe(document)).toBe(true);

@@ -32,3 +32,14 @@ namespace.
 This probe parses synthetic fixture bytes only. It does not execute them,
 establish namespace or module authority, qualify the six Rust positives,
 change discovery or validation, run the worker, or establish general Unicode and CRLF handling or the other frozen cases. Test data and parser state have one test-invocation scope.
+
+## Result (2026-11-13)
+
+The exact selected probe passed: 1 passed, 0 failed, 156 filtered. The normal
+non-test library check passed. The existing observer test passed again with the
+new test dependency, and the workflow guard passed 28 cases. The lockfile changed only by adding the root
+dependency edge; no package identity or checksum changed. Independent review
+checked the frozen-byte comparisons before execution. The hosted compile guard
+selects this same one test for continued verification. This is one synthetic
+parser fixture, not qualification of Rust discovery, namespace authority, the
+worker, or the remaining corpus.

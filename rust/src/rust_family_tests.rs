@@ -593,3 +593,7 @@ mod rust_legacy_baseline_tests;
 #[cfg(test)]
 #[path = "rust_observer_tests.rs"]
 mod rust_observer_tests;
+
+#[cfg(test)]
+#[path = "rust_span_probe.rs"]
+mod rust_span_probe;

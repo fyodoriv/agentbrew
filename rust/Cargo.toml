@@ -29,6 +29,7 @@ toml = { version = "=1.2.0", default-features = false, features = ["parse", "ser
 libproc = { version = "=0.14.11", path = "vendor/libproc-0.14.11" }
 
 [dev-dependencies]
+proc-macro2 = { version = "=1.0.107", features = ["span-locations"] }
 sysinfo = { version = "=0.40.1", default-features = false, features = ["system"] }
 
 [[bin]]

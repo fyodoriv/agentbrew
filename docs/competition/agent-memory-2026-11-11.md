@@ -178,6 +178,16 @@ seed per task and did not match memory arms for token budget. Its authors also
 disclose that the run's registration followed the first session. These limits
 make it useful for designing a comparison, not for choosing our winner.
 
+The benchmark requires a synthetic-only data policy with a zero-retention
+attestation for hosted processing. [Anthropic's privacy guidance](https://privacy.anthropic.com/en/articles/8956058-i-have-a-zero-data-retention-agreement-with-anthropic-what-products-does-it-apply-to)
+says zero retention for Claude Code requires a qualifying commercial API
+arrangement and does not generally cover Claude Max. [OpenRouter](https://openrouter.ai/docs/guides/get-started/sovereign-ai)
+documents per-request zero-retention routing, and its [Claude Code guide](https://openrouter.ai/docs/guides/coding-agents/claude-code-integration)
+documents its Anthropic-compatible endpoint. Those documents do not prove this
+benchmark's Claude Code requests enforce the required routing or that this
+account qualifies. Verify the actual route and data policy before attesting;
+do not change account privacy settings for the trial.
+
 The [Agent Memory Leaderboard coding analysis](https://agentmemories.ai/blog?post=coding-leaderboard-analysis-20260915)
 reports a separate evaluation using historical tasks from 12 repositories and
 150 tasks to solve. Its [evaluation process](https://agentmemories.ai/)

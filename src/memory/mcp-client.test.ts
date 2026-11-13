@@ -21,6 +21,42 @@ describe("memory MCP client response parsing", () => {
     expect(id).toBe("abcdef0123456789");
   });
 
+  it.each([
+    "Failed to update memory metadata: synthetic failure",
+    "Error updating memory metadata: synthetic failure",
+    "Versioned update created the new version, but the metadata overrides were not applied.",
+    "unrecognized response",
+  ])("does not report a failed update as successful", async (message) => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({ fetchImpl: async () => successResponse(message) });
+    expect(await client.memoryUpdate("abcdef0123456789", "updated", ["tag"], { versioned: false })).toBeUndefined();
+  });
+
+  it("rejects an MCP error even when its text resembles success", async () => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: { isError: true, content: [{ type: "text", text: "Successfully updated memory metadata." }] },
+          }),
+          { status: 200 },
+        ),
+    });
+    expect(await client.memoryUpdate("abcdef0123456789", "updated", ["tag"], { versioned: false })).toBeUndefined();
+  });
+
+  it("returns a new hash only for a successful versioned update", async () => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async () =>
+        successResponse("Versioned update successful. New hash: abcdef0123456789, parent hash: 0123456789abcdef."),
+    });
+    expect(await client.memoryUpdate("0123456789abcdef", "updated", ["tag"])).toBe("abcdef0123456789");
+  });
+
   it("retains tags from the upstream numbered search result", async () => {
     const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
     const client = createFetchMemoryMcpClient({
@@ -58,7 +94,9 @@ describe("memory MCP client response parsing", () => {
         return successResponse(
           params?.name === "memory_ingest"
             ? "Files processed: 1/1; 1 new chunks"
-            : "Memory stored successfully (hash: abcdef0123456789)",
+            : params?.name === "memory_update"
+              ? "Successfully updated memory metadata. Updated tags"
+              : "Memory stored successfully (hash: abcdef0123456789)",
         );
       },
     });
@@ -140,7 +178,7 @@ describe("memory MCP client response parsing", () => {
     const client = createFetchMemoryMcpClient({
       fetchImpl: async (_input, init) => {
         payloads.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
-        return successResponse("Memory updated successfully");
+        return successResponse("Successfully updated memory metadata. Updated tags");
       },
     });
 

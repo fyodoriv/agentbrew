@@ -863,7 +863,13 @@ export function createFetchMemoryMcpClient(options: FetchMemoryMcpClientOptions 
           versioned: options.versioned ?? true,
         },
       });
-      return extractMemoryId(result) ?? id;
+      const text = toolResultText(result);
+      const isError = (result as { isError?: boolean } | undefined)?.isError;
+      if (isError) return undefined;
+      if (options.versioned ?? true) {
+        return /^Versioned update successful\./m.test(text) ? extractMemoryId(result) : undefined;
+      }
+      return /^Successfully updated memory metadata\./m.test(text) ? id : undefined;
     },
     async memoryDelete(id) {
       await post("tools/call", {

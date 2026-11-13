@@ -586,7 +586,8 @@ memory rows, pack ledgers, and stable server metadata.
 resolved relative to the file that declares each path. Discovery does not
 install a pack; only an explicit `memory pack install` (or reconciliation of
 an existing install ledger) writes pack records. A duplicate store response
-is left unresolved rather than changing an existing memory's tags.
+is left unresolved rather than changing an existing memory's tags. A failed or
+unrecognized update response also leaves the pack ledger unchanged.
 
 ### Claude project-memory bridge
 

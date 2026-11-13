@@ -71,6 +71,40 @@ describe("pack reconciliation duplicate handling", () => {
     expect(ledgers.size).toBe(0);
     expect(update).not.toHaveBeenCalled();
   });
+  it("does not advance an existing ledger when an update response reports failure", async () => {
+    const pack = loadMemoryPackFromDir(fixtureDir);
+    const record = pack.records[0];
+    const ledger = {
+      packId: pack.manifest.id,
+      version: pack.manifest.version,
+      fingerprint: pack.manifest.fingerprint,
+      packPath: fixtureDir,
+      installedAt: "2026-01-01T00:00:00.000Z",
+      records: {
+        [record.key]: {
+          memoryId: "mem-existing",
+          revision: record.revision,
+          sourceFingerprint: record.sourceFingerprint,
+          contentFingerprint: "sha256:stale",
+        },
+      },
+    };
+    ledgers.set(pack.manifest.id, ledger);
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: { content: [{ type: "text", text: "Failed to update memory metadata: synthetic error" }] },
+          }),
+          { status: 200 },
+        ),
+    });
+    vi.spyOn(client, "tagMatch").mockResolvedValue([]);
+    await expect(reconcileInstalledPack(client, fixtureDir, { ledger })).rejects.toThrow("memory_update failed");
+    expect(ledgers.get(pack.manifest.id)).toEqual(ledger);
+  });
 });
 
 describe("pack reconciliation planning", () => {

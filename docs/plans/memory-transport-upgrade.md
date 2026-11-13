@@ -888,3 +888,9 @@ predicted pivot; an atomic upstream provenance merge remains unverified.
 - **Anchor:** upstream `server/handlers/memory.py` and
   `src/memory/pack-reconcile.ts`. A metadata success does not itself prove a
   requested content change took effect; test that separately.
+
+The synthetic client and actual-client pack regression reproduced false
+success for plain-text failures. The draft accepts only the documented success
+text and rejects MCP errors. The prior pack ledger stays unchanged on a
+reported failure. A separate upstream scratch test is queued to check whether
+metadata-only success actually changes content.

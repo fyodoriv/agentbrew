@@ -8,6 +8,12 @@ upgrade before it can be recommended without qualification.
 
 On November 12, the latest published releases were [Beacon 1.3.60](https://github.com/Asymptote-Labs/agent-beacon/releases/tag/v1.3.60)
 and [MCP Memory Service 12.8.0](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.8.0).
+On November 13, [MCP Memory Service 12.9.0](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.9.0)
+superseded that candidate. It fixes a [cross-store OAuth scope issue](https://github.com/doobidoo/mcp-memory-service/security/advisories/GHSA-wpp8-2qcw-x4pc)
+affecting 12.4.0 through 12.8.0, and a [server-status disclosure](https://github.com/doobidoo/mcp-memory-service/security/advisories/GHSA-hm53-3f6c-cm5h)
+affecting 10.6.0 through 12.8.0. Applicability depends on the deployment's
+authentication and access configuration. The 12.8.0 trial is not evidence that
+12.9.0's migration, rollback, or client compatibility works.
 
 ## Current setup
 

@@ -24,6 +24,11 @@ Node 20 ran the unavailable-runtime case; Nodes 22 and 24 ran the lock cases.
 - **Stability guard:** The backup verification, doctor, existing memory lifecycle tests, and client tool schemas pass; no live memory is copied into a test fixture or external service.
 - **Anchor:** [GHSA-8p26-g7wp-65jw](https://github.com/doobidoo/mcp-memory-service/security/advisories/GHSA-8p26-g7wp-65jw) and [upstream 12.8.0 changelog](https://github.com/doobidoo/mcp-memory-service/blob/v12.8.0/CHANGELOG.md).
 
+November 13 update: upstream released 12.9.0 with additional security fixes.
+The earlier 12.8.0 experiments remain historical evidence, not authorization
+to deploy that version. A 12.9.0 candidate needs its own isolation, migration,
+rollback, and client checks before a live change.
+
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
 

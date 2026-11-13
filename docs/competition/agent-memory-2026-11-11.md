@@ -15,6 +15,14 @@ affecting 10.6.0 through 12.8.0. Applicability depends on the deployment's
 authentication and access configuration. The 12.8.0 trial is not evidence that
 12.9.0's migration, rollback, or client compatibility works.
 
+## Recall evidence correction — November 13
+
+Some scratch tests accepted the query phrase anywhere in a search response. An
+empty response repeats that phrase, so the affected migration, Claude recall,
+and OpenCode lifecycle search claims are not proven until actual returned
+memory entries are checked. HTTP origin and bootstrap observations are not
+affected. See the [upgrade plan](../plans/memory-transport-upgrade.md#recall-evidence-correction--november-13).
+
 ## Current setup
 
 Agentbrew owns the local daemon, its configuration, backup checks, and client

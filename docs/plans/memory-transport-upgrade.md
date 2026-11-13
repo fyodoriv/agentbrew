@@ -43,8 +43,9 @@ rollback, and client checks before a live change.
 - **Anchor:** [12.9.0 release notes](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.9.0)
   and the existing 12.8.0 synthetic rehearsal in this plan.
 
-The isolated rehearsal recalled every synthetic fact before migration, after
-12.9.0 migration, and after restoring the pre-migration backup to 11.7.0. Its
+The isolated rehearsal ran before migration, after 12.9.0 migration, and after
+restoring the pre-migration backup to 11.7.0, but its recall assertion is invalid
+(see the correction below). Its
 outside-file and network-denial controls passed. It used hash embeddings; it
 alone does not establish HTTP origin behavior, live ONNX behavior, client parity,
 or a safe live daemon handoff.
@@ -68,9 +69,9 @@ live ONNX behavior, client parity, or a safe daemon handoff.
 - **Anchor:** The earlier isolated 12.8.0 ONNX rehearsal and upstream
   [12.9.0 release](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.9.0).
 
-The isolated ONNX rehearsal recalled each synthetic fact by exact and semantic
-search before migration, after 12.9.0 migration, and after backup restore to
-11.7.0. Scratch read and outside-file and network-denial controls passed. The
+The isolated ONNX rehearsal ran exact and semantic searches before migration,
+after 12.9.0 migration, and after backup restore to 11.7.0; its recall assertion
+is invalid (see the correction below). Scratch read and outside-file and network-denial controls passed. The
 cached model archive matched its pinned checksum. This does not prove live
 client parity or an exclusive daemon handoff.
 
@@ -106,8 +107,9 @@ check; it does not establish recall or session-save parity on 12.9.0.
   session-save and recall trial recorded below.
 
 In one isolated Kimi session, the bootstrap result contained a behavioral
-profile, the session save reported `recorded`, and the exact-search result
-returned the unique synthetic phrase. OpenCode grouped the calls in its
+profile, the session save reported `recorded`, and the exact-search output included
+the query phrase. The search result is not proof of recall (see the correction
+below). OpenCode grouped the calls in its
 execution tool, so a first parser looking for direct tool events missed them.
 Inspection of the synthetic session's separate bootstrap, save, and search
 outputs confirmed the result. Outside-file and live-port access were denied,
@@ -164,6 +166,17 @@ save-only check was queued to narrow the cause.
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
 
+## Recall evidence correction — November 13
+
+Several scratch harnesses looked for the requested phrase anywhere in the raw
+search response. The upstream empty-result message repeats the query, so that
+check can pass when no memory exists. The hash and ONNX migration recall claims
+below, the 12.8 handoff recall claim, the 12.9 OpenCode recall claim, and the
+independent Claude recall check are unverified until actual numbered memory
+entries are checked. The HTTP origin, isolation, bootstrap, and save-call
+observations do not depend on that check. A corrected rollback ingest trial
+found no memory after its initial ingest; its cause is under investigation.
+
 ## Migration evidence
 
 The live database reported schema version 12 in a read-only query. The verified
@@ -178,16 +191,16 @@ alter tables, and run an update. This is another reason to verify a restore,
 not a substitute for running the candidate against synthetic data.
 
 On November 12, an isolated rehearsal stored harmless facts on 11.7, made a
-SQLite backup, recalled the facts on 12.8, then restored the backup and recalled
-them on 11.7. It checked that isolation denied outside files and network. This
+SQLite backup, queried the facts on 12.8, then restored the backup and queried
+them on 11.7. The recall assertions are invalid (see the correction above). It checked that isolation denied outside files and network. This
 run used the upstream test-only hash embedding fallback. Never enable that
 fallback on the live database: mixing hash vectors with real embeddings can
 damage recall.
 
-A second rehearsal passed the same upgrade and restore sequence using ONNX,
+A second rehearsal ran the same upgrade and restore sequence using ONNX,
 with hash fallback disabled and the public model archive verified against the
-upstream checksum. It checked exact recall and semantic retrieval using each
-original fact as the query. Its first run failed because CoreML could not create
+upstream checksum. It attempted exact recall and semantic retrieval using each
+original fact as the query, but those recall assertions are invalid. Its first run failed because CoreML could not create
 a working directory inside the isolation boundary; the passing retry selected
 the CPU provider explicitly. It does not prove CoreML behavior or live data
 compatibility.
@@ -424,8 +437,8 @@ exclusive control of the real daemon or prove upstream service readiness.
 - **Anchor:** The candidate's `server_impl.py` initialization order and
   [SQLite transaction behavior](https://www.sqlite.org/lang_transaction.html).
 
-The isolated candidate 12.8.0 trial met the success condition on a synthetic
-database, including MCP initialization and exact recall. Its temporary job
+The isolated candidate 12.8.0 trial reached MCP initialization on a synthetic
+database. Its exact recall assertion is invalid (see the correction above). Its temporary job
 was removed. The first harness attempts failed on nested sandbox execution and
 Python path access; the successful retry retained the outer network-denying
 sandbox. The real daemon and competing launchd controllers remain untested.
@@ -759,3 +772,22 @@ next diagnostic also classifies that scratch file without printing its text.
 - **Anchor:** `src/memory/launchagent.ts` and `src/memory/sync-hooks.ts`.
 
 The focused regression failed before the fix: sync reached its restart path when `uvx` could not be resolved. Returning a blocked result now makes sync and repair stop. The launcher-guard and sync test files passed after the change. The protected live upgrade remains unfinished.
+
+
+### Failed directory ingest prediction
+
+- **Root cause:** The MCP directory-ingest tool can report a completed response
+  with one or more failed files, while Agentbrew reads only the chunk count.
+  Project sync can then mark the store current despite an incomplete import.
+- **Hypothesis:** Rejecting a reported file failure keeps that store out of the
+  successful sync ledger, while complete ingests and zero new chunks remain
+  valid.
+- **Measurement:** Run parser and project-sync tests with synthetic upstream
+  success, partial failure, and full failure responses.
+- **Success:** Zero failed-file responses produce a successful sync or fresh
+  ledger entry; all complete success fixtures and duplicate/no-new-chunk
+  behavior pass.
+- **Pivot:** If upstream output cannot distinguish a failed import reliably,
+  report degraded sync and do not assume forced re-ingestion restores data.
+- **Anchor:** `src/memory/mcp-client.ts`, `src/memory/project-sync.ts`, and
+  upstream `mcp_memory_service/utils/directory_ingestion.py` in 11.7 and 12.9.

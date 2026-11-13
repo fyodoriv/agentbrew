@@ -48,3 +48,15 @@ sample. The observer does not offer a complete Rust trace. A separate explicit
 invalid state hides partial records after parse, limit, generated-source or
 overflow failures. This avoids claiming completeness for source forms the
 sampler skips. Matching P01–P03 records are partial observations only.
+
+## Result (2026-11-13)
+
+The exact discovery observation, sampler and legacy observer tests each passed
+with zero failures. The observation test was repeated after adding the
+unsupported-syntax control; its latest run selected one test. The normal non-test library check passed. Complete
+C01/P01/N02a projections and input metadata matched the retained B0 hashes.
+Independent review verified the baseline envelopes and bounded wiring. The
+generated-source and overflow controls exercise the shared observer method;
+they do not establish end-to-end generated-source routing. The hosted guard
+selects the exact test; the workflow guard passed 28 cases. These are partial test-only syntax samples, not native
+writer authority, Rust coverage, worker qualification or a performance result.

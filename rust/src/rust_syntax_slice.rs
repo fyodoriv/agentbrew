@@ -2,14 +2,14 @@ use std::ops::Range;
 
 const SOURCE_LIMIT: usize = 2_097_152;
 
-struct SyntaxSite {
-    owner: Range<usize>,
-    call: Range<usize>,
-    output: (Range<usize>, String),
-    body: (Range<usize>, String),
+pub(crate) struct SyntaxSite {
+    pub(crate) owner: Range<usize>,
+    pub(crate) call: Range<usize>,
+    pub(crate) output: (Range<usize>, String),
+    pub(crate) body: (Range<usize>, String),
 }
 
-fn parse(input: &[u8]) -> Result<Vec<SyntaxSite>, ()> {
+pub(crate) fn parse(input: &[u8]) -> Result<Vec<SyntaxSite>, ()> {
     if input.len() > SOURCE_LIMIT {
         return Err(());
     }
@@ -64,6 +64,9 @@ fn parse(input: &[u8]) -> Result<Vec<SyntaxSite>, ()> {
             let (syn::Lit::Str(first), syn::Lit::Str(second)) = (&first.lit, &second.lit) else {
                 continue;
             };
+            if sites.len() == 256 {
+                return Err(());
+            }
             sites.push(SyntaxSite {
                 owner: owner.clone(),
                 call: colon.spans[0].byte_range().start

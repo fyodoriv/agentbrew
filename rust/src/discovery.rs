@@ -52,6 +52,16 @@ pub(crate) struct HostObservation {
 }
 
 #[cfg(test)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RustSyntaxObservation {
+    pub path: String,
+    pub owner: std::ops::Range<usize>,
+    pub call: std::ops::Range<usize>,
+    pub output: std::ops::Range<usize>,
+    pub body: std::ops::Range<usize>,
+}
+
+#[cfg(test)]
 #[derive(Default)]
 pub(crate) struct DiscoveryObserver {
     records: BTreeSet<HostObservation>,
@@ -59,6 +69,9 @@ pub(crate) struct DiscoveryObserver {
     passes: usize,
     overflow: bool,
     complete: bool,
+    rust_records: Vec<RustSyntaxObservation>,
+    rust_path_bytes: usize,
+    rust_invalid: bool,
 }
 
 #[cfg(test)]
@@ -104,6 +117,47 @@ impl DiscoveryObserver {
 
     pub(crate) fn finish(&mut self) {
         self.complete = true;
+    }
+
+    pub(crate) fn observe_rust(&mut self, path: &str, source: &str, generated: bool) {
+        if self.rust_invalid {
+            return;
+        }
+        if generated {
+            self.rust_invalid = true;
+            self.rust_records.clear();
+            return;
+        }
+        let Ok(sites) = crate::rust_family_tests::rust_syntax_slice::parse(source.as_bytes())
+        else {
+            self.rust_invalid = true;
+            self.rust_records.clear();
+            return;
+        };
+        for site in sites {
+            let Some(bytes) = self.rust_path_bytes.checked_add(path.len()) else {
+                self.rust_invalid = true;
+                self.rust_records.clear();
+                return;
+            };
+            if self.rust_records.len() == 256 || bytes > 65_536 {
+                self.rust_invalid = true;
+                self.rust_records.clear();
+                return;
+            }
+            self.rust_path_bytes = bytes;
+            self.rust_records.push(RustSyntaxObservation {
+                path: path.into(),
+                owner: site.owner,
+                call: site.call,
+                output: site.output.0,
+                body: site.body.0,
+            });
+        }
+    }
+
+    pub(crate) fn rust_partial_records(&self) -> Option<&[RustSyntaxObservation]> {
+        (self.complete && !self.rust_invalid).then_some(self.rust_records.as_slice())
     }
 }
 
@@ -559,11 +613,17 @@ fn discover_inner(
     }
     let mut roots = BTreeMap::new();
     let mut unknown_executables = BTreeSet::new();
+    #[cfg(test)]
+    let mut invalid_rust_entry = false;
     for (path, entry) in &snapshot.entries {
         if entry.mode == 0o120000 {
             continue;
         }
         let Ok(text) = std::str::from_utf8(&entry.bytes) else {
+            #[cfg(test)]
+            if observer.is_some() && path.ends_with(".rs") {
+                invalid_rust_entry = true;
+            }
             if entry.mode == 0o100755 {
                 issue(&mut result, "unsupported-executable", path);
             }
@@ -588,6 +648,10 @@ fn discover_inner(
     for _ in 0..=snapshot.entries.len() {
         #[cfg(test)]
         let mut round_observer = DiscoveryObserver::default();
+        #[cfg(test)]
+        {
+            round_observer.rust_invalid = invalid_rust_entry;
+        }
         let mut round = Discovery {
             upstream: result.upstream.clone(),
             facts: result.facts.clone(),
@@ -620,6 +684,11 @@ fn discover_inner(
                 }
                 let source = sources[&key].clone();
                 if source.text.len() > SOURCE_BYTES {
+                    #[cfg(test)]
+                    if observer.is_some() && source.language == "rust" {
+                        round_observer.rust_invalid = true;
+                        round_observer.rust_records.clear();
+                    }
                     issue(&mut round, "parser-source-limit", &source.path);
                     continue;
                 }
@@ -657,6 +726,14 @@ fn discover_inner(
                         }
                     },
                     _ => {
+                        #[cfg(test)]
+                        if observer.is_some() && source.language == "rust" {
+                            round_observer.observe_rust(
+                                &source.path,
+                                &source.text,
+                                source.body.is_some(),
+                            );
+                        }
                         let reviewed = source.body.is_none()
                             && round.reviewed_sources.iter().any(|record| {
                                 record.path == source.path && record.language == source.language

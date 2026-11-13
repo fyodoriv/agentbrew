@@ -200,6 +200,9 @@ jobs:
           CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_namespace_screen::frozen_namespace_controls -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-namespace-screen.log"
           test "$(grep -Ec '^test rust_family_tests::rust_namespace_screen::frozen_namespace_controls \.\.\. ok$' "$RUNNER_TEMP/inventory-namespace-screen.log")" -eq 1
           grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-namespace-screen.log"
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_discovery_syntax::observes_real_discovery_sources -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-rust-observation.log"
+          test "$(grep -Ec '^test rust_family_tests::rust_discovery_syntax::observes_real_discovery_sources \.\.\. ok$' "$RUNNER_TEMP/inventory-rust-observation.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-rust-observation.log"
           if cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture > "$RUNNER_TEMP/fixture-refusal.log" 2>&1; then exit 1; fi
           grep -Fq 'requires target-scoped owner_hosted_experiment cfg' "$RUNNER_TEMP/fixture-refusal.log"
           cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture -- --cfg owner_hosted_experiment --check-cfg 'cfg(owner_hosted_experiment)'

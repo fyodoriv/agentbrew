@@ -754,6 +754,12 @@ The hosted server returned status 1 with terms for storage, the engine and
 embeddings. A vendor issue documents a separate startup error file, so the
 next diagnostic also classifies that scratch file without printing its text.
 
+The [November 13 hosted run](https://github.com/fyodoriv/agentbrew/actions/runs/43525382097)
+passed the direct isolation controls, started the pinned server, and retrieved
+the synthetic fact as a source chunk. The trial listener stopped. This run did
+not demonstrate a memory-only extraction result, and the model runner remained
+outside the server sandbox. It did not test agent integrations.
+
 
 ### Missing launcher guard prediction
 

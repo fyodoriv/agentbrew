@@ -169,8 +169,12 @@ The 0.0.9 macOS release passed its published checksum and isolated startup
 checks. With a separate local embedding model, a synthetic document was added
 and its phrase was retrieved. A follow-up found the phrase in a source chunk,
 but not in a memory field during the next minute. A longer isolated trial
-later returned the phrase in a memory-only result. This does not establish
-comparative quality or cross-agent integration.
+later returned the phrase in a memory-only result. On November 13, an
+[independent hosted trial](https://github.com/fyodoriv/agentbrew/actions/runs/43525382097)
+started the same server with local models, retrieved a synthetic fact as a
+source chunk, and stopped its listener. Its direct isolation controls passed;
+the local model runner was outside that sandbox. This hosted result does not
+prove memory extraction, comparative quality, or cross-agent integration.
 The [local-server configuration guide](https://github.com/supermemoryai/supermemory/blob/main/apps/docs/self-hosting/configuration.mdx)
 says telemetry is collected unless disabled and documents switches to suppress
 the startup key, browser launch, and update check. Local embeddings are the

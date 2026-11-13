@@ -53,6 +53,9 @@ export function prompt({ lens, shots, context = "", decisions = "" }) {
     "Start each fix with one direction verb: add, remove, show, hide, increase, reduce, enlarge,",
     "shrink, darken, lighten, emphasize, quiet, move, or change. Do not ask to reverse a settled",
     "decision unless it causes a blocker you can see; then name the decision and the screenshot.",
+    "Do not ask for what a settled decision already requires. If a screenshot shows it is not met, report",
+    "a bug: start the problem with 'not as decided:' and quote the decision; the fix restores it.",
+    "Give one fix per issue, never 'X, or Y': pick the one you would ship.",
   ]
     .filter(Boolean)
     .join("\n");

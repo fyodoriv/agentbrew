@@ -131,6 +131,9 @@ describe("design judges", () => {
     const p = judge.prompt({ lens: "polish", shots: "/s" });
     expect(p).toMatch(/direction verb/);
     expect(p).toMatch(/reverse a settled/);
+    // live A/B 2026-11-13: judges re-asked for settled decisions and gave "X, or Y" fixes
+    expect(p).toMatch(/not as decided:/);
+    expect(p).toMatch(/never 'X, or Y'/);
   });
 
   it("both panels share one protocol and state no stop rule of their own", () => {

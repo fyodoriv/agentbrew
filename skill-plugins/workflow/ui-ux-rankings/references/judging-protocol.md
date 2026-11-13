@@ -35,7 +35,10 @@ different stop rules. Published practice for LLM judges points the same way:
    scores. Every judge of every panel gets the same file.
 3. **Fixes carry a direction.** Every fix starts with a direction verb (add, remove, show, hide,
    increase, reduce, enlarge, shrink, darken, lighten, emphasize, quiet, move, change).
-   `judge.mjs prompt` asks for it, and design-panel raters use the same `ISSUE:` line.
+   `judge.mjs prompt` asks for it, and design-panel raters use the same `ISSUE:` line. One fix per
+   issue, never "X, or Y". A judge never asks for what a ledger line already requires; when a
+   screenshot breaks a ledger line, it reports "not as decided:" with the quoted line, a bug to fix,
+   not a new decision.
 4. **Check conflicts before you build.** Save each reply as `<round>/<judge>.txt`, then run
    `node scripts/judge.mjs conflicts <round>`. It exits 1 and lists every pair of opposite asks
    on one element in the round, and every ask that reverses a ledger line. Build none of them.

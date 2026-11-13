@@ -740,3 +740,20 @@ non-secret technical words, without printing server text or the key.
 The hosted server returned status 1 with terms for storage, the engine and
 embeddings. A vendor issue documents a separate startup error file, so the
 next diagnostic also classifies that scratch file without printing its text.
+
+
+### Missing launcher guard prediction
+
+- **Root cause:** The installer returns early when it cannot resolve `uvx`,
+  without marking the upgrade as blocked. Sync or repair may then kick-start
+  an older loaded job that retains its own executable path.
+- **Hypothesis:** Treating a missing launcher as a blocked reconciliation
+  prevents all tested callers from restarting an unchecked memory job.
+- **Measurement:** Run the focused launcher-guard and sync tests, including a
+  missing-launcher fixture with a mismatched loaded job and an unhealthy MCP.
+- **Success:** Zero kick-start, load, or unload calls in every tested missing-
+  launcher case; the existing valid-launcher cases continue to pass.
+- **Pivot:** If missing launcher cannot be distinguished without weakening
+  existing safety or preventing normal recovery, retain the draft and do not
+  deploy the guard.
+- **Anchor:** `src/memory/launchagent.ts` and `src/memory/sync-hooks.ts`.

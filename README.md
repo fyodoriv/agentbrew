@@ -600,7 +600,9 @@ local-file source.
 Normal syncs use ledger fingerprints to skip unchanged stores; `--force` is
 the deliberate recovery path when a full re-ingest is needed. A store stays
 stale when the service reports failed files or chunk errors, or cannot confirm
-that it processed every file in the discovered folder. Each new record
+that it processed every file in the discovered folder. An unchanged `--force`
+re-import can be reported as incomplete when upstream rejects duplicate chunks;
+the existing memories remain, and the folder stays eligible for retry. Each new record
 also carries a stable `project-source:sha256:…` tag. The readable
 `project:<slug>` tag remains a hint and can collide. Recall remains global by
 default; callers can use the source tag when they intentionally need a

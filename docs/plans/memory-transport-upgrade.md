@@ -841,3 +841,26 @@ longer than the upstream 100-character chunk minimum: import and exact recall
 worked, restoring the prior snapshot removed the marker, and re-ingestion
 restored it. A shorter initial test file produced no chunks. The test did not
 exercise the Agentbrew ledger and does not establish live rollback safety.
+
+
+### Duplicate memory safety prediction
+
+- **Root cause:** When an exact-duplicate store response lacks a hash, the
+  client falls back to the first search result if no exact content matches and
+  can update that unrelated memory. The update also replaces its tags.
+- **Hypothesis:** Requiring an exact match and retaining existing tags prevents
+  unrelated writes and preserves provenance for the tested duplicate case.
+- **Measurement:** Exercise synthetic duplicate responses with unrelated,
+  exact, and empty search results and inspect the update payload.
+- **Success:** Zero updates target an unrelated or absent memory; an exact
+  match keeps all existing and requested tags. Existing store tests pass.
+- **Pivot:** If the API cannot establish a unique exact match or retain the
+  original tags, leave the duplicate unresolved and do not mutate a memory.
+- **Anchor:** `src/memory/mcp-client.ts` and upstream duplicate-store behavior.
+
+An isolated 12.9 forced re-import of the same Markdown file produced a
+`files failed` exact-duplicate response, even though the prior memory remained
+retrievable. The draft keeps such a folder stale; it does not yet prove that
+the existing memory has that folder's provenance. Upstream reports at most
+five error details, so duplicate text alone is not enough to mark an entire
+folder current.

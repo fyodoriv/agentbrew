@@ -1,0 +1,61 @@
+name: Synthetic Beacon retrieval trial
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/beacon-retrieval-trial.yml
+      - tests/research/beacon-retrieval-trial.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  beacon-retrieval:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare pinned public fixtures and Beacon
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/beacon-trial"
+          mkdir -p "$root"
+          case "$(uname -m)" in
+            arm64) asset=arm64; digest=e7cb95c9419effa92180953f3982fb7756c1f60832edbf62d42a5d6d8d310f2b ;;
+            x86_64) asset=amd64; digest=e1e33b16165e76bc877b8e22c670c75940e6dd4bcaedce45e7545b047b82fbdc ;;
+            *) exit 1 ;;
+          esac
+          curl --fail --silent --show-error --location "https://github.com/Asymptote-Labs/agent-beacon/releases/download/v1.3.60/beacon_1.3.60_darwin_${asset}.tar.gz" -o "$root/beacon.tar.gz"
+          echo "$digest  $root/beacon.tar.gz" | shasum -a 256 -c
+          tar -xzf "$root/beacon.tar.gz" -C "$root" beacon
+          revision=c1b15726f1153b02dda0490ca1936bb86a809514
+          base="https://raw.githubusercontent.com/GiulioDER/agent-memory-bench/$revision"
+          curl --fail --silent --show-error --location "$base/calibration/abstention-queryset-v1.json" -o "$root/questions.json"
+          curl --fail --silent --show-error --location "$base/corpus/oracle_memory/bundles.jsonl" -o "$root/bundles.jsonl"
+          ROOT="$root" python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["ROOT"])
+          questions = json.loads((root / "questions.json").read_text())
+          bundles = {x["task_id"]: x for x in map(json.loads, (root / "bundles.jsonl").read_text().splitlines())}
+          cases = [{"id": q["id"], "query": q["query"], "content": bundles[q["source_task"]]["items"][0]["evidence_text"]} for q in questions if q["answerable"] and q.get("source_task") in bundles]
+          assert len(cases) == 17
+          (root / "public-benchmark-cases.json").write_text(json.dumps(cases))
+          PY
+      - name: Run isolated Beacon retrieval trial
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 18765 --bind 127.0.0.1 > /dev/null 2>&1 &
+          control_pid=$!
+          trap 'kill "$control_pid" 2>/dev/null || true' EXIT
+          for _ in {1..50}; do
+            nc -z -w 1 127.0.0.1 18765 >/dev/null 2>&1 && break
+            sleep 0.1
+          done
+          nc -z -w 1 127.0.0.1 18765
+          BEACON_TRIAL_ROOT="$RUNNER_TEMP/beacon-trial" BEACON_OUTSIDE_ROOT="$RUNNER_TEMP" python3 tests/research/beacon-retrieval-trial.py

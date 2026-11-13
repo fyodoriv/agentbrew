@@ -32,10 +32,11 @@ describe("targeted skill refresh state baseline", () => {
     a.catalogVersion = "first-edit";
     first.save(a);
     expect(stale.read().catalogVersion).toBe("first-edit");
+    if (!b.mcpServers) throw new Error("fixture server list missing");
     b.mcpServers.push({ name: "fixture", command: "fixture", args: [], env: {}, source: "fixture" });
     second.save(b);
     expect(stale.read().catalogVersion).toBe("before");
-    expect(stale.read().mcpServers.map((server) => server.name)).toEqual(["fixture"]);
+    expect(stale.read().mcpServers?.map((server) => server.name)).toEqual(["fixture"]);
 
     const serial = sharedStore();
     const left = createStateManager(serial.io);
@@ -50,9 +51,10 @@ describe("targeted skill refresh state baseline", () => {
     const fresh = right.load()!;
     expect(fresh).not.toBe(rightStale);
     expect(fresh.catalogVersion).toBe("first-edit");
+    if (!fresh.mcpServers) throw new Error("fixture server list missing");
     fresh.mcpServers.push({ name: "fixture", command: "fixture", args: [], env: {}, source: "fixture" });
     right.save(fresh);
     expect(serial.read().catalogVersion).toBe("first-edit");
-    expect(serial.read().mcpServers.map((server) => server.name)).toEqual(["fixture"]);
+    expect(serial.read().mcpServers?.map((server) => server.name)).toEqual(["fixture"]);
   });
 });

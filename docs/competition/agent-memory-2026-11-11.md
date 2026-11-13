@@ -131,8 +131,12 @@ This is not a memory, model-provider, or cross-agent integration test.
 The [local-server configuration guide](https://github.com/supermemoryai/supermemory/blob/main/apps/docs/self-hosting/configuration.mdx)
 says telemetry is collected unless disabled and documents switches to suppress
 the startup key, browser launch, and update check. Local embeddings are the
-default; memory extraction also needs a configured model. Test these settings
-and network traffic rather than assuming local storage means offline operation.
+default. The guide also documents using an OpenAI-compatible local Ollama
+endpoint for text extraction. Its [local overview](https://github.com/supermemoryai/supermemory/blob/main/apps/docs/self-hosting/overview.mdx)
+states that the free local license permits 10,000 stored documents and that
+the embeddings model needs an initial download. This describes a possible local
+trial, not proof of its behavior on this machine. Test the settings and network
+traffic rather than assuming local storage means offline operation.
 
 ## Published hosted pricing
 

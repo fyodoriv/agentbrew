@@ -456,3 +456,21 @@ unmarked correction produced no mock write, while the marked correction
 produced one. A marked skip turn produced no write, and its unmarked control
 produced one. This tests the hook with a mock HTTP client, not a live memory
 service or a real Codex session.
+
+## Supermemory local text trial
+
+- **Hypothesis:** The published local server can ingest and retrieve a
+  synthetic text memory using the installed Ollama service without external
+  network access or access to the existing shared-memory service.
+- **Measurement:** Run the checksum-verified 0.0.9 server with a scratch home
+  and store, telemetry and update checks disabled, local Ollama models, and an
+  external isolation policy that blocks outside network and the live memory
+  socket. Submit a synthetic fact and query it through the documented API.
+- **Success:** The trial confirms its isolation controls, retrieves the
+  synthetic fact after ingestion, and leaves no trial listener running. It
+  never reads actual agent transcripts or prints its generated key.
+- **Pivot:** If an embedding model is unavailable offline, local ingestion
+  fails, isolation cannot be proven, or cleanup fails, report the failed step
+  and do not recommend the integration on this evidence.
+- **Anchor:** [Supermemory local setup](https://github.com/supermemoryai/supermemory/blob/main/apps/docs/self-hosting/overview.mdx)
+  and [configuration](https://github.com/supermemoryai/supermemory/blob/main/apps/docs/self-hosting/configuration.mdx).

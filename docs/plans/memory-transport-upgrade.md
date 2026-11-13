@@ -986,3 +986,18 @@ version tag differs; this does not establish a safe unchanged-text migration.
   do not select a candidate. A stable page count is not an atomic snapshot.
 - **Anchor:** upstream `services/memory_service.py` and
   `src/memory/mcp-client.ts`.
+
+
+### Repeated pagination check prediction
+
+- **Hypothesis:** Comparing two complete page scans detects a one-time
+  same-total replacement that a count-only check misses.
+- **Measurement:** Run synthetic 101-row tests with unchanged scans and a
+  same-total delete/insert between scans; count page requests.
+- **Success:** The changed scan is rejected, the unchanged scan returns all
+  101 rows, and exactly four page requests are made for that fixture.
+- **Pivot:** If a stable list is rejected or a changed scan is accepted, do
+  not rely on the repeated scan. Two matching scans still cannot prove an
+  atomic snapshot or rule out changes between or after the reads.
+- **Anchor:** upstream offset-based `memory_list` and
+  `src/memory/mcp-client.ts`.

@@ -67,6 +67,7 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | Doc | Answers | Audience |
 |---|---|---|
 | [`plans/`](plans/) | Plans for non-trivial tasks, one file per task ID. | agent |
+| [`plans/targeted-managed-skill-refresh.md`](plans/targeted-managed-skill-refresh.md) | How will a scoped skill refresh preserve ownership and recovery? | agent |
 | [`plans/rust-literal-adapter-registration-proposal-20261105.md`](plans/rust-literal-adapter-registration-proposal-20261105.md) | Which supplemental Rust writer experiment is registered before implementation? | agent |
 | [`plans/rust-literal-adapter-corpus-proposal-20261105.md`](plans/rust-literal-adapter-corpus-proposal-20261105.md) | What exact source, manifest and receipt controls define that experiment? | agent |
 | [`plans/rust-literal-staged-measurement-proposal-20261105.md`](plans/rust-literal-staged-measurement-proposal-20261105.md) | How do setup checks and a bounded unchanged-API baseline precede the full corpus? | agent |

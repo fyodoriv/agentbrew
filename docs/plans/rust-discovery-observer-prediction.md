@@ -51,3 +51,10 @@ public signature, and compile a normal non-test build. No source program, worker
 process signal is run. Normal test compilation may run dependency build
 scripts. Passing this preparation does not qualify the six Rust positives,
 the 50 negatives, the worker, or the full inventory.
+
+This first observer covers host-graph parser events only. It does not claim to
+observe shell or Rust analysis, and it excludes reviewed-producer injection.
+To reuse the B0 projector, only the visibility of its discovery, report,
+input-metadata and canonicalization helpers may become `pub(super)` in test
+code. Their logic and the original capture test remain unchanged; review that
+diff and repeat the retained-byte comparison before accepting the observer.

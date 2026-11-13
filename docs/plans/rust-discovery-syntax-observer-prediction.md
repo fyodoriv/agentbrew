@@ -42,3 +42,9 @@ existing registry-required diagnostic. No source, worker, filesystem reader,
 or process signal runs. The old manual N02b job stays pinned to its earlier
 harness and must not be rerun or silently repinned for this revision. Input
 and record caps do not establish parser memory or wall-time bounds.
+
+For this bridge, even a syntactically matching source produces only a partial
+sample. The observer does not offer a complete Rust trace. A separate explicit
+invalid state hides partial records after parse, limit, generated-source or
+overflow failures. This avoids claiming completeness for source forms the
+sampler skips. Matching P01–P03 records are partial observations only.

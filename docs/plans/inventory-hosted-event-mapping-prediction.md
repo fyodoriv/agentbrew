@@ -56,7 +56,12 @@ This diagnostic cannot prove physical ownership, signal delivery, or cleanup.
 Finalization needs a wrapper around every return path; adding it only on the
 normal return would be misleading. The initial categories and typed terminal,
 stop, and reap observations are wired behind the experiment guard. The
-finalization wrapper and refusal-sequence validator are not implemented yet.
+finalization wrapper and refusal-sequence validator are implemented and await
+isolated and hosted checks. A closed refusal diagnostic is not physical
+ownership, signal delivery, or cleanup proof.
+The source check for calls that bypass the wrapper is textual, not a Rust
+visibility boundary. The in-memory final marker is not authenticated run
+evidence. Panic, interruption, overflow, or a missing marker is inconclusive.
 The mapping harness extracts and tests the actual mapping without compiling or
 running the worker. It does not prove runtime event order or physical cleanup.
 Its compiler and pure test run are trusted hosted build processes: captured

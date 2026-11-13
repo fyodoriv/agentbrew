@@ -21,6 +21,7 @@ pub(crate) enum Event {
     KillAttempt,
     Refused,
     Drop,
+    Finalized,
 }
 
 pub(crate) struct Receipt<const N: usize> {
@@ -28,6 +29,7 @@ pub(crate) struct Receipt<const N: usize> {
     used: usize,
     pending: bool,
     invalid: bool,
+    claimed: bool,
 }
 
 impl<const N: usize> Receipt<N> {
@@ -37,7 +39,17 @@ impl<const N: usize> Receipt<N> {
             used: 0,
             pending: false,
             invalid: false,
+            claimed: false,
         }
+    }
+
+    pub(crate) fn claim(&mut self) -> bool {
+        if self.claimed || self.invalid || self.pending || self.used != 0 {
+            self.invalid = true;
+            return false;
+        }
+        self.claimed = true;
+        true
     }
 
     pub(crate) fn record(&mut self, event: Event) -> bool {
@@ -87,11 +99,61 @@ impl<const N: usize> Receipt<N> {
         self.invalid = true;
     }
 
+    pub(crate) fn finalize_after_return(&mut self) -> bool {
+        if !self.claimed || self.invalid || self.pending || self.used == N {
+            self.invalid = true;
+            return false;
+        }
+        self.events[self.used] = Some(Event::Finalized);
+        self.used += 1;
+        true
+    }
+
     pub(crate) fn internally_consistent(&mut self) -> bool {
         if self.pending {
             self.invalid = true;
         }
         !self.invalid
+    }
+
+    // A closed refusal diagnostic is not proof of process ownership or cleanup.
+    pub(crate) fn closed_refusal_diagnostic(&mut self) -> bool {
+        if !self.claimed || !self.internally_consistent() {
+            return false;
+        }
+        let mut spawned = false;
+        let mut dropped = false;
+        let mut reaped = false;
+        let mut finalized = false;
+        let mut pending = false;
+        let mut refused = false;
+        for event in self.events[..self.used].iter().flatten() {
+            if finalized {
+                return false;
+            }
+            match event {
+                Event::Spawned if !spawned => spawned = true,
+                Event::Drop if spawned && !dropped && !pending => dropped = true,
+                Event::Observation(Evidence::Reaped) if spawned && !reaped && !pending => {
+                    reaped = true
+                }
+                Event::TermAttempt | Event::KillAttempt if spawned && !pending && !reaped => {
+                    pending = true
+                }
+                Event::Refused if pending => {
+                    pending = false;
+                    refused = true;
+                }
+                Event::Finalized if spawned && dropped && reaped && refused && !pending => {
+                    finalized = true;
+                }
+                Event::Observation(Evidence::OwnershipUnknown) => return false,
+                Event::Observation(Evidence::Reaped) => return false,
+                Event::Observation(_) if !pending => {}
+                _ => return false,
+            }
+        }
+        finalized
     }
 }
 
@@ -144,7 +206,12 @@ mod tests {
 
     #[test]
     fn direct_transactional_record_is_rejected() {
-        for event in [Event::Refused, Event::TermAttempt, Event::KillAttempt] {
+        for event in [
+            Event::Refused,
+            Event::TermAttempt,
+            Event::KillAttempt,
+            Event::Finalized,
+        ] {
             let mut r = Receipt::<4>::new();
             assert!(!r.record(event));
             assert!(!r.internally_consistent());
@@ -204,5 +271,184 @@ mod tests {
         assert!(r.record(Event::Observation(Evidence::OwnershipUnknown)));
         assert!(!r.begin(Event::KillAttempt));
         assert!(!r.internally_consistent());
+    }
+
+    fn refusal(r: &mut Receipt<16>) {
+        assert!(r.begin(Event::TermAttempt));
+        assert!(r.refused());
+    }
+
+    fn claimed() -> Receipt<16> {
+        let mut receipt = Receipt::<16>::new();
+        assert!(receipt.claim());
+        receipt
+    }
+
+    #[test]
+    fn closed_refusal_after_drop_reap_is_diagnostic_only() {
+        let mut r = claimed();
+        assert!(r.record(Event::Spawned));
+        assert!(r.record(Event::Observation(Evidence::Stop)));
+        assert!(r.record(Event::Observation(Evidence::Terminal)));
+        refusal(&mut r);
+        assert!(r.record(Event::Drop));
+        assert!(r.record(Event::Observation(Evidence::Reaped)));
+        assert!(r.finalize_after_return());
+        assert!(r.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn reap_before_drop_is_allowed() {
+        let mut r = claimed();
+        assert!(r.record(Event::Spawned));
+        refusal(&mut r);
+        assert!(r.record(Event::Observation(Evidence::Reaped)));
+        assert!(r.record(Event::Drop));
+        assert!(r.finalize_after_return());
+        assert!(r.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn drop_retry_without_main_attempt_is_allowed() {
+        let mut r = claimed();
+        assert!(r.record(Event::Spawned));
+        assert!(r.record(Event::Drop));
+        refusal(&mut r);
+        assert!(r.record(Event::Observation(Evidence::Reaped)));
+        assert!(r.finalize_after_return());
+        assert!(r.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn missing_final_or_reap_is_inconclusive() {
+        let mut r = claimed();
+        assert!(r.record(Event::Spawned));
+        refusal(&mut r);
+        assert!(r.record(Event::Drop));
+        assert!(!r.closed_refusal_diagnostic());
+        assert!(r.finalize_after_return());
+        assert!(!r.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn no_refusal_is_inconclusive() {
+        let mut r = claimed();
+        assert!(r.record(Event::Spawned));
+        assert!(r.record(Event::Drop));
+        assert!(r.record(Event::Observation(Evidence::Reaped)));
+        assert!(r.finalize_after_return());
+        assert!(!r.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn early_or_duplicate_finalization_is_inconclusive() {
+        let mut r = claimed();
+        assert!(r.finalize_after_return());
+        assert!(!r.closed_refusal_diagnostic());
+        let mut duplicate = claimed();
+        assert!(duplicate.record(Event::Spawned));
+        refusal(&mut duplicate);
+        assert!(duplicate.record(Event::Drop));
+        assert!(duplicate.record(Event::Observation(Evidence::Reaped)));
+        assert!(duplicate.finalize_after_return());
+        assert!(duplicate.finalize_after_return());
+        assert!(!duplicate.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn unknown_ownership_cannot_close_diagnostic() {
+        let mut r = claimed();
+        assert!(r.record(Event::Spawned));
+        assert!(r.record(Event::Drop));
+        assert!(r.record(Event::Observation(Evidence::OwnershipUnknown)));
+        assert!(!r.finalize_after_return());
+        assert!(!r.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn duplicate_reap_cannot_close_diagnostic() {
+        let mut r = claimed();
+        assert!(r.record(Event::Spawned));
+        refusal(&mut r);
+        assert!(r.record(Event::Drop));
+        assert!(r.record(Event::Observation(Evidence::Reaped)));
+        assert!(r.record(Event::Observation(Evidence::Reaped)));
+        assert!(r.finalize_after_return());
+        assert!(!r.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn receipt_can_be_claimed_only_once() {
+        let mut r = claimed();
+        assert!(!r.claim());
+        assert!(!r.internally_consistent());
+    }
+
+    #[test]
+    fn attempt_after_reap_cannot_close_diagnostic() {
+        let mut r = claimed();
+        assert!(r.record(Event::Spawned));
+        assert!(r.record(Event::Observation(Evidence::Reaped)));
+        refusal(&mut r);
+        assert!(r.record(Event::Drop));
+        assert!(r.finalize_after_return());
+        assert!(!r.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn pending_attempt_cannot_close_diagnostic() {
+        let mut r = claimed();
+        assert!(r.record(Event::Spawned));
+        assert!(r.begin(Event::TermAttempt));
+        assert!(!r.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn empty_or_unclaimed_receipt_is_inconclusive() {
+        let mut empty = Receipt::<16>::new();
+        assert!(!empty.closed_refusal_diagnostic());
+        let mut claimed_empty = claimed();
+        assert!(!claimed_empty.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn finalization_overflow_is_sticky() {
+        let mut r = Receipt::<1>::new();
+        assert!(r.claim());
+        assert!(r.record(Event::Spawned));
+        assert!(!r.finalize_after_return());
+        assert!(!r.internally_consistent());
+    }
+
+    #[test]
+    fn drop_before_spawn_is_inconclusive() {
+        let mut r = claimed();
+        assert!(r.record(Event::Drop));
+        assert!(r.record(Event::Spawned));
+        assert!(!r.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn reap_before_spawn_is_inconclusive() {
+        let mut r = claimed();
+        assert!(r.record(Event::Observation(Evidence::Reaped)));
+        assert!(r.record(Event::Spawned));
+        refusal(&mut r);
+        assert!(r.record(Event::Drop));
+        assert!(r.record(Event::Observation(Evidence::Reaped)));
+        assert!(r.finalize_after_return());
+        assert!(!r.closed_refusal_diagnostic());
+    }
+
+    #[test]
+    fn event_after_finalization_is_inconclusive() {
+        let mut r = claimed();
+        assert!(r.record(Event::Spawned));
+        refusal(&mut r);
+        assert!(r.record(Event::Drop));
+        assert!(r.record(Event::Observation(Evidence::Reaped)));
+        assert!(r.finalize_after_return());
+        assert!(r.record(Event::Observation(Evidence::Context)));
+        assert!(!r.closed_refusal_diagnostic());
     }
 }

@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_SIGNAL = '    fn signal(&mut self, signal: Signal) -> Result<(), SignalFailure> {\n        if !self.reserved {\n            #[cfg(owner_hosted_experiment)]\n            let _ = self\n                .receipt\n                .record(owner_hosted_receipt::Event::Observation(\n                    owner_hosted_receipt::Evidence::OwnershipUnknown,\n                ));\n            return Err(SignalFailure::Unreserved);\n        }\n        let status = self.status();\n        #[cfg(owner_hosted_experiment)]\n        if status.is_err() {\n            let _ = self\n                .receipt\n                .record(owner_hosted_receipt::Event::Observation(\n                    owner_hosted_receipt::Evidence::OwnershipUnknown,\n                ));\n        }\n        status.map_err(|_| SignalFailure::from_wait_error(self.last_error))?;\n        #[cfg(owner_hosted_experiment)]\n        let attempt = if signal == Signal::TERM {\n            owner_hosted_receipt::Event::TermAttempt\n        } else if signal == Signal::KILL {\n            owner_hosted_receipt::Event::KillAttempt\n        } else {\n            return Err(SignalFailure::ExperimentGuardRefused);\n        };\n        #[cfg(owner_hosted_experiment)]\n        if !self.receipt.begin(attempt) {\n            return Err(SignalFailure::ExperimentGuardRefused);\n        }\n        #[cfg(owner_hosted_experiment)]\n        let result = match owner_guarded_dispatch::dispatch(|| kill_process_group(self.pid, signal))\n        {\n            Ok(_) => {\n                self.receipt.invalidate();\n                return Err(SignalFailure::ExperimentGuardRefused);\n            }\n            Err(_) => {\n                let _ = self.receipt.refused();\n                return Err(SignalFailure::ExperimentGuardRefused);\n            }\n        };\n        #[cfg(not(owner_hosted_experiment))]\n        let result = kill_process_group(self.pid, signal);\n        match result {\n            Ok(()) | Err(Errno::SRCH) => Ok(()),\n            Err(error) => {\n                self.last_error = error.raw_os_error();\n                Err(SignalFailure::from_kill_error(error.raw_os_error()))\n            }\n        }\n    }\n\n'
 EXPECTED_EVIDENCE = 'fn evidence(reason: Observation) -> owner_hosted_receipt::Evidence {\n    use owner_hosted_receipt::Evidence;\n    match reason {\n        Observation::SignalSetup\n        | Observation::Request\n        | Observation::StartupCancelled\n        | Observation::IoSetup => Evidence::SetupFailure,\n        Observation::InputIncomplete\n        | Observation::InputWrite\n        | Observation::OutputRead\n        | Observation::OutputWrite\n        | Observation::OutputLimit => Evidence::WorkFailure,\n        Observation::WaitError | Observation::SignalError | Observation::ReapError => {\n            Evidence::OwnershipUnknown\n        }\n        Observation::SignalAttempt => Evidence::Intent,\n        Observation::ControlRead\n        | Observation::SignalFlag\n        | Observation::ParentPresent\n        | Observation::WorkDeadline\n        | Observation::TerminalCode\n        | Observation::TerminalSignal\n        | Observation::ExperimentGuardRefused\n        | Observation::ReapCode\n        | Observation::ReapSignal\n        | Observation::Failed => Evidence::Context,\n    }\n}\n'
 EXPECTED_REAP = '    fn reap(&mut self) -> Result<std::process::ExitStatus, ReapFailure> {\n        let status = self.status();\n        #[cfg(owner_hosted_experiment)]\n        if status.is_err() {\n            let _ = self\n                .receipt\n                .record(owner_hosted_receipt::Event::Observation(\n                    owner_hosted_receipt::Evidence::OwnershipUnknown,\n                ));\n        }\n        if status.map_err(|_| ReapFailure::Wait)?.is_none() {\n            #[cfg(owner_hosted_experiment)]\n            let _ = self\n                .receipt\n                .record(owner_hosted_receipt::Event::Observation(\n                    owner_hosted_receipt::Evidence::OwnershipUnknown,\n                ));\n            return Err(ReapFailure::NotTerminal);\n        }\n        let status = self.child.wait().map_err(|error| {\n            self.last_error = error.raw_os_error().unwrap_or(-1);\n            #[cfg(owner_hosted_experiment)]\n            let _ = self\n                .receipt\n                .record(owner_hosted_receipt::Event::Observation(\n                    owner_hosted_receipt::Evidence::OwnershipUnknown,\n                ));\n            ReapFailure::ChildWait\n        })?;\n        #[cfg(owner_hosted_experiment)]\n        let _ = self\n            .receipt\n            .record(owner_hosted_receipt::Event::Observation(\n                owner_hosted_receipt::Evidence::Reaped,\n            ));\n        self.reserved = false;\n        Ok(status)\n    }'
+EXPECTED_WRAPPER = '#[cfg(owner_hosted_experiment)]\npub(crate) fn supervise(\n    command: Command,\n    startup: Startup,\n    limit: usize,\n    policy: InputPolicy,\n    receipt: Option<File>,\n    experiment_receipt: &mut owner_hosted_receipt::Receipt<256>,\n) -> i32 {\n    if !experiment_receipt.claim() {\n        return WorkerFailure::ExperimentGuardRefused.code();\n    }\n    let result = supervise_impl(command, startup, limit, policy, receipt, experiment_receipt);\n    let _ = experiment_receipt.finalize_after_return();\n    result\n}\n'
 
 
 def valid_boundary(worker, transport, fixture):
@@ -23,7 +24,13 @@ def valid_boundary(worker, transport, fixture):
         return False
     evidence = worker[worker.index("fn evidence(reason: Observation)"):worker.index(marker, worker.index("fn evidence(reason: Observation)"))]
     reap = worker[end:worker.index("\n}\n\nimpl Drop for Leader", end)]
+    wrapper_start = worker.index("#[cfg(owner_hosted_experiment)]\npub(crate) fn supervise(")
+    wrapper = worker[wrapper_start:worker.index("\n// Only a fresh fixed-operation worker", wrapper_start)]
     return (signal.strip() == EXPECTED_SIGNAL.strip()
+            and wrapper.strip() == EXPECTED_WRAPPER.strip()
+            and worker.count("finalize_after_return()") == 1
+            and worker.count("supervise_impl") == 3
+            and "pub(crate) use self::supervise_impl as supervise;" in worker
             and evidence.strip() == EXPECTED_EVIDENCE.strip()
             and reap.strip() == EXPECTED_REAP.strip()
             and worker.count("kill_process_group(") == 2
@@ -55,12 +62,17 @@ class BoundaryTests(unittest.TestCase):
 
     def test_boundary_and_distinct_refusal_are_present(self):
         self.assertTrue(valid_boundary(self.worker, self.transport, self.fixture))
+        for path in (ROOT / 'src').rglob('*.rs'):
+            if path.name != 'worker_owner.rs':
+                self.assertNotIn('supervise_impl', path.read_text())
+        self.assertNotIn('supervise_impl', self.fixture)
         for path in ('src/lib.rs', 'src/main.rs', 'tests/fixtures/lifecycle.rs'):
             self.assertIn('compile_error!(\"owner_hosted_experiment is forbidden in the main package\")', (ROOT / path).read_text())
 
     def test_bypass_and_cfg_removal_mutations_are_rejected(self):
         mutations = [
             (self.worker.replace('owner_guarded_dispatch::dispatch(|| kill_process_group', 'unguarded(|| kill_process_group'), self.fixture),
+            (self.worker.replace('experiment_receipt.finalize_after_return()', 'experiment_receipt.claim()', 1), self.fixture),
             (self.worker.replace('#[cfg(not(owner_hosted_experiment))]\n        let result', '        let result'), self.fixture),
             (self.worker, self.fixture.replace('#[cfg(not(owner_hosted_experiment))]\ncompile_error!', 'compile_error!')),
             (self.worker.replace('self.signal(Signal::KILL)', 'other_cleanup()'), self.fixture),

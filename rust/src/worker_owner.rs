@@ -417,8 +417,28 @@ impl Drop for Leader<'_> {
     }
 }
 
-// Only a fresh fixed-operation worker may call this owner. Its host is unchanged.
+#[cfg(not(owner_hosted_experiment))]
+pub(crate) use self::supervise_impl as supervise;
+
+#[cfg(owner_hosted_experiment)]
 pub(crate) fn supervise(
+    command: Command,
+    startup: Startup,
+    limit: usize,
+    policy: InputPolicy,
+    receipt: Option<File>,
+    experiment_receipt: &mut owner_hosted_receipt::Receipt<256>,
+) -> i32 {
+    if !experiment_receipt.claim() {
+        return WorkerFailure::ExperimentGuardRefused.code();
+    }
+    let result = supervise_impl(command, startup, limit, policy, receipt, experiment_receipt);
+    let _ = experiment_receipt.finalize_after_return();
+    result
+}
+
+// Only a fresh fixed-operation worker may call this owner. Its host is unchanged.
+pub(crate) fn supervise_impl(
     mut command: Command,
     startup: Startup,
     limit: usize,

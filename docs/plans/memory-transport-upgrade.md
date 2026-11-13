@@ -43,6 +43,18 @@ rollback, and client checks before a live change.
 - **Anchor:** [12.9.0 release notes](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.9.0)
   and the existing 12.8.0 synthetic rehearsal in this plan.
 
+The isolated rehearsal recalled every synthetic fact before migration, after
+12.9.0 migration, and after restoring the pre-migration backup to 11.7.0. Its
+outside-file and network-denial controls passed. It used hash embeddings; it
+alone does not establish HTTP origin behavior, live ONNX behavior, client parity,
+or a safe live daemon handoff.
+
+A separate isolated HTTP rehearsal accepted local MCP initialization on both
+versions. The untrusted origin received HTTP 200 and a wildcard preflight on
+11.7.0, and HTTP 403 without a wildcard preflight on 12.9.0. The synthetic
+port was reachable while the live memory port was denied. This does not prove
+live ONNX behavior, client parity, or a safe daemon handoff.
+
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
 
@@ -492,8 +504,10 @@ establish that Supermemory itself is unusable.
 
 The hosted trial passed after the isolation repair. In a separate local trial,
 the synthetic phrase appeared in a source chunk. It did not appear in a memory
-field during the following minute. This does not establish whether extraction
-would finish later or how well the candidate performs on coding tasks.
+field during the following minute. In a longer isolated trial, a later
+memory-only search returned the phrase in a memory field. The documented
+extraction-status field was absent in the observed response. This does not
+establish how well the candidate performs on coding tasks.
 
 ### Search result evidence
 

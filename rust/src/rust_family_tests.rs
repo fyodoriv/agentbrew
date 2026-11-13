@@ -597,3 +597,7 @@ mod rust_observer_tests;
 #[cfg(test)]
 #[path = "rust_span_probe.rs"]
 mod rust_span_probe;
+
+#[cfg(test)]
+#[path = "rust_syntax_slice.rs"]
+mod rust_syntax_slice;

@@ -28,3 +28,14 @@ syntactic observations. An unqualified or unsupported expression cannot be
 used as semantic proof of std authority, coverage, module resolution, or an
 accepted writer. C02, N04, N18 and all other frozen negative and resource
 cases remain open. Source and AST state have one parse invocation scope.
+
+## Result (2026-11-13)
+
+The exact test passed: 1 passed, 0 failed and 157 filtered. The existing
+observer test and normal non-test library check also passed. The reviewed
+test-only sampler recognized the four frozen occurrences, rejected shifted
+witnesses, returned no sites for the two decoys, accepted the exact size
+limit, and refused malformed and one-byte-over inputs. The hosted compile
+guard selects the same exact test. This says nothing about full syntax
+coverage, writer authority, Rust discovery or the unresolved worker. The
+source-size cap is not an AST-memory or wall-time bound.

@@ -57,3 +57,8 @@ Finalization needs a wrapper around every return path; adding it only on the
 normal return would be misleading. The initial categories and typed terminal,
 stop, and reap observations are wired behind the experiment guard. The
 finalization wrapper and refusal-sequence validator are not implemented yet.
+The mapping harness extracts and tests the actual mapping without compiling or
+running the worker. It does not prove runtime event order or physical cleanup.
+Its compiler and pure test run are trusted hosted build processes: captured
+output is buffered, and a timeout can signal the direct process. This is not a
+proof of descendant cleanup.

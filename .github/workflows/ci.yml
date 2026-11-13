@@ -154,6 +154,8 @@ jobs:
           names='exact_capacity_is_valid overflow_is_sticky invalidation_refuses_fake_syscall missing_result_is_inconclusive illegal_transition_is_rejected direct_transactional_record_is_rejected invalid_receipt_refuses_cleanup_retries unexpected_admission_is_inconclusive ordinary_observation_then_refusal_is_closed closed_evidence_categories_are_retained unknown_ownership_blocks_later_attempts unproved_reap_after_drop_stays_inconclusive'
           for name in $names; do test "$(grep -Ec "^test tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/owner-receipt-tests.log")" -eq 1; done
           grep -Eq '^test result: ok\. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out' "$RUNNER_TEMP/owner-receipt-tests.log"
+          RUSTC="$(rustup which --toolchain 1.97.0 rustc)" python3 rust/tests/hosted_evidence_mapping_test.py | tee "$RUNNER_TEMP/owner-mapping-tests.log"
+          grep -Fxq 'closed mapping: 23 cases passed' "$RUNNER_TEMP/owner-mapping-tests.log"
           if cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture > "$RUNNER_TEMP/fixture-refusal.log" 2>&1; then exit 1; fi
           grep -Fq 'requires target-scoped owner_hosted_experiment cfg' "$RUNNER_TEMP/fixture-refusal.log"
           cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture -- --cfg owner_hosted_experiment --check-cfg 'cfg(owner_hosted_experiment)'

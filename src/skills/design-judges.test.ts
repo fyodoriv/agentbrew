@@ -46,6 +46,50 @@ describe("design judges", () => {
     expect(Object.keys(judge.LENSES)).toHaveLength(10);
   });
 
+  it("flags opposite asks in one round and against the ledger, and only those", () => {
+    const dir = mkdtempSync(join(tmpdir(), "judges-"));
+    // the comic-studio flip: one round removed the line, the next asked for it back
+    writeFileSync(
+      join(dir, "decisions.txt"),
+      "R21: removed the 'No reason recorded' line under each failed card (3 of 3)\nrow Keep stays quiet\n",
+    );
+    writeFileSync(
+      join(dir, "polish.txt"),
+      "ISSUE: minor | d.png | 'No reason recorded' line | cards look unexplained | restore the line\n" +
+        "ISSUE: minor | d.png | toolbar shadow | flat | darken the shadow\n",
+    );
+    writeFileSync(join(dir, "system.txt"), "ISSUE: minor | p.png | toolbar shadow | heavy | lighten the shadow\n");
+    writeFileSync(join(dir, "copy.txt"), "ISSUE: major | p.png | page title | vague | change it to the book name\n");
+    const c = judge.roundConflicts(dir);
+    expect(c.map((x: { kind: string }) => x.kind).sort()).toEqual(["ledger", "round"]);
+    expect(judge.direction("Keep row stays quiet")).toBe("quiet");
+    expect(judge.direction("change it")).toBe("");
+    // a quiet ask that agrees with the ledger is not a conflict
+    expect(
+      judge.conflicts(
+        [{ judge: "a", issues: [{ element: "row Keep", fix: "quiet it more" }] }],
+        "row Keep stays quiet",
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("the prompt asks for a direction verb and forbids reversing settled decisions", () => {
+    const p = judge.prompt({ lens: "polish", shots: "/s" });
+    expect(p).toMatch(/direction verb/);
+    expect(p).toMatch(/reverse a settled/);
+  });
+
+  it("both panels share one protocol and state no stop rule of their own", () => {
+    const ref = (f: string) => readFileSync(join(SKILL, "references", f), "utf-8");
+    const protocol = ref("judging-protocol.md");
+    expect(protocol).toMatch(/decisions\.txt/);
+    expect(protocol).toMatch(/judge\.mjs conflicts/);
+    for (const f of ["design-panel.md", "design-judges.md"]) {
+      expect(ref(f)).toMatch(/judging-protocol\.md/);
+      expect(ref(f)).not.toMatch(/DECISIONS\.md|two rounds (in a row )?(that )?gain less than 0\.3|about 10 rounds/i);
+    }
+  });
+
   it("the skill reads and writes its learnings, and shared rules load it for UI work", () => {
     const skill = readFileSync(join(SKILL, "SKILL.md"), "utf-8");
     expect(skill).toMatch(/judge-learnings\.md/);

@@ -237,6 +237,18 @@
         "Plans a structural A/B round when CSS rounds go flat",
         "States a round budget"
       ]
+    },
+    {
+      "id": 22,
+      "prompt": "Round 22 of a design panel on a review catalogue. decisions.txt says 'R21: removed the No reason recorded line under each failed card (3 of 3)'. This round two raters ask to restore that line, one asks to darken the toolbar shadow and another to lighten it. The principal judges ran too. Plan this round.",
+      "expected_output": "Runs judge.mjs conflicts on the round, builds none of the flagged asks, logs each as asked-and-declined in the one shared decisions.txt (used by both panels), reverses R21 only for a hard flaw it can see in a named screenshot, and applies the single stop rule from judging-protocol.md (two rounds inside ±0.3, then one structural pairwise round, then stop).",
+      "expectations": [
+        "Runs judge.mjs conflicts before building",
+        "Does not restore the removed line without a named hard flaw",
+        "Does not build either toolbar shadow ask",
+        "Uses one decisions.txt for both panels, not a separate DECISIONS.md",
+        "Applies the stop rule from judging-protocol.md"
+      ]
     }
   ]
 }

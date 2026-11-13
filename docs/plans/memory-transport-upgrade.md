@@ -791,3 +791,15 @@ The focused regression failed before the fix: sync reached its restart path when
   report degraded sync and do not assume forced re-ingestion restores data.
 - **Anchor:** `src/memory/mcp-client.ts`, `src/memory/project-sync.ts`, and
   upstream `mcp_memory_service/utils/directory_ingestion.py` in 11.7 and 12.9.
+
+Read-only SQLite checks on the scratch databases found all three synthetic
+facts in each 12.9 candidate and restored snapshot (hash and ONNX trials).
+The Claude and OpenCode scratch stores also contained their synthetic save
+markers. These checks confirm persisted rows, not MCP retrieval or an exclusive
+live handoff.
+
+The failed-ingest fixture reproduced the false success and fresh ledger entry.
+The draft now rejects upstream failed-file and total-error reports so the
+existing sync error path leaves the store stale. A complete zero-new-chunk
+response without errors remains valid. Actual duplicate behavior during
+forced upstream ingestion remains to be tested.

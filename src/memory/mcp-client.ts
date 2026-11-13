@@ -674,10 +674,23 @@ function chunkCountFromValue(value: unknown): number | undefined {
 
 export function parseMemoryIngestResult(result: unknown): MemoryIngestResult {
   const root = result as { structuredContent?: unknown } | undefined;
+  const text = toolResultText(result);
+  const failureMatch = text.match(/\bfiles\s+failed\s*:\s*(\d+)\b/i);
+  const errorMatch = text.match(/\btotal\s+errors\s*:\s*(\d+)\b/i);
+  const structuredContent = root?.structuredContent as { files_failed?: unknown; all_errors?: unknown } | undefined;
+  const failed = structuredContent?.files_failed;
+  const errors = structuredContent?.all_errors;
+  if (
+    (failureMatch && Number.parseInt(failureMatch[1], 10) > 0) ||
+    (errorMatch && Number.parseInt(errorMatch[1], 10) > 0) ||
+    (typeof failed === "number" && failed > 0) ||
+    (Array.isArray(errors) && errors.length > 0)
+  ) {
+    throw new Error("memory ingest reported files failed or errors");
+  }
   const structured = chunkCountFromValue(root?.structuredContent) ?? chunkCountFromValue(result);
   if (structured !== undefined) return { chunksStored: structured };
 
-  const text = toolResultText(result);
   const match =
     text.match(/\bchunks?\s+stored\s*:\s*(\d+)\b/i) ??
     text.match(/\bstored\s+(\d+)\s+chunks?\b/i) ??

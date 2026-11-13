@@ -2,7 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { MemoryIngestOptions, MemoryIngestResult, MemoryMcpClient } from "./mcp-client.js";
+import {
+  type MemoryIngestOptions,
+  type MemoryIngestResult,
+  type MemoryMcpClient,
+  parseMemoryIngestResult,
+} from "./mcp-client.js";
 import {
   checkProjectMemorySync,
   claudeProjectDirToSlug,
@@ -142,6 +147,32 @@ describe("syncClaudeProjectMemories", () => {
     });
     expect(JSON.stringify(ledger)).not.toContain(store);
     expect(JSON.stringify(ledger)).not.toContain("alpha fact");
+  });
+
+  it("leaves a failed directory ingest stale for the next sync", async () => {
+    const root = fixtureRoot();
+    const projects = join(root, "projects");
+    writeStore(projects, "-proj-alpha", { "fact.md": "synthetic fact" });
+    let ledger: ProjectMemorySyncLedger | undefined;
+    const result = await syncClaudeProjectMemories({
+      projectsDir: projects,
+      client: client({
+        ingest: async () =>
+          parseMemoryIngestResult({
+            content: [
+              {
+                type: "text",
+                text: "✅ Directory ingestion completed: memory\n📁 Files processed: 0/1\n💾 Total chunks stored: 0\n❌ Files failed: 1",
+              },
+            ],
+          }),
+      }),
+      writeLedger: (next) => {
+        ledger = next;
+      },
+    });
+    expect(result).toMatchObject({ status: "degraded", synced: 0, skipped: 1 });
+    expect(checkProjectMemorySync({ projectsDir: projects, ledger })).toMatchObject({ status: "drifted", stale: 1 });
   });
 
   it("skips unchanged stores without contacting the daemon and force re-ingests them", async () => {

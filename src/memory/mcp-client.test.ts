@@ -122,10 +122,28 @@ describe("memory MCP client response parsing", () => {
     });
   });
 
+  it.each([
+    "✅ Directory ingestion completed: memory\n📁 Files processed: 0/1\n💾 Total chunks stored: 0\n❌ Files failed: 1",
+    "✅ Directory ingestion completed: memory\n📁 Files processed: 1/2\n💾 Total chunks stored: 1\n❌ Files failed: 1",
+    "✅ Directory ingestion completed: memory\n📁 Files processed: 1/1\n💾 Total chunks stored: 1\n⚠️ Total errors: 1",
+  ])("rejects directory ingest with failed files", async (text) => {
+    const { parseMemoryIngestResult } = await import("./mcp-client.js");
+    expect(() => parseMemoryIngestResult({ content: [{ type: "text", text }] })).toThrow("files failed");
+  });
+
   it("reads structured and text memory_ingest chunk counts", async () => {
     const { parseMemoryIngestResult } = await import("./mcp-client.js");
 
     expect(parseMemoryIngestResult({ structuredContent: { chunks_stored: 7 } })).toEqual({ chunksStored: 7 });
+    expect(() => parseMemoryIngestResult({ structuredContent: { chunks_stored: 1, files_failed: 1 } })).toThrow(
+      "files failed",
+    );
+    expect(() =>
+      parseMemoryIngestResult({ structuredContent: { chunks_stored: 1, all_errors: ["synthetic error"] } }),
+    ).toThrow("errors");
+    expect(parseMemoryIngestResult({ structuredContent: { chunks_stored: 0, files_failed: 0 } })).toEqual({
+      chunksStored: 0,
+    });
     expect(
       parseMemoryIngestResult({
         content: [{ type: "text", text: "Files processed: 2/2; 3 new chunks" }],

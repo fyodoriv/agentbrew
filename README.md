@@ -598,7 +598,8 @@ primary agents search the same managed daemon while Claude remains the only
 local-file source.
 
 Normal syncs use ledger fingerprints to skip unchanged stores; `--force` is
-the deliberate recovery path when a full re-ingest is needed. Each new record
+the deliberate recovery path when a full re-ingest is needed. A store stays
+stale when the service reports failed files or chunk errors. Each new record
 also carries a stable `project-source:sha256:…` tag. The readable
 `project:<slug>` tag remains a hint and can collide. Recall remains global by
 default; callers can use the source tag when they intentionally need a

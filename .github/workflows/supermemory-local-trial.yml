@@ -45,13 +45,13 @@ jobs:
           python3 -m http.server 18765 --bind 127.0.0.1 > /dev/null 2>&1 &
           control_pid=$!
           trap 'kill "$control_pid" "$ollama_pid" 2>/dev/null || true' EXIT
-          for attempt in {1..60}; do
+          for _ in {1..60}; do
             curl --silent --fail http://127.0.0.1:11434/api/tags > /dev/null && break
             sleep 1
           done
           ollama pull qwen3:0.6b
           ollama list | grep -q '359d7dd4bcda'
-          for attempt in {1..50}; do
+          for _ in {1..50}; do
             nc -z -w 1 127.0.0.1 18765 >/dev/null 2>&1 && break
             sleep 0.1
           done

@@ -587,7 +587,9 @@ resolved relative to the file that declares each path. Discovery does not
 install a pack; only an explicit `memory pack install` (or reconciliation of
 an existing install ledger) writes pack records. A duplicate store response
 is left unresolved rather than changing an existing memory's tags. A failed or
-unrecognized update response also leaves the pack ledger unchanged.
+unrecognized update response also leaves the pack ledger unchanged. Changed pack
+text uses the memory service's versioned update; a tag-only repair retains the
+existing memory ID.
 
 ### Claude project-memory bridge
 

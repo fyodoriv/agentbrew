@@ -31,6 +31,7 @@ export interface PackReconcileAction {
   key: string;
   action: "store" | "update" | "noop" | "delete";
   memoryId?: string;
+  versioned?: boolean;
 }
 
 export interface PackReconcileResult {
@@ -84,7 +85,12 @@ export function planPackReconcile(
       continue;
     }
 
-    actions.push({ key: record.key, action: "update", memoryId: remote.id });
+    actions.push({
+      key: record.key,
+      action: "update",
+      memoryId: remote.id,
+      versioned: remote.content !== record.content,
+    });
   }
   return actions;
 }
@@ -131,9 +137,8 @@ async function applyPackRecordAction(
     return buildPackLedgerRecord(memoryId, record, fingerprint);
   }
   if (action.action === "update" && action.memoryId) {
-    // Pack reconciliation repairs pack metadata in place so an existing local
-    // memory keeps its identity and is not hidden behind a superseded row.
-    const memoryId = await client.memoryUpdate(action.memoryId, record.content, tags, { versioned: false });
+    // Content changes require upstream versioning; metadata-only repairs keep the ID.
+    const memoryId = await client.memoryUpdate(action.memoryId, record.content, tags, { versioned: action.versioned });
     if (!memoryId) throw new Error(`memory_update failed for ${record.key}`);
     return buildPackLedgerRecord(memoryId, record, fingerprint);
   }

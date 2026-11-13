@@ -913,3 +913,9 @@ metadata-only success actually changes content.
   or validate the new content, leave the record pending and do not deploy.
 - **Anchor:** upstream `storage/mixins/metadata.py`, upstream
   `server/handlers/memory.py`, and `src/memory/pack-reconcile.ts`.
+
+The focused pack regression reproduced metadata-only updates for changed and
+unknown bodies. The draft now selects a versioned operation for those cases
+and records the returned ID; verified equal text keeps the metadata-only path.
+Focused tests pass. The actual SQLite round trip remains queued and must pass
+before treating content update compatibility as established.

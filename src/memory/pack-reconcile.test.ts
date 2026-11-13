@@ -40,9 +40,9 @@ function mockClient(rows: Array<{ id: string; content: string; tags: string[] }>
     memoryUpdate: vi.fn(async (id, content, tags, options) => {
       if (options?.versioned === true) {
         store.set(`${id}-version`, { id: `${id}-version`, content, tags });
-      } else {
-        store.set(id, { id, content, tags });
+        return `${id}-version`;
       }
+      store.set(id, { id, content, tags });
       return id;
     }),
     memoryDelete: vi.fn(async (id) => {
@@ -166,10 +166,50 @@ describe("reconcileInstalledPack", () => {
     expect(client.memoryStore).not.toHaveBeenCalled();
   });
 
+  it("uses a versioned update for changed content and records the new ID", async () => {
+    const pack = loadMemoryPackFromDir(fixtureDir);
+    const record = pack.records[0];
+    const client = mockClient([{ id: "mem-old", content: "stale synthetic text", tags: recordTags(pack, record) }]);
+    const result = await reconcileInstalledPack(client, fixtureDir);
+    expect(client.memoryUpdate).toHaveBeenCalledWith("mem-old", record.content, expect.any(Array), { versioned: true });
+    const stored = ledgers.get(pack.manifest.id) as { records: Record<string, { memoryId: string }> };
+    expect(stored.records[record.key].memoryId).toBe("mem-old-version");
+    expect(result.applied).toBe(true);
+  });
+
+  it("uses a versioned update when ledger recovery cannot verify existing content", async () => {
+    const pack = loadMemoryPackFromDir(fixtureDir);
+    const record = pack.records[0];
+    const client = mockClient();
+    const ledger = {
+      packId: pack.manifest.id,
+      version: pack.manifest.version,
+      fingerprint: pack.manifest.fingerprint,
+      packPath: fixtureDir,
+      installedAt: "2026-01-01T00:00:00.000Z",
+      records: {
+        [record.key]: {
+          memoryId: "mem-old",
+          revision: record.revision,
+          sourceFingerprint: record.sourceFingerprint,
+          contentFingerprint: "sha256:stale",
+        },
+      },
+    };
+    await reconcileInstalledPack(client, fixtureDir, { ledger });
+    expect(client.memoryUpdate).toHaveBeenCalledWith("mem-old", record.content, expect.any(Array), { versioned: true });
+  });
+
   it("updates existing pack records in place while repairing tags", async () => {
     const pack = loadMemoryPackFromDir(fixtureDir);
     const record = pack.records[0];
-    const client = mockClient([{ id: "mem-existing", content: record.content, tags: record.tags }]);
+    const client = mockClient([
+      {
+        id: "mem-existing",
+        content: record.content,
+        tags: [`pack:id:${pack.manifest.id}`, `pack:record:${record.key}`],
+      },
+    ]);
     const ledger = {
       packId: pack.manifest.id,
       version: pack.manifest.version,

@@ -50,7 +50,7 @@ jobs:
             sleep 1
           done
           ollama pull qwen3:0.6b
-          ollama list | grep -q '359d7dd4bcda'
+          ollama list | awk '$1 == "qwen3:0.6b" && $2 == "7df6b6e09427" {found=1} END {exit !found}'
           for _ in {1..50}; do
             nc -z -w 1 127.0.0.1 18765 >/dev/null 2>&1 && break
             sleep 0.1

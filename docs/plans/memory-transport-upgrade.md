@@ -487,3 +487,7 @@ independent evidence, not proof of the installed Mac or any agent integration.
 The separately running Ollama server is outside that sandbox, so the policy
 does not prove that requests made indirectly through Ollama cannot leave the
 runner. Use only synthetic text and no user credentials for that trial.
+The first hosted attempt stopped before isolation or server startup because
+the trial specified the local 4B model's digest for the 0.6B model. A local
+model-list check reproduced that mismatch. The trial now checks both the
+correct model name and its published digest.

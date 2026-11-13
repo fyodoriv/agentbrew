@@ -416,6 +416,27 @@ outside file. Two client attempts timed out after 180 seconds each, including
 one with the scratch file watcher disabled. The scratch server stopped. No
 bootstrap result was observed, so the lifecycle instruction remains unchanged.
 
+A third isolated attempt allowed the `/var` path needed by system DNS. DNS
+resolution then succeeded. The client still could not read an outside sentinel or
+reach the live memory port. Kimi called `get_bootstrap_profile` against the
+separate empty store and received a behavioral profile. The scratch server
+stopped. This proves one bootstrap call, not every OpenCode configuration.
+
+### OpenCode shared-memory instruction
+
+- **Hypothesis:** Naming OpenCode in the shared lifecycle makes its deployed
+  instructions call the same bootstrap, search, and session-save tools used by
+  Claude Code and Codex when shared memory is configured.
+- **Measurement:** Add a contract assertion for OpenCode in the shared-memory
+  section, confirm it fails before the instruction change, and rerun the
+  contract and instruction-sync tests after the change.
+- **Success:** One new assertion fails before the change and passes afterward;
+  zero affected tests fail, with the existing failure and privacy rules intact.
+- **Pivot:** If a host cannot use the existing lifecycle or a test fails, do not
+  deploy the changed instruction.
+- **Anchor:** `templates/AGENTS.md`, `src/core/agents.yaml`, and the isolated
+  bootstrap plus synthetic Kimi recall and session-save trials above.
+
 ## Beacon local review and recall
 
 - **Hypothesis:** A synthetic candidate can be approved and retrieved through

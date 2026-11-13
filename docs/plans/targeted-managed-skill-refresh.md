@@ -8,12 +8,11 @@ directory, while agents can read it through links.
 
 ## First prediction
 
-- **Hypothesis:** A shared, fail-closed per-skill mutation boundary prevents
-  cooperating staging writers from modifying the same skill concurrently,
+- **Hypothesis:** A shared, fail-closed managed-skill transaction boundary prevents
+  cooperating skill writers from overlapping state and staging mutations,
   without changing unrelated skill paths or source checkouts.
-- **Measurement:** Add focused scratch-only controls and run `heavy-run npx vitest run src/skills/targeted-refresh.test.ts`, followed by hosted CI. Exercise each existing staging writer, same-name contention across processes, distinct names, case and normalization aliases, nested same-invocation calls, sorted multi-name acquisition, invalid paths, symlink or parent replacement, private-root ownership and modes, interrupted ownership, uncertain cleanup, exception paths and pre-existing unrelated skills. Verify refusal leaves links and source state unchanged as well as the staging directory. No real installed skill or source is mutated.
-- **Success:** At least eight controls pass, every same-name competing writer
-  refuses or waits before touching the target, and zero unrelated files or
+- **Measurement:** Add focused scratch-only controls and run `heavy-run npx vitest run src/skills/targeted-refresh.test.ts`, followed by hosted CI. Exercise each existing staging writer, same-name contention across processes, distinct names, case and normalization aliases, nested same-invocation calls, different-name contention, unrelated state and manifest writes, invalid paths, symlink or parent replacement, private-root ownership and modes, interrupted ownership, uncertain cleanup, exception paths and pre-existing unrelated skills. Verify refusal leaves links and source state unchanged as well as the staging directory. No real installed skill or source is mutated.
+- **Success:** At least eight controls pass, every competing writer refuses or waits before touching the target or shared state, and zero unrelated files or
   source checkouts change. Missing or uncertain ownership and interrupted
   recovery must refuse; no automatic stale-lock removal is allowed.
 - **Pivot:** If any managed writer cannot share the boundary, a lock identity
@@ -28,11 +27,15 @@ directory, while agents can read it through links.
 
 Review reuse of the existing checkout-lease machinery before adding a lock.
 A distinct staging boundary must not nest into an incompatible checkout
-scope. The order is source checkout, then staging; no path may acquire a
-checkout while holding staging. Acquire multiple staging names in a stable
-sorted order, and refuse contention without waiting while another lock is
-held. Acquire the boundary before any mutation in a compound install, clean
-or prune operation, including links and source state. Fail closed for names
+scope. The order is source checkout, then one managed-skill transaction; no path may
+acquire a checkout while holding the transaction. Refuse contention without
+waiting while another lock is held. Prepare source data first, then acquire
+the transaction and reload and revalidate ownership and state before any
+mutation in a compound install, clean or prune operation, including links and
+source state. Audit every writer of shared state, lock and manifest files.
+Other commands writing those files need a common file-level lock or a reviewed
+atomic/versioned merge protocol with a fixed order. Different-skill and
+unrelated-command contention controls must detect lost updates. Fail closed for names
 whose case or Unicode normalization aliases cannot be established. Keep lock
 files outside skill discovery roots. Bind a
 private lock directory and owner token to the invocation; never use PID alone

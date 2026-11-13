@@ -315,6 +315,18 @@
 
 ## P2
 
+- [ ] Refresh one managed skill without changing unrelated skills
+  - **ID**: targeted-managed-skill-refresh
+  - **Tags**: skills, reliability, safety
+  - **Details**: On 2026-11-13 an installed skill remained at an older source revision after ordinary sync and reinstall. The broad source pull can refresh it but may also update or prune unrelated skills; its dry run did not preview every prune. Another session subsequently refreshed the observed skill. Provide a scoped, recoverable way to refresh one managed skill and report when its owner or installed state is uncertain.
+  - **Output**: code
+  - **Acceptance**: One named refresh updates only the verified managed skill, preserves owner edits and unrelated skills, and refuses uncertain ownership or interrupted recovery. Agent links remain valid.
+  - **Hypothesis**: A scoped refresh changes one intended skill and zero unrelated installed skills or source checkouts in the planted fixtures.
+  - **Measurement**: Add focused refresh controls and run `heavy-run npx vitest run src/skills/targeted-refresh.test.ts`, followed by hosted CI. In use, the refresh result reports one updated skill and zero unrelated changes.
+  - **Success**: At least eight controls cover unique and ambiguous ownership, dirty or offline source, interrupted replacement, recovery, deployed links and unrelated-skill preservation; zero unrelated paths change.
+  - **Pivot**: If all existing staging writers cannot share a safe coordination boundary, refuse the refresh and retain the prior copy; do not silently prune.
+  - **Anchor**: `src/update.ts`, `src/catalog/install-skill.ts`, and the 2026-11-13 managed-skill observation.
+
 - [ ] The telemetry file sink refuses a target whose parent folder is a symlink
   - **ID**: telemetry-file-sink-symlinked-parent
   - **Tags**: telemetry, security

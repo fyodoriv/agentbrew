@@ -894,3 +894,22 @@ success for plain-text failures. The draft accepts only the documented success
 text and rejects MCP errors. The prior pack ledger stays unchanged on a
 reported failure. A separate upstream scratch test is queued to check whether
 metadata-only success actually changes content.
+
+
+### Pack content update prediction
+
+- **Root cause:** Pack reconciliation uses an unversioned metadata update for
+  changed content. Upstream SQLite updates tags and metadata but not the text.
+- **Hypothesis:** Using the upstream versioned update for changed or unknown
+  content, and the metadata update for verified identical text, prevents a
+  stale body from being recorded as current.
+- **Measurement:** Run pack planning and reconciliation tests for changed,
+  matching, and unknown content; then run an isolated upstream SQLite
+  round-trip on both supported versions.
+- **Success:** Every changed or unknown body requests a versioned update and
+  the resulting new ID is recorded only after success; verified identical
+  bodies use metadata-only updates; both real services return the new text.
+- **Pivot:** If versioned update cannot preserve provenance, return a new ID,
+  or validate the new content, leave the record pending and do not deploy.
+- **Anchor:** upstream `storage/mixins/metadata.py`, upstream
+  `server/handlers/memory.py`, and `src/memory/pack-reconcile.ts`.

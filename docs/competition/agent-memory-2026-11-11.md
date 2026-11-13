@@ -35,6 +35,10 @@ shared read, not a test of bootstrap or session save.
 After the managed OpenCode service was started explicitly, a Kimi session
 using the draft wrapper called `memory_search` and returned the public
 advisory's fixed version. The managed service passed a health check afterward.
+Three synthetic Kimi session-save attempts produced no exact-search match for
+their test markers. Tool-event summaries did not establish the cause or prove
+whether the service accepted a save. The OpenCode save lifecycle remains
+unverified; no matching synthetic records were found to remove.
 
 The OpenCode trial used a scratch project. Its configuration included a rule
 intended to deny code-mode `execute`, but the recorded session shows completed

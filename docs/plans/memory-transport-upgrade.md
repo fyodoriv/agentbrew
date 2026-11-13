@@ -68,6 +68,25 @@ live ONNX behavior, client parity, or a safe daemon handoff.
 - **Anchor:** The earlier isolated 12.8.0 ONNX rehearsal and upstream
   [12.9.0 release](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.9.0).
 
+The isolated ONNX rehearsal recalled each synthetic fact by exact and semantic
+search before migration, after 12.9.0 migration, and after backup restore to
+11.7.0. Scratch read and outside-file and network-denial controls passed. The
+cached model archive matched its pinned checksum. This does not prove live
+client parity or an exclusive daemon handoff.
+
+### Version 12.9.0 OpenCode bootstrap prediction
+
+- **Hypothesis:** OpenCode with the configured Kimi provider can bootstrap
+  against the newer upstream service without access to the live memory store.
+- **Measurement:** Run the isolated OpenCode bootstrap rehearsal against a
+  fresh 12.9.0 scratch service and verify the tool result and cleanup.
+- **Success:** One bootstrap call returns a behavioral profile; outside-file
+  and live-port controls deny access, and the scratch listener stops.
+- **Pivot:** If any control or tool call fails, do not count OpenCode as
+  compatible with 12.9.0 until the failure is understood.
+- **Anchor:** The earlier isolated OpenCode bootstrap trial and the upstream
+  [12.9.0 release](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.9.0).
+
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
 

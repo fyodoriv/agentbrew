@@ -22,6 +22,18 @@ def request(url, body=None, key=None):
     req=urllib.request.Request(url, data=None if body is None else json.dumps(body).encode(),headers=headers)
     with urllib.request.urlopen(req,timeout=20) as res: return json.load(res)
 
+def failure_categories(output):
+    checks = {
+        'permission denied': ('permission denied', 'operation not permitted', 'eacces', 'eperm'),
+        'network failure': ('connection refused', 'network is unreachable', 'econnrefused'),
+        'database failure': ('database is locked', 'sqlite_error', 'failed to open database'),
+        'runtime failure': ('panic:', 'segmentation fault', 'fatal error', 'abort'),
+        'embedding failure': ('embedding model', 'embedding provider', 'dimension mismatch'),
+        'authentication failure': ('authentication failed', 'unauthorized', 'invalid api key'),
+    }
+    lowered = output.lower()
+    return [label for label, needles in checks.items() if any(needle in lowered for needle in needles)]
+
 assert not connect(18765), 'live service socket was reachable'
 assert connect(11434), 'local model socket unavailable inside isolation'
 try:
@@ -37,11 +49,16 @@ def drain():
         c=proc.stdout.read(1)
         if not c: break
         buf.append(c)
-threading.Thread(target=drain,daemon=True).start()
+drainer=threading.Thread(target=drain,daemon=True)
+drainer.start()
 try:
     key=None
     for _ in range(180):
-        if proc.poll() is not None: raise RuntimeError('server exited before readiness')
+        if proc.poll() is not None:
+            drainer.join(timeout=3)
+            output=b''.join(buf).decode(errors='replace')
+            categories=failure_categories(output)
+            raise RuntimeError(f'server exited before readiness: status {proc.returncode}; categories {categories}')
         output=b''.join(buf).decode(errors='replace')
         match=re.search(r'\b(sm_[A-Za-z0-9_-]{16,})\b',output)
         if match and connect(port): key=match.group(1); break

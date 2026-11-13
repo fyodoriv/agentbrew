@@ -496,3 +496,7 @@ shim could not resolve Xcode inside the sandbox. The same error reproduced in
 a restricted local `xcrun` probe. Resolving Python before entering the sandbox
 and allowing its developer-tool files let a local Python probe start; the full
 hosted trial still needs to run.
+The next hosted attempt passed the outside-file, live-port and direct-network
+isolation controls, but the server exited before readiness. The listener was
+removed. Server output was kept private because it may contain a generated
+key. The trial now reports only fixed failure categories and exit status.

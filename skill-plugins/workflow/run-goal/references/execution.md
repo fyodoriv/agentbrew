@@ -135,6 +135,8 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
 
 - **Outside judge out of quota:** when the outside judge tool stops (usage limit, sign-in), use another fresh-context reviewer for the same diff. Do not skip the review and do not grade the work yourself. One run's second reviewer found 3 blockers in a script whose own tests and full gate were green.
 - **Recount before a cutover:** right before a one-way write that copies a live list (issues, PRs, tasks), count the source again and compare it with your export. In one run 2 new issues arrived between the export and the cutover; the recount caught them and the numbering map was rebuilt.
+- **Setup in a scratch copy can move a machine-wide pointer:** a repo's setup script may rewrite a launcher, a symlink or a registration that the whole machine uses. Before you run setup in a scratch clone, read what it writes outside the clone. After it, re-read where the live command points (its `where` or `which` output) and repair it. In one run a scratch-clone setup repointed the app's launcher, so the live command used an empty data folder for a day.
+- **Old work folders before a removal:** when uncommitted work must go, save it first (a patch and an archive of untracked files, plus any ignored folder its tests need), then compare it with the current main item by item. A larger file on main is not proof that the old work landed. Turn what did not land into a task that describes the work, because the saved copy is local.
 
 ## Skill discovery and command identity
 

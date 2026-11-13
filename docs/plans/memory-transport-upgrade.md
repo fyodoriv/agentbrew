@@ -437,6 +437,23 @@ stopped. This proves one bootstrap call, not every OpenCode configuration.
 - **Anchor:** `templates/AGENTS.md`, `src/core/agents.yaml`, and the isolated
   bootstrap plus synthetic Kimi recall and session-save trials above.
 
+### Hosted trial trigger contract
+
+- **Hypothesis:** Declaring the research workflow's existing triggers in the
+  repository's workflow allowlist restores the CI contract without broadening
+  the workflow's permissions or triggers.
+- **Measurement:** `npx vitest run src/docs/ci-workflows.test.ts`.
+- **Success:** The reproduced trigger-contract failure falls from one to zero,
+  and every workflow security assertion passes.
+- **Pivot:** If any assertion still fails or the workflow needs more privileges,
+  leave the draft unmerged and investigate.
+- **Anchor:** `src/docs/ci-workflows.test.ts` and `docs/ci.md`.
+
+The isolated local Supermemory server reported that its embedded workflow
+engine could not find a free port range. Its sandbox allowed only the trial
+server and local-model ports. This identifies a test restriction; it does not
+establish that Supermemory itself is unusable.
+
 ## Beacon local review and recall
 
 - **Hypothesis:** A synthetic candidate can be approved and retrieved through

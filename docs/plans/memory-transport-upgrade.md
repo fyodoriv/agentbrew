@@ -454,6 +454,23 @@ engine could not find a free port range. Its sandbox allowed only the trial
 server and local-model ports. This identifies a test restriction; it does not
 establish that Supermemory itself is unusable.
 
+### Hosted Supermemory isolation repair
+
+- **Root cause:** The trial denied the workflow engine's derived loopback
+  ports, macOS network configuration, and hosts-file lookup. It also chose a
+  chat model without a reported embedding capability.
+- **Hypothesis:** Allowing only the empty derived loopback range, the named
+  macOS service, and the hosts file, while using a pinned embedding model,
+  lets the synthetic trial reach search without access to live memory.
+- **Measurement:** Run the research trial on hosted macOS and its isolation
+  controls; verify the pinned model and synthetic add/search result.
+- **Success:** All isolation controls pass, startup succeeds, one synthetic
+  fact is retrieved, and zero trial listeners remain.
+- **Pivot:** On any isolation, startup, search, or cleanup failure, leave the
+  candidate unranked and inspect the exact failure before further changes.
+- **Anchor:** The local synthetic trial, the pinned server's port formula,
+  and [Ollama's embedding model documentation](https://ollama.com/library/all-minilm).
+
 ## Beacon local review and recall
 
 - **Hypothesis:** A synthetic candidate can be approved and retrieved through

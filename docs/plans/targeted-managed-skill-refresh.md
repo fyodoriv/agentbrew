@@ -69,3 +69,13 @@ shared-file writer, determine a common transaction or versioned merge
 boundary, and test different-name and unrelated-command interleavings. If that
 boundary cannot cover the operations without changing unrelated work, the
 registered pivot applies.
+
+The independent static audit found no existing transaction primitive that
+covers staging, agent links, state, lock and manifest together. The source
+checkout lease has checkout scope; the MCP publication lease has MCP build
+scope; neither protects these shared operations. The memory-ledger lock has
+different stale-lock behavior and is not a safe substitute. `lock.ts` and
+`manifest.ts` can treat unreadable data as empty, which is not authoritative
+for recovery. Atomic replacement of one file does not serialize a
+read-modify-write or make a multi-file operation atomic. Dynamic and external
+writers remain outside this source scan.

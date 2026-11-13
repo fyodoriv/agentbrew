@@ -43,3 +43,12 @@ A small test-only limit must
 be an invocation argument, never a process-global setting or runtime option.
 Compare unchanged behavior for admitted inputs and independently review the
 meaning of the new incomplete report before any full resource run.
+
+## Focused result
+
+Eight selected controls passed, including the real helper-registry promotion
+fixture and the synthetic prior-evidence control. For C01, P01 and N02a, the
+three complete validator reports matched the retained 3,328-byte baseline.
+The prior-evidence control tests the shared decision helper; it does not claim
+that the upstream inspector produced its synthetic facts. Full N02b resource
+qualification remains open.

@@ -139,6 +139,19 @@ mandatory macOS managed preferences. A similar restricted-environment failure
 is documented in [upstream issue 59160](https://github.com/openai/codex/issues/59160).
 The cause in this trial is not established; Codex on 12.9.0 remains unverified.
 
+### Version 12.9.0 Claude save and recall prediction
+
+- **Hypothesis:** Claude Code with a local model can save a synthetic session
+  and recall its phrase from a 12.9.0 scratch store.
+- **Measurement:** Run an isolated Claude session with the bootstrap, session
+  save, and exact-search tools allowed. Inspect their separate synthetic results.
+- **Success:** Each tool returns successfully, search returns the phrase,
+  outside-file and live-port access are denied, and the scratch server stops.
+- **Pivot:** If any call, recall, isolation control, or cleanup fails, do not
+  count Claude's full lifecycle as verified for this version.
+- **Anchor:** The 12.9.0 Claude bootstrap trial and the earlier synthetic
+  OpenCode lifecycle trial recorded above.
+
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
 

@@ -39,3 +39,20 @@ cleanup. The dispatcher remains default-deny and no physical worker may run.
   overlapping stop and terminal, missing final or reap, duplicate results,
   result without attempt, overflow, and invalidation across Drop. No fixture
   runs in this phase.
+
+## Proposed closed categories
+
+Use setup failure, work failure, context, terminal, stop, reaped, intent, and
+ownership unknown. Record terminal and reaped once at their typed success
+branches, rather than inferring two events from code and signal fields. Record
+the first stop transition. Context is not proof of a stop cause; intent is not
+an attempt. Record Drop's successful wait separately, and mark failed waits or
+unreserved signal paths unknown. The existing guard still refuses dispatch.
+
+A narrow refusal diagnostic needs one spawn, at least one paired refusal,
+one Drop, a proven reap, and finalization after Drop. An early failure, missing
+reap, pending event, overflow, or unknown ownership remains inconclusive.
+This diagnostic cannot prove physical ownership, signal delivery, or cleanup.
+Finalization needs a wrapper around every return path; adding it only on the
+normal return would be misleading. These categories and the wrapper are not
+implemented yet.

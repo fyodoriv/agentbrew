@@ -138,6 +138,8 @@ describe("syncClaudeProjectMemories", () => {
       recursive: false,
       memoryType: "reference",
       chunkSize: 2_000,
+      maxFiles: 1,
+      expectedFileCount: 1,
       tags: ["claude-project-memory", expect.stringMatching(/^project-source:sha256:/u), "project:proj-alpha"],
     });
     expect(ledger).toMatchObject({
@@ -170,6 +172,43 @@ describe("syncClaudeProjectMemories", () => {
               },
             ],
           }),
+      }),
+      writeLedger: (next) => {
+        ledger = next;
+      },
+    });
+    expect(result).toMatchObject({ status: "degraded", synced: 0, skipped: 1 });
+    expect(checkProjectMemorySync({ projectsDir: projects, ledger })).toMatchObject({ status: "drifted", stale: 1 });
+  });
+
+  it("requests every file in a project folder larger than the upstream default", async () => {
+    const root = fixtureRoot();
+    const projects = join(root, "projects");
+    const files = Object.fromEntries(Array.from({ length: 101 }, (_, i) => [`fact-${i}.md`, "synthetic note"]));
+    writeStore(projects, "-proj-alpha", files);
+    const ingest = vi.fn(async () => ({ chunksStored: 101 }));
+    await syncClaudeProjectMemories({
+      projectsDir: projects,
+      client: client({ ingest }),
+      writeLedger: () => undefined,
+    });
+    expect(ingest).toHaveBeenCalledWith(expect.objectContaining({ maxFiles: 101, expectedFileCount: 101 }));
+  });
+
+  it("keeps a larger folder stale when the upstream response is truncated", async () => {
+    const root = fixtureRoot();
+    const projects = join(root, "projects");
+    const files = Object.fromEntries(Array.from({ length: 101 }, (_, i) => [`fact-${i}.md`, "synthetic note"]));
+    writeStore(projects, "-proj-alpha", files);
+    let ledger: ProjectMemorySyncLedger | undefined;
+    const result = await syncClaudeProjectMemories({
+      projectsDir: projects,
+      client: client({
+        ingest: async (options) =>
+          parseMemoryIngestResult(
+            { content: [{ type: "text", text: "Files processed: 100/100; 100 new chunks" }] },
+            options.expectedFileCount,
+          ),
       }),
       writeLedger: (next) => {
         ledger = next;

@@ -22,6 +22,8 @@ export interface MemoryIngestOptions {
   memoryType: string;
   chunkSize: number;
   tags: string[];
+  maxFiles?: number;
+  expectedFileCount?: number;
 }
 
 export interface MemoryIngestResult {
@@ -676,7 +678,14 @@ function allFilesProcessed(files: RegExpMatchArray): boolean {
   return Number.parseInt(files[1], 10) > 0 && Number.parseInt(files[1], 10) === Number.parseInt(files[2], 10);
 }
 
-export function parseMemoryIngestResult(result: unknown): MemoryIngestResult {
+function verifyIngestFileCount(files: RegExpMatchArray | null, expectedFileCount?: number): void {
+  if (files && !allFilesProcessed(files)) throw new Error("memory ingest did not process every file");
+  if (expectedFileCount !== undefined && (!files || Number.parseInt(files[1], 10) !== expectedFileCount)) {
+    throw new Error("memory ingest did not verify the full directory inventory");
+  }
+}
+
+export function parseMemoryIngestResult(result: unknown, expectedFileCount?: number): MemoryIngestResult {
   const root = result as { structuredContent?: unknown; isError?: boolean } | undefined;
   const text = toolResultText(result);
   if (root?.isError || /^\s*error(?:\s+ingesting\s+directory|\s*:)/im.test(text)) {
@@ -696,7 +705,7 @@ export function parseMemoryIngestResult(result: unknown): MemoryIngestResult {
     throw new Error("memory ingest reported files failed or errors");
   }
   const files = text.match(/\bfiles\s+processed\s*:\s*(\d+)\s*\/\s*(\d+)\b/i);
-  if (files && !allFilesProcessed(files)) throw new Error("memory ingest did not process every file");
+  verifyIngestFileCount(files, expectedFileCount);
   const structured = chunkCountFromValue(root?.structuredContent) ?? chunkCountFromValue(result);
   if (structured !== undefined) return { chunksStored: structured };
 
@@ -824,9 +833,10 @@ export function createFetchMemoryMcpClient(options: FetchMemoryMcpClientOptions 
           memory_type: options.memoryType,
           chunk_size: options.chunkSize,
           tags: options.tags,
+          ...(options.maxFiles !== undefined ? { max_files: options.maxFiles } : {}),
         },
       });
-      return parseMemoryIngestResult(result);
+      return parseMemoryIngestResult(result, options.expectedFileCount);
     },
     async memoryStore(content, tags, conversationId) {
       const argumentsPayload: Record<string, unknown> = {

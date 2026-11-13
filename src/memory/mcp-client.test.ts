@@ -44,6 +44,7 @@ describe("memory MCP client response parsing", () => {
       recursive: false,
       memoryType: "reference",
       chunkSize: 2_000,
+      maxFiles: 101,
       tags: ["claude-project-memory", "project:example"],
     });
     await client.memoryStore("hello", ["pack:test"], "conversation-1");
@@ -67,6 +68,7 @@ describe("memory MCP client response parsing", () => {
           recursive: false,
           memory_type: "reference",
           chunk_size: 2_000,
+          max_files: 101,
           tags: ["claude-project-memory", "project:example"],
         },
       },
@@ -147,6 +149,17 @@ describe("memory MCP client response parsing", () => {
   ])("rejects unsuccessful or unrecognized ingest responses", async (result) => {
     const { parseMemoryIngestResult } = await import("./mcp-client.js");
     expect(() => parseMemoryIngestResult(result)).toThrow();
+  });
+
+  it("rejects a truncated or unverifiable result for a known directory inventory", async () => {
+    const { parseMemoryIngestResult } = await import("./mcp-client.js");
+    expect(() =>
+      parseMemoryIngestResult({ content: [{ type: "text", text: "Files processed: 100/100; 100 new chunks" }] }, 101),
+    ).toThrow();
+    expect(() => parseMemoryIngestResult({ structuredContent: { chunks_stored: 101 } }, 101)).toThrow();
+    expect(
+      parseMemoryIngestResult({ content: [{ type: "text", text: "Files processed: 101/101; 101 new chunks" }] }, 101),
+    ).toEqual({ chunksStored: 101 });
   });
 
   it("reads structured and text memory_ingest chunk counts", async () => {

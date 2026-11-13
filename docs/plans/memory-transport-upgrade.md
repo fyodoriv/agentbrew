@@ -829,3 +829,15 @@ original fact text, not paraphrases.
   leave the folder stale and report degraded status.
 - **Anchor:** upstream `utils/directory_ingestion.py` and
   `src/memory/project-sync.ts`.
+
+The focused regression reproduced truncation risk and now checks a synthetic
+101-file folder. The draft sends the observed file count as `max_files` and
+requires the reported processed count to match before recording success.
+Upstream 11.7 and 12.9 both declare the `max_files` argument. A changed folder
+is rediscovered on the next sync; this does not make file reads atomic.
+
+The isolated real SQLite rollback test passed with a synthetic markdown file
+longer than the upstream 100-character chunk minimum: import and exact recall
+worked, restoring the prior snapshot removed the marker, and re-ingestion
+restored it. A shorter initial test file produced no chunks. The test did not
+exercise the Agentbrew ledger and does not establish live rollback safety.

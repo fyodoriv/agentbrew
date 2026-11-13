@@ -171,6 +171,8 @@ function ingestOptions(store: ClaudeProjectMemoryStore): MemoryIngestOptions {
     recursive: false,
     memoryType: "reference",
     chunkSize: 2_000,
+    maxFiles: store.fileCount,
+    expectedFileCount: store.fileCount,
     tags: [PROJECT_MEMORY_TAG, projectMemorySourceTag(store), projectMemoryLabelTag(store)],
   };
 }

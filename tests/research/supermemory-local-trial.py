@@ -1,4 +1,5 @@
 import json, os, re, socket, subprocess, sys, threading, time, urllib.request, urllib.error
+from supermemory_search_result import matching_result_types
 root=os.path.realpath(os.environ['SUPERMEMORY_TRIAL_ROOT'])
 port=49412
 
@@ -83,13 +84,14 @@ try:
     base='http://127.0.0.1:'+str(port)+'/ns/synthetic-trial'
     added=request(base+'/document',{'content':'The synthetic project uses the violet otter deployment rule.','dreaming':'instant'},key)
     print('add response status:',added.get('status','unspecified'),flush=True)
-    found=False
+    found=set()
     for _ in range(60):
         time.sleep(3)
         result=request(base+'/search',{'query':'violet otter deployment rule'},key)
-        if 'violet otter' in json.dumps(result).lower(): found=True; break
+        found=matching_result_types(result, 'violet otter')
+        if found: break
     if not found: raise RuntimeError('synthetic fact was not retrieved within 180 seconds')
-    print('PASS synthetic fact retrieved',flush=True)
+    print('PASS synthetic fact retrieved; result types:', ','.join(sorted(found)),flush=True)
 finally:
     proc.terminate()
     try: proc.wait(timeout=20)

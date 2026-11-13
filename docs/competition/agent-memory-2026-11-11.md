@@ -151,9 +151,11 @@ binary comes from a non-public codebase. Treat the licensing claim as
 inconsistent until the vendor clarifies it. Do not install its plugins into
 live agent profiles or auto-capture existing sessions for a trial; start with
 synthetic data in an isolated store and check all network destinations.
-The 0.0.9 macOS release passed its published checksum and a version probe
-after isolation controls blocked outside files and the live memory socket.
-This is not a memory, model-provider, or cross-agent integration test.
+The 0.0.9 macOS release passed its published checksum and isolated startup
+checks. With a separate local embedding model, a synthetic document was added
+and its phrase was retrieved. A follow-up found the phrase in a source chunk,
+but not in a memory field during the next minute. This does not prove memory
+extraction, comparative quality, or cross-agent integration.
 The [local-server configuration guide](https://github.com/supermemoryai/supermemory/blob/main/apps/docs/self-hosting/configuration.mdx)
 says telemetry is collected unless disabled and documents switches to suppress
 the startup key, browser launch, and update check. Local embeddings are the

@@ -5,6 +5,8 @@ on:
     paths:
       - .github/workflows/supermemory-local-trial.yml
       - tests/research/supermemory-local-trial.py
+      - tests/research/supermemory_search_result.py
+      - tests/research/test_supermemory_search_result.py
   workflow_dispatch:
 
 permissions:
@@ -18,6 +20,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Check search result classification
+        run: python3 -m unittest discover -s tests/research -p 'test_supermemory_search_result.py'
       - name: Install the local model runner
         shell: bash
         run: |
@@ -39,6 +43,7 @@ jobs:
         run: |
           root="$(cd "$RUNNER_TEMP/supermemory-trial" && pwd -P)"
           cp tests/research/supermemory-local-trial.py "$root/trial.py"
+          cp tests/research/supermemory_search_result.py "$root/supermemory_search_result.py"
           printf 'synthetic outside control\n' > "$RUNNER_TEMP/supermemory-outside-control"
           OLLAMA_MODELS="$RUNNER_TEMP/models" ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
           ollama_pid=$!

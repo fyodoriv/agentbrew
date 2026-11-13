@@ -129,6 +129,16 @@ OpenRouter.
 - **Anchor:** The 12.9.0 OpenCode bootstrap rehearsal and each client's MCP
   configuration documentation.
 
+Claude Code, using a local model in a synthetic home, called the bootstrap
+tool and received its profile. The outside-file, live-memory-port, and
+external-network controls denied access, and the scratch server stopped. This
+does not prove Claude's hosted-model or write behavior.
+
+The isolated Codex client did not reach the tool call. It failed while loading
+mandatory macOS managed preferences. A similar restricted-environment failure
+is documented in [upstream issue 59160](https://github.com/openai/codex/issues/59160).
+The cause in this trial is not established; Codex on 12.9.0 remains unverified.
+
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
 

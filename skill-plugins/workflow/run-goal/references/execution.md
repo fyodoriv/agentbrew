@@ -314,6 +314,11 @@ start it again after the edits; never report its result for the new code.
 - Hardware goal: probe the transport (BLE, classic, USB) and the device's real
   ID (vendor/product ID, the user's own name for it) before you pick a tool,
   for example `system_profiler SPBluetoothDataType`. Match by ID.
+- A dashboard setting often has an API path too. Before you ask for a
+  browser sign-in, list the credential names (never values) in the repo's
+  `.env` and the CLI's token scopes, then verify a likely token read-only.
+  A dashboard login can fail its bot check in an agent browser, and you may
+  not solve it. Write by API, then read the value back.
 - A connector reconnect runs at turn end. Re-check its status next turn before
   you call it fixed.
 - Demo video: record the live, signed-in tab with CDP `Page.startScreencast`. A new

@@ -2,8 +2,21 @@
 //! It stores no process IDs, errno integers, heap data, or external I/O.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Evidence {
+    SetupFailure,
+    WorkFailure,
+    Context,
+    Terminal,
+    Stop,
+    Reaped,
+    Intent,
+    OwnershipUnknown,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Event {
-    Observation,
+    Observation(Evidence),
+    Spawned,
     TermAttempt,
     KillAttempt,
     Refused,
@@ -31,13 +44,16 @@ impl<const N: usize> Receipt<N> {
         if self.invalid
             || self.pending
             || self.used == N
-            || !matches!(event, Event::Observation | Event::Drop)
+            || !matches!(event, Event::Observation(_) | Event::Spawned | Event::Drop)
         {
             self.invalid = true;
             return false;
         }
         self.events[self.used] = Some(event);
         self.used += 1;
+        if event == Event::Observation(Evidence::OwnershipUnknown) {
+            self.invalid = true;
+        }
         true
     }
 
@@ -81,7 +97,7 @@ impl<const N: usize> Receipt<N> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Event, Receipt};
+    use super::{Event, Evidence, Receipt};
     use std::cell::Cell;
 
     #[test]
@@ -96,7 +112,7 @@ mod tests {
     fn overflow_is_sticky() {
         let mut r = Receipt::<1>::new();
         assert!(!r.begin(Event::TermAttempt));
-        assert!(!r.record(Event::Observation));
+        assert!(!r.record(Event::Observation(Evidence::Context)));
         assert!(!r.internally_consistent());
     }
 
@@ -156,9 +172,37 @@ mod tests {
     #[test]
     fn ordinary_observation_then_refusal_is_closed() {
         let mut r = Receipt::<3>::new();
-        assert!(r.record(Event::Observation));
+        assert!(r.record(Event::Observation(Evidence::Context)));
         assert!(r.begin(Event::KillAttempt));
         assert!(r.refused());
         assert!(r.internally_consistent());
+    }
+
+    #[test]
+    fn closed_evidence_categories_are_retained() {
+        let mut r = Receipt::<4>::new();
+        assert!(r.record(Event::Spawned));
+        assert!(r.record(Event::Observation(Evidence::Terminal)));
+        assert!(r.record(Event::Observation(Evidence::Stop)));
+        assert!(r.record(Event::Observation(Evidence::Reaped)));
+        assert!(r.internally_consistent());
+    }
+
+    #[test]
+    fn unknown_ownership_blocks_later_attempts() {
+        let mut r = Receipt::<4>::new();
+        assert!(r.record(Event::Observation(Evidence::OwnershipUnknown)));
+        assert!(!r.begin(Event::TermAttempt));
+        assert!(!r.internally_consistent());
+    }
+
+    #[test]
+    fn unproved_reap_after_drop_stays_inconclusive() {
+        let mut r = Receipt::<4>::new();
+        assert!(r.record(Event::Spawned));
+        assert!(r.record(Event::Drop));
+        assert!(r.record(Event::Observation(Evidence::OwnershipUnknown)));
+        assert!(!r.begin(Event::KillAttempt));
+        assert!(!r.internally_consistent());
     }
 }

@@ -54,5 +54,6 @@ one Drop, a proven reap, and finalization after Drop. An early failure, missing
 reap, pending event, overflow, or unknown ownership remains inconclusive.
 This diagnostic cannot prove physical ownership, signal delivery, or cleanup.
 Finalization needs a wrapper around every return path; adding it only on the
-normal return would be misleading. These categories and the wrapper are not
-implemented yet.
+normal return would be misleading. The initial categories and typed terminal,
+stop, and reap observations are wired behind the experiment guard. The
+finalization wrapper and refusal-sequence validator are not implemented yet.

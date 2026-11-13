@@ -142,6 +142,36 @@ enum Observation {
     Failed,
 }
 
+#[cfg(owner_hosted_experiment)]
+fn evidence(reason: Observation) -> owner_hosted_receipt::Evidence {
+    use owner_hosted_receipt::Evidence;
+    match reason {
+        Observation::SignalSetup
+        | Observation::Request
+        | Observation::StartupCancelled
+        | Observation::IoSetup => Evidence::SetupFailure,
+        Observation::InputIncomplete
+        | Observation::InputWrite
+        | Observation::OutputRead
+        | Observation::OutputWrite
+        | Observation::OutputLimit => Evidence::WorkFailure,
+        Observation::WaitError | Observation::SignalError | Observation::ReapError => {
+            Evidence::OwnershipUnknown
+        }
+        Observation::SignalAttempt => Evidence::Intent,
+        Observation::ControlRead
+        | Observation::SignalFlag
+        | Observation::ParentPresent
+        | Observation::WorkDeadline
+        | Observation::TerminalCode
+        | Observation::TerminalSignal
+        | Observation::ExperimentGuardRefused
+        | Observation::ReapCode
+        | Observation::ReapSignal
+        | Observation::Failed => Evidence::Context,
+    }
+}
+
 #[cfg(not(owner_hosted_experiment))]
 fn observe(receipt: &mut Option<File>, reason: Observation, value: i64) {
     if let Some(receipt) = receipt {
@@ -263,10 +293,24 @@ impl Leader<'_> {
 
     fn signal(&mut self, signal: Signal) -> Result<(), SignalFailure> {
         if !self.reserved {
+            #[cfg(owner_hosted_experiment)]
+            let _ = self
+                .receipt
+                .record(owner_hosted_receipt::Event::Observation(
+                    owner_hosted_receipt::Evidence::OwnershipUnknown,
+                ));
             return Err(SignalFailure::Unreserved);
         }
-        self.status()
-            .map_err(|_| SignalFailure::from_wait_error(self.last_error))?;
+        let status = self.status();
+        #[cfg(owner_hosted_experiment)]
+        if status.is_err() {
+            let _ = self
+                .receipt
+                .record(owner_hosted_receipt::Event::Observation(
+                    owner_hosted_receipt::Evidence::OwnershipUnknown,
+                ));
+        }
+        status.map_err(|_| SignalFailure::from_wait_error(self.last_error))?;
         #[cfg(owner_hosted_experiment)]
         let attempt = if signal == Signal::TERM {
             owner_hosted_receipt::Event::TermAttempt
@@ -303,13 +347,40 @@ impl Leader<'_> {
     }
 
     fn reap(&mut self) -> Result<std::process::ExitStatus, ReapFailure> {
-        if self.status().map_err(|_| ReapFailure::Wait)?.is_none() {
+        let status = self.status();
+        #[cfg(owner_hosted_experiment)]
+        if status.is_err() {
+            let _ = self
+                .receipt
+                .record(owner_hosted_receipt::Event::Observation(
+                    owner_hosted_receipt::Evidence::OwnershipUnknown,
+                ));
+        }
+        if status.map_err(|_| ReapFailure::Wait)?.is_none() {
+            #[cfg(owner_hosted_experiment)]
+            let _ = self
+                .receipt
+                .record(owner_hosted_receipt::Event::Observation(
+                    owner_hosted_receipt::Evidence::OwnershipUnknown,
+                ));
             return Err(ReapFailure::NotTerminal);
         }
         let status = self.child.wait().map_err(|error| {
             self.last_error = error.raw_os_error().unwrap_or(-1);
+            #[cfg(owner_hosted_experiment)]
+            let _ = self
+                .receipt
+                .record(owner_hosted_receipt::Event::Observation(
+                    owner_hosted_receipt::Evidence::OwnershipUnknown,
+                ));
             ReapFailure::ChildWait
         })?;
+        #[cfg(owner_hosted_experiment)]
+        let _ = self
+            .receipt
+            .record(owner_hosted_receipt::Event::Observation(
+                owner_hosted_receipt::Evidence::Reaped,
+            ));
         self.reserved = false;
         Ok(status)
     }
@@ -332,7 +403,15 @@ impl Drop for Leader<'_> {
                     break;
                 }
                 Ok(None) => thread::sleep(Duration::from_millis(1)),
-                Err(_) => break,
+                Err(_) => {
+                    #[cfg(owner_hosted_experiment)]
+                    let _ = self
+                        .receipt
+                        .record(owner_hosted_receipt::Event::Observation(
+                            owner_hosted_receipt::Evidence::OwnershipUnknown,
+                        ));
+                    break;
+                }
             }
         }
     }
@@ -353,8 +432,8 @@ pub(crate) fn supervise(
             observe($receipt, $reason, $value);
             #[cfg(owner_hosted_experiment)]
             {
-                let _ = $reason;
-                let _ = $experiment.record(owner_hosted_receipt::Event::Observation);
+                let _ =
+                    $experiment.record(owner_hosted_receipt::Event::Observation(evidence($reason)));
             }
         }};
     }
@@ -411,16 +490,17 @@ pub(crate) fn supervise(
         cleanup: None,
         last_error: 0,
     };
+    #[cfg(owner_hosted_experiment)]
+    let _ = leader.receipt.record(owner_hosted_receipt::Event::Spawned);
     macro_rules! observe_after {
         ($leader:ident, $receipt:expr, $reason:expr, $value:expr $(,)?) => {{
             #[cfg(not(owner_hosted_experiment))]
             observe($receipt, $reason, $value);
             #[cfg(owner_hosted_experiment)]
             {
-                let _ = $reason;
                 let _ = $leader
                     .receipt
-                    .record(owner_hosted_receipt::Event::Observation);
+                    .record(owner_hosted_receipt::Event::Observation(evidence($reason)));
             }
         }};
     }
@@ -461,12 +541,26 @@ pub(crate) fn supervise(
         };
         let stopped = cancelled(startup, &flags) || startup.deadline.work_done() || control_failed;
         if stopped {
+            #[cfg(owner_hosted_experiment)]
+            if !reported_stop {
+                let _ = leader
+                    .receipt
+                    .record(owner_hosted_receipt::Event::Observation(
+                        owner_hosted_receipt::Evidence::Stop,
+                    ));
+            }
             mark_failure(&mut failed, &mut first_failure, FirstFailure::Stopped);
         }
         let terminal = match leader.status() {
             Ok(status) => {
                 if let Some(status) = &status {
                     if !reported_terminal {
+                        #[cfg(owner_hosted_experiment)]
+                        let _ = leader
+                            .receipt
+                            .record(owner_hosted_receipt::Event::Observation(
+                                owner_hosted_receipt::Evidence::Terminal,
+                            ));
                         observe_after!(
                             leader,
                             &mut receipt,

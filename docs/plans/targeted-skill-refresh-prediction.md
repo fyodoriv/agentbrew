@@ -29,3 +29,10 @@ bounded reads, a shared destination lock, a recoverable staging journal, and
 verified existing agent links. It must preserve user edits and unrelated
 skills. Two directory renames alone are not crash-atomic. No targeted
 replacement has been performed.
+
+## Local preflight
+
+On 2026-11-13, the managed goal workflow had one source claimant. Its staged
+tree exactly matched the locked historical source revision. The checked Codex
+and Claude links both pointed to that staged tree. These observations do not
+lock out concurrent writers and do not make replacement crash-safe.

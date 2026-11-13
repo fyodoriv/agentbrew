@@ -46,20 +46,18 @@ Research points the same way:
    1 per major, 0.3 per minor; a blocker caps the judge at 6), the mean, the minimum, how many
    judges reach the target, and the consensus list (issues two or more judges name). Exit 0 only
    when every judge reaches the target.
-5. **Fix.** Fix consensus issues, worst weight first. A one-judge issue is taste unless it is a
+5. **Conflicts.** `node scripts/judge.mjs conflicts <round>`; settle every listed pair in
+   `decisions.txt` and build none of them ([judging-protocol.md](judging-protocol.md) rule 4).
+6. **Fix.** Fix consensus issues, worst weight first. A one-judge issue is taste unless it is a
    blocker you can see in the shot yourself. Re-shoot, then a new round.
 
 ## When it stalls
 
-- Two rounds that gain less than 0.3 on the mean: stop polishing. Change the layout concept, or
-  ask one human designer and add their points to `decisions.txt`.
-- A mean within ±0.3 over three rounds is noise, not a gain or a regression. Stop polishing and
-  stop judging: file the open notes as one checklist task with a numeric goal. (Held twice:
-  cashcast and sidequest.)
+Follow the stop rule in [judging-protocol.md](judging-protocol.md). Two lessons from past runs:
+
 - A guard test checks the state the user sees (scrolled, phone and desktop), and a layout change
   keeps the same content on desktop and phone. Tests copied from a judge's wording are easy to game.
-- Judges flip on the same element: settle it in `decisions.txt` and keep it.
-- Never report the target as met unless `score` printed it for this round's judges.
+- A stalled panel is a reason to ask one human designer and add their points to `decisions.txt`.
 
 ## Learn
 

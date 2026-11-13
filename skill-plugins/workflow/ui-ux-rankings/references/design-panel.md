@@ -36,22 +36,10 @@ Godly and CSS Winner for app judges with published criteria: Apple Design Awards
 Delight, Inclusivity), Nielsen's ten heuristics, and Material/HIG component fit. Say which panel you
 used in the report.
 
-**Calibrate before you iterate.** Before round 1, the same blind raters rate one or two reference
-pages of the same type that people call best in class (screenshots of a well-known product's
-equivalent view, both themes). The reference's blind mean is the realistic ceiling: set the target at
-the reference mean minus 0.3, not a fixed 8.0. If a reference scores 7.5, a target of 8 asks for
-more than the best product in the field gets from these raters.
-
-**Make each round count:**
-
-- Ask raters for fixes with an expected gain ("+0.3 on Mobbin and Land-book") and build the largest
-  first. Cap a round at one fix per element class (edges, chips, type), so raters do not later call
-  the page "too much of X".
-- After three rounds that each gain less than 0.15, stop CSS polish and run one structural round:
-  build two real alternatives (a new layout, a new main motif, real motion), shoot both, and let
-  new raters pick and score them side by side. Keep the winner, or stop.
-- Budget: about 10 rounds per page. Past that, report the scores, the reference ceiling and the
-  structural options instead of polishing.
+**Rounds follow [judging-protocol.md](judging-protocol.md):** one ledger (`decisions.txt`),
+fixes with a direction verb, `judge.mjs conflicts` before you build, consensus only, a target from a
+best-in-class reference, and one stop rule. Raters reply with the same `ISSUE:` lines as the
+principal judges, plus one score per judge.
 
 Anchors, so the scale means the same each time:
 
@@ -65,50 +53,14 @@ Rules:
 
 - Rate what the screenshots show at both sizes and in both themes. A flaw in one of the four caps every
   judge at 7 (overlap, cut-off text, a broken phone layout).
-- Ask each rater for the three changes that would lift the lowest scores most, naming screenshot
-  and element. Fixes that two or three raters name come first. Make that change, re-shoot,
-  re-rate. Stop at the target (default 8.0).
 - Never raise the design score by lowering a measured ranking. Re-run `rankings.cjs all` after every
   look change; a measured ranking that drops below 100 is fixed before the next rating. An effect a
   checker cannot see (a pill painted behind a label, text in a pseudo-element) is a red flag: prefer
   one that keeps the measured rankings true.
 - Keep scope: a look change adds no feature the product does not need.
 
-Raters never contradict the panel's earlier decisions:
+Lessons from past panels (the protocol holds the stop rule):
 
-- Keep a **decision ledger** (`DECISIONS.md`) and copy it into every rater folder with the rubric. One
-  line per decision: the round, what was built or removed, and how many raters asked (for example
-  "R21: one failure tag per card; the extra 'No reason recorded' line removed (3 of 3)"). It holds
-  decisions, never scores, so raters stay blind to the numbers.
-- Add **fixture facts** to it: what the raters cannot change and keep asking about (for example "the
-  check names are the judge's own names; a take fails when any one check fails, whatever its total
-  score; the test fixture has no written reasons").
-- The rater prompt says: "Read DECISIONS.md. Do not ask to reverse a decision in it. You may name a
-  decision only when it causes a hard flaw (overlap, cut-off text, unreadable text, a broken phone
-  layout) and you name the screenshot and element. Do not mark the page down for a fixture fact."
-- **Fix the judges every round, before you build.** Check each top fix against the ledger and the
-  other raters. A fix that reverses a ledger line without a named hard flaw, or that two raters ask
-  for in opposite directions in the same round, is not built: log it in the ledger as "asked and
-  declined (reason)", and sharpen the prompt or the fixture facts so the next raters do not ask it.
-  A fix that asks only for different fixture content is a fixture fact, not a page change.
-- Then build the remaining fixes that two or more raters name, add each one to the ledger, re-shoot,
-  and rate with new raters. A round counts toward the stop rule only when it built its shared fixes.
-
-When the panel stalls:
-
-- Blind raters disagree by about half a point on the same screenshots, and a fix one round asks
-  for can be called noise the next (an accent shadow on every card). Act only on fixes that two or
-  more raters name in the same round; a single rater's taste is not a finding.
-- Without a ledger, raters flip at the plateau: in one 22-round run, round 21 asked to remove a
-  "No reason recorded" line and round 22 asked for it back, and the toolbar shadows were asked
-  heavier and lighter in turn. Nine rounds of built fixes stayed near 7.0. The ledger above stops that.
-- A ledger stops reversals, not the plateau. In the same run, rounds 23-30 kept the judges consistent and
-  built every shared fix, yet means stayed within 0.1 (about 7.1 and 7.0). Then raters began to
-  oppose whole classes of fix ("every box has an ink edge, too busy" next to "add the ink edge here").
-  Five flat rounds with a consistent ledger is a real stall: stop and report it, and name the
-  lever CSS cannot pull (the content, the motion idea, a new layout).
-- When a ledger decision leaves a new flaw that 3 of 3 raters name (a card cut to fit its content left a
-  dead band beside it), write a superseding ledger line that settles both asks. Do not flip back.
 - Check each fix in the shot before you spend raters: in one run, an older rule with higher specificity
   silently beat three new blocks (`.tile.tile:has()` at 0,5,0), and a parent's `flex-basis:100%` kept
   a "fit to content" card full width.
@@ -138,6 +90,3 @@ When the panel stalls:
   drops requests under parallel shots (broken pictures read as flaws), and a port already in use serves
   another app's page. `rankings.cjs` waits for on-screen pictures and reloads broken ones, bypasses the
   page's CSP so axe can run, and skips items in a closed `<details>`.
-- If two rounds in a row gain less than 0.3 on the panel mean, stop and report the scores, what
-  holds them back, and the options (a bolder concept, real content, motion evidence), instead of
-  polishing further. Never report the target as met when blind raters did not give it.

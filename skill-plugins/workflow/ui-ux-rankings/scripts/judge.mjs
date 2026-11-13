@@ -6,6 +6,9 @@
 //                                                 print one blind judge's prompt
 //   node judge.mjs score <dir> [--json] [--target 8]
 //                                                 score every <dir>/*.txt judge reply by the rubric
+//   node judge.mjs conflicts <dir> [--decisions f] [--json]
+//                                                 list fixes that ask opposite things in one round
+//                                                 or reverse the ledger; exit 1 when any exist
 //
 // Judges list issues; this script turns issues into scores, so a score moves when an issue
 // closes (free 0-10 scores from LLM judges stall near 6 and flip between rounds).
@@ -46,6 +49,9 @@ export function prompt({ lens, shots, context = "", decisions = "" }) {
     "or a guess about code. Do not invent issues to fill a quota: a good page has few.",
     "Reply ONLY with lines in this exact form, at most 8, most severe first, or the single line NONE:",
     "ISSUE: <blocker|major|minor> | <screenshot file> | <element> | <problem> | <fix>",
+    "Start each fix with one direction verb: add, remove, show, hide, increase, reduce, enlarge,",
+    "shrink, darken, lighten, emphasize, quiet, move, or change. Do not ask to reverse a settled",
+    "decision unless it causes a blocker you can see; then name the decision and the screenshot.",
   ]
     .filter(Boolean)
     .join("\n");
@@ -74,7 +80,7 @@ const words = (s) =>
       .toLowerCase()
       .replace(/[^a-z0-9а-я ]/gi, " ")
       .split(/\s+/)
-      .filter((w) => w.length > 3),
+      .filter((w) => w.length > 2),
   );
 const overlap = (a, b) => {
   const inter = [...a].filter((w) => b.has(w)).length;
@@ -106,16 +112,126 @@ export function consensus(byJudge) {
     .sort((a, b) => b.weight - a.weight);
 }
 
-export function score(dir, target = 8) {
-  const files = readdirSync(dir)
+// Opposite directions: a fix and its reverse on one element cannot both be built.
+const OPPOSITE = [
+  ["add", "remove"],
+  ["show", "hide"],
+  ["increase", "reduce"],
+  ["enlarge", "shrink"],
+  ["darken", "lighten"],
+  ["emphasize", "quiet"],
+];
+const SYNONYM = {
+  drop: "remove",
+  delete: "remove",
+  removed: "remove",
+  restore: "add",
+  reintroduce: "add",
+  added: "add",
+  reveal: "show",
+  shown: "show",
+  collapse: "hide",
+  hidden: "hide",
+  raise: "increase",
+  heavier: "increase",
+  lower: "reduce",
+  soften: "quiet",
+  mute: "quiet",
+  quieter: "quiet",
+  louder: "emphasize",
+  bolder: "emphasize",
+  stronger: "emphasize",
+  bigger: "enlarge",
+  larger: "enlarge",
+  widen: "enlarge",
+  smaller: "shrink",
+  narrow: "shrink",
+};
+const opposite = (d) => OPPOSITE.find((p) => p.includes(d))?.find((x) => x !== d);
+
+const verb = (w) => {
+  for (const x of [w, w.replace(/ed$/, ""), w.replace(/d$/, ""), { hid: "hide", shrank: "shrink" }[w] ?? ""]) {
+    const d = SYNONYM[x] ?? x;
+    if (opposite(d)) return d;
+  }
+  return "";
+};
+
+/** The direction a fix asks for: its first word as a direction verb, or "" (move, change, other). */
+export function direction(text) {
+  return verb(
+    String(text)
+      .toLowerCase()
+      .match(/[a-z]+/)?.[0] ?? "",
+  );
+}
+
+/** A ledger line "R21: removed the X (3 of 3)" or "R24: asked and declined: darken the X". */
+export function ledgerEntry(line) {
+  const body = String(line)
+    .replace(/^\s*R\d+\s*:\s*/i, "")
+    .replace(/\(.*?\)\s*$/, "");
+  const declined = body.match(/declined\s*:?\s*(.*)$/i);
+  const text = declined ? declined[1] : body;
+  const d = direction(text);
+  // a declined ask settles its opposite: asking it again reverses the ledger
+  return { d: declined ? (opposite(d) ?? "") : d, w: words(text.replace(/^\s*[a-z]+/i, "")) };
+}
+
+const sameElement = (a, b, ea = "", eb = "") => {
+  if (!a.size || !b.size) return ea.trim().toLowerCase() === eb.trim().toLowerCase() && ea.trim() !== "";
+  const shared = [...a].filter((w) => b.has(w)).length;
+  return shared >= Math.min(2, a.size, b.size) && overlap(a, b) >= 0.5;
+};
+
+/** Fixes that ask opposite things on one element, in this round or against the ledger. */
+export function conflicts(byJudge, decisions = "") {
+  const fixes = byJudge.flatMap(({ judge, issues }) =>
+    issues.map((i) => ({ judge, element: i.element, fix: i.fix, d: direction(i.fix), w: words(i.element) })),
+  );
+  const out = [];
+  for (let a = 0; a < fixes.length; a++)
+    for (let b = a + 1; b < fixes.length; b++) {
+      const [x, y] = [fixes[a], fixes[b]];
+      if (x.judge !== y.judge && x.d && opposite(x.d) === y.d && sameElement(x.w, y.w, x.element, y.element))
+        out.push({ kind: "round", element: x.element, asks: [`${x.judge}: ${x.fix}`, `${y.judge}: ${y.fix}`] });
+    }
+  for (const line of String(decisions)
+    .split("\n")
+    .filter((l) => l.trim())) {
+    const e = ledgerEntry(line);
+    for (const f of fixes)
+      if (e.d && opposite(e.d) === f.d && sameElement(f.w, e.w))
+        out.push({ kind: "ledger", element: f.element, asks: [`ledger: ${line.trim()}`, `${f.judge}: ${f.fix}`] });
+  }
+  return out;
+}
+
+const replies = (dir) =>
+  readdirSync(dir)
     // judge replies only: the round's context and decisions sit beside them
     .filter((f) => f.endsWith(".txt") && !["context.txt", "decisions.txt"].includes(f))
-    .sort();
-  const byJudge = files.map((f) => {
-    const text = readFileSync(join(dir, f), "utf8");
-    const issues = /^\s*NONE\s*$/m.test(text) ? [] : parse(text);
-    return { judge: f.replace(/\.txt$/, ""), issues, score: scoreOf(issues) };
-  });
+    .sort()
+    .map((f) => {
+      const text = readFileSync(join(dir, f), "utf8");
+      const issues = /^\s*NONE\s*$/m.test(text) ? [] : parse(text);
+      return { judge: f.replace(/\.txt$/, ""), issues, score: scoreOf(issues) };
+    });
+
+/** Conflicts for a round folder; the ledger defaults to <dir>/decisions.txt (may be absent). */
+export function roundConflicts(dir, decisionsFile = "") {
+  let ledger = "";
+  try {
+    ledger = readFileSync(decisionsFile || join(dir, "decisions.txt"), "utf8");
+  } catch (e) {
+    // only a missing default ledger is fine; a named or unreadable one must not pass silently
+    if (decisionsFile || e.code !== "ENOENT") throw e;
+  }
+  return conflicts(replies(dir), ledger);
+}
+
+export function score(dir, target = 8) {
+  const byJudge = replies(dir);
   const scores = byJudge.map((j) => j.score);
   const mean = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100 : 0;
   return {
@@ -159,8 +275,16 @@ if (main) {
         console.log(`- [${c.judges} judges] ${c.element}: ${c.problem} -> ${c.fixes.join(" / ")}`);
     }
     process.exitCode = r.judges.length && r.min >= r.target ? 0 : 1;
+  } else if (cmd === "conflicts") {
+    const c = roundConflicts(process.argv[3], arg("decisions"));
+    if (process.argv.includes("--json")) console.log(JSON.stringify(c, null, 2));
+    else {
+      for (const x of c) console.log(`- ${x.kind} conflict on ${x.element}: ${x.asks.join("  <>  ")}`);
+      console.log(c.length ? `${c.length} conflicts: build none; settle each in decisions.txt` : "no conflicts");
+    }
+    process.exitCode = c.length ? 1 : 0;
   } else {
-    console.error("usage: judge.mjs lenses | prompt --lens <l> --shots <dir> | score <dir> [--json]");
+    console.error("usage: judge.mjs lenses | prompt --lens <l> --shots <dir> | score <dir> | conflicts <dir>");
     process.exitCode = 2;
   }
 }

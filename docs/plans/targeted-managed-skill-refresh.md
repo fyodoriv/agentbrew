@@ -79,3 +79,29 @@ different stale-lock behavior and is not a safe substitute. `lock.ts` and
 for recovery. Atomic replacement of one file does not serialize a
 read-modify-write or make a multi-file operation atomic. Dynamic and external
 writers remain outside this source scan.
+
+## State interleaving baseline prediction
+
+Registered before the control. Two independently cached managers can read
+the same state, then save different edits; a later stale save may discard the
+earlier edit even if the file replacement itself is atomic.
+
+- **Hypothesis:** In a deterministic synthetic shared store, the stale
+  interleaving loses the first edit; invalidating and reloading before the
+  second edit preserves both.
+- **Measurement:** Add one test to `src/skills/targeted-refresh.test.ts` and
+  run `heavy-run npx vitest run src/skills/targeted-refresh.test.ts`. Use two
+  real state-manager instances with a cloned in-memory store. Record the
+  stale result and the serialized control separately. No filesystem, network,
+  real user state or live agent process is used.
+- **Success:** The selected baseline test runs and shows exactly the
+  predicted lost edit, while the reload control retains both edits.
+- **Pivot:** An absent test, shared object alias, unexpected schema migration
+  or different result invalidates this model. Correct the measurement before
+  designing a transaction; do not claim live concurrency was reproduced.
+- **Anchor:** `src/core/state-manager.ts`, the shared-file audit above,
+  Basili et al. 1994 (GQM), and Munafò et al. 2017 (preregistration).
+
+This is a baseline, not a fix. The later implementation must use a failing
+regression that demands both edits survive or the stale write refuses, and it
+must cover real cooperating process and filesystem boundaries.

@@ -58,3 +58,20 @@ fact and index structures that can coexist. It did not measure peak memory.
 The candidate must check the root count before cloning the source map or
 building the queue. A single disposable hosted attempt may follow the code,
 parity and workflow reviews; its capacity is not assumed.
+
+Proposed admission mechanism: a separate Linux job in the existing CI workflow
+is disabled for ordinary pushes and pull requests. An explicit
+`workflow_dispatch` boolean input defaults to false. Only a manually requested
+run with that input true can start N02b. The job checks the checkout revision
+against the event revision, verifies the frozen corpus hash and uses the exact
+test selector. A second invocation is not automatic recovery from failure.
+Review the actual workflow and its guard before the first dispatch.
+
+The dispatch must use the typed Boolean input, a separately supplied reviewed
+full commit SHA, and a distinct per-run concurrency group. The job checks the
+event and checkout against that SHA, verifies the corpus and harness hashes,
+and rejects a run attempt other than the first. Record the run ID and compare
+its actual commit, workflow and attempt independently before accepting it.
+An explicit second dispatch is still possible; the operator must not do so
+without diagnosis and a new decision. The existing workflow's ordinary jobs
+also run on dispatch. No job uses persisted checkout credentials or secrets.

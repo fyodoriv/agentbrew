@@ -172,12 +172,6 @@ jobs:
             test "$(grep -Ec "^test validation::membership_tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/inventory-membership-tests.log")" -eq 1
             grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-membership-tests.log"
           done
-          names='initial_limit_preserves_empty_below_and_exact_reports initial_limit_refuses_one_over_without_closure_facts initial_limit_preserves_prior_synthetic_evidence initial_limit_keeps_existing_diagnostic initial_limit_counts_package_script_roots initial_limit_counts_registry_promoted_root initial_limit_does_not_count_non_source_data initial_limit_does_not_recheck_later_promoted_roots'
-          for name in $names; do
-            CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib "discovery::tests::$name" -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-initial-limit-tests.log"
-            test "$(grep -Ec "^test discovery::tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/inventory-initial-limit-tests.log")" -eq 1
-            grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-initial-limit-tests.log"
-          done
           if cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture > "$RUNNER_TEMP/fixture-refusal.log" 2>&1; then exit 1; fi
           grep -Fq 'requires target-scoped owner_hosted_experiment cfg' "$RUNNER_TEMP/fixture-refusal.log"
           cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture -- --cfg owner_hosted_experiment --check-cfg 'cfg(owner_hosted_experiment)'

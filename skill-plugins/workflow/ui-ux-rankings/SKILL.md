@@ -85,7 +85,7 @@ Take the rankings worst first. Per round:
 
 Stop when every measured ranking is at least 95 (target 100), Lighthouse accessibility is 100, the
 expert rankings meet their targets, the design panel reaches its target (a best-in-class reference mean minus 0.3, per judging-protocol.md), and
-`judge.mjs score` exits 0 (every principal judge at 8 or more).
+`judge.mjs score --target <same target>` exits 0 (every principal judge at that target).
 
 After every judged run, add a dated line to `references/judge-learnings.md` (what moved the score,
 what did not). A learning that holds twice goes into `design-judges.md` or `judge.mjs` with a test.

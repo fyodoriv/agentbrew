@@ -1,6 +1,6 @@
 # Judge learnings
 
-Read before a judge run; add one dated line after it. Fold a learning that holds twice into
+Read before a judge run; add one dated line after it. Rows before 2026-11-13 are history: where a row's stop or ledger advice differs, [judging-protocol.md](judging-protocol.md) wins. Fold a learning that holds twice into
 [design-judges.md](design-judges.md) or `scripts/judge.mjs`, with a test.
 
 | Date | Page | What happened | Learning |

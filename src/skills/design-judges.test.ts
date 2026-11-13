@@ -62,7 +62,7 @@ describe("design judges", () => {
     writeFileSync(join(dir, "copy.txt"), "ISSUE: major | p.png | page title | vague | change it to the book name\n");
     const c = judge.roundConflicts(dir);
     expect(c.map((x: { kind: string }) => x.kind).sort()).toEqual(["ledger", "round"]);
-    expect(judge.direction("Keep row stays quiet")).toBe("quiet");
+    expect(judge.direction("quiet the row Keep")).toBe("quiet");
     expect(judge.direction("change it")).toBe("");
     // a quiet ask that agrees with the ledger is not a conflict
     expect(
@@ -71,6 +71,32 @@ describe("design judges", () => {
         "row Keep stays quiet",
       ),
     ).toHaveLength(0);
+  });
+
+  it("reads only the first verb, past tense ledgers, declined asks, and short element names", () => {
+    expect(judge.direction("change the label to 'Hide details'")).toBe("");
+    expect(judge.direction("move it lower")).toBe("");
+    expect(judge.direction("lightened the shadow")).toBe("lighten");
+    expect(judge.direction("hid the badge")).toBe("hide");
+    const ask = (fix: string, element = "toolbar shadow") => [{ judge: "a", issues: [{ element, fix }] }];
+    const declined = "R24: asked and declined: darken the toolbar shadow (1 of 3)";
+    expect(judge.conflicts(ask("darken the shadow"), declined)).toHaveLength(1);
+    expect(judge.conflicts(ask("lighten the shadow"), declined)).toHaveLength(0);
+    expect(judge.conflicts(ask("darken it"), "R22: lightened the toolbar shadow")).toHaveLength(1);
+    // one shared word is not the same element
+    expect(judge.conflicts(ask("darken it", "card shadow"), "R22: lightened the toolbar shadow")).toHaveLength(0);
+    const nav = [
+      { judge: "a", issues: [{ element: "nav", fix: "show labels" }] },
+      { judge: "b", issues: [{ element: "nav", fix: "hide labels" }] },
+    ];
+    expect(judge.conflicts(nav)).toHaveLength(1);
+  });
+
+  it("a named ledger that cannot be read fails instead of passing", () => {
+    const dir = mkdtempSync(join(tmpdir(), "judges-"));
+    writeFileSync(join(dir, "a.txt"), "NONE\n");
+    expect(judge.roundConflicts(dir)).toEqual([]);
+    expect(() => judge.roundConflicts(dir, join(dir, "missing.txt"))).toThrow();
   });
 
   it("the prompt asks for a direction verb and forbids reversing settled decisions", () => {

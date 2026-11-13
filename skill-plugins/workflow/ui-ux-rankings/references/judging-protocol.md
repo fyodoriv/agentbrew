@@ -28,8 +28,9 @@ different stop rules. Published practice for LLM judges points the same way:
 1. **Blind and fresh.** The agent that changed the page never judges it. New judges every round.
    A judge sees the rubric, the screenshots, `context.txt` and `decisions.txt`, never scores,
    targets or history.
-2. **One ledger: `decisions.txt`.** One line per settled decision: the round, what was built or
-   removed, and how many judges asked ("R21: removed the 'No reason recorded' line (3 of 3)").
+2. **One ledger: `decisions.txt`.** One line per settled decision: the round, then a direction
+   verb, the element, and how many judges asked ("R21: removed the 'No reason recorded' line
+   (3 of 3)", "R24: asked and declined: darken the toolbar shadow (1 of 3)").
    Add fixture facts the page cannot change ("the fixture has no written reasons"). It holds no
    scores. Every judge of every panel gets the same file.
 3. **Fixes carry a direction.** Every fix starts with a direction verb (add, remove, show, hide,

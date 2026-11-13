@@ -80,7 +80,7 @@ const words = (s) =>
       .toLowerCase()
       .replace(/[^a-z0-9а-я ]/gi, " ")
       .split(/\s+/)
-      .filter((w) => w.length > 3),
+      .filter((w) => w.length > 2),
   );
 const overlap = (a, b) => {
   const inter = [...a].filter((w) => b.has(w)).length;
@@ -149,16 +149,40 @@ const SYNONYM = {
 };
 const opposite = (d) => OPPOSITE.find((p) => p.includes(d))?.find((x) => x !== d);
 
-/** The direction a fix or ledger line asks for: its first direction word, or "" when none. */
-export function direction(text) {
-  for (const w of String(text)
-    .toLowerCase()
-    .match(/[a-z]+/g) ?? []) {
-    const d = SYNONYM[w] ?? w;
+const verb = (w) => {
+  for (const x of [w, w.replace(/ed$/, ""), w.replace(/d$/, ""), { hid: "hide", shrank: "shrink" }[w] ?? ""]) {
+    const d = SYNONYM[x] ?? x;
     if (opposite(d)) return d;
   }
   return "";
+};
+
+/** The direction a fix asks for: its first word as a direction verb, or "" (move, change, other). */
+export function direction(text) {
+  return verb(
+    String(text)
+      .toLowerCase()
+      .match(/[a-z]+/)?.[0] ?? "",
+  );
 }
+
+/** A ledger line "R21: removed the X (3 of 3)" or "R24: asked and declined: darken the X". */
+export function ledgerEntry(line) {
+  const body = String(line)
+    .replace(/^\s*R\d+\s*:\s*/i, "")
+    .replace(/\(.*?\)\s*$/, "");
+  const declined = body.match(/declined\s*:?\s*(.*)$/i);
+  const text = declined ? declined[1] : body;
+  const d = direction(text);
+  // a declined ask settles its opposite: asking it again reverses the ledger
+  return { d: declined ? (opposite(d) ?? "") : d, w: words(text.replace(/^\s*[a-z]+/i, "")) };
+}
+
+const sameElement = (a, b, ea = "", eb = "") => {
+  if (!a.size || !b.size) return ea.trim().toLowerCase() === eb.trim().toLowerCase() && ea.trim() !== "";
+  const shared = [...a].filter((w) => b.has(w)).length;
+  return shared >= Math.min(2, a.size, b.size) && overlap(a, b) >= 0.5;
+};
 
 /** Fixes that ask opposite things on one element, in this round or against the ledger. */
 export function conflicts(byJudge, decisions = "") {
@@ -169,19 +193,16 @@ export function conflicts(byJudge, decisions = "") {
   for (let a = 0; a < fixes.length; a++)
     for (let b = a + 1; b < fixes.length; b++) {
       const [x, y] = [fixes[a], fixes[b]];
-      if (x.judge !== y.judge && x.d && opposite(x.d) === y.d && overlap(x.w, y.w) >= 0.5)
+      if (x.judge !== y.judge && x.d && opposite(x.d) === y.d && sameElement(x.w, y.w, x.element, y.element))
         out.push({ kind: "round", element: x.element, asks: [`${x.judge}: ${x.fix}`, `${y.judge}: ${y.fix}`] });
     }
   for (const line of String(decisions)
     .split("\n")
     .filter((l) => l.trim())) {
-    const d = direction(line);
-    const lw = words(line);
-    for (const f of fixes) {
-      const hit = [...f.w].filter((w) => lw.has(w)).length / Math.max(1, f.w.size);
-      if (d && opposite(d) === f.d && hit >= 0.5)
+    const e = ledgerEntry(line);
+    for (const f of fixes)
+      if (e.d && opposite(e.d) === f.d && sameElement(f.w, e.w))
         out.push({ kind: "ledger", element: f.element, asks: [`ledger: ${line.trim()}`, `${f.judge}: ${f.fix}`] });
-    }
   }
   return out;
 }
@@ -197,13 +218,16 @@ const replies = (dir) =>
       return { judge: f.replace(/\.txt$/, ""), issues, score: scoreOf(issues) };
     });
 
-/** Conflicts for a round folder; the ledger defaults to <dir>/decisions.txt. */
+/** Conflicts for a round folder; the ledger defaults to <dir>/decisions.txt (may be absent). */
 export function roundConflicts(dir, decisionsFile = "") {
+  let ledger = "";
   try {
-    return conflicts(replies(dir), readFileSync(decisionsFile || join(dir, "decisions.txt"), "utf8"));
-  } catch {
-    return conflicts(replies(dir));
+    ledger = readFileSync(decisionsFile || join(dir, "decisions.txt"), "utf8");
+  } catch (e) {
+    // only a missing default ledger is fine; a named or unreadable one must not pass silently
+    if (decisionsFile || e.code !== "ENOENT") throw e;
   }
+  return conflicts(replies(dir), ledger);
 }
 
 export function score(dir, target = 8) {

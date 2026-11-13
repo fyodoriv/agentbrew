@@ -59,7 +59,10 @@ clean and several sync engines. These are candidate call sites, not proof that
 all indirect or external writers are known. `state.ts` uses atomic file
 replacement, but that alone does not serialize read-modify-write operations.
 `manifest.ts` logs save failures, so a caller cannot treat return from the
-current save as proof of persistence.
+current save as proof of persistence. The state manager caches a loaded value
+for the manager lifetime; a transaction must invalidate or otherwise prove a
+fresh read after admission. Its disk writer reports errors through exit status
+rather than throwing, so the caller must verify persistence independently.
 
 Do not add a staging-only lock and call the refresh safe. First trace each
 shared-file writer, determine a common transaction or versioned merge

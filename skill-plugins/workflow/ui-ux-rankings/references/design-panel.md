@@ -31,7 +31,7 @@ work, a long list) before rating.
 **Pick the judges that fit the page.** The table suits marketing, portfolio and launch pages. A
 work tool (an editor, a catalogue, a dashboard, a review queue) is not built to win The FWA or
 Godly: those reward spectacle, so they hold a good tool near 6 and the mean near 7 forever. In one
-run, 30 rounds on two tool pages stayed at 7.0-7.2 for this reason. For a tool page, swap The FWA,
+run, thirty rounds on two tool pages stayed at 7.0-7.2 for this reason. For a tool page, swap The FWA,
 Godly and CSS Winner for app judges with published criteria: Apple Design Awards (Interaction,
 Delight, Inclusivity), Nielsen's ten heuristics, and Material/HIG component fit. Say which panel you
 used in the report.

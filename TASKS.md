@@ -318,7 +318,7 @@
 - [ ] Refresh one managed skill without changing unrelated skills
   - **ID**: targeted-managed-skill-refresh
   - **Tags**: skills, reliability, safety
-  - **Details**: On 2026-11-13 an installed skill remained at an older source revision after ordinary sync and reinstall. The broad source pull can refresh it but may also update or prune unrelated skills; its dry run did not preview every prune. Another session subsequently refreshed the observed skill. Provide a scoped, recoverable way to refresh one managed skill and report when its owner or installed state is uncertain.
+  - **Details**: On 2026-11-13 an installed skill remained at an older source revision after ordinary sync and reinstall. The broad source pull can refresh it but may also update or prune unrelated skills; its dry run did not preview every prune. Another session subsequently refreshed the observed skill. Provide a scoped, recoverable way to refresh one managed skill and report when its owner or installed state is uncertain. Coordination prediction: [plan](docs/plans/targeted-managed-skill-refresh.md).
   - **Output**: code
   - **Acceptance**: One named refresh updates only the verified managed skill, preserves owner edits and unrelated skills, and refuses uncertain ownership or interrupted recovery. Agent links remain valid.
   - **Hypothesis**: A scoped refresh changes one intended skill and zero unrelated installed skills or source checkouts in the planted fixtures.

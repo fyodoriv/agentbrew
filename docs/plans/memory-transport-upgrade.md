@@ -479,3 +479,8 @@ service or a real Codex session.
   and do not recommend the integration on this evidence.
 - **Anchor:** [Supermemory local setup](https://github.com/supermemoryai/supermemory/blob/main/apps/docs/self-hosting/overview.mdx)
   and [configuration](https://github.com/supermemoryai/supermemory/blob/main/apps/docs/self-hosting/configuration.mdx).
+
+The same synthetic trial may run on a disposable hosted macOS runner. Download
+the pinned server and local model before isolation; the trial itself must
+restrict network access to its own listener and the local model. Its result is
+independent evidence, not proof of the installed Mac or any agent integration.

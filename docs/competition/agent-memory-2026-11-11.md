@@ -32,6 +32,9 @@ match. The harness set a scratch working directory while inheriting an old
 `PWD`. A follow-up local check confirmed the wrapper's Bash process resolves
 `PWD` to its actual working directory before starting OpenCode. This is a
 shared read, not a test of bootstrap or session save.
+After the managed OpenCode service was started explicitly, a Kimi session
+using the draft wrapper called `memory_search` and returned the public
+advisory's fixed version. The managed service passed a health check afterward.
 
 The OpenCode trial used a scratch project. Its configuration included a rule
 intended to deny code-mode `execute`, but the recorded session shows completed

@@ -471,6 +471,23 @@ establish that Supermemory itself is unusable.
 - **Anchor:** The local synthetic trial, the pinned server's port formula,
   and [Ollama's embedding model documentation](https://ollama.com/library/all-minilm).
 
+The hosted trial passed after the isolation repair. In a separate local trial,
+the synthetic phrase appeared in a source chunk. It did not appear in a memory
+field during the following minute. This does not establish whether extraction
+would finish later or how well the candidate performs on coding tasks.
+
+### Search result evidence
+
+- **Hypothesis:** Checking result fields rather than the whole response avoids
+  counting an echoed query as recall and distinguishes memories from chunks.
+- **Measurement:** Run a fixture with an echoed query and no results, then
+  fixtures with a matching memory and a matching chunk; rerun the hosted trial.
+- **Success:** Zero false hits for the echo and one correct hit for each result
+  type; the hosted trial reports which type contains the synthetic phrase.
+- **Pivot:** If the response shape differs or any fixture fails, do not count
+  the trial as recall evidence until its response is understood.
+- **Anchor:** [Supermemory search response fields](https://github.com/supermemoryai/skills/blob/main/supermemory/SKILL.md).
+
 ## Beacon local review and recall
 
 - **Hypothesis:** A synthetic candidate can be approved and retrieved through

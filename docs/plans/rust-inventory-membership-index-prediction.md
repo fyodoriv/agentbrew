@@ -43,6 +43,15 @@ The complete legacy output for C01, P01 and N02a also matched the previously
 captured 3,328-byte record exactly. This is full-report parity for those three
 fixtures, not qualification of N02b or the full corpus.
 
+The registration named the focused comparison but omitted its runnable
+command. The commands below are recorded after those results; they do not
+change the prediction or make the command itself preregistered.
+
+```sh
+CARGO_BUILD_JOBS=1 heavy-run cargo test --locked --offline --manifest-path rust/Cargo.toml --lib validation::membership_tests -- --test-threads=1
+CARGO_BUILD_JOBS=1 heavy-run cargo test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_legacy_baseline_tests::capture_legacy_fields -- --exact --nocapture --test-threads=1
+```
+
 ## Remaining resource boundary
 
 Source inspection found another cost: discovery constructs facts and drains

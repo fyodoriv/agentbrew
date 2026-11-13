@@ -45,6 +45,13 @@ describe("long-run reports end as a published Artifact", () => {
     );
   });
 
+  it("requires a goal plan at the start and updates to the same artifact", () => {
+    const rule = section(sharedRules, "Long-run reports");
+    expect(rule).toMatch(/after the goal contract, create a plan Artifact in the task outputs before execution/);
+    expect(rule).toMatch(/Update the same Artifact at every milestone and reuse it on resume/);
+    expect(rule).toMatch(/private local HTML report, share its path, and state the output limitation/);
+  });
+
   it("run-goal: the final report is an Artifact and blockers are explained in full", () => {
     expect(section(runGoal, "Final report")).toMatch(/as an Artifact/);
     expect(section(runGoal, "Final report")).toMatch(/Dashboard Artifact/);

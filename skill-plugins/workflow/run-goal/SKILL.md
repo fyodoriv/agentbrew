@@ -59,12 +59,14 @@ Follow this order, even for a small goal:
    For a research or Q&A goal, print it as soon as the questions are known,
    before you gather evidence for any one answer.
 3. Ask the one question round, or record your defaults (Phase 3).
-4. Work, printing a `Goal check` line after each done-criterion (Phase 4).
-5. Verify with fresh evidence (Phase 5), then the retro and the final
+4. Create a plan Artifact in the task outputs before execution. Update the same Artifact
+   at every milestone; on resume, find and reuse it. Verify visibility and
+   follow the private fallback in the [goal report](references/goal-report.md).
+5. Work, printing a `Goal check` line after each done-criterion (Phase 4).
+6. Verify with fresh evidence (Phase 5), then the retro and the final
    report (Phase 6).
 
-A small goal gets a short contract, not none. Without it, neither you nor the
-goal checker knows what "done" means, and the user cannot review your plan.
+A small goal gets a short contract, not none. Without it, the goal checker cannot verify done and the user cannot review your plan.
 
 ## Why the transcript matters
 
@@ -299,8 +301,7 @@ before you report done. A later apply can revert a fix. When the fix is a
 scheduled job, prove it with a run the scheduler starts, then re-read its files
 and loaded state: the job can undo it.
 
-Before you call a failure "pre-existing", compare it with the unchanged base
-([references/execution.md](references/execution.md) § Pre-existing failures).
+Before you call a failure "pre-existing", compare it with the unchanged base ([references/execution.md](references/execution.md) § Pre-existing failures).
 
 For every proof image, read the image itself and cross-check the system-of-record log for the same run or item. A caption, filename or worker verdict is not completion evidence.
 If either reader is unavailable, evidence conflicts or identities differ, leave the criterion unverified and report the gap. Do not manufacture pending input.
@@ -323,8 +324,7 @@ claim before you save or post it, not only before you claim done. A
 deterministic gate proves the shape, not the facts. When a gate passes but the
 grader fails, move the grader's failures into the gate as new tests.
 
-Before you merge each PR, ask a fresh-context subagent to review its diff,
-also when the full suite is green. In one goal run, reviewers found real
+Before you merge each PR, ask a fresh-context subagent to review its diff, also when the full suite is green. In one goal run, reviewers found real
 defects in 6 of 8 green PRs, such as a cache entry saved under the wrong
 key and a CLI crash in sandboxed shells. Send each
 finding back to the agent that wrote the code (it keeps its context), then
@@ -385,7 +385,7 @@ with actuals and update the estimation method as described in
 
 ## Final report
 
-Publish the final report as an Artifact (shared-rules **## Long-run
+Update the same plan Artifact with the final report. Publish the final report as an Artifact (shared-rules **## Long-run
 reports**; in Claude Code: the Artifact tool, a Dashboard Artifact for numbers
 a recurring run refreshes), not a loose HTML file. It shows what was done, the
 blockers (each explained in full, as in Phase 4), and what to do next. Only

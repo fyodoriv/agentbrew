@@ -56,6 +56,8 @@ check "bypass env stays silent" "/goal fix it" 0 "$INSTALLED" "HOOK_BYPASS_GOAL_
 SRC_OUT="$(jq -cn '{hook_event_name:"UserPromptSubmit",session_id:"s",prompt:"/goal ship"}' | RUN_GOAL_SKILL_DIR="$INSTALLED" RUN_GOAL_SOURCE_DIR=/src/agentbrew/skill-plugins/workflow/run-goal bash "$SCRIPT" 2>/dev/null)"
 if printf '%s' "$SRC_OUT" | jq -e '.hookSpecificOutput.additionalContext | test("in scope for every goal") and test("/src/agentbrew/skill-plugins/workflow/run-goal")' >/dev/null 2>&1; then
   PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("context names run-goal source and retro scope"); fi
+if printf '%s' "$SRC_OUT" | jq -e '.hookSpecificOutput.additionalContext | test("Before execution, create a plan artifact in outputs") and test("update the same artifact at each milestone") and test("private local report")' >/dev/null 2>&1; then
+  PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("context names the plan artifact and private fallback"); fi
 # A read-only skill source gets a task in a writable repo, not an edit (#273).
 if printf '%s' "$SRC_OUT" | jq -e '.hookSpecificOutput.additionalContext | test("read-only") and test("task in a repo you can write")' >/dev/null 2>&1; then
   PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("context routes read-only skill sources to a task"); fi

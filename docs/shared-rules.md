@@ -197,6 +197,7 @@ Run this review in addition to all required reality and functional checks.
 
 ## Long-run reports
 
+- At goal start, after the goal contract, create a plan Artifact in the task outputs before execution. Update the same Artifact at every milestone and reuse it on resume. Include evidence, blockers, and next actions. If the Artifact tool is unavailable or the content is private, use one private local HTML report, share its path, and state the output limitation; do not block the goal or claim publication.
 - A long run ends with a published Artifact, not a long chat message and not a loose HTML file. A long run is a goal run, a nightly or overnight run, a checkup or health pass, or any multi-hour job.
 - The Artifact shows what was done, the blockers, and what to do next. Never put secrets or personal data in it.
 - Pick the type with the Artifact tool's quickstart. Numbers that a recurring run refreshes (a checkup, a metrics pass, a goals ledger) go to a Dashboard Artifact; update the same dashboard each run and save its URL in the tool's state folder. A one-off run gets a regular Artifact page.

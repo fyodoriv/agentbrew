@@ -672,9 +672,16 @@ function chunkCountFromValue(value: unknown): number | undefined {
   return undefined;
 }
 
+function allFilesProcessed(files: RegExpMatchArray): boolean {
+  return Number.parseInt(files[1], 10) > 0 && Number.parseInt(files[1], 10) === Number.parseInt(files[2], 10);
+}
+
 export function parseMemoryIngestResult(result: unknown): MemoryIngestResult {
-  const root = result as { structuredContent?: unknown } | undefined;
+  const root = result as { structuredContent?: unknown; isError?: boolean } | undefined;
   const text = toolResultText(result);
+  if (root?.isError || /^\s*error(?:\s+ingesting\s+directory|\s*:)/im.test(text)) {
+    throw new Error("memory ingest reported an error");
+  }
   const failureMatch = text.match(/\bfiles\s+failed\s*:\s*(\d+)\b/i);
   const errorMatch = text.match(/\btotal\s+errors\s*:\s*(\d+)\b/i);
   const structuredContent = root?.structuredContent as { files_failed?: unknown; all_errors?: unknown } | undefined;
@@ -688,6 +695,8 @@ export function parseMemoryIngestResult(result: unknown): MemoryIngestResult {
   ) {
     throw new Error("memory ingest reported files failed or errors");
   }
+  const files = text.match(/\bfiles\s+processed\s*:\s*(\d+)\s*\/\s*(\d+)\b/i);
+  if (files && !allFilesProcessed(files)) throw new Error("memory ingest did not process every file");
   const structured = chunkCountFromValue(root?.structuredContent) ?? chunkCountFromValue(result);
   if (structured !== undefined) return { chunksStored: structured };
 
@@ -695,7 +704,9 @@ export function parseMemoryIngestResult(result: unknown): MemoryIngestResult {
     text.match(/\bchunks?\s+stored\s*:\s*(\d+)\b/i) ??
     text.match(/\bstored\s+(\d+)\s+chunks?\b/i) ??
     text.match(/\b(\d+)\s+new\s+chunks?\b/i);
-  return { chunksStored: match ? Number.parseInt(match[1], 10) : 0 };
+  if (match) return { chunksStored: Number.parseInt(match[1], 10) };
+  if (files) return { chunksStored: 0 };
+  throw new Error("memory ingest returned an unrecognized result");
 }
 
 function extractMemoryId(result: unknown): string | undefined {

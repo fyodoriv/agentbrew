@@ -803,3 +803,10 @@ The draft now rejects upstream failed-file and total-error reports so the
 existing sync error path leaves the store stale. A complete zero-new-chunk
 response without errors remains valid. Actual duplicate behavior during
 forced upstream ingestion remains to be tested.
+
+Follow-up review found error-only and unrecognized responses could also be
+recorded as zero-chunk success. The additional regression covers those results
+and requires recognizable success before updating the ledger. Corrected ONNX
+search checks later returned all 12 expected numbered entries across exact and
+semantic searches of candidate and restored scratch databases; queries used
+original fact text, not paraphrases.

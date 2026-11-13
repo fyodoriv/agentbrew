@@ -26,8 +26,14 @@ describe("memory MCP client response parsing", () => {
     const payloads: Array<Record<string, unknown>> = [];
     const client = createFetchMemoryMcpClient({
       fetchImpl: async (_input, init) => {
-        payloads.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
-        return successResponse("Memory stored successfully (hash: abcdef0123456789)");
+        const payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        payloads.push(payload);
+        const params = payload.params as { name?: string } | undefined;
+        return successResponse(
+          params?.name === "memory_ingest"
+            ? "Files processed: 1/1; 1 new chunks"
+            : "Memory stored successfully (hash: abcdef0123456789)",
+        );
       },
     });
 
@@ -129,6 +135,18 @@ describe("memory MCP client response parsing", () => {
   ])("rejects directory ingest with failed files", async (text) => {
     const { parseMemoryIngestResult } = await import("./mcp-client.js");
     expect(() => parseMemoryIngestResult({ content: [{ type: "text", text }] })).toThrow("files failed");
+  });
+
+  it.each([
+    { content: [{ type: "text", text: "Error: Directory not found: synthetic" }] },
+    { content: [{ type: "text", text: "Error ingesting directory: synthetic failure" }] },
+    { content: [{ type: "text", text: "No supported files found in directory" }] },
+    { content: [{ type: "text", text: "Files processed: 0/1; Total chunks stored: 0" }] },
+    { content: [{ type: "text", text: "unrecognized output" }] },
+    { isError: true, content: [{ type: "text", text: "Files processed: 1/1; 1 new chunks" }] },
+  ])("rejects unsuccessful or unrecognized ingest responses", async (result) => {
+    const { parseMemoryIngestResult } = await import("./mcp-client.js");
+    expect(() => parseMemoryIngestResult(result)).toThrow();
   });
 
   it("reads structured and text memory_ingest chunk counts", async () => {

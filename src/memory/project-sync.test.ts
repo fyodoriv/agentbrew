@@ -149,7 +149,11 @@ describe("syncClaudeProjectMemories", () => {
     expect(JSON.stringify(ledger)).not.toContain("alpha fact");
   });
 
-  it("leaves a failed directory ingest stale for the next sync", async () => {
+  it.each([
+    "✅ Directory ingestion completed: memory\n📁 Files processed: 0/1\n💾 Total chunks stored: 0\n❌ Files failed: 1",
+    "Error: Directory not found: synthetic",
+    "No supported files found in directory",
+  ])("leaves a failed directory ingest stale for the next sync", async (text) => {
     const root = fixtureRoot();
     const projects = join(root, "projects");
     writeStore(projects, "-proj-alpha", { "fact.md": "synthetic fact" });
@@ -162,7 +166,7 @@ describe("syncClaudeProjectMemories", () => {
             content: [
               {
                 type: "text",
-                text: "✅ Directory ingestion completed: memory\n📁 Files processed: 0/1\n💾 Total chunks stored: 0\n❌ Files failed: 1",
+                text,
               },
             ],
           }),

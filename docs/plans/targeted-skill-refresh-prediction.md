@@ -19,3 +19,13 @@ installed goal workflow is still an older managed snapshot.
   the previous snapshot. Do not silently prune or use the broad updater.
 - **Anchor:** `src/catalog/install-skill.ts`, `src/update.ts`, and the
   2026-11-13 run-goal sync/install observation.
+
+## Design constraints from review
+
+The current CLI has no supported one-skill refresh. Its broad pull can prune
+other skills, and its existing copy helper deletes the old staging tree before
+copying. A safe operation needs one verified owner, a pinned source tree,
+bounded reads, a shared destination lock, a recoverable staging journal, and
+verified existing agent links. It must preserve user edits and unrelated
+skills. Two directory renames alone are not crash-atomic. No targeted
+replacement has been performed.

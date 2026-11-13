@@ -53,7 +53,8 @@ skill. Keep the task open until the full acceptance criteria pass.
 ## Shared-file audit checkpoint
 
 A source search at base `941226a27d973f0348250138517de4bb7fbb04d0` found state saves in source management, catalog installation,
-clean, memory, telemetry, MCP, settings and sync paths. Lock-file writes also
+clean, memory commands, MCP, settings and sync paths. The telemetry module
+has a separate state writer and is not evidence of a `state.yaml` write. Lock-file writes also
 come from source, catalog, plugin and update paths. Manifest saves come from
 clean and several sync engines. These are candidate call sites, not proof that
 all indirect or external writers are known. `state.ts` uses atomic file
@@ -91,7 +92,9 @@ earlier edit even if the file replacement itself is atomic.
   second edit preserves both.
 - **Measurement:** Add one test to `src/skills/targeted-refresh.test.ts` and
   run `heavy-run npx vitest run src/skills/targeted-refresh.test.ts`. Use two
-  real state-manager instances with a cloned in-memory store. Record the
+  real state-manager instances with structured clones on every in-memory
+  read and write. Assert distinct object identities and explicit field values
+  before and after each interleaving; invalidate before the second edit. Record the
   stale result and the serialized control separately. No filesystem, network,
   real user state or live agent process is used.
 - **Success:** The selected baseline test runs and shows exactly the

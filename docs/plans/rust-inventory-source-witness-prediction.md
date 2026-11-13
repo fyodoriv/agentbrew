@@ -51,3 +51,10 @@ snapshot, roots, fact/program maps, validator indexes and diagnostics, plus
 case-specific loops. Pin the frozen corpus and tested revision. The hosted job
 must require exact one-test selection, no skip, read-only credentials and
 pipefail. Diagnose timeout or OOM before any retry.
+
+The case-specific source review found no remaining component-by-file scan
+after the membership index, but found several large JSON, snapshot, manifest,
+fact and index structures that can coexist. It did not measure peak memory.
+The candidate must check the root count before cloning the source map or
+building the queue. A single disposable hosted attempt may follow the code,
+parity and workflow reviews; its capacity is not assumed.

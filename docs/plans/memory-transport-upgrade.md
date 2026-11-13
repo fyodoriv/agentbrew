@@ -500,3 +500,6 @@ The next hosted attempt passed the outside-file, live-port and direct-network
 isolation controls, but the server exited before readiness. The listener was
 removed. Server output was kept private because it may contain a generated
 key. The trial now reports only fixed failure categories and exit status.
+The next run again passed isolation and exited with status 1 without matching
+those categories. The diagnostic now also reports a fixed vocabulary of
+non-secret technical words, without printing server text or the key.

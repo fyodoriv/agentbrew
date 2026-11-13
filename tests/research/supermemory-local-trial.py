@@ -34,6 +34,10 @@ def failure_categories(output):
     lowered = output.lower()
     return [label for label, needles in checks.items() if any(needle in lowered for needle in needles)]
 
+def failure_words(output):
+    allowed = set('error failed failure cannot unable missing denied invalid unsupported required runtime system module file directory path database storage graph engine model embedding provider server listen address port network socket request response timeout format schema migration disk filesystem access operation connect initialize load start bun node python sqlite ssl tls certificate abort fatal'.split())
+    return sorted(set(re.findall(r'[a-z]+', output.lower())) & allowed)
+
 assert not connect(18765), 'live service socket was reachable'
 assert connect(11434), 'local model socket unavailable inside isolation'
 try:
@@ -58,7 +62,7 @@ try:
             drainer.join(timeout=3)
             output=b''.join(buf).decode(errors='replace')
             categories=failure_categories(output)
-            raise RuntimeError(f'server exited before readiness: status {proc.returncode}; categories {categories}')
+            raise RuntimeError(f'server exited before readiness: status {proc.returncode}; categories {categories}; words {failure_words(output)}')
         output=b''.join(buf).decode(errors='replace')
         match=re.search(r'\b(sm_[A-Za-z0-9_-]{16,})\b',output)
         if match and connect(port): key=match.group(1); break

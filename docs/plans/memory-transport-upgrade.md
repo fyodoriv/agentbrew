@@ -137,7 +137,11 @@ does not prove Claude's hosted-model or write behavior.
 The isolated Codex client did not reach the tool call. It failed while loading
 mandatory macOS managed preferences. A similar restricted-environment failure
 is documented in [upstream issue 59160](https://github.com/openai/codex/issues/59160).
-The cause in this trial is not established; Codex on 12.9.0 remains unverified.
+Allowing the named preference services did not change the client error. A
+separate trusted CoreFoundation probe under the outer sandbox profile returned
+success for preference synchronization; it did not read or print preference
+values. The cause in this trial is not established; Codex on 12.9.0 remains
+unverified.
 
 ### Version 12.9.0 Claude save and recall prediction
 
@@ -151,6 +155,11 @@ The cause in this trial is not established; Codex on 12.9.0 remains unverified.
   count Claude's full lifecycle as verified for this version.
 - **Anchor:** The 12.9.0 Claude bootstrap trial and the earlier synthetic
   OpenCode lifecycle trial recorded above.
+
+The local-model session returned the bootstrap profile but did not call the
+requested save or search tools. This does not establish a Claude client or
+service failure; its full lifecycle remains unverified. A separate isolated
+save-only check was queued to narrow the cause.
 
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.

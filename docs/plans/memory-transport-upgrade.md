@@ -956,3 +956,33 @@ before treating content update compatibility as established.
   leave the ledger unchanged; require an upstream atomic tag merge.
 - **Anchor:** upstream 11.7 versioned update and metadata replacement behavior,
   and `src/memory/pack-reconcile.ts`.
+
+The isolated scratch services confirmed that metadata-only updates leave old
+content in place on both 11.7 and 12.9; separate versioned updates returned
+the new content on both. Retry tests now adopt a unique existing desired
+version without a write, refuse ambiguous versions, and stop before replacing
+differing tags. This pivots from the earlier proposed metadata-only tag
+repair because no atomic provenance merge has been proven. Real Agentbrew
+repeat-sync remains unverified.
+
+A normal pack version bump can still fail closed if any record retains its
+text: the pack-wide version tag changes, and an in-place replacement has no
+proven atomic tag-merge operation. A multi-record regression records this
+limitation. Changed text may create a new version when only the managed
+version tag differs; this does not establish a safe unchanged-text migration.
+
+
+### Pack memory pagination prediction
+
+- **Root cause:** The managed client requests only the first 100 matching
+  memories, so version selection can treat an incomplete list as unique.
+- **Hypothesis:** Reading and validating every upstream page before pack
+  selection prevents a hidden later row from being ignored.
+- **Measurement:** Run synthetic MCP tests for 101 rows across two pages,
+  missing or inconsistent pagination, and duplicate IDs.
+- **Success:** All 101 rows reach selection; zero incomplete, inconsistent,
+  or duplicate-ID responses are accepted as a complete list.
+- **Pivot:** If upstream pagination cannot prove completeness, fail closed and
+  do not select a candidate. A stable page count is not an atomic snapshot.
+- **Anchor:** upstream `services/memory_service.py` and
+  `src/memory/mcp-client.ts`.

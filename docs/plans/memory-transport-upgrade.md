@@ -162,6 +162,11 @@ getenv` therefore cannot establish the effective database path. On this Mac,
 the home-directory and memory-home `.env` candidates were absent when checked;
 package-ancestor candidates and future changes still need consideration. Do
 not print or copy the content of any such file.
+On November 12, a read-only inspection of the running launchd job's Python
+child showed an open SQLite file at Agentbrew's expected default path, with
+its WAL files. This identifies the current process's open file at that moment;
+it does not prove which file a later process will select or prevent another
+controller changing the job during an upgrade.
 The `memory fix` repair path can also kick-start the daemon when its MCP check
 fails. An upgrade safeguard must account for that path: a refused or failed
 upgrade must not let repair start the new version before the snapshot is safe.

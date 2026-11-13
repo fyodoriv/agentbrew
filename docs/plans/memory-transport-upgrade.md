@@ -1048,3 +1048,21 @@ and does not rule out concurrent changes between or after the scans.
 
 This is a retrieval pilot, not an agent coding-outcome comparison. Beacon's
 manual approval step differs from automatic capture in the other systems.
+
+### Beacon search follow-up prediction
+
+The first hosted trial approved all 17 references but returned no entries for
+any complete question passed as `q`. Before treating that as a Beacon recall
+score, test a known word from the first stored body as `q`, and rerun all 17
+questions using the documented `task` input. This is a follow-up after seeing
+`q` results, not a pre-registered head-to-head comparison.
+
+- **Hypothesis:** The known-word control finds its reference, and `task`
+  retrieves at least 14 matching references within five results.
+- **Measurement:** Repeat the isolated hosted trial, with those two search
+  controls and actual returned-body matching.
+- **Success:** The known-word control passes, isolation and cleanup pass, and
+  at least 14 task searches return the matching body.
+- **Pivot:** If the known-word control fails, do not interpret either score;
+  if the task count is lower, report it as a post-hoc result.
+- **Anchor:** Beacon `search_memory` input schema in the first hosted trial.

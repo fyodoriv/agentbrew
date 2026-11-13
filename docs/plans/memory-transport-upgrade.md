@@ -810,3 +810,22 @@ and requires recognizable success before updating the ledger. Corrected ONNX
 search checks later returned all 12 expected numbered entries across exact and
 semantic searches of candidate and restored scratch databases; queries used
 original fact text, not paraphrases.
+
+
+### Project import file-limit prediction
+
+- **Root cause:** Upstream directory ingestion defaults to 100 files and can
+  report `100/100` after truncating a larger discovered folder. The current
+  ledger fingerprints the whole folder.
+- **Hypothesis:** Supplying the observed file count as the upstream limit and
+  checking the returned processed count against that inventory avoids marking
+  a truncated import current.
+- **Measurement:** Run project-sync and MCP client tests with a synthetic
+  101-file folder and matching and truncated upstream response fixtures.
+- **Success:** The request carries a limit of at least 101; zero mismatched or
+  unverifiable processed counts mark the synthetic folder synced; ordinary
+  complete imports still pass.
+- **Pivot:** If upstream cannot accept the limit or report processed counts,
+  leave the folder stale and report degraded status.
+- **Anchor:** upstream `utils/directory_ingestion.py` and
+  `src/memory/project-sync.ts`.

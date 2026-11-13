@@ -72,6 +72,7 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - Commit format: `type: subject TICKET`, header ≤72 chars.
 - **Rebase:** see `rebase-verification.mdc`.
 - **PR conflicts (IRON LAW):** Green checks do not prove a PR is mergeable. CI tests the PR head, not its merge with the base. On every PR touch, run `git merge-tree --write-tree --name-only <base> HEAD` and `gh pr view <n> --json mergeable,mergeStateStatus`. Treat `CONFLICTING` as not green. Bring in the base per `rebase-verification.mdc`.
+- **Replaced history (dated 2026-11-12):** When a fetch shows that a checkout and its remote default branch share no commit (`git merge-base HEAD origin/<default>` prints nothing, or an update reports `diverged`), stop. Do not pull, merge, reset, or push from that checkout. Read the migration page on the remote branch (`git show origin/<default>:docs/migrate-to-public-history.md`, or the repo's `docs/migrate-*.md`), tell the user in one line, and follow it. Example: careerbrew moved to a one-commit history on 2026-11-12.
 
 ## Verification
 

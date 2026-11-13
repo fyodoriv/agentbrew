@@ -45,8 +45,11 @@ reviewed producer cannot impersonate parser output. Discovery can restart
 source closure after a promotion; observations from discarded rounds must not
 be reported as final. Include a planted restart control and compare the final
 observation set, not a cumulative trace. Cap test-observer storage at 256
-records; overflow makes its evidence inconclusive without changing the legacy
-report. Use only synthetic inputs. Review the cfg-only wiring and unchanged
+records and 65,536 total bytes of recorded path, body and API text; overflow
+makes its evidence inconclusive without changing the legacy report. An
+overflow fixture must compare the full observed and unobserved outputs.
+Within a closure round, retain only the last graph pass, not earlier passes
+over a smaller module set. Use only synthetic inputs. Review the cfg-only wiring and unchanged
 public signature, and compile a normal non-test build. No source program, worker or
 process signal is run. Normal test compilation may run dependency build
 scripts. Passing this preparation does not qualify the six Rust positives,

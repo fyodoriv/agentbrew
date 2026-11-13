@@ -108,3 +108,11 @@ earlier edit even if the file replacement itself is atomic.
 This is a baseline, not a fix. The later implementation must use a failing
 regression that demands both edits survive or the stale write refuses, and it
 must cover real cooperating process and filesystem boundaries.
+
+### Baseline result (2026-11-13)
+
+The selected synthetic test passed. With two distinct cached managers, the
+second stale save discarded the first edit; after invalidating and reloading
+before that edit, both changes survived. Independent review checked cloned
+reads and writes and the control order. This demonstrates the manager-level
+interleaving only. It does not reproduce a live process race or fix it.

@@ -14,8 +14,10 @@ vi.mock("../core/launchctl.js", () => ({
 
 import { probeLaunchctl, runLaunchctl } from "../core/launchctl.js";
 import { MEMORY_PINNED_SPEC } from "./constants.js";
+import * as invoke from "./invoke.js";
 import { buildMemoryDaemonPlist, installMemoryLaunchAgents, MEMORY_AGENT_LABEL } from "./launchagent.js";
 import { defaultMemoryDbPath } from "./paths.js";
+import { prepareMemoryForMcpSync } from "./sync-hooks.js";
 
 const plist = join(homedir(), "Library/LaunchAgents", `${MEMORY_AGENT_LABEL}.plist`);
 
@@ -23,6 +25,7 @@ afterEach(() => {
   rmSync(plist, { force: true });
   rmSync(defaultMemoryDbPath(), { force: true });
   rmSync(join(homedir(), ".env"), { force: true });
+  vi.restoreAllMocks();
   vi.unstubAllEnvs();
   vi.clearAllMocks();
 });
@@ -43,6 +46,33 @@ describe.runIf(process.platform === "darwin")("memory daemon upgrade guard", () 
     const result = installMemoryLaunchAgents();
 
     expect(result).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(readFileSync(plist, "utf-8")).toBe(oldPlist);
+    expect(
+      vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
+    ).toEqual([]);
+  });
+
+  it("does not restart an unchecked old job when the launcher cannot be resolved", async () => {
+    vi.spyOn(invoke, "resolveUvxBin").mockReturnValue(undefined);
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    const oldPlist = buildMemoryDaemonPlist(homedir(), "/fixture/logs", "/fixture/uvx").replace(
+      MEMORY_PINNED_SPEC,
+      "mcp-memory-service[sqlite]==0.0.1",
+    );
+    writeFileSync(plist, oldPlist);
+    const kickstart = vi.fn();
+    await expect(
+      prepareMemoryForMcpSync(
+        { agents: [], catalogVersion: "0.3.0", memory: { enabled: true } },
+        {
+          launchAgentSupported: () => true,
+          initializeHealthy: async () => false,
+          waitUntilHealthy: async () => true,
+          kickstart,
+        },
+      ),
+    ).rejects.toThrow("uvx not found");
+    expect(kickstart).not.toHaveBeenCalled();
     expect(readFileSync(plist, "utf-8")).toBe(oldPlist);
     expect(
       vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),

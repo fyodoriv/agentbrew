@@ -757,3 +757,5 @@ next diagnostic also classifies that scratch file without printing its text.
   existing safety or preventing normal recovery, retain the draft and do not
   deploy the guard.
 - **Anchor:** `src/memory/launchagent.ts` and `src/memory/sync-hooks.ts`.
+
+The focused regression failed before the fix: sync reached its restart path when `uvx` could not be resolved. Returning a blocked result now makes sync and repair stop. The launcher-guard and sync test files passed after the change. The protected live upgrade remains unfinished.

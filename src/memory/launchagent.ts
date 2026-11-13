@@ -356,7 +356,11 @@ export function installMemoryLaunchAgents(): {
   const pathValue = buildLaunchAgentPath(home);
   const uvxBin = resolveUvxBin();
   if (!uvxBin) {
-    return { installed: false, reason: "uvx not found on PATH — install uv before enabling memory LaunchAgent" };
+    return {
+      installed: false,
+      upgradeBlocked: true,
+      reason: "uvx not found on PATH — install uv before enabling memory LaunchAgent",
+    };
   }
 
   const daemonPlist = memoryPlistPath();

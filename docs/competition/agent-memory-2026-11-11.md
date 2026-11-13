@@ -28,7 +28,10 @@ On November 12, a real OpenCode session with Kimi and the draft `oc` wrapper
 searched for a newly stored synthetic record. The tool evidence included
 `memory_search` and its test phrase; the final answer returned that phrase.
 The exact synthetic record was deleted and an exact search then returned no
-match. This is another shared read, not a test of bootstrap or session save.
+match. The harness set a scratch working directory while inheriting an old
+`PWD`. A follow-up local check confirmed the wrapper's Bash process resolves
+`PWD` to its actual working directory before starting OpenCode. This is a
+shared read, not a test of bootstrap or session save.
 
 The OpenCode trial used a scratch project. Its configuration included a rule
 intended to deny code-mode `execute`, but the recorded session shows completed

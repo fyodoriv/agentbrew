@@ -45,7 +45,13 @@ try:
   control=search_rows(10,{"q":"os.replace"})
   if not any(row.get("body")==first["content"] for row in control):raise RuntimeError("known-word search control failed")
   print("PASS known-word search control",flush=True)
+  task_control=search_rows(11,{"task":"os.replace"})
+  task_valid=any(row.get("body")==first["content"] for row in task_control)
+  print("task known-word control:","PASS" if task_valid else "FAIL",flush=True)
   for mode in ("q","task"):
+   if mode=="task" and not task_valid:
+    print("task score unverified: known-word control failed",flush=True)
+    continue
    hits=0
    for i,case in enumerate(cases):
     rows=search_rows((100 if mode=="q" else 200)+i,{mode:case["query"]})

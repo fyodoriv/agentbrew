@@ -51,3 +51,15 @@ that round. The result is lexical,
 not proof of crate resolution, standard-library identity, coverage, or safe
 writer admission. It adds no production acceptance, worker, source execution,
 or physical process control.
+
+## Focused result
+
+The three exact selected tests passed once each after the comparator correction,
+and the normal library check passed. The P05 record matched its frozen lexical
+module and byte witnesses. Independent review identified a missing wrong-module
+comparison; the corrected shared comparator rejects that mutation. The limits
+bound retained samples, not the parser's temporary memory or total source
+coverage. Hosted verification remains separate.
+The hosted guard's exact-script pin rejected the added command until updated;
+after that correction its 28 focused controls passed. Independent review found
+no actionable issue in the added exact selection or the guard's failure checks.

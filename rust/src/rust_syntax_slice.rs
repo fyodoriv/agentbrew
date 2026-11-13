@@ -3,6 +3,7 @@ use std::ops::Range;
 const SOURCE_LIMIT: usize = 2_097_152;
 
 pub(crate) struct SyntaxSite {
+    pub(crate) module: String,
     pub(crate) owner: Range<usize>,
     pub(crate) call: Range<usize>,
     pub(crate) output: (Range<usize>, String),
@@ -20,9 +21,30 @@ pub(crate) fn parse(input: &[u8]) -> Result<Vec<SyntaxSite>, ()> {
     let source = std::str::from_utf8(&source).map_err(|_| ())?;
     let file: syn::File = syn::parse_str(source).map_err(|_| ())?;
     let mut sites = Vec::new();
-    for item in file.items {
-        let syn::Item::Fn(function) = item else {
-            continue;
+    walk(file.items, "crate", 0, &mut sites, &mut 0)?;
+    Ok(sites)
+}
+
+fn walk(
+    items: Vec<syn::Item>,
+    module: &str,
+    depth: usize,
+    sites: &mut Vec<SyntaxSite>,
+    retained: &mut usize,
+) -> Result<(), ()> {
+    for item in items {
+        let function = match item {
+            syn::Item::Fn(function) => function,
+            syn::Item::Mod(inner) if inner.attrs.is_empty() && inner.content.is_some() => {
+                let name = inner.ident.to_string();
+                if depth == 16 || name.len() > 256 {
+                    return Err(());
+                }
+                let next = format!("{module}::{name}");
+                walk(inner.content.unwrap().1, &next, depth + 1, sites, retained)?;
+                continue;
+            }
+            _ => continue,
         };
         let owner = function.sig.fn_token.span.byte_range().start
             ..function.block.brace_token.span.close().byte_range().end;
@@ -67,7 +89,12 @@ pub(crate) fn parse(input: &[u8]) -> Result<Vec<SyntaxSite>, ()> {
             if sites.len() == 256 {
                 return Err(());
             }
+            *retained = retained.checked_add(module.len()).ok_or(())?;
+            if *retained > 65_536 {
+                return Err(());
+            }
             sites.push(SyntaxSite {
+                module: module.to_owned(),
                 owner: owner.clone(),
                 call: colon.spans[0].byte_range().start
                     ..call.paren_token.span.close().byte_range().end,
@@ -76,7 +103,7 @@ pub(crate) fn parse(input: &[u8]) -> Result<Vec<SyntaxSite>, ()> {
             });
         }
     }
-    Ok(sites)
+    Ok(())
 }
 
 fn same_range(actual: &Range<usize>, expected: &serde_json::Value) -> bool {

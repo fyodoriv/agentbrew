@@ -9,6 +9,7 @@ fn eq_range(actual: &Range<usize>, value: &Value) -> bool {
 }
 fn matches(record: &RustSyntaxObservation, witness: &Value) -> bool {
     Some(record.path.as_str()) == witness["physical_path"].as_str()
+        && Some(record.module.as_str()) == witness["logical_module"].as_str()
         && eq_range(&record.owner, &witness["owner_fn_byte_range"])
         && eq_range(&record.call, &witness["call_byte_range"])
         && eq_range(&record.output, &witness["output_literal_byte_range"])
@@ -163,4 +164,89 @@ fn observes_real_discovery_sources() {
     let final_discovery = discover_observed(&restart, &mut trace);
     assert!(final_discovery.programs.contains_key("src/helper"));
     assert_eq!(trace.rust_partial_records().unwrap().len(), 1);
+}
+
+#[test]
+fn observes_inline_modules() {
+    let case = super::materialize("P05");
+    let mut trace = DiscoveryObserver::default();
+    let plain = discover(&case.snapshot);
+    let observed = discover_observed(&case.snapshot, &mut trace);
+    assert_eq!(discovery(&plain), discovery(&observed));
+    let record = &trace.rust_partial_records().unwrap()[0];
+    let witness = &case.witnesses[0];
+    assert!(matches(record, witness));
+    assert_eq!(
+        Some(record.module.as_str()),
+        witness["logical_module"].as_str()
+    );
+    let mut wrong = witness.clone();
+    wrong["logical_module"] = json!("crate::wrong");
+    assert!(!matches(record, &wrong));
+    wrong = witness.clone();
+    wrong["physical_path"] = json!("wrong.rs");
+    assert!(!matches(record, &wrong));
+    wrong = witness.clone();
+    wrong["owner_fn_byte_range"][0] = json!(record.owner.start + 1);
+    assert!(!matches(record, &wrong));
+
+    let source = "mod a { mod nested { fn same() { ::std::fs::write(\"a\", \"b\"); } } } mod b { fn same() { ::std::fs::write(\"a\", \"b\"); } }";
+    let sites = super::rust_syntax_slice::parse(source.as_bytes()).unwrap();
+    assert_eq!(
+        sites.iter().map(|s| s.module.as_str()).collect::<Vec<_>>(),
+        ["crate::a::nested", "crate::b"]
+    );
+    let with_bom = format!("\u{feff}\r\n{source}");
+    let bom_sites = super::rust_syntax_slice::parse(with_bom.as_bytes()).unwrap();
+    assert_eq!(bom_sites[0].call.start, sites[0].call.start + 5);
+    assert!(super::rust_syntax_slice::parse(b"mod a { fn broken(").is_err());
+    for id in ["P01", "P02", "P03"] {
+        let case = super::materialize(id);
+        discover_observed(&case.snapshot, &mut trace);
+        assert!(trace
+            .rust_partial_records()
+            .unwrap()
+            .iter()
+            .all(|r| r.module == "crate"));
+    }
+    let writer = "fn f() { ::std::fs::write(\"a\", \"b\"); }";
+    let nested =
+        |depth: usize| format!("{}{}{}", "mod a {".repeat(depth), writer, "}".repeat(depth));
+    assert!(super::rust_syntax_slice::parse(nested(16).as_bytes()).is_ok());
+    assert!(super::rust_syntax_slice::parse(nested(17).as_bytes()).is_err());
+    let named = |len: usize| format!("mod {} {{ {writer} }}", "a".repeat(len));
+    assert!(super::rust_syntax_slice::parse(named(256).as_bytes()).is_ok());
+    assert!(super::rust_syntax_slice::parse(named(257).as_bytes()).is_err());
+    let mut limit = DiscoveryObserver::default();
+    limit.finish();
+    for _ in 0..256 {
+        limit.observe_rust("x", &named(249), false);
+    }
+    assert_eq!(limit.rust_partial_records().unwrap().len(), 256);
+    let mut over = DiscoveryObserver::default();
+    over.finish();
+    for _ in 0..255 {
+        over.observe_rust("x", &named(249), false);
+    }
+    over.observe_rust("x", &named(250), false);
+    assert!(over.rust_partial_records().is_none());
+    let unsupported = "#[cfg(any())] mod hidden { fn f() { ::std::fs::write(\"a\", \"b\"); } } mod external; include!(\"other.rs\");";
+    assert!(super::rust_syntax_slice::parse(unsupported.as_bytes())
+        .unwrap()
+        .is_empty());
+    trace = DiscoveryObserver::default();
+    trace.finish();
+    trace.observe_rust("test.rs", writer, true);
+    assert!(trace.rust_partial_records().is_none());
+    trace = DiscoveryObserver::default();
+    trace.finish();
+    trace.observe_rust(
+        "test.rs",
+        &format!(
+            "fn f() {{ {} }}",
+            "::std::fs::write(\"a\", \"b\");".repeat(257)
+        ),
+        false,
+    );
+    assert!(trace.rust_partial_records().is_none());
 }

@@ -55,6 +55,7 @@ pub(crate) struct HostObservation {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct RustSyntaxObservation {
     pub path: String,
+    pub module: String,
     pub owner: std::ops::Range<usize>,
     pub call: std::ops::Range<usize>,
     pub output: std::ops::Range<usize>,
@@ -71,6 +72,7 @@ pub(crate) struct DiscoveryObserver {
     complete: bool,
     rust_records: Vec<RustSyntaxObservation>,
     rust_path_bytes: usize,
+    rust_module_bytes: usize,
     rust_invalid: bool,
 }
 
@@ -140,14 +142,20 @@ impl DiscoveryObserver {
                 self.rust_records.clear();
                 return;
             };
-            if self.rust_records.len() == 256 || bytes > 65_536 {
+            let module_bytes = self.rust_module_bytes.checked_add(site.module.len());
+            if self.rust_records.len() == 256
+                || bytes > 65_536
+                || module_bytes.is_none_or(|n| n > 65_536)
+            {
                 self.rust_invalid = true;
                 self.rust_records.clear();
                 return;
             }
             self.rust_path_bytes = bytes;
+            self.rust_module_bytes = module_bytes.expect("checked above");
             self.rust_records.push(RustSyntaxObservation {
                 path: path.into(),
+                module: site.module,
                 owner: site.owner,
                 call: site.call,
                 output: site.output.0,

@@ -5,6 +5,120 @@ use crate::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+fn membership_index<'a>(
+    components: impl Iterator<Item = (&'a str, &'a str)>,
+) -> BTreeMap<&'a str, BTreeSet<&'a str>> {
+    let mut index: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+    for (path, id) in components {
+        index.entry(path).or_default().insert(id);
+    }
+    index
+}
+
+fn membership_mismatch(
+    index: &BTreeMap<&str, BTreeSet<&str>>,
+    path: &str,
+    listed: &[String],
+) -> bool {
+    let actual: BTreeSet<_> = listed.iter().map(String::as_str).collect();
+    let matches = index
+        .get(path)
+        .map_or(actual.is_empty(), |expected| *expected == actual);
+    !matches || actual.len() != listed.len()
+}
+
+#[cfg(test)]
+mod membership_tests {
+    use super::{membership_index, membership_mismatch};
+    use std::cell::Cell;
+    use std::collections::BTreeSet;
+
+    fn legacy(components: &[(&str, &str)], path: &str, listed: &[String]) -> bool {
+        let expected: BTreeSet<_> = components
+            .iter()
+            .filter(|(source, _)| *source == path)
+            .map(|(_, id)| *id)
+            .collect();
+        let actual: BTreeSet<_> = listed.iter().map(String::as_str).collect();
+        actual != expected || actual.len() != listed.len()
+    }
+
+    #[test]
+    fn indexed_membership_matches_legacy_including_diagnostic_order() {
+        let components = [
+            ("a", "one"),
+            ("a", "one"),
+            ("a", "two"),
+            ("b", "one"),
+            ("", "empty-path"),
+            ("../invalid", "invalid-path"),
+        ];
+        let cases: [(&str, &[&str]); 11] = [
+            ("a", &["one", "two"]),
+            ("a", &["one"]),
+            ("a", &["one", "two", "two"]),
+            ("b", &["one"]),
+            ("b", &["two"]),
+            ("missing", &[]),
+            ("missing", &["one"]),
+            ("", &["empty-path"]),
+            ("../invalid", &["invalid-path"]),
+            ("a", &["two"]),
+            ("a", &["two"]),
+        ];
+        let index = membership_index(components.iter().copied());
+        let mut old_errors = Vec::new();
+        let mut new_errors = Vec::new();
+        for (path, ids) in cases {
+            let listed: Vec<String> = ids.iter().map(|id| (*id).to_owned()).collect();
+            if legacy(&components, path, &listed) {
+                old_errors.push(path);
+            }
+            if membership_mismatch(&index, path, &listed) {
+                new_errors.push(path);
+            }
+        }
+        assert_eq!(new_errors, old_errors);
+        assert_eq!(old_errors, ["a", "a", "b", "missing", "a", "a"]);
+    }
+
+    #[test]
+    fn fixed_corpus_replaces_repeated_component_visits() {
+        let paths: Vec<_> = (0..2_000).map(|n| format!("source/{n}")).collect();
+        let ids: Vec<_> = (0..2_000).map(|n| format!("id/{n}")).collect();
+        let components: Vec<_> = paths
+            .iter()
+            .zip(&ids)
+            .map(|(p, id)| (p.as_str(), id.as_str()))
+            .collect();
+        let old_visits = Cell::new(0usize);
+        for path in &paths {
+            let _: BTreeSet<_> = components
+                .iter()
+                .filter(|(source, _)| {
+                    old_visits.set(old_visits.get() + 1);
+                    *source == path.as_str()
+                })
+                .map(|(_, id)| *id)
+                .collect();
+        }
+        let insertions = Cell::new(0usize);
+        let index = membership_index(components.iter().map(|&(path, id)| {
+            insertions.set(insertions.get() + 1);
+            (path, id)
+        }));
+        let mut lookups = 0;
+        for (path, id) in paths.iter().zip(&ids) {
+            lookups += 1;
+            assert!(!membership_mismatch(&index, path, std::slice::from_ref(id)));
+        }
+        assert_eq!(
+            (old_visits.get(), insertions.get(), lookups),
+            (4_000_000, 2_000, 2_000)
+        );
+    }
+}
+
 fn issue(errors: &mut Vec<Diagnostic>, code: &str, path: &str) {
     errors.push(Diagnostic::new(code, Some(path)));
 }
@@ -343,15 +457,14 @@ pub fn validate(
             output_ids.insert(target.id.clone());
         }
     }
-    for file in &manifest.files {
-        let expected: BTreeSet<_> = manifest
+    let membership = membership_index(
+        manifest
             .components
             .iter()
-            .filter(|c| c.source.path == file.path)
-            .map(|c| c.id.as_str())
-            .collect();
-        let actual: BTreeSet<_> = file.components.iter().map(String::as_str).collect();
-        if actual != expected || actual.len() != file.components.len() {
+            .map(|c| (c.source.path.as_str(), c.id.as_str())),
+    );
+    for file in &manifest.files {
+        if membership_mismatch(&membership, &file.path, &file.components) {
             issue(&mut errors, "component-file-membership", &file.path);
         }
     }

@@ -33,3 +33,12 @@ check. Compare error sequence as well as decisions. Additional quadratic work,
 memory costs and resource limits must be reviewed independently before the
 original 100,001-record control is attempted. No worker or analyzed source
 program runs in this preparation.
+
+## Focused result
+
+The two index controls passed. On the fixed synthetic corpus, they counted
+4,000,000 old component visits, 2,000 index insertions and 2,000 file lookups.
+Those counts do not measure tree comparisons, allocations or wall time.
+The complete legacy output for C01, P01 and N02a also matched the previously
+captured 3,328-byte record exactly. This is full-report parity for those three
+fixtures, not qualification of N02b or the full corpus.

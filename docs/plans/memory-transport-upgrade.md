@@ -1030,3 +1030,21 @@ and does not rule out concurrent changes between or after the scans.
 - **Pivot:** If the effective identity cannot be established without guessing,
   stop reconciliation and leave the existing service untouched.
 - **Anchor:** `src/memory/launchagent.ts` and upstream database-path settings.
+
+## Hosted Beacon retrieval pilot prediction
+
+- **Hypothesis:** Beacon 1.3.60 local approved project memory retrieves the
+  matching reference within five results for at least 14 of the same 17 public
+  coding-memory calibration questions used in the local comparison.
+- **Measurement:** On a disposable macOS runner, verify the pinned Beacon
+  archive, import and approve the public reference texts in a synthetic
+  project, and call its MCP search. Deny network access and outside-file reads
+  during the trial. Check actual returned memory bodies and process cleanup.
+- **Success:** All 17 imports, isolation checks and cleanup pass, with at least
+  14 of 17 matching references returned. The test records misses as results.
+- **Pivot:** If imports, scope, isolation or cleanup fail, report no score.
+- **Anchor:** [Beacon MCP memory](https://github.com/Asymptote-Labs/agent-beacon/blob/main/docs/cli/mcp.mdx)
+  and the [public benchmark at revision c1b15726](https://github.com/GiulioDER/agent-memory-bench/tree/c1b15726f1153b02dda0490ca1936bb86a809514).
+
+This is a retrieval pilot, not an agent coding-outcome comparison. Beacon's
+manual approval step differs from automatic capture in the other systems.

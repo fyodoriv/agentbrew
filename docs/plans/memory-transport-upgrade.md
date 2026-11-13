@@ -474,6 +474,8 @@ service or a real Codex session.
 - **Success:** The trial confirms its isolation controls, retrieves the
   synthetic fact after ingestion, and leaves no trial listener running. It
   never reads actual agent transcripts or prints its generated key.
+  This is a search smoke test; it does not prove that memory extraction, as
+  distinct from source-chunk retrieval, succeeded.
 - **Pivot:** If an embedding model is unavailable offline, local ingestion
   fails, isolation cannot be proven, or cleanup fails, report the failed step
   and do not recommend the integration on this evidence.
@@ -503,3 +505,6 @@ key. The trial now reports only fixed failure categories and exit status.
 The next run again passed isolation and exited with status 1 without matching
 those categories. The diagnostic now also reports a fixed vocabulary of
 non-secret technical words, without printing server text or the key.
+The hosted server returned status 1 with terms for storage, the engine and
+embeddings. A vendor issue documents a separate startup error file, so the
+next diagnostic also classifies that scratch file without printing its text.

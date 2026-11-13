@@ -35,7 +35,7 @@ def failure_categories(output):
     return [label for label, needles in checks.items() if any(needle in lowered for needle in needles)]
 
 def failure_words(output):
-    allowed = set('error failed failure cannot unable missing denied invalid unsupported required runtime system module file directory path database storage graph engine model embedding provider server listen address port network socket request response timeout format schema migration disk filesystem access operation connect initialize load start bun node python sqlite ssl tls certificate abort fatal'.split())
+    allowed = set('error failed failure cannot unable missing denied invalid unsupported required runtime system module file directory path database storage graph engine model embedding provider server listen address port network socket request response timeout format schema migration disk filesystem access operation connect initialize load start bun node python sqlite ssl tls certificate abort fatal download extract wasm native binary process spawn temporary tmp permission executable unavailable incompatible'.split())
     return sorted(set(re.findall(r'[a-z]+', output.lower())) & allowed)
 
 assert not connect(18765), 'live service socket was reachable'
@@ -61,6 +61,12 @@ try:
         if proc.poll() is not None:
             drainer.join(timeout=3)
             output=b''.join(buf).decode(errors='replace')
+            for name in ('error.log', 'data/error.log'):
+                try:
+                    with open(os.path.join(root, 'trial-data', name), 'r', errors='replace') as error_file:
+                        output += error_file.read(1_000_000)
+                except OSError:
+                    pass
             categories=failure_categories(output)
             raise RuntimeError(f'server exited before readiness: status {proc.returncode}; categories {categories}; words {failure_words(output)}')
         output=b''.join(buf).decode(errors='replace')

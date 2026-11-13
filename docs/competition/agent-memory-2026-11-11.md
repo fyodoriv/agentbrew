@@ -137,6 +137,11 @@ states that the free local license permits 10,000 stored documents and that
 the embeddings model needs an initial download. This describes a possible local
 trial, not proof of its behavior on this machine. Test the settings and network
 traffic rather than assuming local storage means offline operation.
+A [separate benchmark implementation](https://github.com/EngTurtle/hermes-memconflict/blob/main/docs/TROUBLESHOOTING.md)
+reports cases where Supermemory returned source chunks after its memory
+extraction failed. That report concerns other configurations and versions,
+not this trial. A search hit alone will not prove that the local memory
+extraction pipeline succeeded; inspect the result type and ingestion status.
 
 ## Published hosted pricing
 

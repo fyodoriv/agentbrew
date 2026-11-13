@@ -102,6 +102,16 @@ describe("design judges", () => {
     expect(judge.conflicts(ask("change the border color to the ink token"))).toHaveLength(0);
   });
 
+  it("the prompt lists each screenshot path, so judges need no ls", () => {
+    const dir = mkdtempSync(join(tmpdir(), "shots-"));
+    writeFileSync(join(dir, "b-phone.png"), "");
+    writeFileSync(join(dir, "a-desktop.png"), "");
+    writeFileSync(join(dir, "notes.txt"), "");
+    const p = judge.prompt({ lens: "polish", shots: dir });
+    expect(p).toContain(`- ${join(dir, "a-desktop.png")}\n- ${join(dir, "b-phone.png")}`);
+    expect(p).not.toContain("notes.txt");
+  });
+
   it("a named ledger that cannot be read fails instead of passing", () => {
     const dir = mkdtempSync(join(tmpdir(), "judges-"));
     writeFileSync(join(dir, "a.txt"), "NONE\n");

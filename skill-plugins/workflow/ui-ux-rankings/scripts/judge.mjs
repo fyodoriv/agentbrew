@@ -34,11 +34,22 @@ export const LENSES = {
 export const WEIGHT = { blocker: 2.5, major: 1.0, minor: 0.3 };
 const BLOCKER_CAP = 6;
 
+// exact paths, so a judge does not spend round trips on ls, cat or diff to find them
+export function shotList(dir) {
+  let names = [];
+  try {
+    names = readdirSync(dir).filter((f) => /\.(png|jpe?g|webp)$/i.test(f)).sort();
+  } catch {
+    return `- every screenshot in ${dir} (phone and desktop, light and dark)`;
+  }
+  return names.map((f) => `- ${join(dir, f)}`).join("\n");
+}
+
 export function prompt({ lens, shots, context = "", decisions = "" }) {
   const what = LENSES[lens] ?? lens;
   return [
     "You are a principal UI engineer (15+ years, shipped consumer apps at scale). You did not build this page.",
-    `Read every screenshot in ${shots} with the Read tool (phone and desktop, light and dark).`,
+    `Read each of these screenshots once with the Read tool, and no other file:\n${shotList(shots)}`,
     context ? `Product context:\n${context}` : "",
     decisions ? `Settled decisions (the owner chose these; do not report them as issues):\n${decisions}` : "",
     `Your lens: ${what}. Report only what your lens covers.`,

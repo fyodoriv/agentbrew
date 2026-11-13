@@ -25,8 +25,19 @@ use std::time::Duration;
 #[path = "owner_guarded_dispatch.rs"]
 mod owner_guarded_dispatch;
 #[cfg(owner_hosted_experiment)]
+#[path = "owner_hosted_export_writer.rs"]
+mod owner_hosted_export_writer;
+#[cfg(owner_hosted_experiment)]
 #[path = "owner_hosted_receipt.rs"]
 mod owner_hosted_receipt;
+
+#[cfg(owner_hosted_experiment)]
+pub(crate) fn export_receipt(
+    receipt: &mut owner_hosted_receipt::Receipt<256>,
+    output: &mut [u8],
+) -> Option<usize> {
+    owner_hosted_export_writer::encode_receipt(receipt, output)
+}
 
 const SECOND: u128 = 1_000_000_000;
 const TOTAL: u128 = 30 * SECOND;

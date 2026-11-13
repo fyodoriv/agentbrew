@@ -24,7 +24,9 @@ inconclusive outcomes for partial writes, timeout and crash, and independent
 binding to the run, revision, fixture executable, source, lock and toolchain.
 A digest made by the fixture alone does not authenticate its own evidence.
 
-The standalone encoder and independent reader are preparation only. The
-encoder currently accepts a caller-supplied classification and is not wired
-to a receipt. It must derive that classification from the claimed receipt's
-sticky validity state before it can be used as a receipt export.
+The low-level encoder accepts a classification for pure controls. The
+experiment-only adapter derives it from the claimed receipt's sticky validity
+and sequence state. It still produces only an in-memory structural frame; it
+does not retain or authenticate a run.
+Checking a pending receipt latches it invalid even when the output buffer is
+too short. The buffer stays untouched; the receipt intentionally does not.

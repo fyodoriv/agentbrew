@@ -2,10 +2,10 @@
 
 #[path = "owner_hosted_export_reader.rs"]
 mod reader;
-#[cfg(test)]
+#[cfg(all(test, not(owner_hosted_experiment)))]
 #[path = "owner_hosted_receipt.rs"]
 mod receipt;
-#[cfg(not(test))]
+#[cfg(owner_hosted_experiment)]
 use super::owner_hosted_receipt as receipt;
 
 use self::receipt::{Event, Evidence};
@@ -50,9 +50,17 @@ pub(crate) fn encode(events: &[Option<Event>], closed: bool, output: &mut [u8]) 
     Some(length)
 }
 
+pub(crate) fn encode_receipt<const N: usize>(
+    receipt: &mut receipt::Receipt<N>,
+    output: &mut [u8],
+) -> Option<usize> {
+    let closed = receipt.closed_refusal_diagnostic();
+    encode(receipt.events(), closed, output)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{encode, reader, Event, Evidence};
+    use super::{encode, encode_receipt, reader, receipt::Receipt, Event, Evidence};
 
     fn closed() -> [Option<Event>; 6] {
         [
@@ -176,6 +184,82 @@ mod tests {
         assert!(!output[..n].contains(&0xa5));
         assert_eq!(
             reader::classify(&output[..n]),
+            reader::Classification::Inconclusive
+        );
+    }
+
+    fn finalized_receipt() -> Receipt<16> {
+        let mut r = Receipt::<16>::new();
+        assert!(r.claim());
+        assert!(r.record(Event::Spawned));
+        assert!(r.begin(Event::TermAttempt));
+        assert!(r.refused());
+        assert!(r.record(Event::Drop));
+        assert!(r.record(Event::Observation(Evidence::Reaped)));
+        assert!(r.finalize_after_return());
+        r
+    }
+
+    #[test]
+    fn actual_closed_receipt_round_trips() {
+        let mut receipt = finalized_receipt();
+        let mut out = [0; 32];
+        let n = encode_receipt(&mut receipt, &mut out).unwrap();
+        assert_eq!(
+            reader::classify(&out[..n]),
+            reader::Classification::ClosedRefusal
+        );
+    }
+
+    #[test]
+    fn actual_invalid_receipt_exports_only_inconclusive() {
+        let mut receipt = finalized_receipt();
+        receipt.invalidate();
+        let mut out = [0; 32];
+        let n = encode_receipt(&mut receipt, &mut out).unwrap();
+        assert_eq!(
+            reader::classify(&out[..n]),
+            reader::Classification::Inconclusive
+        );
+    }
+
+    #[test]
+    fn actual_pending_receipt_exports_only_inconclusive() {
+        let mut receipt = Receipt::<16>::new();
+        assert!(receipt.claim());
+        assert!(receipt.record(Event::Spawned));
+        assert!(receipt.begin(Event::TermAttempt));
+        let mut out = [0; 32];
+        let n = encode_receipt(&mut receipt, &mut out).unwrap();
+        assert_eq!(
+            reader::classify(&out[..n]),
+            reader::Classification::Inconclusive
+        );
+        assert!(!receipt.refused());
+    }
+
+    #[test]
+    fn short_export_still_invalidates_pending_receipt() {
+        let mut receipt = Receipt::<16>::new();
+        assert!(receipt.claim());
+        assert!(receipt.record(Event::Spawned));
+        assert!(receipt.begin(Event::TermAttempt));
+        let mut out = [0xa5; 2];
+        assert_eq!(encode_receipt(&mut receipt, &mut out), None);
+        assert_eq!(out, [0xa5; 2]);
+        assert!(!receipt.refused());
+    }
+
+    #[test]
+    fn actual_overflow_receipt_exports_only_inconclusive() {
+        let mut receipt = Receipt::<1>::new();
+        assert!(receipt.claim());
+        assert!(receipt.record(Event::Spawned));
+        assert!(!receipt.record(Event::Drop));
+        let mut out = [0; 16];
+        let n = encode_receipt(&mut receipt, &mut out).unwrap();
+        assert_eq!(
+            reader::classify(&out[..n]),
             reader::Classification::Inconclusive
         );
     }

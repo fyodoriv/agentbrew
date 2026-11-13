@@ -116,6 +116,10 @@ impl<const N: usize> Receipt<N> {
         !self.invalid
     }
 
+    pub(crate) fn events(&self) -> &[Option<Event>] {
+        &self.events[..self.used]
+    }
+
     // A closed refusal diagnostic is not proof of process ownership or cleanup.
     pub(crate) fn closed_refusal_diagnostic(&mut self) -> bool {
         if !self.claimed || !self.internally_consistent() {

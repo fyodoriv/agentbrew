@@ -10,6 +10,7 @@ EXPECTED_SIGNAL = '    fn signal(&mut self, signal: Signal) -> Result<(), Signal
 EXPECTED_EVIDENCE = 'fn evidence(reason: Observation) -> owner_hosted_receipt::Evidence {\n    use owner_hosted_receipt::Evidence;\n    match reason {\n        Observation::SignalSetup\n        | Observation::Request\n        | Observation::StartupCancelled\n        | Observation::IoSetup => Evidence::SetupFailure,\n        Observation::InputIncomplete\n        | Observation::InputWrite\n        | Observation::OutputRead\n        | Observation::OutputWrite\n        | Observation::OutputLimit => Evidence::WorkFailure,\n        Observation::WaitError | Observation::SignalError | Observation::ReapError => {\n            Evidence::OwnershipUnknown\n        }\n        Observation::SignalAttempt => Evidence::Intent,\n        Observation::ControlRead\n        | Observation::SignalFlag\n        | Observation::ParentPresent\n        | Observation::WorkDeadline\n        | Observation::TerminalCode\n        | Observation::TerminalSignal\n        | Observation::ExperimentGuardRefused\n        | Observation::ReapCode\n        | Observation::ReapSignal\n        | Observation::Failed => Evidence::Context,\n    }\n}\n'
 EXPECTED_REAP = '    fn reap(&mut self) -> Result<std::process::ExitStatus, ReapFailure> {\n        let status = self.status();\n        #[cfg(owner_hosted_experiment)]\n        if status.is_err() {\n            let _ = self\n                .receipt\n                .record(owner_hosted_receipt::Event::Observation(\n                    owner_hosted_receipt::Evidence::OwnershipUnknown,\n                ));\n        }\n        if status.map_err(|_| ReapFailure::Wait)?.is_none() {\n            #[cfg(owner_hosted_experiment)]\n            let _ = self\n                .receipt\n                .record(owner_hosted_receipt::Event::Observation(\n                    owner_hosted_receipt::Evidence::OwnershipUnknown,\n                ));\n            return Err(ReapFailure::NotTerminal);\n        }\n        let status = self.child.wait().map_err(|error| {\n            self.last_error = error.raw_os_error().unwrap_or(-1);\n            #[cfg(owner_hosted_experiment)]\n            let _ = self\n                .receipt\n                .record(owner_hosted_receipt::Event::Observation(\n                    owner_hosted_receipt::Evidence::OwnershipUnknown,\n                ));\n            ReapFailure::ChildWait\n        })?;\n        #[cfg(owner_hosted_experiment)]\n        let _ = self\n            .receipt\n            .record(owner_hosted_receipt::Event::Observation(\n                owner_hosted_receipt::Evidence::Reaped,\n            ));\n        self.reserved = false;\n        Ok(status)\n    }'
 EXPECTED_WRAPPER = '#[cfg(owner_hosted_experiment)]\npub(crate) fn supervise(\n    command: Command,\n    startup: Startup,\n    limit: usize,\n    policy: InputPolicy,\n    receipt: Option<File>,\n    experiment_receipt: &mut owner_hosted_receipt::Receipt<256>,\n) -> i32 {\n    if !experiment_receipt.claim() {\n        return WorkerFailure::ExperimentGuardRefused.code();\n    }\n    let result = supervise_impl(command, startup, limit, policy, receipt, experiment_receipt);\n    let _ = experiment_receipt.finalize_after_return();\n    result\n}\n'
+EXPECTED_EXPORT = '#[cfg(owner_hosted_experiment)]\npub(crate) fn export_receipt(\n    receipt: &mut owner_hosted_receipt::Receipt<256>,\n    output: &mut [u8],\n) -> Option<usize> {\n    owner_hosted_export_writer::encode_receipt(receipt, output)\n}'
 
 
 def valid_boundary(worker, transport, fixture):
@@ -26,7 +27,11 @@ def valid_boundary(worker, transport, fixture):
     reap = worker[end:worker.index("\n}\n\nimpl Drop for Leader", end)]
     wrapper_start = worker.index("#[cfg(owner_hosted_experiment)]\npub(crate) fn supervise(")
     wrapper = worker[wrapper_start:worker.index("\n// Only a fresh fixed-operation worker", wrapper_start)]
+    export_start = worker.index("#[cfg(owner_hosted_experiment)]\npub(crate) fn export_receipt(")
+    export = worker[export_start:worker.index("\n}\n", export_start) + 2]
     return (signal.strip() == EXPECTED_SIGNAL.strip()
+            and export.strip() == EXPECTED_EXPORT.strip()
+            and worker.count("owner_hosted_export_writer::encode_receipt(") == 1
             and wrapper.strip() == EXPECTED_WRAPPER.strip()
             and worker.count("finalize_after_return()") == 1
             and worker.count("supervise_impl") == 3
@@ -72,6 +77,7 @@ class BoundaryTests(unittest.TestCase):
     def test_bypass_and_cfg_removal_mutations_are_rejected(self):
         mutations = [
             (self.worker.replace('owner_guarded_dispatch::dispatch(|| kill_process_group', 'unguarded(|| kill_process_group'), self.fixture),
+            (self.worker.replace('owner_hosted_export_writer::encode_receipt(receipt, output)', 'Some(0)', 1), self.fixture),
             (self.worker.replace('experiment_receipt.finalize_after_return()', 'experiment_receipt.claim()', 1), self.fixture),
             (self.worker.replace('#[cfg(not(owner_hosted_experiment))]\n        let result', '        let result'), self.fixture),
             (self.worker, self.fixture.replace('#[cfg(not(owner_hosted_experiment))]\ncompile_error!', 'compile_error!')),

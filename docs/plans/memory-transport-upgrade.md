@@ -51,6 +51,17 @@ This is cooperative only. Older Agentbrew processes, other programs, direct
 launchctl calls, and database writers do not honor it. A live upgrade must
 account for them separately; a lock alone is not an exclusive handoff.
 
+The first integration regression failed because restart proceeded while the
+lock was held. The draft now wraps setup, restart, and disable with the same
+native lock and refuses a present or unreadable recovery record. Focused tests
+passed for contention, a separate process, owner death, recovery refusal,
+release after a thrown restart, and setup and removal after release. A shared
+path resolver names the lock and recovery record. The existing generic upgrade
+orchestrator still accepts an arbitrary record path and does not own this lock;
+no live upgrade may rely on these controls until its adapter uses that resolver
+and holds the lock through handoff. Database writers and older controllers are
+not coordinated by this lock.
+
 ## Upstream migration commands: scratch observations
 
 The 12.9.0 package provides `memory check-db` and `memory migrate`. The

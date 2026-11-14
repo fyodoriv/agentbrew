@@ -542,6 +542,10 @@ job identity and confirms that it is no longer registered before removing its
 job file. This does not prove that every child process exited. If a check or
 removal fails, the caller's memory state stays unchanged; service health may
 still need checking after a partial removal.
+On macOS, memory setup, restart, and disable share an operating-system lock.
+They refuse to proceed while another cooperating operation holds it or an
+upgrade recovery record exists. Older versions and direct launchd commands do
+not honor this lock, so it does not establish an exclusive upgrade window.
 
 The backup command returns an error when its integrity check fails.
 Each backup gets a unique name and is published without replacing an existing

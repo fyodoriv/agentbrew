@@ -11,8 +11,10 @@ import {
   resolveSchedulerNode,
 } from "../sync/scheduler-paths.js";
 import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_PINNED_SPEC, MEMORY_UVX_ARGS } from "./constants.js";
+import { acquireMemoryControlLock, memoryControlPaths } from "./control-lock.js";
 import { resolveUvxBin } from "./invoke.js";
 import { defaultMemoryDbPath, memoryLaunchAgentLogDir } from "./paths.js";
+import { readUpgradeIntent } from "./upgrade-intent.js";
 
 export const MEMORY_AGENT_LABEL = "com.agentbrew.mcp-memory";
 export const MEMORY_MAINTAIN_LABEL = "com.agentbrew.mcp-memory-maintain";
@@ -444,7 +446,7 @@ export function memoryUpgradeEnvironmentSafe(): boolean {
   );
 }
 
-export function installMemoryLaunchAgents(): {
+type MemoryLaunchAgentResult = {
   installed: boolean;
   upgradeBlocked?: boolean;
   changed?: boolean;
@@ -454,13 +456,42 @@ export function installMemoryLaunchAgents(): {
   maintainDisabled?: boolean;
   maintainReloaded?: boolean;
   reason?: string;
-} {
+};
+
+function withMemoryControl<T>(operation: () => T): T {
+  const { dir, lock: lockPath, intent } = memoryControlPaths();
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const lock = acquireMemoryControlLock(lockPath);
+  try {
+    lock.assertHeld();
+    if (readUpgradeIntent(intent).state !== "absent") {
+      throw new Error("memory upgrade requires recovery");
+    }
+    return operation();
+  } finally {
+    lock();
+  }
+}
+
+export function installMemoryLaunchAgents(): MemoryLaunchAgentResult {
   if (!memoryLaunchAgentSupported()) {
     return { installed: false, reason: "no boot persistence on non-macOS" };
   }
   if (!launchdTargetsThisHome()) {
     return { installed: false, reason: "launchd not changed: HOME is not your home folder" };
   }
+  try {
+    return withMemoryControl(installMemoryLaunchAgentsUnlocked);
+  } catch {
+    return {
+      installed: false,
+      upgradeBlocked: true,
+      reason: "memory service control unavailable or recovery required",
+    };
+  }
+}
+
+function installMemoryLaunchAgentsUnlocked(): MemoryLaunchAgentResult {
   const home = homedir();
   const logDir = memoryLaunchAgentLogDir();
   mkdirSync(logDir, { recursive: true });
@@ -545,17 +576,21 @@ function removeMemoryLaunchAgent(plist: string, label: string): void {
 export function uninstallMemoryLaunchAgents(): void {
   if (!memoryLaunchAgentSupported()) return;
   if (!launchdTargetsThisHome()) throw new Error("memory service removal requires the user's HOME");
-  removeMemoryLaunchAgent(memoryPlistPath(), MEMORY_AGENT_LABEL);
-  removeMemoryLaunchAgent(maintainPlistPath(), MEMORY_MAINTAIN_LABEL);
+  withMemoryControl(() => {
+    removeMemoryLaunchAgent(memoryPlistPath(), MEMORY_AGENT_LABEL);
+    removeMemoryLaunchAgent(maintainPlistPath(), MEMORY_MAINTAIN_LABEL);
+  });
 }
 
 export function kickstartMemoryDaemon(): boolean {
   if (!memoryLaunchAgentSupported() || !launchdTargetsThisHome()) return false;
   try {
-    runLaunchctl(["kickstart", "-k", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], {
-      stdio: "pipe",
+    return withMemoryControl(() => {
+      runLaunchctl(["kickstart", "-k", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], {
+        stdio: "pipe",
+      });
+      return true;
     });
-    return true;
   } catch {
     // best effort
     return false;

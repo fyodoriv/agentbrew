@@ -20,6 +20,14 @@ An orchestration test with controlled callbacks does not prove that launchd
 or old external controllers are exclusive. A live adapter must establish and
 maintain that separate condition before invoking this sequence.
 
+The draft now joins the checks and recovery record to the snapshot sequence.
+Synthetic tests cover existing records, failed preflight, loss of control,
+database and snapshot replacement, a lost candidate response, and later
+candidate writes. The pre-upgrade snapshot is kept outside normal rotation;
+rotation refuses its reserved directory even through a symlink. No real
+launchd control implementation invokes this orchestration yet. A separate
+temporary-service rehearsal is queued.
+
 ## Test guard setup failure prediction
 
 - **Root cause hypothesis:** If an earlier test setup hook times out before the

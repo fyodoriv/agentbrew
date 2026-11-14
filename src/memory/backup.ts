@@ -1,10 +1,20 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { constants, copyFileSync, existsSync, linkSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import {
+  constants,
+  copyFileSync,
+  existsSync,
+  linkSync,
+  mkdirSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { errorMessage } from "../core/errors.js";
-import { MEMORY_BACKUP_KEEP } from "./constants.js";
+import { MEMORY_BACKUP_KEEP, MEMORY_UPGRADE_SNAPSHOT_DIR } from "./constants.js";
 
 export interface SqliteBackupOptions {
   sqliteBin?: string;
@@ -113,6 +123,9 @@ export function writeMemoryBackup(sourceDb: string, backupsDir: string, now: Dat
 /** Delete all but the newest `keep` `.db` backups (and their sidecars) in `backupsDir`; return the removed paths. */
 export function pruneMemoryBackups(backupsDir: string, keep: number): string[] {
   if (!existsSync(backupsDir)) return [];
+  if (basename(realpathSync(backupsDir)) === MEMORY_UPGRADE_SNAPSHOT_DIR) {
+    throw new Error("Cannot rotate protected memory upgrade snapshots");
+  }
   const backups = readdirSync(backupsDir)
     .filter((entry) => entry.endsWith(".db"))
     .map((entry) => {

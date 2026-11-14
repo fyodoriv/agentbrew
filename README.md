@@ -542,7 +542,8 @@ On refusal, the existing memory-enabled setting is preserved.
 The backup command returns an error when its integrity check fails.
 Each backup gets a unique name and is published without replacing an existing
 snapshot. Backup creation fails if the destination filesystem cannot create
-the required hard link.
+the required hard link. Backup rotation refuses the reserved
+`.agentbrew-upgrade-snapshots` directory, including paths that resolve to it.
 Memory backup and health checks honor `MCP_MEMORY_SQLITE_PATH` and the upstream
 `MCP_MEMORY_SQLITEVEC_PATH` alias, in that order. When neither is set, they
 use `MCP_MEMORY_BASE_DIR` if present. Backup directories also honor the upstream

@@ -49,6 +49,9 @@ export const MEMORY_BACKUP_MAX_AGE_SEC = 93_600;
 /** Daily backups kept by `agentbrew memory maintain` (two weeks). */
 export const MEMORY_BACKUP_KEEP = 14;
 
+/** Private snapshots kept for an unresolved memory upgrade. */
+export const MEMORY_UPGRADE_SNAPSHOT_DIR = ".agentbrew-upgrade-snapshots";
+
 /** Managed MCP server name wired by `agentbrew memory enable`. */
 export const MEMORY_MANAGED_SERVER_NAME = "memory";
 

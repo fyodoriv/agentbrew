@@ -35,3 +35,12 @@ opening precedes the regular-file check; this remains limited to the
 fixture-owned directory. A later state cannot identify the writer. The physical
 test and its numeric PID checks are unchanged and are not qualified by this
 control. Hosted verification is still required.
+
+A later independent review found that Node's [file-open constants](https://nodejs.org/api/fs.html#file-open-constants)
+can be unavailable on some platforms. Bitwise coercion would otherwise remove
+the safeguards. The new control failed before the guard and passed afterward:
+missing, zero, invalid or overlapping flags refuse before open. Supported
+hosts retain the scratch-file controls; unsupported hosts take the closed
+refusal path without creating a symlink. Flag shape alone does not prove OS
+semantics or bounded filesystem latency. The injected flags and opener are
+internal test seams, not authority for untrusted callers.

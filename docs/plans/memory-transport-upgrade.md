@@ -1092,3 +1092,23 @@ The local follow-up at `fa3fa9f1` passed both known-word controls and returned
 produced the same result. Both runs passed their isolation controls and stopped
 the scratch MCP process. The task arm is post-hoc; neither result measures
 coding outcomes.
+
+## Native lock descriptor prediction
+
+- **Hypothesis:** macOS `lockf` can lock an inherited file descriptor and the
+  owning process keeps the lock after the helper exits, until it closes the
+  descriptor. A competing process cannot acquire it in that interval.
+- **Measurement:** On a disposable macOS runner, acquire a lock on a scratch
+  file descriptor, try a nonblocking competing lock, close the descriptor, and
+  try again.
+- **Success:** Acquisition succeeds, the competitor fails while held, and it
+  succeeds after close. The scratch process leaves no background children.
+- **Pivot:** If any check fails, do not use this primitive for the handoff.
+- **Anchor:** macOS `lockf(1)` descriptor mode and BSD `flock(2)` semantics.
+
+This tests cooperating processes only. It does not stop older Agentbrew builds,
+direct launchd commands, external writers, or replacement of the lock file.
+A separate scratch experiment observed that killing a supervising `lockf`
+process can release its lock while its child survives; the child cleanup from
+that experiment was not independently verified. A wrapper alone is therefore
+not sufficient evidence of crash-safe coordination.

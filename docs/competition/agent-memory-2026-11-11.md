@@ -113,13 +113,14 @@ accepted unauthenticated discovery and an untrusted-origin preflight returned
 wildcard CORS headers. No destructive exploit was run. Browser protections and
 the complete attack path were not tested.
 
-Version [12.8.0](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.8.0)
-is the latest release observed for this research. Its compatibility and
-database migrations must pass the isolated checks in the
+Version [12.9.0](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.9.0)
+superseded the original 12.8.0 candidate. Its compatibility and database
+migrations must pass the isolated checks in the
 [upgrade prediction](../plans/memory-transport-upgrade.md) before deployment.
 An isolated HTTP rehearsal confirmed that the old version accepted an
-untrusted origin and the candidate rejected it; both accepted local MCP
+untrusted origin and the 12.8.0 candidate rejected it; both accepted local MCP
 initialization. The test used synthetic stores and did not modify live data.
+This rehearsal does not by itself prove 12.9.0 has the same behavior.
 On November 11, the upstream [published advisory list](https://github.com/doobidoo/mcp-memory-service/security/advisories)
 included multiple version ranges covering 11.7.0. None listed 12.8.0 as
 affected. Each advisory has its own configuration and exposure conditions;

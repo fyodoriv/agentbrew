@@ -1128,3 +1128,20 @@ not sufficient evidence of crash-safe coordination.
 
 This test does not prove crash handling, Node 20 compatibility, or protection
 against processes that do not take the lock.
+
+## Manual CI concurrency prediction
+
+- **Hypothesis:** A newer manually started CI run for the same branch will
+  supersede an older manual run, so an obsolete run cannot hold the current
+  commit in the same concurrency group. Main-branch push runs remain uncancelled
+  by this setting.
+- **Measurement:** Run the CI workflow contract test and observe two synthetic
+  manual dispatches on the draft branch, checking the older run's cancellation
+  and the newer run's start.
+- **Success:** The contract test passes; the older same-branch manual run is
+  cancelled and the newer one starts; the push condition remains false.
+- **Pivot:** If another event can cancel a main push or the newer run remains
+  pending behind the older one, revert the change and keep the current run
+  under observation.
+- **Anchor:** GitHub Actions `concurrency.cancel-in-progress` and the observed
+  manual runs 43537645749 and 43537887180.

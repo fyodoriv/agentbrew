@@ -144,6 +144,23 @@ describe("writeMemoryBackup", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+  it.runIf(process.platform === "darwin")("does not inherit access rules into the synthetic backup", () => {
+    const dir = mkdtempSync(join(tmpdir(), "memory-backup-inherit-"));
+    const destDir = join(dir, "backups");
+    try {
+      mkdirSync(destDir, { mode: 0o700 });
+      execFileSync("/bin/chmod", ["+a", "everyone deny delete,file_inherit,directory_inherit", destDir]);
+      const source = join(dir, "source.db");
+      execFileSync("sqlite3", [source, "CREATE TABLE memories (id INTEGER, deleted_at TEXT);"]);
+      const published = sqliteBackup(source, join(destDir, "backup.db"));
+      const acl = execFileSync("/bin/ls", ["-le", published], { encoding: "utf-8" });
+      expect(acl.trimEnd().split("\n")).toHaveLength(1);
+      expect(statSync(published).mode & 0o077).toBe(0);
+    } finally {
+      if (existsSync(destDir)) execFileSync("/bin/chmod", ["-N", destDir]);
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
   it("keeps temporary and published synthetic backups private under a permissive umask", () => {
     const dir = mkdtempSync(join(tmpdir(), "memory-backup-private-"));
     const originalTmp = process.env.TMPDIR;

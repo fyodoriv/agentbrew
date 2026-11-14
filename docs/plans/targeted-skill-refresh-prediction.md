@@ -1,0 +1,63 @@
+# Targeted skill refresh prediction
+
+An existing catalog skill can remain stale because install skips the staging
+copy. The broad skills pull can update other sources and prune skills; its
+dry-run does not preview the prune. The global goal rule is active, but the
+installed goal workflow is still an older managed snapshot.
+
+- **Hypothesis:** A named refresh can update one owned skill from its source
+  while leaving all other installed skills and source checkouts unchanged.
+- **Measurement:** Run focused command and filesystem controls, then hosted
+  CI. Refresh the goal workflow and compare its installed bytes to the merged
+  source and its agents' deployed targets.
+- **Success:** At least eight controls cover unique ownership, ambiguous or
+  missing ownership, offline fetch, dirty cache, rollback, unchanged source,
+  and unrelated skill preservation. The named copy matches its source; zero
+  unrelated copies or source checkouts change.
+- **Pivot:** If ownership is ambiguous, the checkout is dirty, the source
+  cannot be fetched, or another skill changes, refuse the refresh and retain
+  the previous snapshot. Do not silently prune or use the broad updater.
+- **Anchor:** `src/catalog/install-skill.ts`, `src/update.ts`, and the
+  2026-11-13 run-goal sync/install observation.
+
+## Design constraints from review
+
+The current CLI has no supported one-skill refresh. Its broad pull can prune
+other skills, and its existing copy helper deletes the old staging tree before
+copying. A safe operation needs one verified owner, a pinned source tree,
+bounded reads, a shared destination lock, a recoverable staging journal, and
+verified existing agent links. It must preserve user edits and unrelated
+skills. Two directory renames alone are not crash-atomic. No targeted
+replacement has been performed.
+
+## Local preflight
+
+On 2026-11-13, the managed goal workflow had one source claimant. Its staged
+tree exactly matched the locked historical source revision. The checked Codex
+and Claude links both pointed to that staged tree. These observations do not
+lock out concurrent writers and do not make replacement crash-safe.
+
+The first ownership check covers source records only. A separate check must
+cover local skill directories, plugins, and deployed links before any write.
+Malformed records, duplicate claims, and case aliases must refuse the refresh.
+The sync scanner catches unreadable-directory errors and returns partial or
+empty results. It cannot prove that no competing owner exists. A refresh needs
+a bounded, fail-closed inventory of the same effective source roots, including
+legacy and plugin roots, plus deployed targets. An unreadable or changing root
+is an unknown owner, not an empty one.
+The source-record selector does not validate remote identity. A future caller
+must verify the supported source and exact pinned tree independently; a unique
+source record alone never authorizes a write.
+The existing source checkout lease serializes checkout operations, but the
+install, prune, and clean paths also write the staging directory. A destination
+lock only protects the replacement if every such writer participates; adding
+a private lock to the new command alone is insufficient. Sync also changes
+deployed links and needs an explicit coordination boundary.
+
+## Current state
+
+Another session refreshed the managed goal workflow. Its files now match the
+source and the existing agent links point to that managed copy. This task no
+longer needs a custom refresh. The unused source-claim preparation is removed;
+the general scoped-refresh improvement is tracked separately. The earlier
+stale observation remains historical, not a claim about the current copy.

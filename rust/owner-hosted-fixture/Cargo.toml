@@ -1,0 +1,15 @@
+[package]
+name = "owner-hosted-fixture"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.97"
+publish = false
+
+[dependencies]
+rustix = { version = "=1.1.4", features = ["fs", "process", "time"] }
+nix = { version = "=0.31.3", default-features = false, features = ["signal"] }
+signal-hook = "=0.4.5"
+serde = { version = "=1.0.229", features = ["derive"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(owner_hosted_experiment)'] }

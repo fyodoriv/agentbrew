@@ -3560,6 +3560,18 @@
         "Request an update to the same plan",
         "Require evidence, blockers and next action"
       ]
+    },
+    {
+      "id": 311,
+      "prompt": "A hosted test step fails in every pull-request run and passes in a push run of the same commit. Five full gate runs of 35 minutes each gave no cause. What do you do next?",
+      "expected_output": "Treat the event type as the trigger: list the tools the step starts and check what each does with GITHUB_EVENT_PATH or GITHUB_EVENT_NAME, isolate it with a small throwaway workflow on a scratch branch, reproduce the cause locally, add a test that fails without the fix, and delete the scratch branch.",
+      "expectations": [
+        "Name the CI event type as the trigger, not the code under test",
+        "Check what the step's tools do with GITHUB_EVENT_PATH or GITHUB_EVENT_NAME",
+        "Use a small throwaway workflow instead of more full gate runs",
+        "Reproduce locally and add a failing test before the fix",
+        "Delete the scratch branch after"
+      ]
     }
   ]
 }

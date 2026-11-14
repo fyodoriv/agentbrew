@@ -190,6 +190,27 @@ extraction failed. That report concerns other configurations and versions,
 not this trial. A search hit alone will not prove that the local memory
 extraction pipeline succeeded; inspect the result type and ingestion status.
 
+## Small matched retrieval pilot — November 13
+
+A scratch trial used 17 answerable questions and their reference memories from
+[agent-memory-bench revision c1b15726](https://github.com/GiulioDER/agent-memory-bench/tree/c1b15726f1153b02dda0490ca1936bb86a809514).
+The full reference text had to appear in one of the first five returned results.
+
+| Local system | Matching references | Scope |
+| --- | --- | --- |
+| MCP Memory Service 12.9 with ONNX | 17/17 | Memory entries; 16 ranked first in the audited run. |
+| Supermemory 0.0.9 | 14/17 | Source chunks; all documents reported indexed. |
+| Beacon 1.3.60 | 0/17 | Approved project memories, using full questions as `q` or `task`. |
+
+Beacon's known-word controls passed for both inputs in the local trial and its
+[hosted repeat](https://github.com/fyodoriv/agentbrew/actions/runs/43530394202).
+The first Beacon run used `q`; the `task` follow-up was chosen after that result. The systems use
+different APIs and filtering, and the Supermemory local model service was
+outside the trial sandbox. Only public test data was used. This small pilot
+does not test absent answers, coding outcomes, capture quality, or all client
+integrations. It favors the existing engine for this retrieval task; it does
+not establish an overall winner.
+
 ## Published hosted pricing
 
 Prices below were checked November 11 and can change. They are not the cost of

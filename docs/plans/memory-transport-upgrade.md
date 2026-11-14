@@ -1066,3 +1066,9 @@ questions using the documented `task` input. This is a follow-up after seeing
 - **Pivot:** If the known-word control fails, do not interpret either score;
   if the task count is lower, report it as a post-hoc result.
 - **Anchor:** Beacon `search_memory` input schema in the first hosted trial.
+
+The local follow-up at `fa3fa9f1` passed both known-word controls and returned
+0/17 for full-question `q` and `task` inputs. The [hosted repeat](https://github.com/fyodoriv/agentbrew/actions/runs/43530394202)
+produced the same result. Both runs passed their isolation controls and stopped
+the scratch MCP process. The task arm is post-hoc; neither result measures
+coding outcomes.

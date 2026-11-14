@@ -1,5 +1,23 @@
 # Shared memory transport upgrade prediction
 
+## Candidate job derivation prediction
+
+- **Hypothesis:** Deriving a candidate from a verified loaded job and changing
+  only its upstream version pin preserves the service recipe and rejects
+  mismatched job files or ambiguous pins.
+- **Measurement:** Compare parsed scratch job files and loaded-job fixtures.
+  Test matching inputs, a changed environment, arguments or working directory,
+  duplicate pins, malformed files and a changed candidate pin.
+- **Success:** The matching candidate differs in exactly the requested pin;
+  every mismatched or ambiguous fixture is refused before service changes.
+- **Pivot:** If the loaded and saved configurations cannot be compared
+  reliably, leave candidate creation unavailable.
+- **Anchor:** `src/memory/upgrade-launchagent.ts`, macOS `plutil(1)`, and the
+  read-only loaded-job comparison in the local report.
+
+Matching known configuration does not prove the absence of hidden upstream
+configuration sources or exclusive control.
+
 ## Coordinated launchd rehearsal prediction
 
 - **Hypothesis:** The coordinated upgrade entry point and real launchd runtime

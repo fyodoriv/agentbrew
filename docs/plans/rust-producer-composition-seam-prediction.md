@@ -50,3 +50,19 @@ No source or worker is executed. This host-only seam is not proof of compiled
 record inspection, Rust coverage, `native-fact-mismatch`, N15/N18 qualification,
 or adapter and worker admission. Those require a separately reviewed real Rust
 evidence and conflict path.
+
+## Reviewed input shape
+
+Use one borrowed fixed-shape test input: source path and independently supplied
+complete bytes, call/output/body ranges, and expected literal values. The
+builder fixes operation, API, labels, mode and empty environment inputs; it
+does not accept arbitrary recursive `Evidence` or `Datum`. Before allocating
+owned strings or vectors, verify the regular indexed source, UTF-8, full byte
+equality, each ordered in-bounds character-boundary range and expected source
+slice, and the aggregate size of every retained string and nested site. The
+source must actually be in the current worklist. Test one parsed `.ts` path
+for conflict and one non-host `.rs` worklist path for insertion; the latter
+is synthetic composition, not a Rust writer witness. A separately labeled
+pure synthetic inspector-error helper cannot claim the real inspector failed.
+Independent review must check the actual implementation and all error paths
+before accepting the controls.

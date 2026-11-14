@@ -311,6 +311,10 @@ independently verify the candidate's effective environment before using it.
 - **Anchor:** `src/memory/upgrade-launchagent.ts` and the existing macOS
   launchd scratch handoff.
 
+The identity observation must surround both the endpoint health check and the
+upstream schema check. A changed identity at either boundary must fail the
+candidate stage without restoring over candidate writes.
+
 ## Multi-process runtime rehearsal prediction
 
 - **Hypothesis:** The real runtime will identify a listener descended from a

@@ -1,5 +1,24 @@
 # Shared memory transport upgrade prediction
 
+## Shared handoff lock prediction
+
+- **Hypothesis:** A controlled upgrade entry point that holds the same lock
+  and uses the same recovery-record path as service controls will prevent a
+  cooperating restart or disable throughout the upgrade sequence.
+- **Measurement:** Run scratch orchestration with a competing control attempt,
+  an existing recovery record, and an operation that throws. Verify the
+  canonical record path, lock release, and successful scratch handoff.
+- **Success:** Zero tested competing mutations proceed while the upgrade owns
+  the lock; every blocked or thrown case leaves it releasable; candidate start
+  requires the expected recovery record; focused tests pass.
+- **Pivot:** If any stage can change the service without a held lock or the
+  expected record, keep the live upgrade unavailable.
+- **Anchor:** `src/memory/control-lock.ts`, `src/memory/launchagent.ts`, and
+  `src/memory/upgrade-orchestrator.ts`.
+
+This is cooperative coordination, not proof that old binaries or direct
+launchd commands are absent. The caller must establish other control separately.
+
 ## Disable failure state prediction
 
 - **Root cause hypothesis:** `disableMemory` clears managed state before it

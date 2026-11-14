@@ -1,5 +1,21 @@
 # Shared memory transport upgrade prediction
 
+## Test guard setup failure prediction
+
+- **Root cause hypothesis:** If an earlier test setup hook times out before the
+  task-file guard records its baseline, its cleanup compares the real file to
+  an uninitialized value and reports a change the tests did not make.
+- **Hypothesis:** A guard with no captured baseline will not report a file
+  change, while a guard with a captured baseline still detects changes.
+- **Measurement:** Run a focused regression that simulates both hook states,
+  plus the existing test-isolation checks.
+- **Success:** A missing baseline causes zero false task-file reports; a real
+  post-baseline change causes one report; all focused checks pass.
+- **Pivot:** If the guard can miss a change after tests run, retain the old
+  behavior and investigate hook ordering before changing it.
+- **Anchor:** `vitest.tasks-guard.ts`, `vitest.isolated-home.ts`, and
+  `/private/tmp/agentbrew-preflight-test3.log`.
+
 ## Memory database preflight prediction
 
 - **Hypothesis:** A read-only macOS preflight can identify the database held by

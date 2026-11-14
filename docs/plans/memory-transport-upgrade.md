@@ -1,5 +1,21 @@
 # Shared memory transport upgrade prediction
 
+## Upgrade sequence test detection prediction
+
+- **Root cause:** Node 22.23.4 can import `node:sqlite`, but does not list it in
+  `builtinModules`. The upgrade sequence suite uses that list and skips its
+  safety tests on this supported runtime.
+- **Hypothesis:** Detecting the import directly runs the sequence tests on
+  Node 22 and 24, while still skipping them when SQLite is unavailable.
+- **Measurement:** Run `src/memory/upgrade-sequence.test.ts` under Node 20,
+  22, and 24 and inspect passed and skipped counts.
+- **Success:** All seven sequence tests pass on Nodes 22 and 24; Node 20 skips
+  all seven. No test failures occur.
+- **Pivot:** If an import succeeds but a sequence test fails, investigate the
+  failure and do not treat the upgrade as ready.
+- **Anchor:** `src/memory/write-reservation.test.ts` and Node 22.23.4 runtime
+  import probe.
+
 ## Hosted descriptor owner-crash trial prediction
 
 - **Hypothesis:** A Node owner on macOS holds an inherited descriptor lock

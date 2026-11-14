@@ -7,6 +7,7 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 | Check | Hosted runner | Your machine |
 |---|---|---|
 | Full gate, `npm run verify` | Every pull request to `main`, every push to `main`, and by hand (`gh workflow run ci.yml`) | Only when Actions is off, or to reproduce a hosted failure. Iterate with `npm run verify:changed` |
+| Rust inventory core | Pull requests changing the shared core or its workflow | Runs focused offline Rust controls |
 | `oss-readiness` (no-internal-refs test, private-email check) | Every pull request and push to `main` | Part of `npm run verify` |
 | Private-pattern leak gates (pre-commit, pre-push, `gh` guard) | Never | Always |
 | Version bump (`auto-publish.yml`) | Only by hand, only on `main` | `npm run release` |

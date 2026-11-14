@@ -173,6 +173,19 @@
 
 ## P1
 
+- [ ] Verify memory backup access controls on Linux and Windows
+  - **ID**: memory-backup-platform-access-controls
+  - **Tags**: memory, security, testing
+  - **Mode**: AFK
+  - **Details**: The synthetic staging check verifies macOS access rules. Linux and Windows access-control behavior has not been proved, and Windows ownership checks are not implemented in the draft. Test effective access using synthetic records on each supported filesystem; use platform access-control APIs or a maintained upstream tool. Never use private memory in these tests.
+  - **Output**: code
+  - **Acceptance**: Each supported platform either proves that an unrelated user cannot read a staged or published backup, or refuses the operation before private data is copied. Explain any unsupported filesystem in the user guide.
+  - **Hypothesis**: Platform-specific access checks prevent unauthorized backup reads without blocking a valid owner-only backup.
+  - **Measurement**: Run synthetic owner and unrelated-user backup controls on Linux and Windows, including inherited access rules.
+  - **Success**: 4 of 4 owner and unrelated-user controls behave correctly, with 0 private records used.
+  - **Pivot**: If effective access cannot be established, fail closed on that platform until a maintained upstream solution supports it.
+  - **Anchor**: `src/memory/backup.ts`; Linux `acl(5)` and Microsoft Windows file security documentation.
+
 - [ ] Keep memory research trials reproducible and bounded
   - **ID**: memory-research-trial-maintenance
   - **Tags**: memory, testing, stability

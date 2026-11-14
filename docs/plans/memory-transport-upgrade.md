@@ -18,6 +18,12 @@
 The temporary job does not establish exclusive control over the live daemon
 or other clients. The rehearsal must not access the live memory database.
 
+The temporary-job rehearsal passed with attested upstream versions. The
+guarded callback flow, recovery record, candidate recall, restored snapshot,
+and cleanup all passed. The test injected a runtime that assumed safe
+environment and maintenance control, and simplified process ancestry. It
+therefore does not verify the production runtime or authorize live migration.
+
 ## Launchd handoff control prediction
 
 - **Hypothesis:** A launchd control adapter that checks the expected job before

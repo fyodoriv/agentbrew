@@ -297,6 +297,20 @@ The builder returns this as `observedRuntime`, not a verified runtime. It can
 contain secrets: do not log it or save it in a receipt. A live adapter must
 independently verify the candidate's effective environment before using it.
 
+### Candidate listener identity prediction
+
+- **Hypothesis:** Rechecking the registered candidate job and listener ancestry
+  before and after health observation prevents an unrelated listener from
+  being reported as the upgraded service.
+- **Measurement:** Focused controls for a matching candidate, changed job,
+  unrelated listener, and process identity changing during observation.
+- **Success:** All 4 controls pass. No process is stopped by the identity
+  check.
+- **Pivot:** If the listener or process identity cannot be established, report
+  candidate failure and preserve the recovery record.
+- **Anchor:** `src/memory/upgrade-launchagent.ts` and the existing macOS
+  launchd scratch handoff.
+
 ## Multi-process runtime rehearsal prediction
 
 - **Hypothesis:** The real runtime will identify a listener descended from a

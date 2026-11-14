@@ -414,7 +414,7 @@ start it again after the edits; never report its result for the new code.
 
 ## Budget and scope checkpoint
 
-rough time or turn budget. Retain the original start, elapsed
+Retain the original start, elapsed
 time and known waits across resumes; report active time and waits separately
 when known. Check progress at the user's budget and
 after a correction that narrows the goal. At twice the budget, before more
@@ -428,5 +428,9 @@ choose a safe path before asking for a decision. For a failed live-data check,
 first inspect the failed check and service using read-only tools. Do not ask
 the user to choose a recovery path or interrupt writers before this diagnosis.
 Do not copy live database files as a snapshot; use the database's supported
-online backup. Account for concurrent writes before repair or replacement. Do not treat a healthy long task as blocked or override an explicit
-user deadline.
+online backup. Do not repair, replay, restore, or replace live data until a
+consistent recovery point and preservation of every concurrent write through
+cutover are proven.
+Timestamps, assumed replay, or an old backup alone are not proof. If that proof
+is absent, stop at read-only diagnosis; do not propose a speculative recovery.
+Do not treat a healthy long task as blocked or override an explicit deadline.

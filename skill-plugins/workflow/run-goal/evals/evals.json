@@ -3637,7 +3637,8 @@
         "Continues necessary diagnosis despite the elapsed budget",
         "Preserves the backup and possible new writes without blind restore",
         "Does not claim completion or bypass required checks",
-        "Continues read-only and isolated diagnosis without a redundant approval request"
+        "Continues read-only and isolated diagnosis without a redundant approval request",
+        "Requires a consistent recovery point and proven preservation of all writes through cutover before changing live data"
       ]
     }
   ]

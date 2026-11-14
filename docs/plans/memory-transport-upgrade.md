@@ -16,6 +16,11 @@
 - **Anchor:** `vitest.tasks-guard.ts`, `vitest.isolated-home.ts`, and
   `/private/tmp/agentbrew-preflight-test3.log`.
 
+The regression reproduced a false report when the baseline hook was skipped.
+With an explicit captured-baseline flag, that case passes while modification
+and creation after a real baseline still fail the guard. The earlier setup
+timeout remains a separate failure and is not hidden by this change.
+
 ## Memory database preflight prediction
 
 - **Hypothesis:** A read-only macOS preflight can identify the database held by
@@ -40,7 +45,8 @@ result is explicitly named as visible evidence; a successful `lsof` scan does
 not prove that the OS exposed every process. A real macOS scratch listener and
 file test passed after a path-alias fix: macOS reported `/private/var` for a
 file opened through `/var`. The file device and inode must still match.
-An additional scratch case with a second process holding the file is queued.
+An additional scratch case with a second process holding the file also passed;
+the test observed it and refused to mark the visible evidence consistent.
 
 ## Durable candidate intent record prediction
 

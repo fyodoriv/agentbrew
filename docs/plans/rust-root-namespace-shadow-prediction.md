@@ -84,3 +84,21 @@ checks plus a bound invocation context: configuration, compiler and wrappers,
 target, sysroot and effective arguments. It must state its toolchain and
 filesystem trust assumptions. Unknown inputs remain inconclusive. No compiler
 or analyzed source was run for this research.
+
+## Conditional fixture model
+
+For future synthetic source-semantics controls only, a candidate model may
+assume the frozen manifest is the sole crate context, a conventional Rust
+2021 toolchain supplies `std`, and there are no external aliases, configuration,
+flags, ancestor workspace, build script or unmodeled macro inputs. Those are
+fixture assumptions, not observations of an actual Cargo invocation. They do
+not change the frozen expected witnesses or authorize a clean production
+report. Unsupported source remains incomplete even in the model.
+
+Before real inventory can use such a result as authority, a separate reviewed
+contract must bind the source and effective invocation context and state its
+toolchain and filesystem trust. It cannot be a free Boolean, a manifest claim,
+or a silent ambient lookup. If those inputs cannot be established, keep
+`reviewed-source-registry-required`. Producer conflict, ledger and worker
+gates remain independent. No conditional model or production bridge has been
+implemented or measured here.

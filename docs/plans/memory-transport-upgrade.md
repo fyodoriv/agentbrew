@@ -1112,3 +1112,19 @@ A separate scratch experiment observed that killing a supervising `lockf`
 process can release its lock while its child survives; the child cleanup from
 that experiment was not independently verified. A wrapper alone is therefore
 not sufficient evidence of crash-safe coordination.
+
+### Node descriptor prediction
+
+- **Hypothesis:** On macOS, a Node process can pass its open descriptor to
+  `lockf` and retain the lock after the helper exits. A separate process
+  cannot acquire that lock until Node closes the descriptor.
+- **Measurement:** Run the focused Node test on macOS in hosted CI.
+- **Success:** Helper exit is 0, competing acquisition exit is 75, and the
+  same competing command exits 0 after Node closes the descriptor.
+- **Pivot:** If the runtime or OS behaves differently, remove the proposed
+  dependency on this method and investigate another maintained primitive.
+- **Anchor:** Node `child_process` stdio descriptor passing and macOS
+  `lockf(1)` descriptor mode.
+
+This test does not prove crash handling, Node 20 compatibility, or protection
+against processes that do not take the lock.

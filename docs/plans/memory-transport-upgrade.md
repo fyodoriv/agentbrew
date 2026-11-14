@@ -1,5 +1,26 @@
 # Shared memory transport upgrade prediction
 
+## Upstream migration commands: scratch observations
+
+The 12.9.0 package provides `memory check-db` and `memory migrate`. The
+`check-db` implementation opens the database read-only. The migration command
+opens it for writing and runs `PRAGMA journal_mode=WAL` even with `--dry-run`.
+A scratch database changed from DELETE to WAL in that mode. Do not run the
+migration dry-run against live data as a read-only probe.
+
+On the synthetic 11.7 fixture, the dry-run and actual migration both succeeded
+and listed the same eight migrations. A second synthetic fixture with its
+migration registry removed produced 13 dry-run entries and nine actual entries:
+the actual migration stamped existing legacy artifacts first, while dry-run
+skipped that step. The migrated copy passed `check-db`. This does not establish
+behavior for every database or replace a verified backup. Run migration previews
+only on a copy and treat their lists as estimates for legacy stores.
+
+The upstream commands can own schema migration and diagnosis. They do not by
+themselves coordinate Agentbrew's launchd mutators or protect writes across a
+service restart. Keep the draft upgrade code under review for removal where
+upstream behavior or existing backup tools already cover it.
+
 ## Multi-process runtime rehearsal prediction
 
 - **Hypothesis:** The real runtime will identify a listener descended from a

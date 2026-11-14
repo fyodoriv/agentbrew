@@ -1,5 +1,23 @@
 # Shared memory transport upgrade prediction
 
+## Launchd handoff control prediction
+
+- **Hypothesis:** A launchd control adapter that checks the expected job before
+  stopping it and verifies absence before registering a replacement will reject
+  identity drift and ambiguous command outcomes before an unsafe restart.
+- **Measurement:** Run focused launchd adapter tests with synthetic job state,
+  including mismatched identity, stop failure, a surviving process, successful
+  registration, and a lost registration response.
+- **Success:** Every matching synthetic handoff follows the required order;
+  every ambiguous or mismatched case stops before the next mutation.
+- **Pivot:** If a job, process, or command outcome cannot be verified, leave
+  live application unavailable and retain the recovery record.
+- **Anchor:** `src/core/launchctl.ts`, `src/memory/upgrade-orchestrator.ts`,
+  and the temporary-service handoff rehearsal.
+
+These controls do not exclude older tools or direct launchd commands. The
+caller must establish and maintain a separate controlled handoff window.
+
 ## Upgrade orchestration prediction
 
 - **Hypothesis:** Connecting the existing reservation, visible database check,

@@ -879,6 +879,12 @@ pub(crate) fn discover_root_observed(
             && manifest.mode == 0o100644
             && manifest.bytes.len() <= 2_097_152
             && actual_manifest.bytes.len() <= 2_097_152
+            && !snapshot.entries.contains_key("build.rs")
+            && !expected.entries.contains_key("build.rs")
+            && snapshot.untracked.is_empty()
+            && expected.untracked.is_empty()
+            && snapshot.ignored.is_empty()
+            && expected.ignored.is_empty()
             && actual_manifest.path == "Cargo.toml"
             && actual_manifest.mode == manifest.mode
             && actual_manifest.bytes == manifest.bytes

@@ -41,3 +41,11 @@ conservative and snapshot-relative: it does not prove that collection found
 every file, or establish ancestor workspace/configuration, Cargo home,
 compiler flags, wrappers, target, sysroot or toolchain identity. It does not
 authorize a Rust writer or worker. No analyzed source is executed.
+
+## Focused result
+
+The exact shadow control passed with 15 actual/expected/both mutations for
+tracked, untracked, ignored and unrelated entries. Each still routed the root
+and matched ordinary discovery and validation. The retained routed test and
+non-test library check passed. Independent review checked both-snapshot
+refusal and the snapshot-relative limit; this is not Cargo authority.

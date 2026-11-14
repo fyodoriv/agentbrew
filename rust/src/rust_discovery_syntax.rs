@@ -393,6 +393,62 @@ fn shadows_root_namespace() {
     let expected = copy_snapshot(&original.snapshot);
     discover_root_observed(&original.snapshot, &expected, None, &mut observer);
     assert!(observer.root_candidate());
+    for side in ["actual", "expected", "both"] {
+        for kind in [
+            "tracked",
+            "untracked",
+            "ignored",
+            "unrelated-untracked",
+            "unrelated-ignored",
+        ] {
+            let mut actual = copy_snapshot(&original.snapshot);
+            let mut expected_case = copy_snapshot(&expected);
+            let mutate = |snapshot: &mut Snapshot| match kind {
+                "tracked" => {
+                    snapshot
+                        .entries
+                        .insert("build.rs".into(), entry("build.rs", "fn main() {}"));
+                }
+                "untracked" => snapshot.untracked.push("build.rs".into()),
+                "ignored" => snapshot.ignored.push(crate::snapshot::IgnoredEntry {
+                    path: "build.rs".into(),
+                    executable: false,
+                    symlink: false,
+                }),
+                "unrelated-untracked" => snapshot.untracked.push("other".into()),
+                _ => snapshot.ignored.push(crate::snapshot::IgnoredEntry {
+                    path: "other".into(),
+                    executable: false,
+                    symlink: false,
+                }),
+            };
+            if side != "expected" {
+                mutate(&mut actual);
+            }
+            if side != "actual" {
+                mutate(&mut expected_case);
+            }
+            let plain = discover(&actual);
+            let observed = discover_root_observed(&actual, &expected_case, None, &mut observer);
+            assert!(observer.root_routed_round().is_some(), "{side} {kind}");
+            assert!(!observer.root_candidate(), "{side} {kind}");
+            assert_eq!(discovery(&plain), discovery(&observed));
+            assert_eq!(
+                report(&crate::validation::validate(
+                    &actual,
+                    "rust/inventory.json",
+                    &original.manifest,
+                    plain
+                )),
+                report(&crate::validation::validate(
+                    &actual,
+                    "rust/inventory.json",
+                    &original.manifest,
+                    observed
+                ))
+            );
+        }
+    }
     let mut swapped = copy_snapshot(&expected);
     swapped
         .entries

@@ -1,5 +1,25 @@
 # Shared memory transport upgrade prediction
 
+## Cooperative service-control lock prediction
+
+- **Hypothesis:** A macOS native descriptor lock shared by Agentbrew's memory
+  setup, restart, and disable paths prevents overlapping cooperative launchd
+  mutations during an upgrade window.
+- **Measurement:** Run focused cross-process lock and launchd mutator tests.
+  Hold the lock in one process and attempt every mutation from another, then
+  release it and repeat. Test failed acquisition and owner termination.
+- **Success:** While held, zero tested mutations reach launchd. After release,
+  all valid tested operations can proceed. Lock errors fail closed. Owner exit
+  releases the lock. Existing memory enable and sync tests pass.
+- **Pivot:** If a lock can be bypassed by any tested Agentbrew mutation, or
+  acquisition cannot fail closed, do not wire it into a live upgrade.
+- **Anchor:** macOS `lockf(1)`, `src/memory/native-lockf.test.ts`, and the
+  existing memory launch-agent mutators.
+
+This is cooperative only. Older Agentbrew processes, other programs, direct
+launchctl calls, and database writers do not honor it. A live upgrade must
+account for them separately; a lock alone is not an exclusive handoff.
+
 ## Upstream migration commands: scratch observations
 
 The 12.9.0 package provides `memory check-db` and `memory migrate`. The

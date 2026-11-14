@@ -33,6 +33,13 @@ comparison. It does not establish arbitrary-program static-analysis completeness
 
 ## Measured foundation and pending acceptance
 
+The test-only producer-composition seam proposed in
+[this prediction](rust-producer-composition-seam-prediction.md) is approved for
+the narrow host-source controls described there. It cannot supply production
+evidence, replace a failed inspector result, qualify frozen N15/N18 Rust
+cases, or authorize a worker. The registered full corpus and independent
+source-bound inspector requirements remain unchanged.
+
 The current implementation is developer preparation. It does not replace an
 installed runtime. The inventory validator has a bounded candidate, but its
 complete reviewed repository ledger is absent. Do not report this task as

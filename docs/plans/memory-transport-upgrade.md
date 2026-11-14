@@ -1,5 +1,23 @@
 # Shared memory transport upgrade prediction
 
+## Integrated launchd callback rehearsal prediction
+
+- **Hypothesis:** The draft launchd callbacks can drive the existing upgrade
+  orchestrator through a temporary macOS job, with a verified receipt and
+  preserved synthetic memories.
+- **Measurement:** Use isolated upstream services and a temporary launchd
+  label. Exercise the actual callbacks, compare the candidate's job recipe,
+  check candidate and restored memory entries, and verify job cleanup.
+- **Success:** 100% of required identity, receipt, recall, isolation, and cleanup
+  checks pass. A mismatch stops before the next service mutation.
+- **Pivot:** If any identity or cleanup result is uncertain, keep live upgrade
+  unavailable and preserve the synthetic evidence for diagnosis.
+- **Anchor:** `src/memory/upgrade-launchagent.ts`,
+  `src/memory/upgrade-orchestrator.ts`, and the direct HTTP rehearsal.
+
+The temporary job does not establish exclusive control over the live daemon
+or other clients. The rehearsal must not access the live memory database.
+
 ## Launchd handoff control prediction
 
 - **Hypothesis:** A launchd control adapter that checks the expected job before

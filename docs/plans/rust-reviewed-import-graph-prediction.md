@@ -31,3 +31,47 @@ A standalone source oracle cannot make the inventory enforce that route.
 - **Anchor:** `rust-reviewed-parser-refresh-prediction.md`,
   `rust-source-reviewed-registry.md`, `rust/src/discovery.rs`,
   `rust/src/validation.rs`, and Basili et al. (1994), Goal Question Metric.
+
+## Design review (source only)
+
+At the pinned revision, `review_ask_event.py` declares target resolution at
+lines 5–6, module initialization through `exec_module` at line 7, and a
+conditional call to `classifier.reviewer_request` at line 18. The callee's
+function is at `pr-command-target.py` lines 73–83. The command-line hook at
+`a-pr-is-not-ready.sh:63` separately invokes the parser with a transcript path.
+The classifier and event tests have their own dynamic-load routes. A textual
+search does not prove complete caller coverage or that any branch ran.
+
+A candidate contract would bind exact paths, modes, blobs and unique byte
+spans for both reviewed files and the CLI hook. It would distinguish:
+
+1. The caller module and the callee module as separate program components.
+2. A source-declared resolution/import relation to the callee.
+3. A distinct loader call-site that executes the callee module initialization.
+4. A distinct conditional call-site that invokes the reviewed exported function.
+5. The separately sourced CLI invocation and the test callers, with their own
+   review boundaries. The data argument and Boolean result are not executable
+   bodies.
+
+Existing `imports` and `invokes` edges can name generic relations, but one
+program-to-program edge cannot bind both call sites. The current record exposes
+only a CLI entry, and `validation::validate` rejects a second component on the
+reviewed parser's path. A future implementation needs source-bound identities
+for the two sites and function, a narrowly scoped same-file rule, and typed
+obligations emitted by discovery and required by validation. It must retain the
+existing CLI binding and unrelated diagnostics. Unknown aliases, callers or
+unreviewed source remain non-green; no manifest edge may authorize itself.
+
+An in-memory snapshot test could call actual discovery and validation without a
+Git worker. Independently frozen expected source facts must not be derived from
+the registry being tested. Require distinct refusal controls for changed caller,
+changed callee, wrong path, wrong mode, missing module-execution edge, missing
+function-call edge, ambiguous span, and manifest-only forgery. Each must prevent
+a partial clean result; preserve unaffected baseline reports. Such a test does
+not authenticate a production snapshot or prove a real invocation.
+
+This is a candidate, not an accepted graph schema or a complete caller review.
+The caller itself dynamically loads code and needs its full boundary and
+transitive consumers reviewed. Test callers and source reachability remain
+unresolved. No implementation or source was executed. The pivot remains in
+force until an independently reviewed contract accounts for those facts.

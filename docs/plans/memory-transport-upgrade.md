@@ -1,5 +1,23 @@
 # Shared memory transport upgrade prediction
 
+## Coordinated launchd rehearsal prediction
+
+- **Hypothesis:** The coordinated upgrade entry point and real launchd runtime
+  can hand off an isolated multi-process service while excluding another
+  cooperative lock holder and retaining synthetic memories.
+- **Measurement:** Run the upstream old and candidate services as temporary
+  macOS jobs. Use a scratch-only home for the coordination path and a strict
+  synthetic-label guard in scratch copies; compare copies to their source.
+  Check lock contention, receipt, candidate and restored entries, and cleanup.
+- **Success:** Every identity, isolation, contention, recall, and cleanup check
+  passes. A competing lock acquisition returns the busy status.
+- **Pivot:** Any failed or uncertain check stops the trial and keeps the live
+  upgrade unavailable.
+- **Anchor:** `src/memory/upgrade-orchestrator.ts`,
+  `src/memory/upgrade-launchagent.ts`, and the prior multi-process rehearsal.
+
+The trial does not prove exclusive control of old or external live controllers.
+
 ## Shared handoff lock prediction
 
 - **Hypothesis:** A controlled upgrade entry point that holds the same lock

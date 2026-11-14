@@ -13,8 +13,10 @@ repository-root configuration names.
   [the build-script prediction](rust-shadow-build-script-prediction.md).
 - **Success:** Both selectors run one test with zero failures or skips. For
   each name, actual-only, expected-only and both-snapshot entries refuse; absent
-  in both retains the existing candidate. Every case retains the routed root
-  and complete B0 discovery and validation parity. The non-test library builds.
+  in both retains the existing candidate. Each mutation retains the routed root
+  and full observed-versus-unobserved discovery and validation parity. The
+  original C01/P01/N02a B0 projections stay unchanged on their original inputs.
+  The non-test library builds.
 - **Pivot:** Stop if any listed entry produces a candidate, a routed visit is
   absent, ordinary discovery or validation changes, or an exact selector does
   not run. A build or setup failure is inconclusive.

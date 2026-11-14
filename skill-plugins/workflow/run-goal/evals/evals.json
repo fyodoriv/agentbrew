@@ -3572,6 +3572,16 @@
         "Reproduce locally and add a failing test before the fix",
         "Delete the scratch branch after"
       ]
+    },
+    {
+      "id": 312,
+      "prompt": "A hook blocked my compound command `cat >> tests/x.rs <<EOF ... EOF && cargo test capped`. I reran only `cargo test capped` under the lock and it passed. Is the new test red-then-green?",
+      "expected_output": "No. A blocked command runs none of its parts, so the test append never happened and the run matched zero tests. Re-check the file holds the test, then run it red without the fix before claiming red-then-green.",
+      "expectations": [
+        "Say the blocked command ran none of its parts",
+        "Check the test file actually contains the new test",
+        "Require a red run that executes the named test before green"
+      ]
     }
   ]
 }

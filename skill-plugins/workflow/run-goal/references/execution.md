@@ -290,6 +290,13 @@ start it again after the edits; never report its result for the new code.
   A new rule mid-goal also covers what you already did in this run: fix
   your past output too (for example, merge your back-to-back replies into
   one).
+- Your own measurement can disprove a suggestion you adopted in the
+  contract (a what-if model shows it costs more). First check the model
+  against a figure the app or tool itself prints. Then mark the suggestion
+  dropped in the contract file with the measured cost, and change the plan.
+  If a judge or grader saw the old inputs, keep its verdict as given. Next
+  to it, name each input that changed since, and say whether the change
+  alters the pick.
 - A mid-goal answer can change a default the run already used (the
   recommended option of an unanswered question, or an **Assumptions**
   line). Record the answer in the contract file in place of the default,

@@ -58,6 +58,23 @@ function loadedJobOutput(plist: string, extraEnvironment = "", extraArgs = "", i
 }
 
 describe.runIf(process.platform === "darwin")("memory daemon upgrade guard", () => {
+  it("leaves an existing 11.7 daemon untouched until the controlled upgrade", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    const previousSpec = "mcp-memory-service[sqlite]==11.7.0";
+    const old = buildMemoryDaemonPlist(homedir(), memoryLaunchAgentLogDir(), "/fixture/uvx").replace(
+      MEMORY_PINNED_SPEC,
+      previousSpec,
+    );
+    writeFileSync(plist, old);
+    vi.mocked(probeLaunchctl).mockReturnValueOnce({
+      status: 0,
+      stdout: loadedJobOutput(plist).replace(MEMORY_PINNED_SPEC, previousSpec),
+    });
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(readFileSync(plist, "utf-8")).toBe(old);
+    expect(vi.mocked(runLaunchctl)).not.toHaveBeenCalled();
+  });
   it("does not replace a matching-pin job launched by a different executable", () => {
     vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
     mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });

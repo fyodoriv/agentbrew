@@ -7,9 +7,9 @@ The re-plan Pivot did not apply: gate G stays. A first independent review of
 this rewrite found five of the seven MUST findings only partly resolved. This
 revision applies its fixes. A second independent review on 2026-11-10 graded all
 seven findings resolved in both plans. The
-owner has not ruled on the defaults in
-[Decisions](#decisions-2026-11-10); task `rust-owner-rules-on-replan-defaults`
-tracks that. The measured hot path (hook helpers) now comes first.
+owner confirmed all seven defaults in
+[Decisions](#decisions-2026-11-10) on 2026-11-12. The measured hot path
+(hook helpers) comes first.
 
 ## Overall goal and vision
 
@@ -292,7 +292,7 @@ Inconclusive evidence keeps the old path active.
 ## Numbered work breakdown
 
 All tasks are AFK within synthetic, scratch and already-authorized local
-boundaries, except the owner ruling. One implementation PR changes one
+boundaries. One implementation PR changes one
 observable boundary. Tests move with their slice: a port keeps the old tests
 until the new ones catch the same planted defects. There is no separate
 "move tests to Rust" step.
@@ -304,7 +304,7 @@ until the new ones catch the same planted defects. There is no separate
 | 3. `rust-hooks-and-generated-helpers` | The other hook families still start `jq`, Perl or Python per call. Move each family into the dispatcher. | Each ported `hook-*` row `ratio` at most 0.70, same command. Each family adds its row in a PR before its port PR, so the row exists at the base. | 2 |
 | 4. `rust-cold-path-profile` | Sync, catalog, MCP lifecycle and doctor probes were never profiled. Measure where their time goes before any port. | Recorded exception: measurement only. Output is the share of wall time in owned code per event, next to its local p50 from the `jq` command above. | none; parallel with 1-3 |
 | 5. `rust-source-inventory` | Keep scope honest with a small manifest and a small validator. No full harness. | Recorded exception: preparation. Done when `migration-check inventory --check` rejects every planted omission. | none; parallel with 1-3 |
-| 6. `rust-final-audit` | Prove that every owned executable has one of the five audit states. | Recorded exception: audit. Done when unrecorded components are 0 and every ported slice still meets its number. | 2, 3, 4, 5, and the owner ruling |
+| 6. `rust-final-audit` | Prove that every owned executable has one of the five audit states. | Recorded exception: audit. Done when unrecorded components are 0 and every ported slice still meets its number. | 2, 3, 4, and 5 |
 
 Step 2 commits the absolute `hook-bash-chain` number from step 1 before any
 dispatcher code. The ratio above is the decision rule; the absolute number
@@ -313,8 +313,8 @@ is the baseline receipt.
 The field comparison is by version, not by runtime. A shell dispatcher that
 wins keeps `runtime` `ts`, so only the version separates before from after.
 
-The owner ruling is task `rust-owner-rules-on-replan-defaults` (HITL). It
-blocks step 6 only.
+The owner confirmed all seven defaults on 2026-11-12. The technical
+dependencies of step 6 remain.
 
 ### Deferred preparation steps
 
@@ -406,21 +406,18 @@ ported". It never claims "all code is Rust".
 
 ## Decisions (2026-11-10)
 
-The owner chose to fix the plan and to ship it without another question
-round. The choices below were **adopted by default on the reviewer's
-recommendation**. The owner did not decide them one by one. **The owner can
-reverse any of them.** Task `rust-owner-rules-on-replan-defaults` asks the
-owner to rule on them; until then they are defaults, not decisions.
+The owner confirmed all seven choices as a group on 2026-11-12.
+The owner can change them later.
 
-| Choice | Adopted default |
-|---|---|
-| Order | The hook-dispatcher slice comes first, with a pre-registered cut per agent Bash call. It needs no native dispatch and no full harness. |
-| Cold paths | Doctor probes, sync orchestration and the other slices in the table above are recorded exceptions. |
-| Test tasks | The separate "move tests to Rust" task is gone. Tests move with their slice. |
-| Inventory | The inventory step is a manifest and a small validator. |
-| Cheaper options | Each slice weighs a cheaper fix first and ports only when that fix misses the number. |
-| Existing Rust code | `grandfathered` as delivered behavior. It passes G only when it replaces a non-Rust path. The review asked for a statement; this is the default. |
-| Final audit states | The audit accepts `ported`, `exception`, `frozen`, `grandfathered` and `out-of-scope`. The review said the audit needs an owner decision; this default makes the audit passable until the owner rules. |
+| Choice | Adopted default | Confirmation |
+|---|---|---|
+| Order | The hook-dispatcher slice comes first, with a pre-registered cut per agent Bash call. It needs no native dispatch and no full harness. | Owner ruling: kept, 2026-11-12 |
+| Cold paths | Doctor probes, sync orchestration and the other slices in the table above are recorded exceptions. | Owner ruling: kept, 2026-11-12 |
+| Test tasks | The separate "move tests to Rust" task is gone. Tests move with their slice. | Owner ruling: kept, 2026-11-12 |
+| Inventory | The inventory step is a manifest and a small validator. | Owner ruling: kept, 2026-11-12 |
+| Cheaper options | Each slice weighs a cheaper fix first and ports only when that fix misses the number. | Owner ruling: kept, 2026-11-12 |
+| Existing Rust code | `grandfathered` as delivered behavior. It passes G only when it replaces a non-Rust path. The review asked for a statement; the owner kept this choice. | Owner ruling: kept, 2026-11-12 |
+| Final audit states | The audit accepts `ported`, `exception`, `frozen`, `grandfathered` and `out-of-scope`. The owner confirmed these states. | Owner ruling: kept, 2026-11-12 |
 
 ## Validation review (2026-11-09)
 
@@ -469,7 +466,7 @@ plans.
 | **Commands cannot run.** Every measurement command needs `rust/Cargo.toml` and `migration-check`. Both exist only in an unmerged draft. Mark them "runnable after the inventory step merges". Build with plain `heavy-run` first; time only the built binary under `--exclusive`. | Commands are split into three blocks: run today (each was run once, with its output stated), run after `rust-source-inventory` merges, and run after the deferred runner merges. Build uses plain `heavy-run`. | [Measurement contract](#measurement-contract) |
 | **Gate G contradicts the preparation steps.** Inventory, harness and native delivery still dispatch to the old runtime, so they cannot run "without the legacy runtime". Exempt them by name. | G applies in full to port slices only. The named non-port steps keep only the behavior and safety clauses. | [Gate G](#gate-g) |
 | **The statistic is not usable.** An upper 95% bound on a p95 ratio from 60 pairs rests on about three tail samples, and measured noise was 19-50%. Name the estimator (for example a bootstrap of the median ratio) and measure the noise floor first, or every result is "inconclusive". | The p95 bound is gone. The gate's `min-and-paired-median` rule gives R_T for tracked rows. R_M has one definition and one command. Each has an A/A floor. A bootstrap of the median ratio covers workloads with no row. | [Statistic and noise floor](#statistic-and-noise-floor) |
-| **The final audit cannot pass.** Frozen agent support stays, exclusions are forbidden, and the audit needs zero unexplained legacy components. This needs an owner decision. | The audit accepts five named states and needs 0 unrecorded components. This is a default. Task `rust-owner-rules-on-replan-defaults` tracks the owner's ruling and blocks the audit. | [Rollout](#rollout-security-and-regression-coverage), [Decisions](#decisions-2026-11-10) |
+| **The final audit cannot pass.** Frozen agent support stays, exclusions are forbidden, and the audit needs zero unexplained legacy components. This needs an owner decision. | The audit accepts five named states and needs 0 unrecorded components. The owner confirmed the states on 2026-11-12. | [Rollout](#rollout-security-and-regression-coverage), [Decisions](#decisions-2026-11-10) |
 | **One cross-repo rule.** Say once whether dotfiles work waits for the agentbrew validator, and how the shared crate is pinned (git revision plus vendoring) so `--locked` builds work offline. | One rule with the same bullets in both plans: who waits for the inventory, who waits for the runner, and git `rev` pin plus `cargo vendor`. | [Cross-repo rule](#cross-repo-rule) |
 | **No user benefit metric.** Each slice needs one (for example p95 hook time per agent Bash call). A slice with none becomes a recorded exception. | Every step names a metric, a number and a command, or is a recorded exception with its reason. | [Numbered work breakdown](#numbered-work-breakdown), [Recorded exceptions](#recorded-exceptions) |
 

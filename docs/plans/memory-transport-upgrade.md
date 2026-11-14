@@ -18,6 +18,15 @@
 
 The trial does not prove exclusive control of old or external live controllers.
 
+The temporary-job trial passed. The default launchd runtime and coordinated
+orchestrator ran with a strict synthetic-label guard and a scratch coordination
+home. A competing lock attempt was refused; the recovery record, candidate and
+restored synthetic entries, and known-process cleanup passed. Both listeners
+were distinct children of their jobs. An independent review confirmed the
+source-copy differences and bounded result. External control remained a no-op,
+only service subprocesses were sandboxed, and the candidate environment was
+assumed from the old job. This does not establish a safe live handoff.
+
 ## Shared handoff lock prediction
 
 - **Hypothesis:** A controlled upgrade entry point that holds the same lock

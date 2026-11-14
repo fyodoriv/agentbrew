@@ -314,6 +314,10 @@ independently verify the candidate's effective environment before using it.
 The identity observation must surround both the endpoint health check and the
 upstream schema check. A changed identity at either boundary must fail the
 candidate stage without restoring over candidate writes.
+The draft now performs this bracket and refuses a verifier that skips the
+observation. The live caller must bind it to the actual handoff and the
+intended endpoint. These process probes are not atomic and do not exclude
+non-cooperating controllers.
 
 ## Multi-process runtime rehearsal prediction
 

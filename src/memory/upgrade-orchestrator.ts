@@ -24,6 +24,7 @@ export interface MemoryUpgradeOrchestration {
   isOldStopped: () => Promise<boolean>;
   startOld: () => Promise<void>;
   startCandidate: (snapshot: string) => Promise<void>;
+  verifyCandidate: (observe: () => Promise<boolean>) => Promise<boolean>;
   candidateHealthy: () => Promise<boolean>;
 }
 
@@ -179,11 +180,21 @@ export async function orchestrateMemoryUpgrade(ops: MemoryUpgradeOrchestration):
     },
     candidateHealthy: async () => {
       await ops.assertControl();
-      if (!sameFile(ops.dbPath, original) || !(await ops.candidateHealthy())) return false;
+      let observed = false;
+      let healthy = false;
+      let observedPassed = false;
+      const verified = await ops.verifyCandidate(async () => {
+        if (observed) throw new Error("candidate health was observed more than once");
+        observed = true;
+        if (!sameFile(ops.dbPath, original) || !(await ops.candidateHealthy())) return false;
+        await ops.assertControl();
+        healthy = checkCandidateSchema(ops.dbPath, ops.candidateSpec, ops.candidateRuntime);
+        await ops.assertControl();
+        observedPassed = healthy && sameFile(ops.dbPath, original);
+        return observedPassed;
+      });
       await ops.assertControl();
-      const healthy = checkCandidateSchema(ops.dbPath, ops.candidateSpec, ops.candidateRuntime);
-      await ops.assertControl();
-      return healthy && sameFile(ops.dbPath, original);
+      return verified && observed && observedPassed && sameFile(ops.dbPath, original);
     },
   });
 }

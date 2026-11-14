@@ -35,6 +35,11 @@ it.runIf(process.platform === "darwin" && hasSqlite)("holds the shared lock thro
       db,
       "CREATE TABLE memories (id INTEGER, deleted_at TEXT); INSERT INTO memories VALUES (1, NULL);",
     ]);
+    let observing = false;
+    vi.mocked(checkCandidateSchema).mockImplementationOnce(() => {
+      expect(observing).toBe(true);
+      return true;
+    });
     const result = await orchestrateCoordinatedMemoryUpgrade({
       dbPath: db,
       backupsDir: join(dir, "backups"),
@@ -56,7 +61,18 @@ it.runIf(process.platform === "darwin" && hasSqlite)("holds the shared lock thro
           record: { snapshotPath: snapshot },
         });
       },
-      candidateHealthy: async () => true,
+      verifyCandidate: async (observe) => {
+        observing = true;
+        try {
+          return await observe();
+        } finally {
+          observing = false;
+        }
+      },
+      candidateHealthy: async () => {
+        expect(observing).toBe(true);
+        return true;
+      },
     });
     expect(result).toMatchObject({ ok: true, stage: "complete" });
     const release = acquireMemoryControlLock(paths.lock);
@@ -70,7 +86,7 @@ it.runIf(process.platform === "darwin" && hasSqlite)("holds the shared lock thro
 
 it
   .runIf(process.platform === "darwin" && hasSqlite)
-  .each(["held", "intent", "operation", "schema", "runtime", "path", "cwd"])(
+  .each(["held", "intent", "operation", "schema", "runtime", "path", "cwd", "skipped observation"])(
   "releases control after a blocked or failed %s handoff",
   async (scenario) => {
     const dir = mkdtempSync(join(tmpdir(), "memory-coordinated-failure-"));
@@ -105,10 +121,13 @@ it
         isOldStopped: async () => true,
         startOld,
         startCandidate,
+        verifyCandidate: async (observe) => (scenario === "skipped observation" ? true : observe()),
         candidateHealthy: async () => true,
       });
       expect(result.ok).toBe(false);
-      expect(stopOld).toHaveBeenCalledTimes(scenario === "operation" || scenario === "schema" ? 1 : 0);
+      expect(stopOld).toHaveBeenCalledTimes(
+        scenario === "operation" || scenario === "schema" || scenario === "skipped observation" ? 1 : 0,
+      );
       if (scenario === "runtime" || scenario === "path" || scenario === "cwd")
         expect(startCandidate).not.toHaveBeenCalled();
       if (scenario === "schema") {

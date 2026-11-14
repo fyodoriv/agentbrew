@@ -217,6 +217,33 @@ export function createMemoryLaunchdHandoff(options: MemoryLaunchdHandoffOptions)
     if (!runtime.environmentSafe() || !sameRecipe(runtime.readJob(), expected))
       throw new Error("registered launchd job is unexpected");
   };
+  const candidateIdentity = () => {
+    const job = runtime.readJob();
+    const listeners = runtime.listeners();
+    const pid = job?.pid;
+    const listener = listeners[0];
+    if (
+      !runtime.canMutate() ||
+      !runtime.environmentSafe() ||
+      !sameRecipe(job, options.candidateJob) ||
+      !Number.isSafeInteger(pid) ||
+      (pid ?? 0) < 2 ||
+      listeners.length !== 1 ||
+      !Number.isSafeInteger(listener) ||
+      (listener ?? 0) < 2 ||
+      !runtime.processAlive(pid as number) ||
+      !runtime.processAlive(listener as number) ||
+      !runtime.isDescendant(listener as number, pid as number) ||
+      runtime.plistHash(options.candidateJob.path) !== options.candidatePlistHash
+    )
+      throw new Error("candidate memory job is unexpected");
+    return {
+      pid: pid as number,
+      listener: listener as number,
+      jobStamp: runtime.processStamp(pid as number),
+      listenerStamp: runtime.processStamp(listener as number),
+    };
+  };
   return {
     isOldStopped,
     stopOld: async () => {
@@ -244,5 +271,15 @@ export function createMemoryLaunchdHandoff(options: MemoryLaunchdHandoffOptions)
     },
     startOld: () => bootstrap(options.oldJob, options.oldPlistHash),
     startCandidate: () => bootstrap(options.candidateJob, options.candidatePlistHash),
+    verifyCandidate: async (observe: () => Promise<boolean>) => {
+      try {
+        const before = candidateIdentity();
+        if (!(await observe())) return false;
+        const after = candidateIdentity();
+        return JSON.stringify(before) === JSON.stringify(after);
+      } catch {
+        return false;
+      }
+    },
   };
 }

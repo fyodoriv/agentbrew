@@ -52,6 +52,7 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         isOldStopped: async () => true,
         startOld: vi.fn(),
         startCandidate: vi.fn(),
+        verifyCandidate: async (observe) => observe(),
         candidateHealthy: async () => true,
       });
       expect(result.ok).toBe(false);
@@ -90,6 +91,7 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
             record: { snapshotPath: snapshot },
           });
         },
+        verifyCandidate: async (observe) => observe(),
         candidateHealthy: async () => {
           execFileSync("sqlite3", [db, "INSERT INTO memories VALUES (2, NULL);"]);
           return false;
@@ -128,6 +130,7 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         startCandidate: async () => {
           throw new Error("synthetic lost response");
         },
+        verifyCandidate: async (observe) => observe(),
         candidateHealthy: async () => true,
       });
       expect(result).toMatchObject({ ok: false, stage: "candidate" });
@@ -168,6 +171,7 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         isOldStopped: async () => true,
         startOld,
         startCandidate: vi.fn(),
+        verifyCandidate: async (observe) => observe(),
         candidateHealthy: async () => true,
       });
       expect(result.ok).toBe(false);
@@ -200,6 +204,7 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         isOldStopped: async () => true,
         startOld,
         startCandidate: vi.fn(),
+        verifyCandidate: async (observe) => observe(),
         candidateHealthy: async () => true,
       });
       expect(result.ok).toBe(false);
@@ -239,6 +244,7 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         isOldStopped: async () => true,
         startOld: vi.fn(),
         startCandidate,
+        verifyCandidate: async (observe) => observe(),
         candidateHealthy: async () => true,
       });
       expect(swapped).toBe(true);
@@ -270,6 +276,7 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         isOldStopped: async () => true,
         startOld: vi.fn(),
         startCandidate: async () => undefined,
+        verifyCandidate: async (observe) => observe(),
         candidateHealthy: async () => false,
       });
       expect(result).toMatchObject({ ok: false, stage: "candidate" });
@@ -315,6 +322,7 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         isOldStopped: async () => true,
         startOld: vi.fn(),
         startCandidate: vi.fn(),
+        verifyCandidate: async (observe) => observe(),
         candidateHealthy: async () => true,
       });
       expect(result).toMatchObject({ ok: false, stage: "preflight" });

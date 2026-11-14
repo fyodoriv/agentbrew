@@ -76,6 +76,63 @@ function fixture() {
 }
 
 describe("memory launchd handoff", () => {
+  it("checks candidate identity before and after health observation", async () => {
+    const { handoff, mutate, runtime, setJob, setAlive, setListeners } = fixture();
+    await handoff.stopOld();
+    await handoff.startCandidate();
+    setAlive(true);
+    setListeners([404]);
+    const health = vi.fn(async () => true);
+    expect(await handoff.verifyCandidate(health)).toBe(true);
+    expect(health).toHaveBeenCalledTimes(1);
+    setJob({ ...candidateJob, environmentFingerprint: "changed" });
+    expect(await handoff.verifyCandidate(health)).toBe(false);
+    setJob(candidateJob);
+    runtime.isDescendant = () => false;
+    expect(await handoff.verifyCandidate(health)).toBe(false);
+    runtime.isDescendant = () => true;
+    let stamp = "first";
+    runtime.processStamp = () => stamp;
+    expect(
+      await handoff.verifyCandidate(async () => {
+        stamp = "second";
+        return true;
+      }),
+    ).toBe(false);
+    expect(mutate.mock.calls.map((call) => call[0])).toEqual(["bootout", "bootstrap"]);
+  });
+
+  it("rejects candidate replacement and failed health observations", async () => {
+    const { handoff, mutate, runtime, setJob, setAlive, setListeners } = fixture();
+    await handoff.stopOld();
+    await handoff.startCandidate();
+    setAlive(true);
+    setListeners([404]);
+    expect(await handoff.verifyCandidate(async () => false)).toBe(false);
+    expect(
+      await handoff.verifyCandidate(async () => {
+        throw new Error("synthetic failure");
+      }),
+    ).toBe(false);
+    expect(
+      await handoff.verifyCandidate(async () => {
+        setListeners([405]);
+        return true;
+      }),
+    ).toBe(false);
+    setListeners([404]);
+    expect(
+      await handoff.verifyCandidate(async () => {
+        setJob({ ...candidateJob, path: "/scratch/other.plist" });
+        return true;
+      }),
+    ).toBe(false);
+    setJob(candidateJob);
+    runtime.plistHash = () => "changed";
+    expect(await handoff.verifyCandidate(async () => true)).toBe(false);
+    expect(mutate.mock.calls.map((call) => call[0])).toEqual(["bootout", "bootstrap"]);
+  });
+
   it("stops the verified job before registering the candidate", async () => {
     const { handoff, mutate } = fixture();
     await handoff.stopOld();

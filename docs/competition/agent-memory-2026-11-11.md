@@ -117,10 +117,11 @@ Version [12.9.0](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12
 superseded the original 12.8.0 candidate. Its compatibility and database
 migrations must pass the isolated checks in the
 [upgrade prediction](../plans/memory-transport-upgrade.md) before deployment.
-An isolated HTTP rehearsal confirmed that the old version accepted an
-untrusted origin and the 12.8.0 candidate rejected it; both accepted local MCP
-initialization. The test used synthetic stores and did not modify live data.
-This rehearsal does not by itself prove 12.9.0 has the same behavior.
+Isolated HTTP rehearsals found that 11.7.0 accepted an untrusted origin, while
+both 12.8.0 and 12.9.0 rejected it. Each version accepted local MCP
+initialization. The tests used synthetic stores and did not modify live data.
+The 12.9.0 result also confirmed that the live memory port was inaccessible
+from the test environment.
 On November 11, the upstream [published advisory list](https://github.com/doobidoo/mcp-memory-service/security/advisories)
 included multiple version ranges covering 11.7.0. None listed 12.8.0 as
 affected. Each advisory has its own configuration and exposure conditions;

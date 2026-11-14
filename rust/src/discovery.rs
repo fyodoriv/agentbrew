@@ -881,6 +881,9 @@ pub(crate) fn discover_root_observed(
             && actual_manifest.bytes.len() <= 2_097_152
             && !snapshot.entries.contains_key("build.rs")
             && !expected.entries.contains_key("build.rs")
+            && [".cargo/config", ".cargo/config.toml"].iter().all(|path| {
+                !snapshot.entries.contains_key(*path) && !expected.entries.contains_key(*path)
+            })
             && snapshot.untracked.is_empty()
             && expected.untracked.is_empty()
             && snapshot.ignored.is_empty()

@@ -449,6 +449,39 @@ fn shadows_root_namespace() {
             );
         }
     }
+    for path in [".cargo/config", ".cargo/config.toml"] {
+        for side in ["actual", "expected", "both"] {
+            let mut actual = copy_snapshot(&original.snapshot);
+            let mut expected_case = copy_snapshot(&expected);
+            if side != "expected" {
+                actual.entries.insert(path.into(), entry(path, "[build]\n"));
+            }
+            if side != "actual" {
+                expected_case
+                    .entries
+                    .insert(path.into(), entry(path, "[build]\n"));
+            }
+            let plain = discover(&actual);
+            let observed = discover_root_observed(&actual, &expected_case, None, &mut observer);
+            assert!(observer.root_routed_round().is_some(), "{side} {path}");
+            assert!(!observer.root_candidate(), "{side} {path}");
+            assert_eq!(discovery(&plain), discovery(&observed));
+            assert_eq!(
+                report(&crate::validation::validate(
+                    &actual,
+                    "rust/inventory.json",
+                    &original.manifest,
+                    plain
+                )),
+                report(&crate::validation::validate(
+                    &actual,
+                    "rust/inventory.json",
+                    &original.manifest,
+                    observed
+                ))
+            );
+        }
+    }
     let mut swapped = copy_snapshot(&expected);
     swapped
         .entries

@@ -29,3 +29,12 @@ ancestor configuration, invocation flags, wrappers, toolchain, sysroot, or
 standard-library authority. It does not authorize a production writer or worker.
 No analyzed source is executed. The production inventory still needs a reviewed
 real-input authority contract; these refusals do not replace it.
+
+## Focused result
+
+The new actual-only config control failed before the guard. After the change,
+the exact shadow and retained routing controls passed, as did the non-test
+library check. Independent review confirmed the six asymmetric controls and
+the snapshot-only scope. The full workspace format check reports pre-existing
+format differences as well as the new block; the new block was formatted
+without changing unrelated files. This is not production authority.

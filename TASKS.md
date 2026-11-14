@@ -186,6 +186,17 @@
   - **Success**: The new failure and absent-job controls pass; the failure reproduces on the unchanged helper.
   - **Pivot**: If launchctl cannot distinguish absence from an unknown error, fail closed and report the uncertainty.
   - **Anchor**: `src/memory/launchagent.ts` unload helper and `src/commands/cli-memory.ts` disable action.
+- [ ] Explain an empty readiness marker in the interrupted install test
+  - **ID**: mcp-interrupted-ready-marker
+  - **Tags**: ci, testing, stability
+  - **Details**: A hosted Mac run failed when the interrupted-install test tried to scan an empty readiness path. The marker existence check can observe a file before its write finishes, but the hosted cause is not yet established. Preserve the existing signal and cleanup policy; do not run the physical test locally without an independently reviewed ownership and cleanup method. A no-signal fixture demonstrated that a newly created file can be observed empty before its content is written; it did not prove the hosted cause. Independent review found that the proposed diagnostic adds timing and can skip the existing signal if raised early, so the registered pivot applies; define and preregister a safe revised observation before implementation.
+  - **Output**: code
+  - **Acceptance**: A closed diagnostic distinguishes missing, empty and nonempty marker observations without logging the path. Partial and complete nonempty content remain indistinguishable without further evidence.
+  - **Hypothesis**: A bounded marker diagnostic will distinguish all 3 planted marker observations and expose no path values; the suspected write race remains unproven until observed.
+  - **Measurement**: Focused no-signal marker controls and hosted CI; the test reports the closed marker state on failure.
+  - **Success**: 3 of 3 planted observations are distinguished, 0 raw paths are reported, and 0 local processes are signaled.
+  - **Pivot**: If a diagnostic changes test timing or cannot identify the state safely, retain the failure as unknown and do not claim a root cause.
+  - **Anchor**: Hosted job 132299647921, `src/mcp/mcp-git-install.test.ts:1112` and `:1406`.
 
 - [ ] Validate every sync selection before preparation can publish outputs
   - **ID**: sync-selection-preflight
@@ -328,6 +339,18 @@
   - **Blocked**: needs-field-window — wait for a full seven-day cohort. Fixture accuracy, metadata coverage, an absent alias, or a partial cohort cannot close the task.
 
 ## P2
+
+- [ ] Refresh one managed skill without changing unrelated skills
+  - **ID**: targeted-managed-skill-refresh
+  - **Tags**: skills, reliability, safety
+  - **Details**: On 2026-11-13 an installed skill remained at an older source revision after ordinary sync and reinstall. The broad source pull can refresh it but may also update or prune unrelated skills; its dry run did not preview every prune. Another session subsequently refreshed the observed skill. Provide a scoped, recoverable way to refresh one managed skill and report when its owner or installed state is uncertain. Coordination prediction: [plan](docs/plans/targeted-managed-skill-refresh.md).
+  - **Output**: code
+  - **Acceptance**: One named refresh updates only the verified managed skill, preserves owner edits and unrelated skills, and refuses uncertain ownership or interrupted recovery. Agent links remain valid.
+  - **Hypothesis**: A scoped refresh changes one intended skill and zero unrelated installed skills or source checkouts in the planted fixtures.
+  - **Measurement**: Add focused refresh controls and run `heavy-run npx vitest run src/skills/targeted-refresh.test.ts`, followed by hosted CI. In use, the refresh result reports one updated skill and zero unrelated changes.
+  - **Success**: At least eight controls cover unique and ambiguous ownership, dirty or offline source, interrupted replacement, recovery, deployed links and unrelated-skill preservation; zero unrelated paths change.
+  - **Pivot**: If all existing staging writers cannot share a safe coordination boundary, refuse the refresh and retain the prior copy; do not silently prune.
+  - **Anchor**: `src/update.ts`, `src/catalog/install-skill.ts`, and the 2026-11-13 managed-skill observation.
 
 - [ ] The telemetry file sink refuses a target whose parent folder is a symlink
   - **ID**: telemetry-file-sink-symlinked-parent

@@ -28,6 +28,19 @@ work, a long list) before rating.
 | Lapa Ninja | a consistent visual system, spacing, components | one score |
 | Mobbin | app-UI patterns users already know, states, edge cases | one score |
 
+**Pick the judges that fit the page.** The table suits marketing, portfolio and launch pages. A
+work tool (an editor, a catalogue, a dashboard, a review queue) is not built to win The FWA or
+Godly: those reward spectacle, so they hold a good tool near 6 and the mean near 7 forever. In one
+run, thirty rounds on two tool pages stayed at 7.0-7.2 for this reason. For a tool page, swap The FWA,
+Godly and CSS Winner for app judges with published criteria: Apple Design Awards (Interaction,
+Delight, Inclusivity), Nielsen's ten heuristics, and Material/HIG component fit. Say which panel you
+used in the report.
+
+**Rounds follow [judging-protocol.md](judging-protocol.md):** one ledger (`decisions.txt`),
+fixes with a direction verb, `judge.mjs conflicts` before you build, consensus only, a target from a
+best-in-class reference, and one stop rule. Raters reply with the same `ISSUE:` lines as the
+principal judges, plus one score per judge.
+
 Anchors, so the scale means the same each time:
 
 - **5**: works and is clean, but generic: default controls, no identity, no state polish.
@@ -40,20 +53,17 @@ Rules:
 
 - Rate what the screenshots show at both sizes and in both themes. A flaw in one of the four caps every
   judge at 7 (overlap, cut-off text, a broken phone layout).
-- Ask each rater for the three changes that would lift the lowest scores most, naming screenshot
-  and element. Fixes that two or three raters name come first. Make that change, re-shoot,
-  re-rate. Stop at the target (default 8.0).
 - Never raise the design score by lowering a measured ranking. Re-run `rankings.cjs all` after every
   look change; a measured ranking that drops below 100 is fixed before the next rating. An effect a
   checker cannot see (a pill painted behind a label, text in a pseudo-element) is a red flag: prefer
   one that keeps the measured rankings true.
 - Keep scope: a look change adds no feature the product does not need.
 
-When the panel stalls:
+Lessons from past panels (the protocol holds the stop rule):
 
-- Blind raters disagree by about half a point on the same screenshots, and a fix one round asks
-  for can be called noise the next (an accent shadow on every card). Act only on fixes that two or
-  more raters name in the same round; a single rater's taste is not a finding.
+- Check each fix in the shot before you spend raters: in one run, an older rule with higher specificity
+  silently beat three new blocks (`.tile.tile:has()` at 0,5,0), and a parent's `flex-basis:100%` kept
+  a "fit to content" card full width.
 - Stills cannot show motion, so The FWA and Godly stay near 5 to 6 for any static capture. When the
   page has motion, shoot a frame strip of each main transition (`rankings.cjs frames`, which pauses
   every animation at exact times), add a MOTION.txt that says what each strip shows, or report that
@@ -80,6 +90,3 @@ When the panel stalls:
   drops requests under parallel shots (broken pictures read as flaws), and a port already in use serves
   another app's page. `rankings.cjs` waits for on-screen pictures and reloads broken ones, bypasses the
   page's CSP so axe can run, and skips items in a closed `<details>`.
-- If two rounds in a row gain less than 0.3 on the panel mean, stop and report the scores, what
-  holds them back, and the options (a bolder concept, real content, motion evidence), instead of
-  polishing further. Never report the target as met when blind raters did not give it.

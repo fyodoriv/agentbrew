@@ -45,6 +45,17 @@ version: 1
 
 hooks:
   # ── Phase 0 golden-path proof (ships with foundation) ──────────────────
+  - id: background-suite-fail-fast
+    description: Block a backgrounded test suite with no fail-fast limit (a broken setup fails unseen for hours)
+    event: PreToolUse
+    matcher: Bash
+    script: checks/background-suite-fail-fast.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md "Fast, safe iterations" — stuck or unwatched runs get a lasting fix
+    agents: ["claude-code"]
+    defaultEnabled: false  # PreToolUse:Bash hooks are opt-in; enable via the overlay `enabled:`
+
   - id: code-no-timestamps
     description: Reject Write|Edit that adds a literal date-stamp comment to source code
     event: PreToolUse

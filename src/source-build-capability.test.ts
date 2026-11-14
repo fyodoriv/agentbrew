@@ -14,11 +14,108 @@ import fs, {
 import { tmpdir, userInfo } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { cargoProducer } from "./test-utils/cargo-producers.js";
 
 const source = resolve(import.meta.dirname, "..");
 const native = await import(new URL("../scripts/native-build-tools.mjs", import.meta.url).href);
 const builder = await import(new URL("../scripts/build-native-prebuilt.mjs", import.meta.url).href);
 const roots: string[] = [];
+
+function producerDiagnostic(
+  stderr: string,
+  env: NodeJS.ProcessEnv,
+  probe: () => { insideFixture: boolean; deps: string; build: string; fingerprint: string },
+) {
+  try {
+    const { insideFixture, deps, build, fingerprint } = probe();
+    return {
+      available: true,
+      cargoPathInsideFixtureLexical: insideFixture,
+      version: "unknown",
+      compileTextPresent: /Compiling checkup-run\b/.test(stderr),
+      finishedTextPresent: /Finished `release` profile/.test(stderr),
+      deps,
+      build,
+      fingerprint,
+      buildDirOverridePresent: ["CARGO_BUILD_BUILD_DIR", "CARGO_BUILD_TARGET_DIR", "CARGO_TARGET_DIR"].some(
+        (key) => key in env,
+      ),
+    };
+  } catch {
+    return { available: false };
+  }
+}
+
+function producerProbe(cargo: string, root: string, release: string) {
+  const kind = (name: string) => {
+    try {
+      const stat = fs.lstatSync(join(release, name));
+      return stat.isDirectory() ? "directory" : "other";
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return "missing";
+      throw error;
+    }
+  };
+  const rel = relative(root, cargo);
+  return {
+    insideFixture: rel !== ".." && !rel.startsWith("../") && !rel.startsWith("/"),
+    deps: kind("deps"),
+    build: kind("build"),
+    fingerprint: kind(".fingerprint"),
+  };
+}
+
+function producerPath(
+  release: string,
+  original: Buffer,
+  root: string,
+  final: string | undefined,
+  diagnostic: () => object,
+  emit: (text: string) => void,
+) {
+  try {
+    return cargoProducer(release, original, root, final);
+  } catch (error) {
+    emit(`CARGO_PRODUCER_DIAGNOSTIC=${JSON.stringify(diagnostic())}`);
+    throw error;
+  }
+}
+
+describe("producer diagnostic", () => {
+  it.each(["missing", "directory", "other"])("reports the %s layout as a closed category", (kind) => {
+    const diagnostic = producerDiagnostic("Compiling checkup-run", {}, () => ({
+      insideFixture: false,
+      deps: kind,
+      build: "missing",
+      fingerprint: "missing",
+    }));
+    expect(diagnostic).toMatchObject({ available: true, deps: kind, cargoPathInsideFixtureLexical: false });
+    expect(JSON.stringify(diagnostic)).not.toContain("Compiling checkup-run");
+  });
+
+  it("keeps the missing-producer failure when the safe probe fails", () => {
+    const release = realpathSync(mkdtempSync(join(tmpdir(), "cargo-diagnostic-")));
+    roots.push(release);
+    const output: string[] = [];
+    const diag = () =>
+      producerDiagnostic("private-canary", { CARGO_TARGET_DIR: "private-canary" }, () => {
+        throw new Error("private-canary");
+      });
+    expect.assertions(4);
+    try {
+      producerPath(release, Buffer.from("original"), release, undefined, diag, (text) => output.push(text));
+    } catch (error) {
+      expect(error).toMatchObject({ message: "expected exactly one matching producer" });
+    }
+    expect(output).toEqual(['CARGO_PRODUCER_DIAGNOSTIC={"available":false}']);
+    expect(output.join()).not.toContain("private-canary");
+    expect(producerProbe(join(release, "cargo"), release, release)).toMatchObject({
+      insideFixture: true,
+      deps: "missing",
+    });
+  });
+});
+
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
@@ -478,6 +575,7 @@ describe("native capability trust boundary", () => {
           encoding: "utf8",
           timeout: 600_000,
         });
+      expect(existsSync(join(f.root, "rust/checkup-run/target"))).toBe(false);
       const first = spawnSync(
         cargo,
         [
@@ -500,25 +598,28 @@ describe("native capability trust boundary", () => {
       );
       expect(first.status, first.stderr).toBe(0);
       const path = join(f.root, "rust/checkup-run/target/aarch64-apple-darwin/release/checkup-run");
+      expect(fs.lstatSync(path).size).toBeLessThanOrEqual(64 * 1024 * 1024);
       const original = readFileSync(path);
       const substituted = readFileSync(join(f.directory, "publish-dist"));
       expect(native.sha256(original)).not.toBe(native.sha256(substituted));
       const targets = [path];
       if (variant === "producer cache") {
-        const deps = join(dirname(path), "deps");
-        const producers = fs
-          .readdirSync(deps)
-          .filter((name) => /^checkup_run-[a-f0-9]+$/.test(name))
-          .map((name) => join(deps, name))
-          .filter((candidate) => native.sha256(readFileSync(candidate)) === native.sha256(original));
-        expect(producers.length, "actual recorder producer output must be observed").toBeGreaterThan(0);
-        targets.push(...producers);
+        const producer = producerPath(
+          dirname(path),
+          original,
+          f.root,
+          path,
+          () => producerDiagnostic(first.stderr, env, () => producerProbe(cargo, f.root, dirname(path))),
+          (message) => console.error(message),
+        );
+        targets.push(producer);
       }
       const future = new Date(Date.now() + 60_000);
       for (const target of targets) {
         writeFileSync(target, substituted);
         utimesSync(target, future, future);
       }
+      for (const target of targets) expect(readFileSync(target)).toEqual(substituted);
       const second = compile();
       expect(second.status, second.stderr).toBe(0);
       const verification = spawnSync(

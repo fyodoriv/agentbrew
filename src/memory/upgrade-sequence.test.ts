@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { createUpgradeIntent, readUpgradeIntent } from "./upgrade-intent.js";
 import { upgradeMemoryWithSnapshot } from "./upgrade-sequence.js";
 
 const hasSqlite = await import("node:sqlite").then(
@@ -55,9 +56,14 @@ describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
       ]);
       let stopped = false;
       let recorded = false;
+      const intentPath = join(dir, "intent.json");
       const startCandidate = vi.fn(async (snapshot: string) => {
         expect(stopped).toBe(true);
         expect(recorded).toBe(true);
+        expect(readUpgradeIntent(intentPath)).toMatchObject({
+          state: "recovery-required",
+          record: { snapshotPath: snapshot },
+        });
         expect(
           execFileSync("sqlite3", [snapshot, "SELECT COUNT(*) FROM memories;"], { encoding: "utf-8" }).trim(),
         ).toBe("1");
@@ -84,6 +90,19 @@ describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
         },
         persistCandidateIntent: async (snapshot: string) => {
           expect(existsSync(snapshot)).toBe(true);
+          const original = statSync(db, { bigint: true });
+          const saved = statSync(snapshot, { bigint: true });
+          createUpgradeIntent(intentPath, {
+            databasePath: db,
+            databaseDevice: String(original.dev),
+            databaseInode: String(original.ino),
+            snapshotPath: snapshot,
+            snapshotDevice: String(saved.dev),
+            snapshotInode: String(saved.ino),
+            oldJobLabel: "com.example.memory",
+            candidateSpec: "example-memory==2.0.0",
+            attemptId: "synthetic-sequence",
+          });
           recorded = true;
         },
         startCandidate,
@@ -124,6 +143,49 @@ describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
       expect(result.error).toContain("synthetic receipt failure");
       expect(startCandidate).not.toHaveBeenCalled();
       expect(startOld).toHaveBeenCalledTimes(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("leaves the recovery record when its callback writes and then fails", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "memory-upgrade-intent-uncertain-"));
+    try {
+      const db = join(dir, "memory.db");
+      const intent = join(dir, "intent.json");
+      execFileSync("sqlite3", [db, "CREATE TABLE memories (id INTEGER, deleted_at TEXT);"]);
+      const startCandidate = vi.fn();
+      const result = await upgradeMemoryWithSnapshot({
+        dbPath: db,
+        backupsDir: join(dir, "backups"),
+        stopOld: async () => undefined,
+        isOldStopped: async () => true,
+        startOld: async () => undefined,
+        persistCandidateIntent: async (snapshot) => {
+          const original = statSync(db, { bigint: true });
+          const saved = statSync(snapshot, { bigint: true });
+          createUpgradeIntent(intent, {
+            databasePath: db,
+            databaseDevice: String(original.dev),
+            databaseInode: String(original.ino),
+            snapshotPath: snapshot,
+            snapshotDevice: String(saved.dev),
+            snapshotInode: String(saved.ino),
+            oldJobLabel: "com.example.memory",
+            candidateSpec: "example-memory==2.0.0",
+            attemptId: "synthetic-uncertain",
+          });
+          throw new Error("synthetic lost receipt response");
+        },
+        startCandidate,
+        candidateHealthy: async () => true,
+      });
+      expect(result).toMatchObject({ ok: false, stage: "backup" });
+      expect(startCandidate).not.toHaveBeenCalled();
+      expect(readUpgradeIntent(intent)).toMatchObject({
+        state: "recovery-required",
+        record: { attemptId: "synthetic-uncertain" },
+      });
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

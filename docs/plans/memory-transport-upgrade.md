@@ -19,6 +19,14 @@
 This local record cannot stop older tools or direct service commands. Its
 caller must verify job identity and coordinate the real handoff.
 
+The scratch receipt and sequence suites passed 26 tests on Node 22.23.4 and
+24.21.0. They cover exclusive creation, partial and malformed records, symlinks,
+a named pipe, concurrent creators, a killed writer, injected write and sync
+failures, and a record written before its callback fails. The helper validates
+identity fields' format; the future caller must check the actual files and a
+private, stable parent directory. File and directory syncs support process
+crash recovery; they do not establish sudden power-loss durability.
+
 ## Candidate recovery intent prediction
 
 - **Root cause:** The draft sequence can register a candidate without first

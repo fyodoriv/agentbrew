@@ -8,8 +8,8 @@
 - **Measurement:** Run focused launchd adapter tests with synthetic job state,
   including mismatched identity, stop failure, a surviving process, successful
   registration, and a lost registration response.
-- **Success:** Every matching synthetic handoff follows the required order;
-  every ambiguous or mismatched case stops before the next mutation.
+- **Success:** 100% of matching synthetic handoffs follow the required order;
+  100% of ambiguous or mismatched cases stop before the next mutation.
 - **Pivot:** If a job, process, or command outcome cannot be verified, leave
   live application unavailable and retain the recovery record.
 - **Anchor:** `src/core/launchctl.ts`, `src/memory/upgrade-orchestrator.ts`,
@@ -17,6 +17,13 @@
 
 These controls do not exclude older tools or direct launchd commands. The
 caller must establish and maintain a separate controlled handoff window.
+
+The draft adapter checks the loaded job recipe and environment fingerprint,
+process ancestry, listener identity, and the job-file hash before a stop or
+registration. It propagates a lost registration response. The parser also
+accepted the currently loaded job in a read-only check. This is not yet wired
+to the live upgrade. Real launchd callback integration and a verified
+maintenance window remain necessary.
 
 ## Upgrade orchestration prediction
 

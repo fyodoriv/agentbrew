@@ -433,6 +433,17 @@ function noCustomLaunchdMemoryEnvironment(): boolean {
   return true;
 }
 
+/** Read-only check of known environment sources; package-ancestor dotenv files remain a caller concern. */
+export function memoryUpgradeEnvironmentSafe(): boolean {
+  const home = homedir();
+  return (
+    memoryLaunchAgentSupported() &&
+    launchdTargetsThisHome() &&
+    noCustomLaunchdMemoryEnvironment() &&
+    [join(home, ".env"), join(home, ".mcp-memory", ".env")].every(knownPathAbsent)
+  );
+}
+
 export function installMemoryLaunchAgents(): {
   installed: boolean;
   upgradeBlocked?: boolean;

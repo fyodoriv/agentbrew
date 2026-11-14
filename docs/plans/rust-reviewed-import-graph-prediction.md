@@ -105,3 +105,11 @@ describes startup path inputs and configuration. Those general docs do not
 identify this machine's interpreter, flags, loader or resolved files. The two
 questions are distinct: an explicit target path can still depend on the
 runtime's selected implementation and surrounding imports.
+
+A later read-only Python AST pass over the pinned caller, callee and two test
+callers found the declared loader calls and also a `setattr` call that creates
+test methods. The test sources patch process and network functions and contain
+additional calls. AST call spelling is syntactic evidence only: it does not
+resolve dynamic bindings, establish complete execution coverage, or validate
+an installed interpreter. The pass parsed text and did not execute those
+sources. These extra boundaries remain unresolved under the pivot.

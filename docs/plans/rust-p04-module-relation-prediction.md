@@ -22,8 +22,10 @@ Register before implementation or execution. A standalone source sample's
   both candidates, neither, symlink, invalid UTF-8, root ambiguity, module
   attributes, duplicate declarations and unsupported nested/include/cycle
   shapes inconclusive, never an empty success. Test exact 2 MiB and one byte
-  over for both root and selected source, identifier, site and combined text
-  limits, before allocation of an additional returned site.
+  over for both root and selected source, identifier and site limits. For
+  combined text, test 65,536 bytes and the smallest reachable over-limit
+  relation, 65,540 bytes, before allocation of an additional returned site.
+  Separately test the one-byte arithmetic boundary in the shared limit check.
   Existing P01–P03/P05 behavior, host observation and
   retained C01/P01/N02a reports remain unchanged; normal compilation succeeds.
 - **Pivot:** Stop if an ambiguous or unsupported case produces an admitted

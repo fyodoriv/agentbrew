@@ -48,3 +48,24 @@ not bounded by this probe. Reset it on source-closure restart, but not merely on
 passes. This joins a partial lexical relation to visited bytes; it does not
 prove Cargo root authority, general module resolution, standard-library
 identity, full coverage or writer admission. It cannot authorize a worker.
+
+## Pre-implementation pivot
+
+Independent routing review found that discovery makes each recognized,
+valid-UTF-8 non-symlink Rust entry a physical root from the same snapshot
+bytes. When admitted, queued keys are processed at most once per closure round;
+the source-count or per-source limits can prevent processing. The review did
+not identify a real producer of generated Rust bodies. The
+registered selective-unvisited, changed-buffer and generated-route controls
+therefore have no demonstrated fixture. A source-count refusal can leave the
+whole join unvisited, and an independently retained mismatched expectation can
+test a comparison, but neither is the promised selective route. An existing
+promotion fixture restarts closure; its unchanged Rust roots alone do not prove
+stale-only evidence is discarded.
+
+Do not implement this prediction by injecting observer-only events or calling
+helper-level controls actual routing. No bridge or registered control ran.
+Keep this prediction inconclusive. A narrower claim requires a separate
+prediction and real routing fixtures, or evidence of an actual generated Rust
+producer and a discriminating restart case. This pivot leaves production
+discovery, adapter admission and worker safety unchanged.

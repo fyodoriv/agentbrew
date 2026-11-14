@@ -5,17 +5,17 @@ use serde_json::Value;
 
 const LIMIT: usize = 2_097_152;
 
-struct Relation {
-    path: String,
-    module: String,
-    site: SyntaxSite,
+pub(crate) struct Relation {
+    pub(crate) path: String,
+    pub(crate) module: String,
+    pub(crate) site: SyntaxSite,
 }
 
 fn fits(total: usize, additional: usize) -> bool {
     total.checked_add(additional).is_some_and(|n| n <= 65_536)
 }
 
-fn relation(snapshot: &Snapshot) -> Option<Vec<Relation>> {
+pub(crate) fn relation(snapshot: &Snapshot) -> Option<Vec<Relation>> {
     if snapshot.entries.contains_key("src/main.rs") {
         return None;
     }
@@ -98,7 +98,7 @@ fn range(actual: &std::ops::Range<usize>, expected: &Value) -> bool {
         && expected[1].as_u64() == Some(actual.end as u64)
 }
 
-fn matches(record: &Relation, witness: &Value) -> bool {
+pub(crate) fn matches(record: &Relation, witness: &Value) -> bool {
     witness["physical_path"].as_str() == Some(record.path.as_str())
         && witness["logical_module"].as_str() == Some(record.module.as_str())
         && range(&record.site.owner, &witness["owner_fn_byte_range"])

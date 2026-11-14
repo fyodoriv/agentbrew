@@ -74,6 +74,15 @@ pub(crate) struct DiscoveryObserver {
     rust_path_bytes: usize,
     rust_module_bytes: usize,
     rust_invalid: bool,
+    routed_seen: [bool; 2],
+    routed_invalid: bool,
+    routed_round: usize,
+}
+
+#[cfg(test)]
+struct ExpectedRoute<'a> {
+    snapshot: &'a Snapshot,
+    target: &'a str,
 }
 
 #[cfg(test)]
@@ -167,6 +176,89 @@ impl DiscoveryObserver {
     pub(crate) fn rust_partial_records(&self) -> Option<&[RustSyntaxObservation]> {
         (self.complete && !self.rust_invalid).then_some(self.rust_records.as_slice())
     }
+
+    fn observe_routed(
+        &mut self,
+        route: &ExpectedRoute<'_>,
+        path: &str,
+        source: &str,
+        generated: bool,
+    ) {
+        let index = if path == "src/lib.rs" {
+            0
+        } else if path == route.target {
+            1
+        } else {
+            return;
+        };
+        let Some(entry) = route.snapshot.entries.get(path) else {
+            self.routed_invalid = true;
+            return;
+        };
+        if generated
+            || self.routed_seen[index]
+            || entry.bytes.len() > 2_097_152
+            || source.len() > 2_097_152
+            || source.as_bytes() != entry.bytes.as_slice()
+        {
+            self.routed_invalid = true;
+            return;
+        }
+        self.routed_seen[index] = true;
+    }
+
+    pub(crate) fn routed_round(&self) -> Option<usize> {
+        (self.complete && !self.routed_invalid && self.routed_seen == [true, true])
+            .then_some(self.routed_round)
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn routed_helper_controls(expected: &Snapshot) {
+    let route = ExpectedRoute {
+        snapshot: expected,
+        target: "src/emit.rs",
+    };
+    let root = std::str::from_utf8(&expected.entries["src/lib.rs"].bytes).unwrap();
+    let target = std::str::from_utf8(&expected.entries["src/emit.rs"].bytes).unwrap();
+    for kind in ["duplicate", "generated"] {
+        let mut observer = DiscoveryObserver::default();
+        observer.observe_routed(&route, "src/lib.rs", root, false);
+        match kind {
+            "duplicate" => {
+                observer.observe_routed(&route, "src/lib.rs", root, false);
+                observer.observe_routed(&route, "src/emit.rs", target, false);
+            }
+            _ => {
+                observer.observe_routed(&route, "src/emit.rs", target, true);
+                assert!(observer.routed_invalid);
+                assert!(!observer.routed_seen[1]);
+                observer.observe_routed(&route, "src/emit.rs", target, false);
+            }
+        }
+        observer.finish();
+        assert!(observer.routed_round().is_none(), "{kind}");
+    }
+    // Deliberately oversized helper input; this is not an admitted expected copy.
+    let mut oversized = Snapshot {
+        entries: expected.entries.clone(),
+        untracked: expected.untracked.clone(),
+        ignored: expected.ignored.clone(),
+    };
+    oversized.entries.get_mut("src/emit.rs").unwrap().bytes = vec![b' '; 2_097_153];
+    let large = std::str::from_utf8(&oversized.entries["src/emit.rs"].bytes).unwrap();
+    let route = ExpectedRoute {
+        snapshot: &oversized,
+        target: "src/emit.rs",
+    };
+    let mut observer = DiscoveryObserver::default();
+    assert_eq!(
+        large.as_bytes(),
+        oversized.entries["src/emit.rs"].bytes.as_slice()
+    );
+    observer.observe_routed(&route, "src/emit.rs", large, false);
+    assert!(observer.routed_invalid);
+    assert!(!observer.routed_seen[1]);
 }
 
 #[derive(Clone)]
@@ -578,7 +670,7 @@ pub fn discover(snapshot: &Snapshot) -> Discovery {
 fn discover_with_initial_limit(snapshot: &Snapshot, initial_limit: usize) -> Discovery {
     #[cfg(test)]
     {
-        discover_inner(snapshot, initial_limit, None)
+        discover_inner(snapshot, initial_limit, None, None)
     }
     #[cfg(not(test))]
     {
@@ -592,13 +684,45 @@ pub(crate) fn discover_observed(
     observer: &mut DiscoveryObserver,
 ) -> Discovery {
     *observer = DiscoveryObserver::default();
-    discover_inner(snapshot, SOURCE_COUNT, Some(observer))
+    discover_inner(snapshot, SOURCE_COUNT, Some(observer), None)
+}
+
+#[cfg(test)]
+pub(crate) fn discover_routed_observed(
+    snapshot: &Snapshot,
+    expected: &Snapshot,
+    limit: Option<usize>,
+    observer: &mut DiscoveryObserver,
+) -> Discovery {
+    *observer = DiscoveryObserver::default();
+    let relation = crate::rust_family_tests::rust_module_relation::relation(expected);
+    let target = relation
+        .as_ref()
+        .and_then(|records| records.first().map(|record| record.path.as_str()));
+    let route = target
+        .filter(|path| {
+            *path != "src/lib.rs"
+                && relation
+                    .as_ref()
+                    .is_some_and(|records| records.iter().all(|record| record.path == *path))
+        })
+        .map(|target| ExpectedRoute {
+            snapshot: expected,
+            target,
+        });
+    discover_inner(
+        snapshot,
+        limit.unwrap_or(SOURCE_COUNT),
+        Some(observer),
+        route.as_ref(),
+    )
 }
 
 fn discover_inner(
     snapshot: &Snapshot,
     initial_limit: usize,
     #[cfg(test)] mut observer: Option<&mut DiscoveryObserver>,
+    #[cfg(test)] route: Option<&ExpectedRoute<'_>>,
 ) -> Discovery {
     let mut result = Discovery::default();
     match crate::upstream_ownership::inspect(snapshot) {
@@ -653,12 +777,13 @@ fn discover_inner(
     let initial_over_limit = roots.len() > initial_limit;
     // A new caller-promoted file restarts source closure. This prevents stale
     // unresolved module facts or changed body ordinals from surviving a round.
-    for _ in 0..=snapshot.entries.len() {
+    for _round_index in 0..=snapshot.entries.len() {
         #[cfg(test)]
         let mut round_observer = DiscoveryObserver::default();
         #[cfg(test)]
         {
             round_observer.rust_invalid = invalid_rust_entry;
+            round_observer.routed_round = _round_index.saturating_add(1);
         }
         let mut round = Discovery {
             upstream: result.upstream.clone(),
@@ -736,11 +861,22 @@ fn discover_inner(
                     _ => {
                         #[cfg(test)]
                         if observer.is_some() && source.language == "rust" {
+                            if let Some(route) = route {
+                                round_observer.observe_routed(
+                                    route,
+                                    &source.path,
+                                    &source.text,
+                                    source.body.is_some(),
+                                );
+                            }
                             round_observer.observe_rust(
                                 &source.path,
                                 &source.text,
                                 source.body.is_some(),
                             );
+                            if round_observer.rust_invalid {
+                                round_observer.routed_invalid = true;
+                            }
                         }
                         let reviewed = source.body.is_none()
                             && round.reviewed_sources.iter().any(|record| {
@@ -835,6 +971,12 @@ fn discover_inner(
         if new.is_empty() {
             #[cfg(test)]
             if let Some(target) = observer.as_deref_mut() {
+                if round.diagnostics.iter().any(|diagnostic| {
+                    diagnostic.code == "source-worklist-limit"
+                        || diagnostic.code == "parser-source-limit"
+                }) {
+                    round_observer.routed_invalid = true;
+                }
                 round_observer.finish();
                 *target = round_observer;
             }

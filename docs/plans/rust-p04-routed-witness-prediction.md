@@ -60,3 +60,14 @@ Publish only final-round evidence. A source-worklist or parser limit, early
 return, exhausted loop, duplicate, generated selected source or mismatch is
 inconclusive even if an existing observer's completion flag was set. Review
 the actual boundary wiring before accepting a result.
+
+## Focused result
+
+The exact routed witness passed on the frozen P04 data, including the real
+restart and retained C01/P01/N02a report projections. Both retained exact
+tests, the non-test library check and 28 workflow controls passed. Independent
+review caught missing normal-limit, sticky-refusal and routed B0 controls;
+the corrected controls passed. Generated and overflow controls are explicitly
+helper-level, not evidence of a real generated-Rust route or stale-only
+restart. The witness remains partial and cannot authorize adapter or worker
+admission.

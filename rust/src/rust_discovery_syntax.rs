@@ -1,5 +1,7 @@
 use super::rust_legacy_baseline_tests::{canonical, discovery, input_metadata, report};
-use crate::discovery::{discover, discover_observed, DiscoveryObserver, RustSyntaxObservation};
+use crate::discovery::{
+    discover, discover_observed, discover_routed_observed, DiscoveryObserver, RustSyntaxObservation,
+};
 use crate::snapshot::{Entry, Snapshot};
 use serde_json::{json, Value};
 use std::ops::Range;
@@ -249,4 +251,94 @@ fn observes_inline_modules() {
         false,
     );
     assert!(trace.rust_partial_records().is_none());
+}
+
+#[test]
+fn witnesses_p04_routed_buffers() {
+    let case = super::materialize("P04");
+    for path in ["src/lib.rs", "src/emit.rs"] {
+        assert!(case.snapshot.entries[path].bytes.len() <= 2_097_152);
+    }
+    let expected = copy_snapshot(&case.snapshot);
+    let relation = super::rust_module_relation::relation(&expected).unwrap();
+    assert_eq!(relation.len(), 1);
+    assert!(super::rust_module_relation::matches(
+        &relation[0],
+        &case.witnesses[0]
+    ));
+    let mut observer = DiscoveryObserver::default();
+    let ids = ["C01", "P01", "N02a"];
+    let mut baseline = Vec::new();
+    for id in ids {
+        let control = super::materialize(id);
+        let routed = discover_routed_observed(&control.snapshot, &expected, None, &mut observer);
+        assert!(observer.routed_round().is_none());
+        let projection = discovery(&routed);
+        let validated = crate::validation::validate(
+            &control.snapshot,
+            "rust/inventory.json",
+            &control.manifest,
+            routed,
+        );
+        baseline.push(json!({"discovery": projection, "report": report(&validated)}));
+    }
+    assert_eq!(
+        super::sha(&encoded(json!({"ids": ids, "records": baseline}))),
+        "1f4d827984fcf4ab3ce5f57d3120e2fee4d05b2c1212730e0b17947edd0d29f3"
+    );
+    let plain = discover(&case.snapshot);
+    let observed = discover_routed_observed(&case.snapshot, &expected, None, &mut observer);
+    assert_eq!(discovery(&plain), discovery(&observed));
+    assert_eq!(
+        report(&crate::validation::validate(
+            &case.snapshot,
+            "rust/inventory.json",
+            &case.manifest,
+            plain
+        )),
+        report(&crate::validation::validate(
+            &case.snapshot,
+            "rust/inventory.json",
+            &case.manifest,
+            observed
+        ))
+    );
+    assert_eq!(observer.routed_round(), Some(1));
+    for path in ["src/lib.rs", "src/emit.rs"] {
+        let mut wrong = copy_snapshot(&expected);
+        wrong.entries.get_mut(path).unwrap().bytes.push(b' ');
+        discover_routed_observed(&case.snapshot, &wrong, None, &mut observer);
+        assert!(observer.routed_round().is_none());
+    }
+    for key in ["physical_path", "logical_module"] {
+        let mut wrong = case.witnesses[0].clone();
+        wrong[key] = json!("wrong");
+        assert!(!super::rust_module_relation::matches(&relation[0], &wrong));
+    }
+    let mut wrong = case.witnesses[0].clone();
+    wrong["call_byte_range"][0] = json!(relation[0].site.call.start + 1);
+    assert!(!super::rust_module_relation::matches(&relation[0], &wrong));
+    discover_routed_observed(&case.snapshot, &expected, None, &mut observer);
+    assert!(observer.routed_round().is_some());
+    discover_routed_observed(&case.snapshot, &expected, Some(0), &mut observer);
+    assert!(observer.routed_round().is_none());
+    let mut unsupported = copy_snapshot(&expected);
+    unsupported.entries.get_mut("src/lib.rs").unwrap().bytes = b"mod emit; mod other;".to_vec();
+    discover_routed_observed(&case.snapshot, &unsupported, None, &mut observer);
+    assert!(observer.routed_round().is_none());
+    // Helper-level controls do not claim a real generated-Rust route.
+    crate::discovery::routed_helper_controls(&expected);
+
+    let mut restart = copy_snapshot(&case.snapshot);
+    let main = "import {writeFileSync} from 'node:fs'; import {spawnSync} from 'node:child_process'; import {body} from './helper'; writeFileSync('tools/out', body); spawnSync('node', ['src/helper']);\n";
+    let helper = "export const body = '#!/bin/sh\\n:\\n';\n";
+    restart
+        .entries
+        .insert("src/main.ts".into(), entry("src/main.ts", main));
+    restart
+        .entries
+        .insert("src/helper".into(), entry("src/helper", helper));
+    let found = discover_routed_observed(&restart, &expected, None, &mut observer);
+    assert!(found.programs.contains_key("src/helper"));
+    assert!(observer.routed_round().is_some_and(|round| round > 1));
 }

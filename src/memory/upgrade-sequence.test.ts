@@ -1,12 +1,22 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { upgradeMemoryWithSnapshot } from "./upgrade-sequence.js";
 
-describe.runIf(builtinModules.includes("node:sqlite"))("memory upgrade snapshot sequence", () => {
+const hasSqlite = await import("node:sqlite").then(
+  () => true,
+  () => false,
+);
+const [major = 0, minor = 0] = process.versions.node.split(".").map(Number);
+const sqliteExpected = major >= 24 || (major === 23 && minor >= 4) || (major === 22 && minor >= 13);
+
+it.runIf(sqliteExpected)("provides SQLite on supported Node runtimes", () => {
+  expect(hasSqlite).toBe(true);
+});
+
+describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
   it("does not back up or start the candidate if stopping the old daemon fails", async () => {
     const dir = mkdtempSync(join(tmpdir(), "memory-upgrade-stop-"));
     try {

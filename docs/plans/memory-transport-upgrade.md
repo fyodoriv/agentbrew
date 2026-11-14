@@ -16,6 +16,12 @@
 - **Anchor:** `src/memory/write-reservation.test.ts` and Node 22.23.4 runtime
   import probe.
 
+Node 22 initially skipped all seven sequence tests. After import detection,
+the seven tests and an explicit SQLite availability assertion passed on Node
+22.23.4 and 24.21.0. Node 20.20.2 skipped the sequence tests and assertion;
+the reservation suite separately checks the unavailable-runtime failure.
+Node documents the unflagged SQLite thresholds at [its SQLite API reference](https://nodejs.org/api/sqlite.html).
+
 ## Hosted descriptor owner-crash trial prediction
 
 - **Hypothesis:** A Node owner on macOS holds an inherited descriptor lock

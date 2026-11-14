@@ -76,6 +76,16 @@ describe("hosted workflows", () => {
     }
   });
 
+  it("supersedes obsolete manual CI runs while preserving push runs", () => {
+    const text = workflows.find((w) => w.name === "ci.yml")?.text ?? "";
+    expect(text).toContain(
+      "cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main') }}",
+    );
+    expect(text).toContain(
+      "group: ci-${{ github.event_name == 'push' && github.run_id || github.event.pull_request.number || github.ref }}",
+    );
+  });
+
   it("the release workflow bumps the version on main only", () => {
     const text = workflows.find((w) => w.name === "auto-publish.yml")?.text ?? "";
     expect(text).toMatch(/if: github\.ref == 'refs\/heads\/main'/);

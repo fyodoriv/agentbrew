@@ -45,6 +45,11 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 
 Merge only when every hosted check on the pull request is green. Never merge on a pending or red check. Wait with `gh pr checks <n> --watch`.
 
+Manual CI runs on a non-main branch cancel an older manual run for the same
+branch. Each main push uses its own group, separate from manual runs.
+A pull request uses its own group. GitHub may replace an older pending manual
+run on main when another manual main run is queued.
+
 ## When a hosted check fails
 
 1. Read the log first: `gh run view <run-id> --log-failed`.

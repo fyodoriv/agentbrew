@@ -19,6 +19,14 @@
 This is cooperative coordination, not proof that old binaries or direct
 launchd commands are absent. The caller must establish other control separately.
 
+The draft coordinated entry point now holds the shared lock through the generic
+orchestrator and supplies the canonical recovery-record path. Scratch tests use
+real SQLite snapshots and records. They cover a competing restart, an existing
+record, lock contention, and an operation failure with later lock reacquisition.
+Service identity, stop/start, health, and external control were simulated. The
+entry point is not connected to a live command and does not prove a safe live
+handoff.
+
 ## Disable failure state prediction
 
 - **Root cause hypothesis:** `disableMemory` clears managed state before it

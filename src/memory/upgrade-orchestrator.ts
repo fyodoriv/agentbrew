@@ -2,6 +2,7 @@ import { existsSync, lstatSync, mkdirSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { verifySqliteBackup } from "./backup.js";
 import { MEMORY_UPGRADE_SNAPSHOT_DIR } from "./constants.js";
+import { acquireMemoryControlLock, memoryControlPaths } from "./control-lock.js";
 import { createUpgradeIntent, readUpgradeIntent } from "./upgrade-intent.js";
 import { type MemoryUpgradeResult, upgradeMemoryWithSnapshot } from "./upgrade-sequence.js";
 
@@ -24,6 +25,33 @@ export interface MemoryUpgradeOrchestration {
 }
 
 type OrchestrationResult = MemoryUpgradeResult | { ok: false; stage: "preflight"; error: string };
+
+/** The caller must still control older and non-cooperating service mutators. */
+export async function orchestrateCoordinatedMemoryUpgrade(
+  ops: Omit<MemoryUpgradeOrchestration, "intentPath">,
+): Promise<OrchestrationResult> {
+  const paths = memoryControlPaths();
+  let lock: ReturnType<typeof acquireMemoryControlLock>;
+  try {
+    mkdirSync(paths.dir, { mode: 0o700, recursive: true });
+    lock = acquireMemoryControlLock(paths.lock);
+  } catch {
+    return { ok: false, stage: "preflight", error: "memory upgrade control unavailable" };
+  }
+  try {
+    return await orchestrateMemoryUpgrade({
+      ...ops,
+      intentPath: paths.intent,
+      assertControl: async () => {
+        lock.assertHeld();
+        await ops.assertControl();
+        lock.assertHeld();
+      },
+    });
+  } finally {
+    lock();
+  }
+}
 
 /** Not a live adapter: callers must verify job identity and hold an actual maintenance window. */
 export async function orchestrateMemoryUpgrade(ops: MemoryUpgradeOrchestration): Promise<OrchestrationResult> {

@@ -411,8 +411,12 @@ isolated 12.9.0 service. In one session, its completed execution called
 bootstrap, session save, and exact search in order. The search returned the
 synthetic marker as a numbered memory entry with a hash. The outside-file and
 live-memory-port controls denied access, and the scratch server stopped. The
-package version was checked separately after the run. This covers that
-provider and scratch configuration, not a live upgrade or other clients.
+package version was checked separately after the run. The service used hash
+embeddings. A manual audit of the grouped tool event established the calls and
+numbered entry; the harness did not assert them. The client had network access
+for Kimi, and the port-denial test lacked a separate positive control for the
+live listener. This covers that provider and scratch configuration, not ONNX
+retrieval, a live upgrade, or other clients.
 
 ### Version 12.9.0 local-client read prediction
 

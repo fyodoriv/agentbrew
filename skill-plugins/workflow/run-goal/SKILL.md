@@ -62,6 +62,9 @@ Follow this order, even for a small goal:
 4. Create a plan Artifact in the task outputs before execution. Update the same Artifact
    at every milestone; on resume, find and reuse it. Verify visibility and
    follow the private fallback in the [goal report](references/goal-report.md).
+   At creation and each milestone, request an independent review using the
+   [plan artifact judge](references/plan-artifact-judge.md). On resume, review
+   the existing artifact and its identity before continuing.
 5. Work, printing a `Goal check` line after each done-criterion (Phase 4).
 6. Verify with fresh evidence (Phase 5), then the retro and the final
    report (Phase 6).

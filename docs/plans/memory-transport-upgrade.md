@@ -16,6 +16,14 @@
 
 This does not establish safe live migration or package-cache provenance.
 
+A separate read-only live observation found one listener, identified its
+installed 11.7.0 package, and checked the package's known dotenv candidates.
+All inspected candidates were absent, and the listener PID/start stamp matched
+before and after the check. This is only a point-in-time observation: it does
+not show what existed when the process started, what a candidate package would
+load, or whether another controller can change the service afterward. No
+memory contents or configuration values were copied into this report.
+
 A scratch offline uvx service using HTTP stored a synthetic fact and returned
 it in parsed exact and semantic result rows. A repeat used a differently worded
 semantic query and also returned the fact. ONNX and CPU were configured and

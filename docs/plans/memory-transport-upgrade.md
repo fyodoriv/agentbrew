@@ -1,5 +1,19 @@
 # Shared memory transport upgrade prediction
 
+## Hosted descriptor owner-crash trial prediction
+
+- **Hypothesis:** A Node owner on macOS holds an inherited descriptor lock
+  against a rival process, and the lock is released after the owner is killed.
+- **Measurement:** Run a synthetic scratch-file trial on hosted macOS with
+  Node 20, 22, and 24. Print the owning runtime and both rival exit codes.
+- **Success:** Each owner reports its expected major version; the rival returns
+  75 while it runs and 0 after it is killed and reaped.
+- **Pivot:** If any runtime fails, do not use descriptor locking for migration.
+- **Anchor:** macOS `lockf(1)` descriptor mode and `src/memory/native-lockf.test.ts`.
+
+This trial does not establish protection from surviving descendants, replaced
+lock files, older controllers, or direct `launchctl` commands.
+
 ## Node 22 capability detection correction
 
 - **Root cause:** On Node 22.23.4, `node:sqlite` imports successfully but is absent from `builtinModules`. The reservation test mistakes this runtime for one without SQLite and expects a successful operation to fail.

@@ -1,5 +1,22 @@
 # Shared memory transport upgrade prediction
 
+## Production runtime scratch rehearsal prediction
+
+- **Hypothesis:** The real launchd runtime can complete the guarded handoff for
+  a temporary job using its real environment, process ancestry, listener, and
+  file checks, while preserving synthetic memories.
+- **Measurement:** Run the actual runtime against an isolated temporary label
+  and database. In a scratch copy, change only the canonical-label restriction
+  to accept the unique synthetic label. Verify the source difference, candidate
+  and restored entries, cleanup, and untouched live job.
+- **Success:** All isolation, runtime, recall, and cleanup checks pass; no live
+  job mutation occurs. A mismatch halts the trial.
+- **Pivot:** If a check fails, retain the evidence and do not infer live safety.
+- **Anchor:** `src/memory/upgrade-launchagent.ts` and the prior callback trial.
+
+This trial cannot prove exclusive control of the real service or future writes.
+The expected candidate environment still needs independent verification.
+
 ## Integrated launchd callback rehearsal prediction
 
 - **Hypothesis:** The draft launchd callbacks can drive the existing upgrade

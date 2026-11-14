@@ -17,6 +17,16 @@
 This trial cannot prove exclusive control of the real service or future writes.
 The expected candidate environment still needs independent verification.
 
+The isolated trial passed with the default runtime after changing only the
+label guard in a scratch copy to permit its unique temporary job. It used the
+real launchd environment check, process and listener probes, and job-file hash.
+Both package versions were attested. Candidate and restored synthetic entries
+were recalled, and the temporary job and known processes stopped. The listener
+was the launchd job process itself, so a multi-process ancestry was not tested.
+The candidate environment fingerprint was copied from the old job, rather than
+independently derived. The controlled-window callback remained simulated. This
+is not proof of a safe live upgrade.
+
 ## Integrated launchd callback rehearsal prediction
 
 - **Hypothesis:** The draft launchd callbacks can drive the existing upgrade

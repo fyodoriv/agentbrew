@@ -1,5 +1,23 @@
 # Shared memory transport upgrade prediction
 
+## Derived candidate handoff rehearsal prediction
+
+- **Hypothesis:** A candidate derived from a temporary loaded job can run the
+  newer upstream service through the coordinated handoff without changing the
+  remaining job settings or losing synthetic memories.
+- **Measurement:** Use temporary macOS jobs and isolated old/new services. Derive
+  the candidate from the actual loaded output, create its scratch file without
+  replacement, then verify lock contention, receipt, candidate and restored
+  memory entries, package versions and cleanup.
+- **Success:** Every identity, isolation, contention, recall and cleanup check
+  passes, and the candidate differs only in its version argument.
+- **Pivot:** If derivation, launchd registration, recall or cleanup fails, do
+  not use the candidate builder for a live upgrade.
+- **Anchor:** `src/memory/upgrade-candidate.ts` and the coordinated launchd
+  rehearsal in this plan.
+
+This test cannot exclude older or non-cooperating live controllers.
+
 ## Candidate job derivation prediction
 
 - **Hypothesis:** Deriving a candidate from a verified loaded job and changing

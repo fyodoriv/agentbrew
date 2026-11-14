@@ -485,6 +485,14 @@ requested save or search tools. This does not establish a Claude client or
 service failure; its full lifecycle remains unverified. A separate isolated
 save-only check was queued to narrow the cause.
 
+A later scratch session used a local Qwen 4B model. Its event record shows
+bootstrap, session save, and exact search in order, with the marker in numbered
+memory entries. Client isolation controls denied the live memory port and
+external network; the host Ollama process was outside that sandbox. The run was stopped after those tool results because model memory
+pressure delayed another check. The client exited by signal, not normally; the
+scratch service stopped. This is evidence of those calls and results, not a
+completed Claude session or hosted Claude behavior.
+
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
 

@@ -55,7 +55,7 @@ describe("primary-host story acceptance", () => {
       "block context-dependent work",
       "Deterministic CLI actions",
     ])
-      expect(template).toContain(word);
+      expect(sharedMemory).toContain(word);
   });
 
   it("documents authorized headless saves without changing owner permissions", () => {

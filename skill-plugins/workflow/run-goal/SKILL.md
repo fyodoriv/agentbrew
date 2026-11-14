@@ -56,8 +56,7 @@ Follow this order, even for a small goal:
    and say in one chat line that the contract is saved. The
    `goal-contract-before-edit` hook blocks other file edits until that file
    has the "Done when", "Metric", and "Pivot" sections.
-   For a research or Q&A goal, print it as soon as the questions are known,
-   before you gather evidence for any one answer.
+   For a research or Q&A goal, print it as soon as the questions are known, before you gather evidence for any one answer.
 3. Ask the one question round, or record your defaults (Phase 3).
 4. Create a plan Artifact in the task outputs before execution. Update the same Artifact
    at every milestone; on resume, find and reuse it. Verify visibility and follow the private fallback in the [goal report](references/goal-report.md).
@@ -67,6 +66,7 @@ Follow this order, even for a small goal:
 6. Verify with fresh evidence (Phase 5), then the retro and the final report (Phase 6).
 
 A small goal gets a short contract, not none. Without it, the goal checker cannot verify done and the user cannot review your plan.
+**Research or choice goal** (pick between options, answer a question, no repo change): print a 3-line contract (`Done when:` the pick and why, `Metric:` sources checked per option, `Pivot:` what means "no clear winner"; save it if the hook names a file). Check each option's own source, then answer in chat with the pick and one source link per claim. Skip the plan Artifact, HTML report, and skill PR; keep a one-line retro.
 
 ## Why the transcript matters
 

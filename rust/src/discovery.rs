@@ -87,6 +87,105 @@ struct ExpectedRoute<'a> {
 }
 
 #[cfg(test)]
+#[derive(Clone)]
+pub(crate) struct TestProducer<'a> {
+    pub path: &'a str,
+    pub source: &'a [u8],
+    pub call: std::ops::Range<usize>,
+    pub call_text: &'a str,
+    pub output: std::ops::Range<usize>,
+    pub output_text: &'a str,
+    pub output_value: &'a str,
+    pub body: std::ops::Range<usize>,
+    pub body_text: &'a str,
+    pub body_value: &'a str,
+}
+
+#[cfg(test)]
+fn test_producer(
+    snapshot: &Snapshot,
+    input: &TestProducer<'_>,
+) -> Option<crate::reviewed_producers::Evidence> {
+    use crate::host_graph::{Datum, Event, Operation, Site};
+    if input.call_text != "write(\"tools/out\", \"#!/bin/sh\\n:\\n\")"
+        || input.output_text != "\"tools/out\""
+        || input.body_text != "\"#!/bin/sh\\n:\\n\""
+        || input.output_value != "tools/out"
+        || input.body_value != "#!/bin/sh\n:\n"
+    {
+        return None;
+    }
+    let entry = snapshot.entries.get(input.path)?;
+    if entry.path != input.path
+        || entry.mode != 0o100644
+        || entry.bytes.len() > 2_097_152
+        || input.source.len() > 2_097_152
+        || entry.bytes.as_slice() != input.source
+    {
+        return None;
+    }
+    let source = std::str::from_utf8(input.source).ok()?;
+    if language(input.path, source).is_none() {
+        return None;
+    }
+    for (range, text) in [
+        (&input.call, input.call_text),
+        (&input.output, input.output_text),
+        (&input.body, input.body_text),
+    ] {
+        if range.start >= range.end
+            || source.get(range.clone()) != Some(text)
+            || u32::try_from(range.end).is_err()
+        {
+            return None;
+        }
+    }
+    if input.output.start < input.call.start
+        || input.output.end > input.call.end
+        || input.body.start < input.call.start
+        || input.body.end > input.call.end
+    {
+        return None;
+    }
+    let text_bytes = input
+        .path
+        .len()
+        .checked_mul(3)?
+        .checked_add(input.call_text.len())?
+        .checked_add(input.output_text.len())?
+        .checked_add(input.body_text.len())?
+        .checked_add(input.output_value.len())?
+        .checked_add(input.body_value.len())?
+        .checked_add("node:fs/writeFileSync".len())?
+        .checked_add("fixture".len() * 2)?;
+    if text_bytes > 65_536 {
+        return None;
+    }
+    let site = |range: &std::ops::Range<usize>| Site {
+        path: input.path.into(),
+        start: range.start as u32,
+        end: range.end as u32,
+        body: None,
+    };
+    Some(crate::reviewed_producers::Evidence {
+        event: Event {
+            site: site(&input.call),
+            operation: Operation::Write,
+            api: "node:fs/writeFileSync".into(),
+            arguments: vec![
+                Datum::Text(input.output_value.into(), site(&input.output)),
+                Datum::Text(input.body_value.into(), site(&input.body)),
+            ],
+            owner: None,
+        },
+        owner: "fixture".into(),
+        migration_slice: "fixture".into(),
+        environment_inputs: Vec::new(),
+        executable_mode: 0o755,
+    })
+}
+
+#[cfg(test)]
 impl DiscoveryObserver {
     pub(crate) fn begin_pass(&mut self) {
         self.records.clear();
@@ -697,7 +796,7 @@ pub fn discover(snapshot: &Snapshot) -> Discovery {
 fn discover_with_initial_limit(snapshot: &Snapshot, initial_limit: usize) -> Discovery {
     #[cfg(test)]
     {
-        discover_inner(snapshot, initial_limit, None, None)
+        discover_inner(snapshot, initial_limit, None, None, None)
     }
     #[cfg(not(test))]
     {
@@ -711,7 +810,7 @@ pub(crate) fn discover_observed(
     observer: &mut DiscoveryObserver,
 ) -> Discovery {
     *observer = DiscoveryObserver::default();
-    discover_inner(snapshot, SOURCE_COUNT, Some(observer), None)
+    discover_inner(snapshot, SOURCE_COUNT, Some(observer), None, None)
 }
 
 #[cfg(test)]
@@ -742,6 +841,7 @@ pub(crate) fn discover_routed_observed(
         limit.unwrap_or(SOURCE_COUNT),
         Some(observer),
         route.as_ref(),
+        None,
     )
 }
 
@@ -768,6 +868,7 @@ pub(crate) fn discover_root_observed(
         limit.unwrap_or(SOURCE_COUNT),
         Some(observer),
         route.as_ref(),
+        None,
     );
     if let (Some(root), Some(manifest), Some(actual_manifest)) = (
         expected.entries.get("src/lib.rs"),
@@ -793,11 +894,100 @@ pub(crate) fn discover_root_observed(
     found
 }
 
+#[cfg(test)]
+pub(crate) fn discover_with_test_producer(
+    snapshot: &Snapshot,
+    input: &TestProducer<'_>,
+) -> Discovery {
+    discover_inner(snapshot, SOURCE_COUNT, None, None, Some(input))
+}
+
+#[cfg(test)]
+fn append_test_producer<F>(
+    inspected: Result<Vec<crate::reviewed_producers::Evidence>, Diagnostic>,
+    make: F,
+) -> Result<Vec<crate::reviewed_producers::Evidence>, Diagnostic>
+where
+    F: FnOnce() -> Option<crate::reviewed_producers::Evidence>,
+{
+    inspected.map(|mut records| {
+        if let Some(record) = make() {
+            records.push(record);
+        }
+        records
+    })
+}
+
+#[cfg(test)]
+pub(crate) fn synthetic_inspector_error_control() {
+    let called = std::cell::Cell::new(false);
+    let result = append_test_producer(
+        Err(Diagnostic::new("fixture-inspection-error", None)),
+        || {
+            called.set(true);
+            None
+        },
+    );
+    assert!(!called.get());
+    assert_eq!(result.unwrap_err().code, "fixture-inspection-error");
+}
+
+#[cfg(test)]
+pub(crate) fn producer_helper_controls(snapshot: &Snapshot, input: &TestProducer<'_>) {
+    let candidate = test_producer(snapshot, input).expect("valid fixture");
+    let mut existing = candidate.clone();
+    existing.owner = "existing".into();
+    let appended =
+        append_test_producer(Ok(vec![existing.clone()]), || Some(candidate.clone())).unwrap();
+    assert_eq!(
+        appended
+            .iter()
+            .map(|e| e.owner.as_str())
+            .collect::<Vec<_>>(),
+        ["existing", "fixture"]
+    );
+    let preserved = append_test_producer(Ok(vec![existing]), || None).unwrap();
+    assert_eq!(preserved.len(), 1);
+    assert_eq!(preserved[0].owner, "existing");
+    for (length, accepted) in [(21_805, true), (21_806, false)] {
+        let path = format!("src/{}.rs", "a".repeat(length - 7));
+        assert_eq!(path.len(), length);
+        let mut fixture = Snapshot {
+            entries: snapshot.entries.clone(),
+            untracked: snapshot.untracked.clone(),
+            ignored: snapshot.ignored.clone(),
+        };
+        let mut entry = fixture.entries[input.path].clone();
+        entry.path = path.clone();
+        fixture.entries.insert(path.clone(), entry);
+        let mut value = input.clone();
+        value.path = &path;
+        assert_eq!(test_producer(&fixture, &value).is_some(), accepted);
+    }
+    for (length, accepted) in [(2_097_152, true), (2_097_153, false)] {
+        let mut fixture = Snapshot {
+            entries: snapshot.entries.clone(),
+            untracked: snapshot.untracked.clone(),
+            ignored: snapshot.ignored.clone(),
+        };
+        fixture
+            .entries
+            .get_mut(input.path)
+            .unwrap()
+            .bytes
+            .resize(length, b' ');
+        let mut value = input.clone();
+        value.source = &fixture.entries[input.path].bytes;
+        assert_eq!(test_producer(&fixture, &value).is_some(), accepted);
+    }
+}
+
 fn discover_inner(
     snapshot: &Snapshot,
     initial_limit: usize,
     #[cfg(test)] mut observer: Option<&mut DiscoveryObserver>,
     #[cfg(test)] route: Option<&ExpectedRoute<'_>>,
+    #[cfg(test)] test_input: Option<&TestProducer<'_>>,
 ) -> Discovery {
     let mut result = Discovery::default();
     match crate::upstream_ownership::inspect(snapshot) {
@@ -814,7 +1004,12 @@ fn discover_inner(
         Ok(evidence) => result.reviewed_sources = evidence,
         Err(error) => result.diagnostics.push(error),
     }
-    match crate::reviewed_producers::inspect(snapshot) {
+    let inspected = crate::reviewed_producers::inspect(snapshot);
+    #[cfg(test)]
+    let inspected = append_test_producer(inspected, || {
+        test_input.and_then(|input| test_producer(snapshot, input))
+    });
+    match inspected {
         Ok(evidence) => result.reviewed_producers = evidence,
         Err(error) => result.diagnostics.push(error),
     }

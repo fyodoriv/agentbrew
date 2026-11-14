@@ -613,3 +613,7 @@ mod rust_discovery_syntax;
 #[cfg(test)]
 #[path = "rust_module_relation.rs"]
 pub(crate) mod rust_module_relation;
+
+#[cfg(test)]
+#[path = "rust_producer_composition.rs"]
+mod rust_producer_composition;

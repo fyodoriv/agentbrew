@@ -71,3 +71,14 @@ is synthetic composition, not a Rust writer witness. A separately labeled
 pure synthetic inspector-error helper cannot claim the real inspector failed.
 Independent review must check the actual implementation and all error paths
 before accepting the controls.
+
+## Focused result
+
+The exact synthetic host conflict and non-host insertion control passed. The
+seam checks refused invalid source/site and boundary cases; a labeled synthetic
+inspector-error helper retained the error, and a nonempty successful result
+retained its existing record. The retained discovery test, normal library check
+and 28 workflow controls passed. Independent review checked the fixed input,
+pre-copy bounds, preservation controls and exact hosted selector. This is not
+evidence of a real inspector failure, Rust N15/N18 qualification or worker
+admission.

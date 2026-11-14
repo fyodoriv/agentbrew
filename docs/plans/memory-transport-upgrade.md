@@ -1,5 +1,27 @@
 # Shared memory transport upgrade prediction
 
+## Candidate recovery intent prediction
+
+- **Root cause:** The draft sequence can register a candidate without first
+  requiring a durable recovery record. If its owner crashes, a later operator
+  may not know that the candidate could have changed the database.
+- **Hypothesis:** Requiring a successful candidate-intent persistence callback
+  before registration prevents candidate startup when recording fails and keeps
+  the existing no-automatic-restore behavior after registration begins.
+- **Measurement:** Run `src/memory/upgrade-sequence.test.ts` on Node 22 and 24.
+  Exercise callback ordering, a rejected persistence callback, and an ambiguous
+  candidate registration response with scratch SQLite databases.
+- **Success:** All sequence tests pass; the failing callback starts no candidate,
+  and the candidate-failure path never restarts the old service.
+- **Pivot:** If the ordering or failure behavior cannot be verified, do not wire
+  the draft sequence to the live daemon.
+- **Anchor:** `src/memory/upgrade-sequence.ts` and the synthetic lost-response
+  rehearsal in `/private/tmp/agentbrew-sequence-lost-response.log`.
+
+The callback must actually persist and verify a recovery record before a real
+caller can use it. This change alone does not provide that record or make the
+live upgrade safe.
+
 ## Upgrade sequence test detection prediction
 
 - **Root cause:** Node 22.23.4 can import `node:sqlite`, but does not list it in

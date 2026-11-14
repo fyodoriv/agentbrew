@@ -1,5 +1,22 @@
 # Shared memory transport upgrade prediction
 
+## Multi-process runtime rehearsal prediction
+
+- **Hypothesis:** The real runtime will identify a listener descended from a
+  temporary launchd job and complete the guarded scratch handoff without
+  leaving either process behind.
+- **Measurement:** Repeat the isolated production-runtime trial with a
+  supervised child listener. Check the distinct job and listener PIDs,
+  ancestry, candidate and restored memory entries, and both processes' cleanup.
+- **Success:** Every identity, isolation, recall, and cleanup check passes.
+  The job and listener PIDs must differ, and the listener must descend from
+  the job. No live memory service or database is changed.
+- **Pivot:** Any uncertain process identity, cleanup, or data result stops the
+  trial and leaves the live upgrade unavailable.
+- **Anchor:** `src/memory/upgrade-launchagent.ts` and the prior runtime trial.
+
+The trial does not establish exclusive control over the real service.
+
 ## Production runtime scratch rehearsal prediction
 
 - **Hypothesis:** The real launchd runtime can complete the guarded handoff for

@@ -23,6 +23,14 @@ suite is pending. The existing unload helper catches launchctl errors, so an
 unload failure may still go unreported; this ordering change does not fix that
 separate service-health risk.
 
+A follow-up scratch reproduction showed the helper catching a failed unload
+and deleting the job file. The draft now checks the loaded job identity, uses
+launchd removal, and requires a verified absent job before deleting its file.
+Scratch controls covered unload failure, identity mismatch, an absent job, and
+successful removal. Focused tests and typecheck passed. An absent launchd label
+is not proof that every child process exited, and the checks are not atomic with
+other controllers.
+
 ## Cooperative service-control lock prediction
 
 - **Hypothesis:** A macOS native descriptor lock shared by Agentbrew's memory

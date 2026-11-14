@@ -88,6 +88,15 @@ beyond the goal. **Depth**: use an expert's raw data, tools, and methods.
 **Range**: borrow methods from other fields. Prove results with an outside
 judge, not self-review. Details: shared-rules **## Ambition with models**.
 
+### Stay within the task budget
+
+When a user gives a time budget or says work is taking too long, compare the
+remaining work with the requested outcome. Choose the shortest safe path and
+stop adding research, prototypes, or reviews that are not needed for an unmet
+criterion or a specific decision-critical uncertainty.
+Keep required safety and verification. Proceed with already-authorized work
+without asking again. Report real delays and pending work.
+
 ### Fast, safe iterations
 
 During each iteration, measure recurring slow steps and use affected checks or a validated cache when they give the needed signal. Key reuse to all relevant effective inputs, including external state, without exposing values or guessable hashes; verify invalidation. Unknown inputs require the full check. Keep the required final gate, and fix in-scope recurring delays when unblocked.

@@ -56,6 +56,18 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - **Measure every task (IRON LAW):** every task block, at every priority, carries `Hypothesis`, `Measurement`, `Success`, `Pivot`, and `Anchor`. Check with `npx @tasks-md/lint --require-prereg TASKS.md`. A quick capture without these fields is not a task yet: add them before the task is filed.
 - **Measure in use, not only in tests:** a task that changes what a user gets also names where the effect shows after it ships: a telemetry event, a dashboard tile, or a metrics command. When that number does not exist, the task adds it, or a first task does. A change that adds or changes an event also updates the events doc and the dashboard tile, and reads the tile back when real data arrives. Never invent an event to fill a tile.
 
+## Time budgets and scope
+
+When a user states a time budget or says a task is taking too long, check the
+original outcome against current evidence and the remaining work. Choose the
+shortest safe path. Stop discretionary research, prototypes, and repeat reviews
+that are not needed for an unmet criterion or a specific decision-critical
+uncertainty. Do not skip required safety checks, acceptance
+checks, privacy, or delivery gates. Investigate a failed check when needed.
+Proceed with already-authorized work without asking again. Report delays and
+remaining work; do not describe a healthy task as blocked.
+A long task or a user-requested deadline remains valid.
+
 ## Reuse before implementation
 
 - Ask “How do I GET this outcome?” before building a new tool/workflow.

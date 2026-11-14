@@ -45,3 +45,22 @@ applies to this design. No fixture was built or run, and no process was
 signaled. Reopen only with a separately reviewed containment and cleanup
 method; do not weaken the registered requirement or infer the historical
 permission error's cause.
+
+## XPC lead (2026-11-14)
+
+[Apple's XPC overview](https://developer.apple.com/documentation/xpc) describes
+an app- or framework-bundled service process per client that exits when its
+client exits. Apple's [background-process guidance](https://developer.apple.com/documentation/appkit/managing-ongoing-background-processes-in-your-mac)
+suggests XPC services for app-managed work and separately asks apps to ensure
+directly launched processes terminate. These sources describe the service
+lifetime; they do not establish recursive cleanup of arbitrary descendants, a
+hard deadline, or a waitable completion receipt for this inventory worker.
+
+An in-process service is only a possible design lead. The existing inventory
+uses the owner's Git wrapper, which may launch external processes. Replacing it
+with an in-process implementation is not established as equivalent. CLI bundle
+integration, signing, permissions, restart/interruption semantics, identity,
+all failure paths and completion would need a separate reviewed design. A
+no-spawn claim would need its own proof. The default-deny and cleanup pivot
+remain unchanged. This was documentation research and independent review only;
+no service or worker was run. It does not establish that no other API exists.

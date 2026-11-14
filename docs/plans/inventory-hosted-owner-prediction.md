@@ -57,3 +57,14 @@ preflight alone does not establish the invariant at those later boundaries.
 The hosted VM teardown contains the job after it finishes; it does not prove
 that in-job cleanup completed. These clarifications precede implementation
 and observations; the earlier no-signal pivot and all migration gates remain.
+
+## Compile-only fixture scope
+
+At inventory draft revision `72874cb1`, the guarded fixture has an empty
+entry point and no child-mode implementation. Its included worker accepts a
+command and can spawn when called; the experiment's signal dispatch refuses.
+The hosted guard compiles the fixture but does not execute it. These source
+facts do not establish the built binary's identity, runtime behavior, no-fork
+enforcement, a closed session or exclusive membership. A future fixed child,
+launch and handshake need their own independent source and runtime review;
+the default-deny and physical-admission gates remain in force.

@@ -173,6 +173,20 @@
 
 ## P1
 
+- [ ] Memory disable reports an unverified service stop
+  - **ID**: memory-disable-unload-errors
+  - **Tags**: memory, stability, cli
+  - **Mode**: AFK
+  - **Details**: The unload helper catches launchctl errors. Disable can then remove the job file and report success even when service removal was not verified. Preserve the caller's state on an explicit removal error and distinguish an already-absent job from an unknown failure. Do not assume a partially removed service is healthy.
+  - **Files**: `src/memory/launchagent.ts`, `src/memory/enable.ts`, related tests, README.
+  - **Output**: code
+  - **Acceptance**: The memory disable command reports an error when removal is uncertain and does not claim the service stopped. A verified absent job remains safe to disable. The JSON result or exit status shows the outcome.
+  - **Hypothesis**: Unreported synthetic unload failures fall from one known case to zero while a verified absent job succeeds.
+  - **Measurement**: `npx vitest run src/memory/launchagent.test.ts src/memory/enable.test.ts`
+  - **Success**: The new failure and absent-job controls pass; the failure reproduces on the unchanged helper.
+  - **Pivot**: If launchctl cannot distinguish absence from an unknown error, fail closed and report the uncertainty.
+  - **Anchor**: `src/memory/launchagent.ts` unload helper and `src/commands/cli-memory.ts` disable action.
+
 - [ ] Validate every sync selection before preparation can publish outputs
   - **ID**: sync-selection-preflight
   - **Tags**: security, stability, sync, cli

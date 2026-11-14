@@ -75,3 +75,9 @@ The caller itself dynamically loads code and needs its full boundary and
 transitive consumers reviewed. Test callers and source reachability remain
 unresolved. No implementation or source was executed. The pivot remains in
 force until an independently reviewed contract accounts for those facts.
+
+Independent review confirms the source distinctions but keeps the pivot in
+force. Before implementation, specify missing-target and failure behavior,
+alias/rebinding of `spec`, loader and classifier, the transitive caller review,
+and how the site-bound components satisfy the same-file guard without a broad
+exception. The listed controls are design requirements, not passing results.

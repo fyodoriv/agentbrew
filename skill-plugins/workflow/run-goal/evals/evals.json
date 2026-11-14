@@ -3602,6 +3602,18 @@
         "Gives a pick with a source link for each claim",
         "Skips the plan Artifact, HTML report, and skill PR"
       ]
+    },
+    {
+      "id": 315,
+      "prompt": "/goal complete all unblocked tasks of this repo (TASKS.md has 9 open tasks with no Blocked line: one says 'Left: run it from the owner's Terminal when the Mac is quiet', one says 'starting when that doctor line warns (about 2026-12-16)', one says 'Ask the owner first in the checkup questionnaire', and a group the owner paused per memory; two are plain test fixes)",
+      "expected_output": "The agent classifies tasks by their Details, not only the Blocked flag: the owner-Terminal, date-gated and paused-group tasks are out of scope with the reason cited; the 'ask the owner first' task becomes the one question in the question round. The contract counts the 2 plain test fixes as the metric baseline. Each fix starts with a reproduced failure (for an environment-dependent test, a forced fake of the environment) and ends with the task block removed in the same commit and the owner's answer written into the asked task.",
+      "expectations": [
+        "Lists the owner-Terminal, date-gated and paused tasks as out of scope with each reason",
+        "Asks about the 'ask the owner first' task in the one question round",
+        "Baseline metric is 2 doable tasks",
+        "Reproduces each test failure before fixing it",
+        "Writes the owner's answer into the asked task"
+      ]
     }
   ]
 }

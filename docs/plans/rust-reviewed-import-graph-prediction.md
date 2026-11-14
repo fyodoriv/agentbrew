@@ -98,3 +98,10 @@ not bind the deployed `__file__`, Python import resolution, runtime rebinding,
 or the selected loader implementation. The test paths are not proof of the
 installed path. These inputs need a reviewed trust and resolution contract;
 unknowns cannot be converted to exact runtime targets by matching strings.
+
+Python's [direct source import recipe](https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly)
+uses a file-based spec and `exec_module`; its [module search-path documentation](https://docs.python.org/3/library/sys_path_init.html)
+describes startup path inputs and configuration. Those general docs do not
+identify this machine's interpreter, flags, loader or resolved files. The two
+questions are distinct: an explicit target path can still depend on the
+runtime's selected implementation and surrounding imports.

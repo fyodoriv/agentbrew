@@ -256,6 +256,14 @@ themselves coordinate Agentbrew's launchd mutators or protect writes across a
 service restart. Keep the draft upgrade code under review for removal where
 upstream behavior or existing backup tools already cover it.
 
+The coordinated draft handoff also requires the candidate's `check-db` to
+pass against the exact database after startup. A failed check leaves the
+recovery snapshot in place and does not restore over candidate writes. This
+guard does not connect the draft to a live upgrade or prove exclusive control.
+The caller must verify the candidate executable and environment. Until upstream
+escapes SQLite URI paths, paths containing `%`, `?`, or `#` are rejected before
+the old service is stopped.
+
 ## Multi-process runtime rehearsal prediction
 
 - **Hypothesis:** The real runtime will identify a listener descended from a

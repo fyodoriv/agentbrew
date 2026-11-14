@@ -1,6 +1,7 @@
 import { existsSync, lstatSync, mkdirSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { verifySqliteBackup } from "./backup.js";
+import { checkCandidateSchema, validCandidateSchemaInputs } from "./candidate-schema.js";
 import { MEMORY_UPGRADE_SNAPSHOT_DIR } from "./constants.js";
 import { acquireMemoryControlLock, memoryControlPaths } from "./control-lock.js";
 import { createUpgradeIntent, readUpgradeIntent } from "./upgrade-intent.js";
@@ -12,6 +13,8 @@ export interface MemoryUpgradeOrchestration {
   intentPath: string;
   oldJobLabel: string;
   candidateSpec: string;
+  /** The caller must verify this matches the candidate's launch settings. */
+  candidateRuntime: { uvxBin: string; env: NodeJS.ProcessEnv };
   attemptId: string;
   /** The caller must establish and retain real control of every daemon mutator. */
   assertControl: () => Promise<void>;
@@ -58,6 +61,9 @@ export async function orchestrateMemoryUpgrade(ops: MemoryUpgradeOrchestration):
   const protectedBackups = join(dirname(ops.intentPath), MEMORY_UPGRADE_SNAPSHOT_DIR);
   try {
     if (![ops.dbPath, ops.backupsDir, ops.intentPath].every(isAbsolute)) throw new Error("paths must be absolute");
+    if (!validCandidateSchemaInputs(ops.dbPath, ops.candidateSpec, ops.candidateRuntime.uvxBin)) {
+      throw new Error("invalid candidate schema check inputs");
+    }
     const dir = lstatSync(dirname(ops.intentPath));
     if (
       !dir.isDirectory() ||
@@ -169,6 +175,13 @@ export async function orchestrateMemoryUpgrade(ops: MemoryUpgradeOrchestration):
         throw new Error("candidate recovery identity is uncertain");
       await ops.startCandidate(snapshot);
     },
-    candidateHealthy: ops.candidateHealthy,
+    candidateHealthy: async () => {
+      await ops.assertControl();
+      if (!sameFile(ops.dbPath, original) || !(await ops.candidateHealthy())) return false;
+      await ops.assertControl();
+      const healthy = checkCandidateSchema(ops.dbPath, ops.candidateSpec, ops.candidateRuntime);
+      await ops.assertControl();
+      return healthy && sameFile(ops.dbPath, original);
+    },
   });
 }

@@ -14,6 +14,12 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("./candidate-schema.js", async () => ({
+  ...(await vi.importActual<typeof import("./candidate-schema.js")>("./candidate-schema.js")),
+  checkCandidateSchema: vi.fn(() => true),
+}));
+
 import { pruneMemoryBackups } from "./backup.js";
 import { readUpgradeIntent } from "./upgrade-intent.js";
 import { orchestrateMemoryUpgrade } from "./upgrade-orchestrator.js";
@@ -37,7 +43,8 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         backupsDir: join(dir, "backups"),
         intentPath: intent,
         oldJobLabel: "com.example.memory",
-        candidateSpec: "example-memory==2.0.0",
+        candidateSpec: "mcp-memory-service[sqlite]==12.9.0",
+        candidateRuntime: { uvxBin: "/fixture/uvx", env: {} },
         attemptId: "synthetic",
         assertControl: async () => undefined,
         inspect: () => ({ visibleEvidenceConsistent: reason !== "failed-preflight" }),
@@ -69,7 +76,8 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         backupsDir: join(dir, "backups"),
         intentPath: intent,
         oldJobLabel: "com.example.memory",
-        candidateSpec: "example-memory==2.0.0",
+        candidateSpec: "mcp-memory-service[sqlite]==12.9.0",
+        candidateRuntime: { uvxBin: "/fixture/uvx", env: {} },
         attemptId: "synthetic",
         assertControl: async () => undefined,
         inspect: () => ({ visibleEvidenceConsistent: true }),
@@ -109,7 +117,8 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         backupsDir: join(dir, "backups"),
         intentPath: intent,
         oldJobLabel: "com.example.memory",
-        candidateSpec: "example-memory==2.0.0",
+        candidateSpec: "mcp-memory-service[sqlite]==12.9.0",
+        candidateRuntime: { uvxBin: "/fixture/uvx", env: {} },
         attemptId: "synthetic",
         assertControl: async () => undefined,
         inspect: () => ({ visibleEvidenceConsistent: true }),
@@ -146,7 +155,8 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         backupsDir: join(dir, "backups"),
         intentPath: join(dir, "intent.json"),
         oldJobLabel: "com.example.memory",
-        candidateSpec: "example-memory==2.0.0",
+        candidateSpec: "mcp-memory-service[sqlite]==12.9.0",
+        candidateRuntime: { uvxBin: "/fixture/uvx", env: {} },
         attemptId: "synthetic",
         assertControl: async () => {
           if (!controlled) throw new Error("control lost");
@@ -178,7 +188,8 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         backupsDir: join(dir, "backups"),
         intentPath: join(dir, "intent.json"),
         oldJobLabel: "com.example.memory",
-        candidateSpec: "example-memory==2.0.0",
+        candidateSpec: "mcp-memory-service[sqlite]==12.9.0",
+        candidateRuntime: { uvxBin: "/fixture/uvx", env: {} },
         attemptId: "synthetic",
         assertControl: async () => undefined,
         inspect: () => ({ visibleEvidenceConsistent: true }),
@@ -211,7 +222,8 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         backupsDir: join(dir, "backups"),
         intentPath: intent,
         oldJobLabel: "com.example.memory",
-        candidateSpec: "example-memory==2.0.0",
+        candidateSpec: "mcp-memory-service[sqlite]==12.9.0",
+        candidateRuntime: { uvxBin: "/fixture/uvx", env: {} },
         attemptId: "synthetic",
         assertControl: async () => {
           const status = readUpgradeIntent(intent);
@@ -249,7 +261,8 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         backupsDir: backups,
         intentPath: intent,
         oldJobLabel: "com.example.memory",
-        candidateSpec: "example-memory==2.0.0",
+        candidateSpec: "mcp-memory-service[sqlite]==12.9.0",
+        candidateRuntime: { uvxBin: "/fixture/uvx", env: {} },
         attemptId: "synthetic",
         assertControl: async () => undefined,
         inspect: () => ({ visibleEvidenceConsistent: true }),
@@ -293,7 +306,8 @@ describe.runIf(hasSqlite)("memory upgrade orchestration", () => {
         backupsDir: alias,
         intentPath: join(dir, "intent.json"),
         oldJobLabel: "com.example.memory",
-        candidateSpec: "example-memory==2.0.0",
+        candidateSpec: "mcp-memory-service[sqlite]==12.9.0",
+        candidateRuntime: { uvxBin: "/fixture/uvx", env: {} },
         attemptId: "synthetic",
         assertControl: async () => undefined,
         inspect: () => ({ visibleEvidenceConsistent: true }),

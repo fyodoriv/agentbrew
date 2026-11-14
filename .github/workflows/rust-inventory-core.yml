@@ -1,0 +1,28 @@
+name: Rust inventory core
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - rust/inventory-core/**
+      - .github/workflows/rust-inventory-core.yml
+
+permissions:
+  contents: read
+
+jobs:
+  controls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fyodoriv/dotfiles
+          ref: 44ad09070a028e1b9f89a771878552e8674f76d0
+          path: .ci-dotfiles
+          persist-credentials: false
+      - name: Test shared comparison without network dependencies
+        run: .ci-dotfiles/bin/heavy-run cargo test --locked --offline --manifest-path rust/inventory-core/Cargo.toml

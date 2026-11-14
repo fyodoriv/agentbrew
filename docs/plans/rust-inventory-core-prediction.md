@@ -23,3 +23,11 @@ and their completeness must be tested before either inventory task is done.
 
 **Anchor:** the two `rust-source-inventory` tasks; Basili, Caldiera, Rombach
 1994; Munafò et al. 2017.
+
+## Adapter boundary
+
+The `migration-inventory-core` crate accepts independently discovered identities
+and reviewed entries. Each identity includes its source path, kind, and boundary.
+The core rejects duplicates, mismatches, invalid paths, and missing metadata.
+Adapters own source discovery and must prove that it detects embedded programs
+and generated outputs; a passing comparison cannot establish that on its own.

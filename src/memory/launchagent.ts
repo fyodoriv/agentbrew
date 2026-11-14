@@ -1,17 +1,18 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, lstatSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
-import { launchdTargetsThisHome, runLaunchctl } from "../core/launchctl.js";
+import { launchdTargetsThisHome, probeLaunchctl, runLaunchctl } from "../core/launchctl.js";
 import {
   buildLaunchAgentPath,
   LAUNCHAGENT_LANG,
   resolveAgentBrewCliJsPath,
   resolveSchedulerNode,
 } from "../sync/scheduler-paths.js";
-import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_UVX_ARGS } from "./constants.js";
+import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_PINNED_SPEC, MEMORY_UVX_ARGS } from "./constants.js";
 import { resolveUvxBin } from "./invoke.js";
-import { memoryLaunchAgentLogDir } from "./paths.js";
+import { defaultMemoryDbPath, memoryLaunchAgentLogDir } from "./paths.js";
 
 export const MEMORY_AGENT_LABEL = "com.agentbrew.mcp-memory";
 export const MEMORY_MAINTAIN_LABEL = "com.agentbrew.mcp-memory-maintain";
@@ -47,8 +48,8 @@ export function memoryDaemonPath(home: string, uvxBin: string): string {
   return [...new Set(dirs), "/usr/sbin", "/sbin"].join(":");
 }
 
-export function buildMemoryDaemonPlist(home: string, logDir: string, uvxBin: string): string {
-  const pathValue = memoryDaemonPath(home, uvxBin);
+export function buildMemoryDaemonPlist(home: string, logDir: string, uvxBin: string, savedPath?: string): string {
+  const pathValue = savedPath ?? memoryDaemonPath(home, uvxBin);
   const daemonEnvironmentXml = Object.entries(MEMORY_DAEMON_ENVIRONMENT)
     .map(([key, value]) => `    <key>${escapeXml(key)}</key>\n    <string>${escapeXml(value)}</string>`)
     .join("\n");
@@ -284,8 +285,205 @@ export function memoryMaintenanceLaunchAgentStatus(): MemoryMaintenanceLaunchAge
   };
 }
 
+interface MemoryDaemonPlist {
+  [key: string]: unknown;
+  WorkingDirectory?: unknown;
+  EnvironmentVariables?: unknown;
+  ProgramArguments?: unknown;
+}
+
+function readMemoryDaemonPlist(plistPath: string): MemoryDaemonPlist | undefined {
+  const result = spawnSync("/usr/bin/plutil", ["-convert", "json", "-o", "-", "--", plistPath], {
+    encoding: "utf-8",
+    timeout: 5_000,
+  });
+  if (result.error || result.status !== 0) return undefined;
+  try {
+    return JSON.parse(result.stdout) as MemoryDaemonPlist;
+  } catch {
+    return undefined;
+  }
+}
+
+function loadedMemoryEnvironmentMatches(output: string, home: string): boolean {
+  const block = /^\tenvironment = \{\n([\s\S]*?)^\t\}/m.exec(output)?.[1];
+  if (!block) return false;
+  const entries = [...block.matchAll(/^\t\t([^\n]+?) => (.*)$/gm)];
+  const env = Object.fromEntries(entries.map((entry) => [entry[1], entry[2]]));
+  if (Object.keys(env).length !== entries.length) return false;
+  const saved = readMemoryDaemonPlist(memoryPlistPath())?.EnvironmentVariables;
+  if (!saved || typeof saved !== "object") return false;
+  const savedEnv = saved as Record<string, unknown>;
+  if (env.PATH !== savedEnv.PATH || env.LANG !== savedEnv.LANG) return false;
+  const expected: Record<string, string> = { HOME: home, ...MEMORY_DAEMON_ENVIRONMENT };
+  if (Object.entries(expected).some(([key, value]) => env[key] !== value)) return false;
+  if (
+    !Object.entries(env).every(([key, value]) => {
+      if (/^(XDG_DATA_HOME|XDG_CONFIG_HOME|PYTHONPATH|PYTHONHOME|VIRTUAL_ENV)$/.test(key)) return false;
+      return !key.startsWith("MCP_") || expected[key] === value;
+    })
+  )
+    return false;
+  for (const name of ["inherited environment", "default environment"]) {
+    const inherited = new RegExp(`^\\t${name} = \\{\\n([\\s\\S]*?)^\\t\\}`, "m").exec(output)?.[1];
+    if (
+      inherited === undefined ||
+      /^\t\t(?:MCP_|XDG_DATA_HOME|XDG_CONFIG_HOME|PYTHONPATH|PYTHONHOME|VIRTUAL_ENV)/m.test(inherited)
+    )
+      return false;
+  }
+  return true;
+}
+
+function loadedMemoryJobState(): "loaded" | "absent" | "blocked" {
+  const job = probeLaunchctl(["print", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], 5_000);
+  if (!job) return "blocked";
+  if (job.status !== 0 && job.status !== 113) return "blocked";
+  if (!noCustomLaunchdMemoryEnvironment()) return "blocked";
+  if (job.status === 113) return "absent";
+  const identity = parseLaunchctlJobIdentity(job.stdout);
+  const workingDirectory = /^\tworking directory = (.+)$/m.exec(job.stdout)?.[1]?.trim();
+  if (/^\troot directory = /m.test(job.stdout)) return "blocked";
+  if (identity.path !== memoryPlistPath() || identity.home !== homedir() || workingDirectory !== homedir())
+    return "blocked";
+  if (!loadedMemoryEnvironmentMatches(job.stdout, homedir())) return "blocked";
+  const args = /^\targuments = \{\n([\s\S]*?)^\t\}/m.exec(job.stdout)?.[1] ?? "";
+  const values = args
+    .split("\n")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const saved = readMemoryDaemonPlist(memoryPlistPath());
+  const savedArgs = saved?.ProgramArguments;
+  const field = (name: string) => new RegExp(`^\\t${name} = (.*)$`, "m").exec(job.stdout)?.[1];
+  const properties = field("properties")?.split(" | ") ?? [];
+  const matches =
+    Array.isArray(savedArgs) &&
+    JSON.stringify(values) === JSON.stringify(savedArgs) &&
+    field("program") === savedArgs[0] &&
+    field("stdout path") === saved?.StandardOutPath &&
+    field("stderr path") === saved?.StandardErrorPath &&
+    field("minimum runtime") === String(saved?.ThrottleInterval) &&
+    properties.includes("keepalive") &&
+    properties.includes("runatload") &&
+    properties.every((value) => ["keepalive", "runatload", "inferred program"].includes(value));
+  return matches ? "loaded" : "blocked";
+}
+
+function installedMemoryJobIdentityMatches(plistPath: string, home: string, uvxBin: string): boolean {
+  if (!existsSync(plistPath)) return true;
+  try {
+    const plist = readMemoryDaemonPlist(plistPath);
+    if (!plist) return false;
+    const allowed = [
+      "Label",
+      "ProgramArguments",
+      "RunAtLoad",
+      "KeepAlive",
+      "ThrottleInterval",
+      "WorkingDirectory",
+      "EnvironmentVariables",
+      "StandardOutPath",
+      "StandardErrorPath",
+    ];
+    const logDir = memoryLaunchAgentLogDir();
+    if (
+      Object.keys(plist).length !== allowed.length ||
+      !allowed.every((key) => Object.hasOwn(plist, key)) ||
+      plist.Label !== MEMORY_AGENT_LABEL ||
+      plist.RunAtLoad !== true ||
+      plist.KeepAlive !== true ||
+      plist.ThrottleInterval !== 10 ||
+      plist.StandardOutPath !== join(logDir, "mcp-memory.out.log") ||
+      plist.StandardErrorPath !== join(logDir, "mcp-memory.err.log") ||
+      plist.WorkingDirectory !== home ||
+      !plist.EnvironmentVariables ||
+      typeof plist.EnvironmentVariables !== "object"
+    )
+      return false;
+    const env = plist.EnvironmentVariables as Record<string, unknown>;
+    if (typeof env.PATH !== "string" || !env.PATH || env.PATH.includes("\0")) return false;
+    const expected: Record<string, string> = {
+      HOME: home,
+      LANG: LAUNCHAGENT_LANG,
+      ...MEMORY_DAEMON_ENVIRONMENT,
+    };
+    for (const [key, value] of Object.entries(env)) {
+      if (key === "PATH") continue;
+      if (!(key in expected) || expected[key] !== value) return false;
+    }
+    if (Object.entries(expected).some(([key, value]) => env[key] !== value)) return false;
+    const args = plist.ProgramArguments;
+    const expectedArgs = [
+      ...MEMORY_UVX_ARGS,
+      "server",
+      "--streamable-http",
+      "--sse-host",
+      "127.0.0.1",
+      "--sse-port",
+      "18765",
+    ];
+    return (
+      Array.isArray(args) &&
+      // The configured uvx is trusted; this check prevents switching launchers.
+      isAbsolute(uvxBin) &&
+      basename(uvxBin) === "uvx" &&
+      args[0] === uvxBin &&
+      JSON.stringify(args.slice(1)) === JSON.stringify(expectedArgs)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function installedMemoryJobPinMatches(plistPath: string): boolean {
+  if (!existsSync(plistPath)) return true;
+  try {
+    const contents = readFileSync(plistPath, "utf-8");
+    const args = /<key>ProgramArguments<\/key>\s*<array>([\s\S]*?)<\/array>/u.exec(contents)?.[1] ?? "";
+    const pins = [...args.matchAll(/<string>--from<\/string>\s*<string>([^<]*)<\/string>/gu)];
+    return pins.length === 1 && pins[0]?.[1] === MEMORY_PINNED_SPEC;
+  } catch {
+    return false;
+  }
+}
+
+function knownPathAbsent(path: string): boolean {
+  try {
+    lstatSync(path);
+    return false;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "ENOENT";
+  }
+}
+
+function noKnownPriorMemory(home: string): boolean {
+  const paths = [defaultMemoryDbPath(home), join(home, ".env"), join(home, ".mcp-memory", ".env")];
+  if (!paths.every(knownPathAbsent)) return false;
+  return noCustomLaunchdMemoryEnvironment();
+}
+
+function noCustomLaunchdMemoryEnvironment(): boolean {
+  for (const name of [
+    "MCP_MEMORY_SQLITE_PATH",
+    "MCP_MEMORY_SQLITEVEC_PATH",
+    "MCP_MEMORY_BASE_DIR",
+    "MCP_MEMORY_STORAGE_BACKEND",
+    "XDG_DATA_HOME",
+    "XDG_CONFIG_HOME",
+    "PYTHONPATH",
+    "PYTHONHOME",
+    "VIRTUAL_ENV",
+  ]) {
+    if (process.env[name]) return false;
+    const value = probeLaunchctl(["getenv", name], 5_000);
+    if (!value || value.status !== 0 || value.stdout.trim()) return false;
+  }
+  return true;
+}
+
 export function installMemoryLaunchAgents(): {
   installed: boolean;
+  upgradeBlocked?: boolean;
   changed?: boolean;
   daemonRestarted?: boolean;
   daemonLoaded?: boolean;
@@ -307,13 +505,53 @@ export function installMemoryLaunchAgents(): {
   const pathValue = buildLaunchAgentPath(home);
   const uvxBin = resolveUvxBin();
   if (!uvxBin) {
-    return { installed: false, reason: "uvx not found on PATH — install uv before enabling memory LaunchAgent" };
+    return {
+      installed: false,
+      upgradeBlocked: true,
+      reason: "uvx not found on PATH — install uv before enabling memory LaunchAgent",
+    };
   }
 
   const daemonPlist = memoryPlistPath();
-  const daemon = reconcilePlist(daemonPlist, MEMORY_AGENT_LABEL, buildMemoryDaemonPlist(home, logDir, uvxBin), {
-    required: true,
-  });
+  if (!existsSync(daemonPlist) && !noKnownPriorMemory(home)) {
+    return {
+      installed: false,
+      upgradeBlocked: true,
+      reason: "memory setup requires a protected backup and a verified database path",
+    };
+  }
+  if (![join(home, ".env"), join(home, ".mcp-memory", ".env")].every(knownPathAbsent)) {
+    return {
+      installed: false,
+      upgradeBlocked: true,
+      reason: "memory setup requires a verified database path when upstream dotenv files exist",
+    };
+  }
+  const loadedState = loadedMemoryJobState();
+  if (loadedState === "blocked") {
+    return {
+      installed: false,
+      upgradeBlocked: true,
+      reason: "memory upgrade requires a protected backup and a verified running job",
+    };
+  }
+  if (!installedMemoryJobIdentityMatches(daemonPlist, home, uvxBin) || !installedMemoryJobPinMatches(daemonPlist)) {
+    return {
+      installed: false,
+      upgradeBlocked: true,
+      reason: "memory upgrade requires a protected backup and a verified restart",
+    };
+  }
+  const savedEnv = (existsSync(daemonPlist) ? readMemoryDaemonPlist(daemonPlist)?.EnvironmentVariables : undefined) as
+    | Record<string, unknown>
+    | undefined;
+  const savedPath = typeof savedEnv?.PATH === "string" ? savedEnv.PATH : undefined;
+  const daemon =
+    loadedState === "loaded" && existsSync(daemonPlist)
+      ? { changed: false, loaded: true, disabled: false, reloaded: false }
+      : reconcilePlist(daemonPlist, MEMORY_AGENT_LABEL, buildMemoryDaemonPlist(home, logDir, uvxBin, savedPath), {
+          required: true,
+        });
 
   const maintain = maintainPlistPath();
   const maintenance = reconcilePlist(maintain, MEMORY_MAINTAIN_LABEL, buildMaintainPlist(home, pathValue, logDir), {

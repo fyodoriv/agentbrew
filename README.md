@@ -524,6 +524,11 @@ agentbrew sync                # keeps the daemon definition and every agent's MC
 
 The managed endpoint is `http://127.0.0.1:18765/mcp`.
 
+If an existing managed job has a different or unreadable service version or
+launch settings, sync and repair leave it in place. A protected upgrade is
+required before changing the version. The configured `uvx` executable is
+trusted; this check does not verify its contents.
+
 Readiness performs the
 Streamable HTTP discovery contract in order — `initialize`,
 `notifications/initialized`, then `tools/list` — and requires a non-empty tool

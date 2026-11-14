@@ -4,7 +4,7 @@ import { installMemoryLaunchAgents, memoryLaunchAgentSupported, uninstallMemoryL
 
 export interface MemoryEnableResult {
   enabled: boolean;
-  launchAgent: { installed: boolean; reason?: string };
+  launchAgent: { installed: boolean; upgradeBlocked?: boolean; reason?: string };
 }
 
 export function isMemoryEnabled(state: AgentBrewState): boolean {
@@ -86,10 +86,11 @@ export function disableMemoryInState(state: AgentBrewState): void {
 }
 
 export function enableMemory(state: AgentBrewState): MemoryEnableResult {
-  enableMemoryInState(state);
   const launchAgent = memoryLaunchAgentSupported()
     ? installMemoryLaunchAgents()
-    : { installed: false, reason: "no boot persistence on non-macOS" };
+    : { installed: false, upgradeBlocked: false, reason: "no boot persistence on non-macOS" };
+  if (launchAgent.upgradeBlocked) return { enabled: isMemoryEnabled(state), launchAgent };
+  enableMemoryInState(state);
   return { enabled: true, launchAgent };
 }
 

@@ -3,7 +3,7 @@ import { userInfo } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installFakeLaunchctl } from "../test-utils/fake-launchctl.js";
-import { launchdTargetsThisHome, runLaunchctl } from "./launchctl.js";
+import { launchdTargetsThisHome, probeLaunchctl, runLaunchctl } from "./launchctl.js";
 
 let fake: ReturnType<typeof installFakeLaunchctl>;
 
@@ -30,6 +30,11 @@ describe("launchctl guard", () => {
   it("still runs read-only queries under a scratch HOME", () => {
     expect(() => runLaunchctl(["print", "gui/0/none"])).toThrow();
     expect(fake.calls()).toEqual([["print", "gui/0/none"]]);
+  });
+
+  it("allows a read-only launchd environment probe", () => {
+    expect(probeLaunchctl(["getenv", "MCP_MEMORY_SQLITE_PATH"], 5_000)).toEqual({ status: 0, stdout: "" });
+    expect(fake.calls()).toEqual([["getenv", "MCP_MEMORY_SQLITE_PATH"]]);
   });
 
   it("changes launchd when HOME is the user's home folder, with or without a trailing slash", () => {

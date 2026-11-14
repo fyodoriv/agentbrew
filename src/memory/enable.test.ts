@@ -3,12 +3,14 @@ import type { AgentBrewState, McpServer } from "../types.js";
 import { MEMORY_MANAGED_SERVER_NAME, MEMORY_MANAGED_SOURCE, MEMORY_MCP_URL } from "./constants.js";
 import {
   disableMemoryInState,
+  enableMemory,
   enableMemoryInState,
   ensureMemoryMcpServer,
   isManagedMemoryServer,
   isMemoryEnabled,
   mergeMemoryPackPaths,
 } from "./enable.js";
+import { installMemoryLaunchAgents, memoryLaunchAgentSupported } from "./launchagent.js";
 
 vi.mock("./launchagent.js", () => ({
   installMemoryLaunchAgents: vi.fn(() => ({ installed: true })),
@@ -25,6 +27,21 @@ function baseState(): AgentBrewState {
 }
 
 describe("memory enable state wiring", () => {
+  it.each([false, true])("preserves existing enabled=%s state when an upgrade is refused", (wasEnabled) => {
+    const state = baseState();
+    if (wasEnabled) enableMemoryInState(state);
+    const before = structuredClone(state);
+    vi.mocked(memoryLaunchAgentSupported).mockReturnValueOnce(true);
+    vi.mocked(installMemoryLaunchAgents).mockReturnValueOnce({
+      installed: false,
+      upgradeBlocked: true,
+      reason: "protected backup required",
+    });
+
+    expect(enableMemory(state)).toMatchObject({ enabled: wasEnabled, launchAgent: { upgradeBlocked: true } });
+    expect(state).toEqual(before);
+  });
+
   it("wires shared HTTP MCP server into state on enable", () => {
     const state = baseState();
     enableMemoryInState(state);

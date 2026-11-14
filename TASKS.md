@@ -173,6 +173,18 @@
 
 ## P1
 
+- [ ] Explain an empty readiness marker in the interrupted install test
+  - **ID**: mcp-interrupted-ready-marker
+  - **Tags**: ci, testing, stability
+  - **Details**: A hosted Mac run failed when the interrupted-install test tried to scan an empty readiness path. The marker existence check can observe a file before its write finishes, but the hosted cause is not yet established. Preserve the existing signal and cleanup policy; do not run the physical test locally without an independently reviewed ownership and cleanup method.
+  - **Output**: code
+  - **Acceptance**: A closed diagnostic distinguishes missing, empty and nonempty marker observations without logging the path. Partial and complete nonempty content remain indistinguishable without further evidence.
+  - **Hypothesis**: A bounded marker diagnostic will distinguish all 3 planted marker observations and expose no path values; the suspected write race remains unproven until observed.
+  - **Measurement**: Focused no-signal marker controls and hosted CI; the test reports the closed marker state on failure.
+  - **Success**: 3 of 3 planted observations are distinguished, 0 raw paths are reported, and 0 local processes are signaled.
+  - **Pivot**: If a diagnostic changes test timing or cannot identify the state safely, retain the failure as unknown and do not claim a root cause.
+  - **Anchor**: Hosted job 132299647921, `src/mcp/mcp-git-install.test.ts:1112` and `:1406`.
+
 - [ ] Validate every sync selection before preparation can publish outputs
   - **ID**: sync-selection-preflight
   - **Tags**: security, stability, sync, cli

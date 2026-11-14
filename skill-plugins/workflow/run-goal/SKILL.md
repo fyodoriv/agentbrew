@@ -146,8 +146,8 @@ Write the contract in the chat before you change anything. Fill in the template 
   you cannot cite, such as "if the repo rules allow it", is not granted.
   When another team owns a required change, keep the original acceptance criteria blocked or unverified. Only explicit user approval may replace those criteria with a narrower goal.
   Name the owner, route and test path. An owner-ask draft or filed request is not evidence the original goal is complete; post only with authorization.
-- **Budget**: rough time or turn budget. Past twice the budget, report and
-  re-plan instead of drifting.
+- **Budget**: retain elapsed time and known waits across resumes. At the budget,
+  after a narrowing correction and at twice the budget, apply the [scope checkpoint](references/execution.md#budget-and-scope-checkpoint).
 - **Assumptions and risks**: what you believe without proof.
 - **Suggestions**: one to three ways to make the goal better. For example:
   split it, add a missing metric, reuse a tool, or take a cheaper path. Adopt

@@ -18,6 +18,17 @@
 
 This test cannot exclude older or non-cooperating live controllers.
 
+The first run could not start the scratch service because its sandbox denied
+macOS's shell selector. It was stopped and its temporary job cleaned up. A
+retry allowing that system shell path passed the outside-file and network
+controls. It derived the candidate from actual temporary job output, changed
+only the version argument, blocked a competing lock, checked the record and
+recalled candidate and restored synthetic entries. Temporary jobs and known
+processes stopped. Independent review confirmed the bounded result. A scratch
+shell mapped the pin to preinstalled packages; this did not test uvx dependency
+resolution. External control was a no-op and the Node driver was not sandboxed.
+This does not establish a safe live handoff.
+
 ## Candidate job derivation prediction
 
 - **Hypothesis:** Deriving a candidate from a verified loaded job and changing

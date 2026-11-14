@@ -176,7 +176,7 @@
 - [ ] Explain an empty readiness marker in the interrupted install test
   - **ID**: mcp-interrupted-ready-marker
   - **Tags**: ci, testing, stability
-  - **Details**: A hosted Mac run failed when the interrupted-install test tried to scan an empty readiness path. The marker existence check can observe a file before its write finishes, but the hosted cause is not yet established. Preserve the existing signal and cleanup policy; do not run the physical test locally without an independently reviewed ownership and cleanup method.
+  - **Details**: A hosted Mac run failed when the interrupted-install test tried to scan an empty readiness path. The marker existence check can observe a file before its write finishes, but the hosted cause is not yet established. Preserve the existing signal and cleanup policy; do not run the physical test locally without an independently reviewed ownership and cleanup method. A no-signal fixture demonstrated that a newly created file can be observed empty before its content is written; it did not prove the hosted cause. Independent review found that the proposed diagnostic adds timing and can skip the existing signal if raised early, so the registered pivot applies; define and preregister a safe revised observation before implementation.
   - **Output**: code
   - **Acceptance**: A closed diagnostic distinguishes missing, empty and nonempty marker observations without logging the path. Partial and complete nonempty content remain indistinguishable without further evidence.
   - **Hypothesis**: A bounded marker diagnostic will distinguish all 3 planted marker observations and expose no path values; the suspected write race remains unproven until observed.

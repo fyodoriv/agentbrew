@@ -48,3 +48,15 @@ join and its state behind `cfg(test)` and out of discovery decisions. This is
 a partial lexical and routing witness only. It does not prove Cargo root or
 module authority, standard-library identity, full coverage, a stale-only
 restart case, or worker/adapter admission.
+
+## Reviewed implementation boundary
+
+Derive the target from the successful relation on the same expected snapshot,
+not from the frozen witness. Refuse a root/target alias, differing relation
+paths, invalid entry modes or key/path identities, and inputs over 2 MiB.
+Pass the expected snapshot by immutable borrow to the test-only route; compare
+source bytes directly there and retain only bounded flags and round count.
+Publish only final-round evidence. A source-worklist or parser limit, early
+return, exhausted loop, duplicate, generated selected source or mismatch is
+inconclusive even if an existing observer's completion flag was set. Review
+the actual boundary wiring before accepting a result.

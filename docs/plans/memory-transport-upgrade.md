@@ -22,6 +22,13 @@ The callback must actually persist and verify a recovery record before a real
 caller can use it. This change alone does not provide that record or make the
 live upgrade safe.
 
+The sequence tests reproduced the missing callback before the change. After
+the change, all ten tests passed on Node 22.23.4 and 24.21.0. The tests use
+synthetic callbacks; they do not demonstrate a durable receipt. If persistence
+succeeds but its callback reports failure, the receipt may remain even though
+the old daemon restarts. Recovery must treat that receipt conservatively and
+inspect the actual job and database before taking action.
+
 ## Upgrade sequence test detection prediction
 
 - **Root cause:** Node 22.23.4 can import `node:sqlite`, but does not list it in

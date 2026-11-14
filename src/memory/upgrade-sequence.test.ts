@@ -32,6 +32,7 @@ describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
         },
         isOldStopped: async () => false,
         startOld,
+        persistCandidateIntent: async () => undefined,
         startCandidate,
         candidateHealthy: async () => true,
       });
@@ -53,8 +54,10 @@ describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
         "CREATE TABLE memories (id INTEGER, deleted_at TEXT); INSERT INTO memories VALUES (1, NULL);",
       ]);
       let stopped = false;
+      let recorded = false;
       const startCandidate = vi.fn(async (snapshot: string) => {
         expect(stopped).toBe(true);
+        expect(recorded).toBe(true);
         expect(
           execFileSync("sqlite3", [snapshot, "SELECT COUNT(*) FROM memories;"], { encoding: "utf-8" }).trim(),
         ).toBe("1");
@@ -79,6 +82,10 @@ describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
         startOld: async () => {
           stopped = false;
         },
+        persistCandidateIntent: async (snapshot: string) => {
+          expect(existsSync(snapshot)).toBe(true);
+          recorded = true;
+        },
         startCandidate,
         candidateHealthy: async () => {
           execFileSync("sqlite3", [db, "INSERT INTO memories VALUES (2, NULL);"]);
@@ -89,6 +96,63 @@ describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
       expect(startCandidate).toHaveBeenCalledTimes(1);
       expect(result.snapshot && existsSync(result.snapshot)).toBe(true);
       expect(execFileSync("sqlite3", [db, "SELECT COUNT(*) FROM memories;"], { encoding: "utf-8" }).trim()).toBe("2");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not register the candidate when recording its intent fails", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "memory-upgrade-intent-"));
+    try {
+      const db = join(dir, "memory.db");
+      execFileSync("sqlite3", [db, "CREATE TABLE memories (id INTEGER, deleted_at TEXT);"]);
+      const startOld = vi.fn();
+      const startCandidate = vi.fn();
+      const result = await upgradeMemoryWithSnapshot({
+        dbPath: db,
+        backupsDir: join(dir, "backups"),
+        stopOld: async () => undefined,
+        isOldStopped: async () => true,
+        startOld,
+        persistCandidateIntent: async () => {
+          throw new Error("synthetic receipt failure");
+        },
+        startCandidate,
+        candidateHealthy: async () => true,
+      });
+      expect(result).toMatchObject({ ok: false, stage: "backup" });
+      expect(result.error).toContain("synthetic receipt failure");
+      expect(startCandidate).not.toHaveBeenCalled();
+      expect(startOld).toHaveBeenCalledTimes(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not register the candidate if the old daemon restarts while recording intent", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "memory-upgrade-intent-restart-"));
+    try {
+      const db = join(dir, "memory.db");
+      execFileSync("sqlite3", [db, "CREATE TABLE memories (id INTEGER, deleted_at TEXT);"]);
+      const startCandidate = vi.fn();
+      const startOld = vi.fn();
+      let stopped = true;
+      const result = await upgradeMemoryWithSnapshot({
+        dbPath: db,
+        backupsDir: join(dir, "backups"),
+        stopOld: async () => undefined,
+        isOldStopped: async () => stopped,
+        startOld,
+        persistCandidateIntent: async () => {
+          stopped = false;
+        },
+        startCandidate,
+        candidateHealthy: async () => true,
+      });
+      expect(result).toMatchObject({ ok: false, stage: "backup" });
+      expect(result.error).toContain("restarted during intent recording");
+      expect(startCandidate).not.toHaveBeenCalled();
+      expect(startOld).not.toHaveBeenCalled();
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -108,6 +172,7 @@ describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
         stopOld: async () => undefined,
         isOldStopped: async () => true,
         startOld,
+        persistCandidateIntent: async () => undefined,
         startCandidate,
         candidateHealthy: async () => true,
       });
@@ -137,6 +202,7 @@ describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
         stopOld: async () => undefined,
         isOldStopped: stopped,
         startOld: async () => undefined,
+        persistCandidateIntent: async () => undefined,
         startCandidate,
         candidateHealthy: async () => true,
       });
@@ -163,6 +229,7 @@ describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
         stopOld: async () => undefined,
         isOldStopped: async () => true,
         startOld,
+        persistCandidateIntent: async () => undefined,
         startCandidate: async () => undefined,
         candidateHealthy: async () => {
           execFileSync("sqlite3", [db, "INSERT INTO memories VALUES (2, NULL);"]);
@@ -196,6 +263,7 @@ describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
         stopOld: async () => undefined,
         isOldStopped: async () => true,
         startOld,
+        persistCandidateIntent: async () => undefined,
         startCandidate: async () => undefined,
         candidateHealthy: async () => false,
       });
@@ -222,6 +290,7 @@ describe.runIf(hasSqlite)("memory upgrade snapshot sequence", () => {
         stopOld: async () => undefined,
         isOldStopped: async () => true,
         startOld,
+        persistCandidateIntent: async () => undefined,
         startCandidate: async () => {
           throw new Error("synthetic registration failure");
         },

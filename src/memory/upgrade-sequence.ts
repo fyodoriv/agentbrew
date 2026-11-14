@@ -8,6 +8,8 @@ export interface MemoryUpgradeOperations {
   stopOld: () => Promise<void>;
   isOldStopped: () => Promise<boolean>;
   startOld: () => Promise<void>;
+  /** Persist and verify a recovery record before the candidate can start. */
+  persistCandidateIntent: (snapshot: string) => Promise<void>;
   /** Register the candidate without waiting for database initialization. */
   startCandidate: (snapshot: string) => Promise<void>;
   candidateHealthy: () => Promise<boolean>;
@@ -34,6 +36,9 @@ export async function upgradeMemoryWithSnapshot(ops: MemoryUpgradeOperations): P
       if (!verifySqliteBackup(snapshot).ok) throw new Error("memory backup failed verification");
       if (!(await ops.isOldStopped())) throw new Error("old memory daemon restarted during backup");
       assertHeld();
+      await ops.persistCandidateIntent(snapshot);
+      assertHeld();
+      if (!(await ops.isOldStopped())) throw new Error("old memory daemon restarted during intent recording");
       progress.stage = "candidate";
       await ops.startCandidate(snapshot);
       assertHeld();

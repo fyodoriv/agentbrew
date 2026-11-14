@@ -81,3 +81,11 @@ force. Before implementation, specify missing-target and failure behavior,
 alias/rebinding of `spec`, loader and classifier, the transitive caller review,
 and how the site-bound components satisfy the same-file guard without a broad
 exception. The listed controls are design requirements, not passing results.
+
+The source-only caller trace also reaches `review_ask_event_test.py`, which
+patches process and network call sites before dynamically loading the event
+module, and `review_ask_event_runner.py`, which loads that test module. A
+separate runner test writes a fixture file. These are distinct executable and
+write boundaries; the presence of test guards is not a blanket inertness proof.
+Their invocation, failure and cleanup paths need their own source-bound review
+before they can enter a complete ledger. This trace does not claim all callers.

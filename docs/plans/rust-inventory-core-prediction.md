@@ -27,7 +27,7 @@ and their completeness must be tested before either inventory task is done.
 ## Adapter boundary
 
 The `migration-inventory-core` crate accepts independently discovered identities
-and reviewed entries. Each identity includes its source path, kind, and boundary.
+and reviewed entries. Each identity includes its source path, kind, boundary, and source digest.
 The core rejects duplicates, mismatches, invalid paths, and missing metadata.
 Adapters own source discovery and must prove that it detects embedded programs
 and generated outputs; a passing comparison cannot establish that on its own.

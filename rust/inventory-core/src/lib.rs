@@ -17,6 +17,8 @@ pub struct Identity {
     pub kind: Kind,
     /// A stable source boundary or generated-target identity.
     pub boundary: String,
+    /// Digest of the reviewed source that defines this identity.
+    pub source_digest: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -51,6 +53,8 @@ pub enum Error {
 
 fn valid_identity(id: &Identity) -> bool {
     !id.boundary.trim().is_empty()
+        && matches!(id.source_digest.len(), 40 | 64)
+        && id.source_digest.bytes().all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
         && id.path.split('/').all(|part| !part.is_empty() && part != "." && part != "..")
         && Path::new(&id.path)
             .components()
@@ -101,9 +105,9 @@ mod tests {
 
     fn fixture() -> (Vec<Identity>, Vec<Entry>) {
         let ids = vec![
-            Identity { path: "bin/start".into(), kind: Kind::File, boundary: "entry".into() },
-            Identity { path: "bin/start".into(), kind: Kind::Embedded, boundary: "python-body".into() },
-            Identity { path: "scripts/build".into(), kind: Kind::Generated, boundary: "generated-tool".into() },
+            Identity { path: "bin/start".into(), kind: Kind::File, boundary: "entry".into(), source_digest: "a".repeat(40) },
+            Identity { path: "bin/start".into(), kind: Kind::Embedded, boundary: "python-body".into(), source_digest: "a".repeat(40) },
+            Identity { path: "scripts/build".into(), kind: Kind::Generated, boundary: "generated-tool".into(), source_digest: "b".repeat(40) },
         ];
         let entries = ids.iter().map(|id| Entry { identity: id.clone(), owner: "tools".into(), caller: "cli".into(), state: State::Ported, reason: String::new() }).collect();
         (ids, entries)
@@ -132,6 +136,9 @@ mod tests {
         bad[1].state = State::Exception;
         assert!(validate(&ids, &bad).contains(&Error::MissingOwnerOrCaller(ids[0].clone())));
         assert!(validate(&ids, &bad).contains(&Error::MissingReason(ids[1].clone())));
+        let mut stale = entries.clone();
+        stale[0].identity.source_digest = "c".repeat(40);
+        assert!(validate(&ids, &stale).contains(&Error::MissingEntry(ids[0].clone())));
         assert_eq!(validate(&[], &[]), vec![Error::EmptyDiscovery]);
     }
 

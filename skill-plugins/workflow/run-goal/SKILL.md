@@ -60,11 +60,11 @@ Follow this order, even for a small goal:
    before you gather evidence for any one answer.
 3. Ask the one question round, or record your defaults (Phase 3).
 4. Create a plan Artifact in the task outputs before execution. Update the same Artifact
-   at every milestone; on resume, find and reuse it. Verify visibility and
-   follow the private fallback in the [goal report](references/goal-report.md).
+   at every milestone; on resume, find and reuse it. Verify visibility and follow the private fallback in the [goal report](references/goal-report.md).
+   At creation and each milestone, request an independent review using the
+   [plan artifact judge](references/plan-artifact-judge.md); on resume, review the existing artifact and its identity before continuing.
 5. Work, printing a `Goal check` line after each done-criterion (Phase 4).
-6. Verify with fresh evidence (Phase 5), then the retro and the final
-   report (Phase 6).
+6. Verify with fresh evidence (Phase 5), then the retro and the final report (Phase 6).
 
 A small goal gets a short contract, not none. Without it, the goal checker cannot verify done and the user cannot review your plan.
 

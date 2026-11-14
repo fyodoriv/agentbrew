@@ -17,6 +17,14 @@
 
 The trial does not establish exclusive control over the real service.
 
+The synthetic old and candidate listeners were distinct direct children of their
+launchd jobs. The real default runtime completed the guarded handoff, candidate
+and restored synthetic entries were recalled, and all known jobs and processes
+stopped. An independent review confirmed the scratch source differed only in
+its strict temporary-label guard. The shell supervisor is not the real uvx
+process chain; maintenance control and candidate environment provenance remain
+simulated. Failure recovery and a live upgrade remain unproven.
+
 ## Production runtime scratch rehearsal prediction
 
 - **Hypothesis:** The real launchd runtime can complete the guarded handoff for

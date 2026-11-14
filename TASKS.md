@@ -173,6 +173,19 @@
 
 ## P1
 
+- [ ] Verify the memory schema after an upgrade
+  - **ID**: memory-upgrade-schema-readiness
+  - **Tags**: memory, stability, security
+  - **Mode**: AFK
+  - **Details**: MCP Memory Service 12.9 logs schema migration errors as warnings and can continue startup. A reachable candidate alone does not prove that its schema migration succeeded. Use the upstream read-only schema check against the exact upgraded database before reporting a successful handoff.
+  - **Output**: code
+  - **Acceptance**: An otherwise reachable candidate with pending or failed migrations cannot report upgrade success. Preserve the recovery snapshot and do not restore over candidate writes.
+  - **Hypothesis**: An upstream schema check prevents false upgrade success when migration fails, without rejecting a healthy migrated store.
+  - **Measurement**: Focused candidate checks with a migrated database, a pending-migration database, and a schema-check failure.
+  - **Success**: All 3 controls return the correct result; 0 failure paths restore over candidate writes.
+  - **Pivot**: If the upstream command cannot inspect the exact database read-only, leave the handoff incomplete and report the uncertainty.
+  - **Anchor**: MCP Memory Service 12.9 `storage/mixins/migrations.py` and `memory check-db`; `src/memory/upgrade-sequence.ts`.
+
 - [ ] Report OpenCode memory readiness accurately during startup
   - **ID**: opencode-mcp-cold-start-readiness
   - **Tags**: opencode, memory, stability, readiness

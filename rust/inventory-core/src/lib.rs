@@ -51,7 +51,7 @@ pub enum Error {
 
 fn valid_identity(id: &Identity) -> bool {
     !id.boundary.trim().is_empty()
-        && !id.path.is_empty()
+        && id.path.split('/').all(|part| !part.is_empty() && part != "." && part != "..")
         && Path::new(&id.path)
             .components()
             .all(|part| matches!(part, Component::Normal(_)))
@@ -140,7 +140,9 @@ mod tests {
         let (mut ids, entries) = fixture();
         ids.push(ids[0].clone());
         assert!(validate(&ids, &entries).contains(&Error::DuplicateObserved(ids[0].clone())));
-        ids[0].path = "../outside".into();
-        assert!(validate(&ids, &entries).contains(&Error::InvalidIdentity(ids[0].clone())));
+        for path in ["../outside", "bin//start", "bin/./start", "bin/start/"] {
+            ids[0].path = path.into();
+            assert!(validate(&ids, &entries).contains(&Error::InvalidIdentity(ids[0].clone())));
+        }
     }
 }

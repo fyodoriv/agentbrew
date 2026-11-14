@@ -57,10 +57,13 @@ describe("hosted workflows", () => {
     // A new trigger is a decision: add it here in the same change.
     const allowed: Record<string, string[]> = {
       "auto-publish.yml": ["workflow_dispatch"],
+      "beacon-retrieval-trial.yml": ["pull_request", "workflow_dispatch"],
       "ci.yml": ["pull_request", "push", "workflow_dispatch"],
+      "memory-lockf-trial.yml": ["pull_request", "workflow_dispatch"],
       "oss-readiness.yml": ["pull_request", "push", "workflow_dispatch"],
       "pr-vision-trace.yml": ["workflow_dispatch"],
       "publish.yml": ["push"],
+      "supermemory-local-trial.yml": ["pull_request", "workflow_dispatch"],
     };
     for (const { name, text } of workflows) {
       const code = codeLines(text).join("\n");
@@ -71,6 +74,16 @@ describe("hosted workflows", () => {
         .map((line) => line.trim().replace(/:.*$/, ""));
       expect(keys, name).toEqual(allowed[name] ?? []);
     }
+  });
+
+  it("supersedes obsolete manual CI runs while preserving push runs", () => {
+    const text = workflows.find((w) => w.name === "ci.yml")?.text ?? "";
+    expect(text).toContain(
+      "cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main') }}",
+    );
+    expect(text).toContain(
+      "group: ci-${{ github.event_name == 'push' && github.run_id || github.event.pull_request.number || github.ref }}",
+    );
   });
 
   it("the release workflow bumps the version on main only", () => {

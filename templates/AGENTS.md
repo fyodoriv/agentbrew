@@ -17,7 +17,7 @@ Before creating a new skill, search existing skill sources and extend the closes
 
 ## Shared memory
 
-Claude Code and ChatGPT Work/Codex must use configured shared memory:
+Claude Code, ChatGPT Work/Codex, and OpenCode must use configured shared memory:
 call `get_bootstrap_profile`
 at session entry, `memory_search` before context-dependent decisions, and
 `commit_session_legacy` once before finish. If configured memory fails, name the

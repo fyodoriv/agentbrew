@@ -13,13 +13,15 @@ function digest(): string | undefined {
 }
 
 let before: string | undefined;
+let baselineCaptured = false;
 
 beforeAll(() => {
   before = digest();
+  baselineCaptured = true;
 });
 
 afterAll(() => {
-  if (digest() !== before) {
+  if (baselineCaptured && digest() !== before) {
     throw new Error(`This test file changed ${tasksPath}. Stub the writer (for example writeFollowups).`);
   }
 });

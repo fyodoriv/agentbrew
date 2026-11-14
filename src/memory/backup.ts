@@ -1,12 +1,75 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { randomUUID } from "node:crypto";
+import {
+  chmodSync,
+  existsSync,
+  linkSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  statSync,
+} from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import { errorMessage } from "../core/errors.js";
-import { MEMORY_BACKUP_KEEP } from "./constants.js";
+import { MEMORY_BACKUP_KEEP, MEMORY_UPGRADE_SNAPSHOT_DIR } from "./constants.js";
 
 export interface SqliteBackupOptions {
   sqliteBin?: string;
+}
+
+function assertSafeDarwinAcl(path: string): void {
+  const output = execFileSync("/bin/ls", ["-lde", path], {
+    encoding: "utf-8",
+    timeout: 5_000,
+    env: { ...process.env, LC_ALL: "C" },
+  });
+  const acl = output.trimEnd().split("\n").slice(1);
+  if (acl.some((line) => /\ballow\b/.test(line) || !/^\s*\d+:.*\bdeny\b/.test(line))) {
+    throw new Error("backup directory has an unverified access rule");
+  }
+}
+
+function assertTrustedAncestors(dir: string, uid: number): void {
+  let current = dir;
+  for (;;) {
+    const item = lstatSync(current);
+    const writable = (item.mode & 0o022) !== 0;
+    const trustedSticky = (item.mode & 0o1000) !== 0 && (item.uid === 0 || item.uid === uid);
+    if (!item.isDirectory() || (item.uid !== 0 && item.uid !== uid) || (writable && !trustedSticky)) {
+      throw new Error("backup directory ancestor is not trusted");
+    }
+    if (process.platform === "darwin") assertSafeDarwinAcl(current);
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+}
+
+function trustedBackupDirectory(path: string): string {
+  const dir = resolve(path);
+  const info = lstatSync(dir);
+  if (!info.isDirectory() || info.isSymbolicLink()) throw new Error("backup directory is not a directory");
+  const canonical = realpathSync(dir);
+  if (/['\r\n\0]/.test(canonical)) throw new Error("backup directory cannot be safely quoted");
+  if (process.platform === "win32") return canonical;
+  const uid = process.getuid?.();
+  const resolved = lstatSync(canonical);
+  if (
+    uid === undefined ||
+    info.uid !== uid ||
+    resolved.uid !== uid ||
+    info.dev !== resolved.dev ||
+    info.ino !== resolved.ino ||
+    (info.mode & 0o022) !== 0 ||
+    (resolved.mode & 0o022) !== 0
+  ) {
+    throw new Error("backup directory is not privately writable");
+  }
+  assertTrustedAncestors(canonical, uid);
+  return canonical;
 }
 
 export function sqliteActiveCount(dbPath: string, options?: SqliteBackupOptions): number | undefined {
@@ -47,22 +110,32 @@ export function verifySqliteBackup(
 }
 
 /** Safe online backup using sqlite3 `.backup` — mirrors dotfiles-memory.sh. */
-export function sqliteBackup(sourceDb: string, destDb: string, options?: SqliteBackupOptions): void {
+export function sqliteBackup(sourceDb: string, destDb: string, options?: SqliteBackupOptions): string {
   if (!existsSync(sourceDb)) {
     throw new Error(`source database not found: ${sourceDb}`);
   }
   const sqliteBin = options?.sqliteBin ?? "sqlite3";
-  mkdirSync(dirname(destDb), { recursive: true });
-  const tempBackup = join(tmpdir(), `agentbrew-memory-backup-${process.pid}-${Date.now()}`);
-  const staging = `${destDb}.partial.${process.pid}`;
+  mkdirSync(dirname(destDb), { recursive: true, mode: 0o700 });
+  const destDir = trustedBackupDirectory(dirname(destDb));
+  const identity = lstatSync(destDir, { bigint: true });
+  const assertDirectory = () => {
+    const current = lstatSync(destDir, { bigint: true });
+    if (!current.isDirectory() || current.dev !== identity.dev || current.ino !== identity.ino) {
+      throw new Error("backup directory changed");
+    }
+  };
+  const target = join(destDir, basename(destDb));
+  const tempDir = mkdtempSync(join(destDir, ".agentbrew-memory-backup-"));
+  const tempBackup = join(tempDir, "backup.db");
   try {
+    if (process.platform === "darwin") execFileSync("/bin/chmod", ["-N", tempDir], { timeout: 5_000 });
     execFileSync(sqliteBin, [sourceDb, `.backup '${tempBackup}'`], { encoding: "utf-8" });
-    copyFileSync(tempBackup, staging);
-    rmSync(destDb, { force: true });
-    copyFileSync(staging, destDb);
+    chmodSync(tempBackup, 0o600);
+    assertDirectory();
+    linkSync(tempBackup, target);
+    return target;
   } finally {
-    rmSync(tempBackup, { force: true });
-    rmSync(staging, { force: true });
+    rmSync(tempDir, { recursive: true, force: true });
   }
 }
 
@@ -104,14 +177,16 @@ export function newestBackupInDir(backupsDir: string): string | undefined {
 /** Write a timestamped backup of `sourceDb` into `backupsDir` and return its path. */
 export function writeMemoryBackup(sourceDb: string, backupsDir: string, now: Date = new Date()): string {
   const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\..+/, "").replace("T", "_");
-  const dest = join(backupsDir, `agentbrew-memory_${stamp}.db`);
-  sqliteBackup(sourceDb, dest);
-  return dest;
+  const dest = join(backupsDir, `agentbrew-memory_${stamp}_${randomUUID()}.db`);
+  return sqliteBackup(sourceDb, dest);
 }
 
 /** Delete all but the newest `keep` `.db` backups (and their sidecars) in `backupsDir`; return the removed paths. */
 export function pruneMemoryBackups(backupsDir: string, keep: number): string[] {
   if (!existsSync(backupsDir)) return [];
+  if (basename(realpathSync(backupsDir)) === MEMORY_UPGRADE_SNAPSHOT_DIR) {
+    throw new Error("Cannot rotate protected memory upgrade snapshots");
+  }
   const backups = readdirSync(backupsDir)
     .filter((entry) => entry.endsWith(".db"))
     .map((entry) => {
@@ -139,7 +214,7 @@ export function rotateMemoryBackup(
   try {
     const path = writeMemoryBackup(sourceDb, backupsDir);
     if (!verifySqliteBackup(path).ok) return { ok: false, path, error: `backup failed verification: ${path}` };
-    pruneMemoryBackups(backupsDir, keep);
+    pruneMemoryBackups(dirname(path), keep);
     return { ok: true, path };
   } catch (error) {
     return { ok: false, path: null, error: errorMessage(error) };

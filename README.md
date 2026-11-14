@@ -524,10 +524,49 @@ agentbrew sync                # keeps the daemon definition and every agent's MC
 
 The managed endpoint is `http://127.0.0.1:18765/mcp`.
 
-If an existing managed job has a different or unreadable service version or
-launch settings, sync and repair leave it in place. A protected upgrade is
-required before changing the version. The configured `uvx` executable is
-trusted; this check does not verify its contents.
+The current upstream version, 11.7.0, is affected by a
+[local-origin security advisory](https://github.com/doobidoo/mcp-memory-service/security/advisories/GHSA-8p26-g7wp-65jw).
+Avoid visiting untrusted pages while this daemon is running. A newer version
+needs a verified backup and migration test before it can replace this pin.
+If an existing managed job file or loaded job has a different or unreadable
+service pin, sync and memory repair refuse to replace or restart it. They also
+refuse when the saved or running job has an unexpected database setting, home,
+working directory, or command. A protected upgrade workflow is still needed
+before that version can change automatically. The configured `uvx` executable
+is trusted; the check does not verify its contents.
+Setup also refuses to reconcile when it finds relevant custom launchd settings
+or an upstream home `.env`. When the job file is missing, an existing default
+database also blocks setup. These checks do not establish every possible
+upstream configuration source.
+On refusal, the existing memory-enabled setting is preserved. Disable checks the
+job identity and confirms that it is no longer registered before removing its
+job file. This does not prove that every child process exited. If a check or
+removal fails, the caller's memory state stays unchanged; service health may
+still need checking after a partial removal.
+On macOS, memory setup, restart, and disable share an operating-system lock.
+They refuse to proceed while another cooperating operation holds it or an
+upgrade recovery record exists. Older versions and direct launchd commands do
+not honor this lock, so it does not establish an exclusive upgrade window.
+
+The backup command returns an error when its integrity check fails.
+Each backup gets a unique name and is published without replacing an existing
+snapshot. Backup creation fails if the destination filesystem cannot create
+the required hard link. Backup rotation refuses the reserved
+`.agentbrew-upgrade-snapshots` directory, including paths that resolve to it.
+On macOS, backup files are owner-readable only. The backup directory
+must be owned by the current user and must not be writable by other users; its
+ancestor directories must also prevent untrusted replacement. A symlinked
+backup directory or a path containing a single quote is refused. Linux and
+Windows access-control behavior has not yet been verified.
+Memory backup and health checks honor `MCP_MEMORY_SQLITE_PATH` and the upstream
+`MCP_MEMORY_SQLITEVEC_PATH` alias, in that order. When neither is set, they
+use `MCP_MEMORY_BASE_DIR` if present. Backup directories also honor the upstream
+`mcpMemoryBackupsPath` alias after `MCP_MEMORY_BACKUPS_PATH`. Set the same paths
+for the daemon and the CLI, and use absolute paths for custom locations. The
+upstream daemon can also load `.env` files; Agentbrew's backup path resolver
+does not read them. Confirm that the CLI and daemon point to the same database
+before relying on a backup. When maintenance falls back to upstream `check-db`,
+it explicitly passes the database path resolved by the CLI.
 
 Readiness performs the
 Streamable HTTP discovery contract in order — `initialize`,
@@ -564,7 +603,14 @@ memory rows, pack ledgers, and stable server metadata.
 `memoryPacks` declarations from base and overlay Agentfiles are merged and
 resolved relative to the file that declares each path. Discovery does not
 install a pack; only an explicit `memory pack install` (or reconciliation of
-an existing install ledger) writes pack records.
+an existing install ledger) writes pack records. A duplicate store response
+is left unresolved rather than changing an existing memory's tags. A failed or
+unrecognized update response also leaves the pack ledger unchanged. Changed pack
+text uses the memory service's versioned update. If existing tags differ,
+reconciliation stops instead of replacing them. A pack version bump can stop
+when a record's text is unchanged, because its version tag also changes. Pack
+reconciliation reads the full matching memory list twice to detect some
+concurrent changes. This adds requests and is not an atomic snapshot.
 
 ### Claude project-memory bridge
 
@@ -577,7 +623,11 @@ primary agents search the same managed daemon while Claude remains the only
 local-file source.
 
 Normal syncs use ledger fingerprints to skip unchanged stores; `--force` is
-the deliberate recovery path when a full re-ingest is needed. Each new record
+the deliberate recovery path when a full re-ingest is needed. A store stays
+stale when the service reports failed files or chunk errors, or cannot confirm
+that it processed every file in the discovered folder. An unchanged `--force`
+re-import can be reported as incomplete when upstream rejects duplicate chunks;
+the existing memories remain, and the folder stays eligible for retry. Each new record
 also carries a stable `project-source:sha256:…` tag. The readable
 `project:<slug>` tag remains a hint and can collide. Recall remains global by
 default; callers can use the source tag when they intentionally need a
@@ -693,7 +743,7 @@ So your real jobs are untouched. Read-only checks such as `crontab -l` and `laun
 
 The job's `PATH` starts with that Node's folder. When `agentbrew fix` rewrites the plist from inside the job itself, it does not unload the running job (that would kill it before the reload). It writes the plist, and a detached shell reloads the job after the run ends. An unchanged plist is not reloaded.
 
-`agentbrew status` reports `launchagent` drift for a `com.agentbrew.*` job that runs Node in two cases. The job's Node no longer exists, or the job runs a versioned path while a link that survives upgrades points at the same Node. The repair for the memory job is `agentbrew memory fix`. `agentbrew fix` (the check job) or `agentbrew memory fix` (the memory job, reported as `memory-launchagent` drift) then rewrites the plist, so an existing job moves to the stable path on its next run.
+`agentbrew status` reports `launchagent` drift for a `com.agentbrew.*` job that runs Node in two cases. The job's Node no longer exists, or the job runs a versioned path while a link that survives upgrades points at the same Node. The repair for the memory job is `agentbrew memory fix`. If `uvx` is unavailable, memory reconciliation stops instead of restarting an unchecked job. `agentbrew fix` (the check job) or `agentbrew memory fix` (the memory job, reported as `memory-launchagent` drift) then rewrites the plist, so an existing job moves to the stable path on its next run.
 
 ### MCP endpoint repair
 

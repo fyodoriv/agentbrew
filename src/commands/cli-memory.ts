@@ -371,9 +371,17 @@ export function registerMemoryCommands(program: Command): void {
       const source = resolveMemoryDbPath();
       const dest = writeMemoryBackup(source, resolveMemoryBackupsDir());
       const verified = verifySqliteBackup(dest);
-      const payload = { source, dest, activeCount: verified.activeCount };
+      const payload = {
+        ok: verified.ok,
+        source,
+        dest,
+        activeCount: verified.activeCount,
+        ...(!verified.ok ? { error: "Backup verification failed" } : {}),
+      };
       if (options.json) printJson(payload);
-      else console.log(`Backup written: ${dest} (${verified.activeCount ?? "?"} active rows)`);
+      else if (!verified.ok) console.error(`Backup verification failed: ${dest}`);
+      else console.log(`Backup written: ${dest} (${verified.activeCount} active rows)`);
+      if (!verified.ok) process.exitCode = 1;
     });
 
   memory

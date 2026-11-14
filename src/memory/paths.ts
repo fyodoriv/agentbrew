@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { expandHome, resolveStateHome } from "../utils.js";
 
 export const MEMORY_PACKS_LEDGER_DIR = "~/.config/agentbrew/memory-packs";
@@ -16,11 +16,15 @@ export function defaultMemoryBackupsDir(home = homedir()): string {
 
 export function resolveMemoryDbPath(env: NodeJS.ProcessEnv = process.env): string {
   if (env.MCP_MEMORY_SQLITE_PATH) return env.MCP_MEMORY_SQLITE_PATH;
+  if (env.MCP_MEMORY_SQLITEVEC_PATH) return env.MCP_MEMORY_SQLITEVEC_PATH;
+  if (env.MCP_MEMORY_BASE_DIR) return join(resolve(expandHome(env.MCP_MEMORY_BASE_DIR)), "sqlite_vec.db");
   return defaultMemoryDbPath();
 }
 
 export function resolveMemoryBackupsDir(env: NodeJS.ProcessEnv = process.env): string {
-  if (env.MCP_MEMORY_BACKUPS_PATH) return env.MCP_MEMORY_BACKUPS_PATH;
+  const configured = env.MCP_MEMORY_BACKUPS_PATH || env.mcpMemoryBackupsPath;
+  if (configured) return resolve(expandHome(configured));
+  if (env.MCP_MEMORY_BASE_DIR) return join(resolve(expandHome(env.MCP_MEMORY_BASE_DIR)), "backups");
   return defaultMemoryBackupsDir();
 }
 

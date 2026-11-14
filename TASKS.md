@@ -173,6 +173,71 @@
 
 ## P1
 
+- [ ] Verify memory backup access controls on Linux and Windows
+  - **ID**: memory-backup-platform-access-controls
+  - **Tags**: memory, security, testing
+  - **Mode**: AFK
+  - **Details**: The synthetic staging check verifies macOS access rules. Linux and Windows access-control behavior has not been proved, and Windows ownership checks are not implemented in the draft. Test effective access using synthetic records on each supported filesystem; use platform access-control APIs or a maintained upstream tool. Never use private memory in these tests.
+  - **Output**: code
+  - **Acceptance**: Each supported platform either proves that an unrelated user cannot read a staged or published backup, or refuses the operation before private data is copied. Explain any unsupported filesystem in the user guide.
+  - **Hypothesis**: Platform-specific access checks prevent unauthorized backup reads without blocking a valid owner-only backup.
+  - **Measurement**: Run synthetic owner and unrelated-user backup controls on Linux and Windows, including inherited access rules.
+  - **Success**: 4 of 4 owner and unrelated-user controls behave correctly, with 0 private records used.
+  - **Pivot**: If effective access cannot be established, fail closed on that platform until a maintained upstream solution supports it.
+  - **Anchor**: `src/memory/backup.ts`; Linux `acl(5)` and Microsoft Windows file security documentation.
+
+- [ ] Keep memory research trials reproducible and bounded
+  - **ID**: memory-research-trial-maintenance
+  - **Tags**: memory, testing, stability
+  - **Mode**: AFK
+  - **Details**: The synthetic research workflows `.github/workflows/beacon-retrieval-trial.yml`, `.github/workflows/memory-lockf-trial.yml`, and `.github/workflows/supermemory-local-trial.yml` exercise competitor retrieval and memory locking without private records. Keep their inputs isolated and remove a trial if it no longer provides evidence for a memory decision.
+  - **Output**: code
+  - **Acceptance**: Each retained trial has a bounded synthetic input and reports its actual result. No private memory or credentials are added to trial data.
+  - **Hypothesis**: Keeping the three trials reproducible makes changes to retrieval and lock behavior visible before release.
+  - **Measurement**: Run each retained workflow on the changed revision and inspect its result and isolation controls.
+  - **Success**: 3 of 3 retained workflows complete successfully and 0 private records are used.
+  - **Pivot**: Remove or replace a trial if its upstream dependency is unavailable or its isolation cannot be maintained.
+  - **Anchor**: The three workflow files and `docs/competition/agent-memory-2026-11-11.md`.
+
+- [ ] Verify the memory schema after an upgrade
+  - **ID**: memory-upgrade-schema-readiness
+  - **Tags**: memory, stability, security
+  - **Mode**: AFK
+  - **Details**: MCP Memory Service 12.9 logs schema migration errors as warnings and can continue startup. A reachable candidate alone does not prove that its schema migration succeeded. Use the upstream read-only schema check against the exact upgraded database before reporting a successful handoff.
+  - **Output**: code
+  - **Acceptance**: An otherwise reachable candidate with pending or failed migrations cannot report upgrade success. Preserve the recovery snapshot and do not restore over candidate writes.
+  - **Hypothesis**: An upstream schema check prevents false upgrade success when migration fails, without rejecting a healthy migrated store.
+  - **Measurement**: Focused candidate checks with a migrated database, a pending-migration database, and a schema-check failure.
+  - **Success**: All 3 controls return the correct result; 0 failure paths restore over candidate writes.
+  - **Pivot**: If the upstream command cannot inspect the exact database read-only, leave the handoff incomplete and report the uncertainty.
+  - **Anchor**: MCP Memory Service 12.9 `storage/mixins/migrations.py` and `memory check-db`; `src/memory/upgrade-sequence.ts`.
+
+- [ ] Report OpenCode memory readiness accurately during startup
+  - **ID**: opencode-mcp-cold-start-readiness
+  - **Tags**: opencode, memory, stability, readiness
+  - **Mode**: AFK
+  - **Details**: OpenCode 2.2.6 can report no MCP servers while a location starts, even though its configuration contains them. The upstream issue is open. Agentbrew should avoid treating one cold status response as proof that shared memory is absent, and should prefer the upstream fix when available.
+  - **Output**: code
+  - **Acceptance**: A cold empty response followed by a connected memory server is reported as connected. A persistently empty or failed response remains visible as a failure. Do not restart another user's service.
+  - **Hypothesis**: Bounded readiness observation removes false missing-memory reports during startup without masking a persistent failure.
+  - **Measurement**: Focused readiness tests with a cold-then-connected response and persistent-empty and failed-response controls.
+  - **Success**: All 3 controls report the correct outcome; 0 service restarts occur.
+  - **Pivot**: If the upstream fix ships first, remove any local workaround and verify that release instead.
+  - **Anchor**: https://github.com/anomalyco/opencode/issues/54192 and https://github.com/anomalyco/opencode/pull/54191.
+
+- [ ] Memory disable reports an unverified service stop
+  - **ID**: memory-disable-unload-errors
+  - **Tags**: memory, stability, cli
+  - **Mode**: AFK
+  - **Details**: The unload helper catches launchctl errors. Disable can then remove the job file and report success even when service removal was not verified. Preserve the caller's state on an explicit removal error and distinguish an already-absent job from an unknown failure. Do not assume a partially removed service is healthy.
+  - **Files**: `src/memory/launchagent.ts`, `src/memory/enable.ts`, related tests, README.
+  - **Output**: code
+  - **Acceptance**: The memory disable command reports an error when removal is uncertain and does not claim the service stopped. A verified absent job remains safe to disable. The JSON result or exit status shows the outcome.
+  - **Hypothesis**: Unreported synthetic unload failures fall from one known case to zero while a verified absent job succeeds.
+  - **Measurement**: `npx vitest run src/memory/launchagent.test.ts src/memory/enable.test.ts`
+  - **Success**: The new failure and absent-job controls pass; the failure reproduces on the unchanged helper.
+  - **Pivot**: If launchctl cannot distinguish absence from an unknown error, fail closed and report the uncertainty.
+  - **Anchor**: `src/memory/launchagent.ts` unload helper and `src/commands/cli-memory.ts` disable action.
 - [ ] Explain an empty readiness marker in the interrupted install test
   - **ID**: mcp-interrupted-ready-marker
   - **Tags**: ci, testing, stability

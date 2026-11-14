@@ -11,8 +11,10 @@ import {
   resolveSchedulerNode,
 } from "../sync/scheduler-paths.js";
 import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_PINNED_SPEC, MEMORY_UVX_ARGS } from "./constants.js";
+import { acquireMemoryControlLock, memoryControlPaths } from "./control-lock.js";
 import { resolveUvxBin } from "./invoke.js";
 import { defaultMemoryDbPath, memoryLaunchAgentLogDir } from "./paths.js";
+import { readUpgradeIntent } from "./upgrade-intent.js";
 
 export const MEMORY_AGENT_LABEL = "com.agentbrew.mcp-memory";
 export const MEMORY_MAINTAIN_LABEL = "com.agentbrew.mcp-memory-maintain";
@@ -481,7 +483,18 @@ function noCustomLaunchdMemoryEnvironment(): boolean {
   return true;
 }
 
-export function installMemoryLaunchAgents(): {
+/** Read-only check of known environment sources; package-ancestor dotenv files remain a caller concern. */
+export function memoryUpgradeEnvironmentSafe(): boolean {
+  const home = homedir();
+  return (
+    memoryLaunchAgentSupported() &&
+    launchdTargetsThisHome() &&
+    noCustomLaunchdMemoryEnvironment() &&
+    [join(home, ".env"), join(home, ".mcp-memory", ".env")].every(knownPathAbsent)
+  );
+}
+
+type MemoryLaunchAgentResult = {
   installed: boolean;
   upgradeBlocked?: boolean;
   changed?: boolean;
@@ -491,13 +504,42 @@ export function installMemoryLaunchAgents(): {
   maintainDisabled?: boolean;
   maintainReloaded?: boolean;
   reason?: string;
-} {
+};
+
+function withMemoryControl<T>(operation: () => T): T {
+  const { dir, lock: lockPath, intent } = memoryControlPaths();
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const lock = acquireMemoryControlLock(lockPath);
+  try {
+    lock.assertHeld();
+    if (readUpgradeIntent(intent).state !== "absent") {
+      throw new Error("memory upgrade requires recovery");
+    }
+    return operation();
+  } finally {
+    lock();
+  }
+}
+
+export function installMemoryLaunchAgents(): MemoryLaunchAgentResult {
   if (!memoryLaunchAgentSupported()) {
     return { installed: false, reason: "no boot persistence on non-macOS" };
   }
   if (!launchdTargetsThisHome()) {
     return { installed: false, reason: "launchd not changed: HOME is not your home folder" };
   }
+  try {
+    return withMemoryControl(installMemoryLaunchAgentsUnlocked);
+  } catch {
+    return {
+      installed: false,
+      upgradeBlocked: true,
+      reason: "memory service control unavailable or recovery required",
+    };
+  }
+}
+
+function installMemoryLaunchAgentsUnlocked(): MemoryLaunchAgentResult {
   const home = homedir();
   const logDir = memoryLaunchAgentLogDir();
   mkdirSync(logDir, { recursive: true });
@@ -569,22 +611,42 @@ export function installMemoryLaunchAgents(): {
   };
 }
 
+function removeMemoryLaunchAgent(plist: string, label: string): void {
+  const job = `gui/${userInfo().uid}/${label}`;
+  const before = probeLaunchctl(["print", job], 5_000);
+  if (!before || (before.status !== 0 && before.status !== 113)) {
+    throw new Error(`cannot verify memory service ${label}`);
+  }
+  if (before.status === 0) {
+    const identity = parseLaunchctlJobIdentity(before.stdout);
+    if (identity.path !== plist || identity.home !== homedir()) {
+      throw new Error(`memory service ${label} has an unexpected identity`);
+    }
+    runLaunchctl(["bootout", job], { stdio: "pipe", timeout: 20_000 });
+    const after = probeLaunchctl(["print", job], 5_000);
+    if (!after || after.status !== 113) throw new Error(`cannot verify memory service ${label} stopped`);
+  }
+  if (existsSync(plist)) unlinkSync(plist);
+}
+
 export function uninstallMemoryLaunchAgents(): void {
   if (!memoryLaunchAgentSupported()) return;
-  for (const plist of [memoryPlistPath(), maintainPlistPath()]) {
-    if (!existsSync(plist)) continue;
-    unloadPlist(plist);
-    unlinkSync(plist);
-  }
+  if (!launchdTargetsThisHome()) throw new Error("memory service removal requires the user's HOME");
+  withMemoryControl(() => {
+    removeMemoryLaunchAgent(memoryPlistPath(), MEMORY_AGENT_LABEL);
+    removeMemoryLaunchAgent(maintainPlistPath(), MEMORY_MAINTAIN_LABEL);
+  });
 }
 
 export function kickstartMemoryDaemon(): boolean {
   if (!memoryLaunchAgentSupported() || !launchdTargetsThisHome()) return false;
   try {
-    runLaunchctl(["kickstart", "-k", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], {
-      stdio: "pipe",
+    return withMemoryControl(() => {
+      runLaunchctl(["kickstart", "-k", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], {
+        stdio: "pipe",
+      });
+      return true;
     });
-    return true;
   } catch {
     // best effort
     return false;

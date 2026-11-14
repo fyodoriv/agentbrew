@@ -22,6 +22,8 @@ export interface MemoryIngestOptions {
   memoryType: string;
   chunkSize: number;
   tags: string[];
+  maxFiles?: number;
+  expectedFileCount?: number;
 }
 
 export interface MemoryIngestResult {
@@ -642,7 +644,10 @@ function parseMemorySearchResults(text: string): MemoryMcpMemoryRow[] {
   for (const block of blocks) {
     const hashMatch = block.match(/Hash: ([a-f0-9]+)/i);
     if (!hashMatch) continue;
-    const tagLine = block.match(/\nTags:\s*(.+)$/m) ?? block.match(/\n\s*\[(.+?)\]\s*$/m);
+    const tagLine =
+      block.match(/\nTags:\s*(.+)$/m) ??
+      block.match(/\n\s*Created:[^\n]*?\s\[([^\]\n]+)\](?:\s*\(via [^\n]*\))?\s*$/m) ??
+      block.match(/\n\s*\[(.+?)\]\s*$/m);
     const tags = tagLine?.[1]
       ? tagLine[1]
           .split(",")
@@ -672,17 +677,116 @@ function chunkCountFromValue(value: unknown): number | undefined {
   return undefined;
 }
 
-export function parseMemoryIngestResult(result: unknown): MemoryIngestResult {
-  const root = result as { structuredContent?: unknown } | undefined;
+function allFilesProcessed(files: RegExpMatchArray): boolean {
+  return Number.parseInt(files[1], 10) > 0 && Number.parseInt(files[1], 10) === Number.parseInt(files[2], 10);
+}
+
+function verifyIngestFileCount(files: RegExpMatchArray | null, expectedFileCount?: number): void {
+  if (files && !allFilesProcessed(files)) throw new Error("memory ingest did not process every file");
+  if (expectedFileCount !== undefined && (!files || Number.parseInt(files[1], 10) !== expectedFileCount)) {
+    throw new Error("memory ingest did not verify the full directory inventory");
+  }
+}
+
+export function parseMemoryIngestResult(result: unknown, expectedFileCount?: number): MemoryIngestResult {
+  const root = result as { structuredContent?: unknown; isError?: boolean } | undefined;
+  const text = toolResultText(result);
+  if (root?.isError || /^\s*error(?:\s+ingesting\s+directory|\s*:)/im.test(text)) {
+    throw new Error("memory ingest reported an error");
+  }
+  const failureMatch = text.match(/\bfiles\s+failed\s*:\s*(\d+)\b/i);
+  const errorMatch = text.match(/\btotal\s+errors\s*:\s*(\d+)\b/i);
+  const structuredContent = root?.structuredContent as { files_failed?: unknown; all_errors?: unknown } | undefined;
+  const failed = structuredContent?.files_failed;
+  const errors = structuredContent?.all_errors;
+  if (
+    (failureMatch && Number.parseInt(failureMatch[1], 10) > 0) ||
+    (errorMatch && Number.parseInt(errorMatch[1], 10) > 0) ||
+    (typeof failed === "number" && failed > 0) ||
+    (Array.isArray(errors) && errors.length > 0)
+  ) {
+    throw new Error("memory ingest reported files failed or errors");
+  }
+  const files = text.match(/\bfiles\s+processed\s*:\s*(\d+)\s*\/\s*(\d+)\b/i);
+  verifyIngestFileCount(files, expectedFileCount);
   const structured = chunkCountFromValue(root?.structuredContent) ?? chunkCountFromValue(result);
   if (structured !== undefined) return { chunksStored: structured };
 
-  const text = toolResultText(result);
   const match =
     text.match(/\bchunks?\s+stored\s*:\s*(\d+)\b/i) ??
     text.match(/\bstored\s+(\d+)\s+chunks?\b/i) ??
     text.match(/\b(\d+)\s+new\s+chunks?\b/i);
-  return { chunksStored: match ? Number.parseInt(match[1], 10) : 0 };
+  if (match) return { chunksStored: Number.parseInt(match[1], 10) };
+  if (files) return { chunksStored: 0 };
+  throw new Error("memory ingest returned an unrecognized result");
+}
+
+function parseTaggedMemoryPage(
+  result: unknown,
+  page: number,
+): { rows: MemoryMcpMemoryRow[]; total: number; hasMore: boolean } {
+  const envelope = result as { isError?: boolean; structuredContent?: unknown } | undefined;
+  if (envelope?.isError) throw new Error("memory list returned an error");
+  let value = envelope?.structuredContent;
+  if (!value) {
+    try {
+      value = JSON.parse(toolResultText(result));
+    } catch {
+      throw new Error("memory list response is not valid JSON");
+    }
+  }
+  if (!value || typeof value !== "object") throw new Error("memory list response is invalid");
+  const data = value as Record<string, unknown>;
+  const total = data.total;
+  const totalPages = data.total_pages;
+  const hasMore = data.has_more;
+  if (
+    data.page !== page ||
+    data.page_size !== 100 ||
+    typeof total !== "number" ||
+    !Number.isSafeInteger(total) ||
+    total < 0 ||
+    totalPages !== Math.ceil(total / 100) ||
+    typeof hasMore !== "boolean" ||
+    hasMore !== page * 100 < total ||
+    !Array.isArray(data.memories)
+  )
+    throw new Error("memory list pagination is invalid");
+  const rows = extractMemories(value);
+  if (rows.length !== Math.min(100, Math.max(0, total - (page - 1) * 100))) {
+    throw new Error("memory list page is incomplete");
+  }
+  return { rows, total, hasMore };
+}
+
+async function scanTaggedMemoryPages(fetchPage: (page: number) => Promise<unknown>): Promise<MemoryMcpMemoryRow[]> {
+  const rows: MemoryMcpMemoryRow[] = [];
+  const seen = new Set<string>();
+  let total: number | undefined;
+  for (let page = 1; ; page += 1) {
+    const parsed = parseTaggedMemoryPage(await fetchPage(page), page);
+    if (total !== undefined && total !== parsed.total) throw new Error("memory list changed during pagination");
+    total = parsed.total;
+    for (const row of parsed.rows) {
+      if (seen.has(row.id)) throw new Error("memory list repeated an ID during pagination");
+      seen.add(row.id);
+      rows.push(row);
+    }
+    if (!parsed.hasMore) return rows;
+  }
+}
+
+async function readTaggedMemoryPages(fetchPage: (page: number) => Promise<unknown>): Promise<MemoryMcpMemoryRow[]> {
+  const first = await scanTaggedMemoryPages(fetchPage);
+  const second = await scanTaggedMemoryPages(fetchPage);
+  const canonical = (rows: MemoryMcpMemoryRow[]) =>
+    JSON.stringify(
+      rows
+        .map((row) => ({ id: row.id, content: row.content, tags: [...row.tags].sort() }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+    );
+  if (canonical(first) !== canonical(second)) throw new Error("memory list changed between scans");
+  return second;
 }
 
 function extractMemoryId(result: unknown): string | undefined {
@@ -765,23 +869,12 @@ export function createFetchMemoryMcpClient(options: FetchMemoryMcpClientOptions 
       }
     },
     async tagMatch(tags, matchAll = true) {
-      const result = await post("tools/call", {
-        name: "memory_list",
-        arguments: { tags, tag_match: matchAll ? "all" : "any", page_size: 100 },
-      });
-      const toolResult = result as { content?: Array<{ text?: string }>; structuredContent?: unknown };
-      if (toolResult.structuredContent) {
-        return extractMemories(toolResult.structuredContent);
-      }
-      for (const block of toolResult.content ?? []) {
-        if (!block?.text) continue;
-        try {
-          return extractMemories(JSON.parse(block.text));
-        } catch {
-          // try next block
-        }
-      }
-      return extractMemories(result);
+      return readTaggedMemoryPages((page) =>
+        post("tools/call", {
+          name: "memory_list",
+          arguments: { tags, tag_match: matchAll ? "all" : "any", page_size: 100, page },
+        }),
+      );
     },
     async memorySearch(query, mode = "exact") {
       const result = await post("tools/call", {
@@ -800,9 +893,10 @@ export function createFetchMemoryMcpClient(options: FetchMemoryMcpClientOptions 
           memory_type: options.memoryType,
           chunk_size: options.chunkSize,
           tags: options.tags,
+          ...(options.maxFiles !== undefined ? { max_files: options.maxFiles } : {}),
         },
       });
-      return parseMemoryIngestResult(result);
+      return parseMemoryIngestResult(result, options.expectedFileCount);
     },
     async memoryStore(content, tags, conversationId) {
       const argumentsPayload: Record<string, unknown> = {
@@ -814,18 +908,8 @@ export function createFetchMemoryMcpClient(options: FetchMemoryMcpClientOptions 
         name: "memory_store",
         arguments: argumentsPayload,
       });
-      const memoryId = extractMemoryId(result);
-      if (memoryId) return memoryId;
-      const text = toolResultText(result);
-      if (/duplicate content detected/i.test(text)) {
-        const rows = await this.memorySearch(content.slice(0, 180), "exact");
-        const exact = rows.find((row) => row.content.trim() === content.trim()) ?? rows[0];
-        if (exact?.id) {
-          await this.memoryUpdate(exact.id, content, tags, { versioned: false });
-          return exact.id;
-        }
-      }
-      return undefined;
+      if (/duplicate content detected/i.test(toolResultText(result))) return undefined;
+      return extractMemoryId(result);
     },
     async memoryUpdate(id, content, tags, options = {}) {
       const result = await post("tools/call", {
@@ -836,7 +920,13 @@ export function createFetchMemoryMcpClient(options: FetchMemoryMcpClientOptions 
           versioned: options.versioned ?? true,
         },
       });
-      return extractMemoryId(result) ?? id;
+      const text = toolResultText(result);
+      const isError = (result as { isError?: boolean } | undefined)?.isError;
+      if (isError) return undefined;
+      if (options.versioned ?? true) {
+        return /^Versioned update successful\./m.test(text) ? extractMemoryId(result) : undefined;
+      }
+      return /^Successfully updated memory metadata\./m.test(text) ? id : undefined;
     },
     async memoryDelete(id) {
       await post("tools/call", {

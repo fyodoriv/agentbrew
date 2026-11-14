@@ -2,7 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { MemoryIngestOptions, MemoryIngestResult, MemoryMcpClient } from "./mcp-client.js";
+import {
+  type MemoryIngestOptions,
+  type MemoryIngestResult,
+  type MemoryMcpClient,
+  parseMemoryIngestResult,
+} from "./mcp-client.js";
 import {
   checkProjectMemorySync,
   claudeProjectDirToSlug,
@@ -133,6 +138,8 @@ describe("syncClaudeProjectMemories", () => {
       recursive: false,
       memoryType: "reference",
       chunkSize: 2_000,
+      maxFiles: 1,
+      expectedFileCount: 1,
       tags: ["claude-project-memory", expect.stringMatching(/^project-source:sha256:/u), "project:proj-alpha"],
     });
     expect(ledger).toMatchObject({
@@ -142,6 +149,73 @@ describe("syncClaudeProjectMemories", () => {
     });
     expect(JSON.stringify(ledger)).not.toContain(store);
     expect(JSON.stringify(ledger)).not.toContain("alpha fact");
+  });
+
+  it.each([
+    "✅ Directory ingestion completed: memory\n📁 Files processed: 0/1\n💾 Total chunks stored: 0\n❌ Files failed: 1",
+    "Error: Directory not found: synthetic",
+    "No supported files found in directory",
+  ])("leaves a failed directory ingest stale for the next sync", async (text) => {
+    const root = fixtureRoot();
+    const projects = join(root, "projects");
+    writeStore(projects, "-proj-alpha", { "fact.md": "synthetic fact" });
+    let ledger: ProjectMemorySyncLedger | undefined;
+    const result = await syncClaudeProjectMemories({
+      projectsDir: projects,
+      client: client({
+        ingest: async () =>
+          parseMemoryIngestResult({
+            content: [
+              {
+                type: "text",
+                text,
+              },
+            ],
+          }),
+      }),
+      writeLedger: (next) => {
+        ledger = next;
+      },
+    });
+    expect(result).toMatchObject({ status: "degraded", synced: 0, skipped: 1 });
+    expect(checkProjectMemorySync({ projectsDir: projects, ledger })).toMatchObject({ status: "drifted", stale: 1 });
+  });
+
+  it("requests every file in a project folder larger than the upstream default", async () => {
+    const root = fixtureRoot();
+    const projects = join(root, "projects");
+    const files = Object.fromEntries(Array.from({ length: 101 }, (_, i) => [`fact-${i}.md`, "synthetic note"]));
+    writeStore(projects, "-proj-alpha", files);
+    const ingest = vi.fn(async () => ({ chunksStored: 101 }));
+    await syncClaudeProjectMemories({
+      projectsDir: projects,
+      client: client({ ingest }),
+      writeLedger: () => undefined,
+    });
+    expect(ingest).toHaveBeenCalledWith(expect.objectContaining({ maxFiles: 101, expectedFileCount: 101 }));
+  });
+
+  it("keeps a larger folder stale when the upstream response is truncated", async () => {
+    const root = fixtureRoot();
+    const projects = join(root, "projects");
+    const files = Object.fromEntries(Array.from({ length: 101 }, (_, i) => [`fact-${i}.md`, "synthetic note"]));
+    writeStore(projects, "-proj-alpha", files);
+    let ledger: ProjectMemorySyncLedger | undefined;
+    const result = await syncClaudeProjectMemories({
+      projectsDir: projects,
+      client: client({
+        ingest: async (options) =>
+          parseMemoryIngestResult(
+            { content: [{ type: "text", text: "Files processed: 100/100; 100 new chunks" }] },
+            options.expectedFileCount,
+          ),
+      }),
+      writeLedger: (next) => {
+        ledger = next;
+      },
+    });
+    expect(result).toMatchObject({ status: "degraded", synced: 0, skipped: 1 });
+    expect(checkProjectMemorySync({ projectsDir: projects, ledger })).toMatchObject({ status: "drifted", stale: 1 });
   });
 
   it("skips unchanged stores without contacting the daemon and force re-ingests them", async () => {

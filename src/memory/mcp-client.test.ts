@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 function successResponse(text: string): Response {
   return new Response(
@@ -21,13 +21,161 @@ describe("memory MCP client response parsing", () => {
     expect(id).toBe("abcdef0123456789");
   });
 
+  it.each([
+    "Failed to update memory metadata: synthetic failure",
+    "Error updating memory metadata: synthetic failure",
+    "Versioned update created the new version, but the metadata overrides were not applied.",
+    "unrecognized response",
+  ])("does not report a failed update as successful", async (message) => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({ fetchImpl: async () => successResponse(message) });
+    expect(await client.memoryUpdate("abcdef0123456789", "updated", ["tag"], { versioned: false })).toBeUndefined();
+  });
+
+  it("rejects an MCP error even when its text resembles success", async () => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: { isError: true, content: [{ type: "text", text: "Successfully updated memory metadata." }] },
+          }),
+          { status: 200 },
+        ),
+    });
+    expect(await client.memoryUpdate("abcdef0123456789", "updated", ["tag"], { versioned: false })).toBeUndefined();
+  });
+
+  it("returns a new hash only for a successful versioned update", async () => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async () =>
+        successResponse("Versioned update successful. New hash: abcdef0123456789, parent hash: 0123456789abcdef."),
+    });
+    expect(await client.memoryUpdate("0123456789abcdef", "updated", ["tag"])).toBe("abcdef0123456789");
+  });
+
+  it("reads every page of a tagged memory list", async () => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const requested: number[] = [];
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async (_input, init) => {
+        const request = JSON.parse(String(init?.body)) as { params: { arguments: { page?: number } } };
+        const page = request.params.arguments.page ?? 1;
+        requested.push(page);
+        const start = (page - 1) * 100;
+        const memories = Array.from({ length: page === 1 ? 100 : 1 }, (_, i) => ({
+          id: `id-${start + i}`,
+          content: "synthetic",
+          tags: ["pack"],
+        }));
+        return successResponse(
+          JSON.stringify({ memories, page, page_size: 100, total: 101, total_pages: 2, has_more: page === 1 }),
+        );
+      },
+    });
+    expect(await client.tagMatch(["pack"])).toHaveLength(101);
+    expect(requested).toEqual([1, 2, 1, 2]);
+  });
+
+  it("rejects a same-total replacement between complete scans", async () => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    let calls = 0;
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async (_input, init) => {
+        calls += 1;
+        const request = JSON.parse(String(init?.body)) as { params: { arguments: { page: number } } };
+        const page = request.params.arguments.page;
+        const start = (page - 1) * 100;
+        const memories = Array.from({ length: page === 1 ? 100 : 1 }, (_, i) => ({
+          id: calls > 2 && start + i === 100 ? "replacement" : `id-${start + i}`,
+          content: "synthetic",
+          tags: ["pack"],
+        }));
+        return successResponse(
+          JSON.stringify({ memories, page, page_size: 100, total: 101, total_pages: 2, has_more: page === 1 }),
+        );
+      },
+    });
+    await expect(client.tagMatch(["pack"])).rejects.toThrow("changed");
+    expect(calls).toBe(4);
+  });
+
+  it.each(["duplicate", "changed-total"])("rejects %s across tagged-memory pages", async (problem) => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async (_input, init) => {
+        const request = JSON.parse(String(init?.body)) as { params: { arguments: { page: number } } };
+        const page = request.params.arguments.page;
+        const count = page === 1 ? 100 : 1;
+        const memories = Array.from({ length: count }, (_, i) => ({
+          id: page === 1 ? `id-${i}` : problem === "duplicate" ? "id-0" : "id-100",
+          content: "synthetic",
+          tags: ["pack"],
+        }));
+        const total = page === 2 && problem === "changed-total" ? 102 : 101;
+        return successResponse(
+          JSON.stringify({ memories, page, page_size: 100, total, total_pages: 2, has_more: page === 1 }),
+        );
+      },
+    });
+    await expect(client.tagMatch(["pack"])).rejects.toThrow();
+  });
+
+  it.each([
+    { memories: [], page: 1 },
+    { memories: [], page: 1, page_size: 100, total: 1, total_pages: 1, has_more: false },
+  ])("rejects incomplete or inconsistent tagged-memory pages", async (payload) => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({ fetchImpl: async () => successResponse(JSON.stringify(payload)) });
+    await expect(client.tagMatch(["pack"])).rejects.toThrow();
+  });
+
+  it("retains tags from the upstream numbered search result", async () => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async () =>
+        successResponse(
+          "Found 1 memories\n\n1. synthetic memory\n   Hash: abcdef0123456789\n   Created: 2026-11-13 [old-tag, project:old]",
+        ),
+    });
+    expect(await client.memorySearch("synthetic memory", "exact")).toMatchObject([
+      { content: "synthetic memory", tags: ["old-tag", "project:old"] },
+    ]);
+  });
+
+  it.each([
+    "Duplicate content detected (exact match)",
+    "Duplicate content detected (semantically similar to abcdef0123456789)",
+  ])("does not mutate or claim an unverified duplicate", async (message) => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({ fetchImpl: async () => successResponse(message) });
+    const search = vi.spyOn(client, "memorySearch");
+    const update = vi.spyOn(client, "memoryUpdate");
+    expect(await client.memoryStore("requested memory", ["new"])).toBeUndefined();
+    expect(search).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it("uses the mcp-memory-service 11.7 request schemas", async () => {
     const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
     const payloads: Array<Record<string, unknown>> = [];
     const client = createFetchMemoryMcpClient({
       fetchImpl: async (_input, init) => {
-        payloads.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
-        return successResponse("Memory stored successfully (hash: abcdef0123456789)");
+        const payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        payloads.push(payload);
+        const params = payload.params as { name?: string } | undefined;
+        return successResponse(
+          params?.name === "memory_list"
+            ? JSON.stringify({ memories: [], page: 1, page_size: 100, total: 0, total_pages: 0, has_more: false })
+            : params?.name === "memory_ingest"
+              ? "Files processed: 1/1; 1 new chunks"
+              : params?.name === "memory_update"
+                ? "Successfully updated memory metadata. Updated tags"
+                : "Memory stored successfully (hash: abcdef0123456789)",
+        );
       },
     });
 
@@ -38,6 +186,7 @@ describe("memory MCP client response parsing", () => {
       recursive: false,
       memoryType: "reference",
       chunkSize: 2_000,
+      maxFiles: 101,
       tags: ["claude-project-memory", "project:example"],
     });
     await client.memoryStore("hello", ["pack:test"], "conversation-1");
@@ -51,7 +200,12 @@ describe("memory MCP client response parsing", () => {
           tags: ["repo-docs", "repo:example"],
           tag_match: "all",
           page_size: 100,
+          page: 1,
         },
+      },
+      {
+        name: "memory_list",
+        arguments: { tags: ["repo-docs", "repo:example"], tag_match: "all", page_size: 100, page: 1 },
       },
       {
         name: "memory_ingest",
@@ -61,6 +215,7 @@ describe("memory MCP client response parsing", () => {
           recursive: false,
           memory_type: "reference",
           chunk_size: 2_000,
+          max_files: 101,
           tags: ["claude-project-memory", "project:example"],
         },
       },
@@ -106,7 +261,7 @@ describe("memory MCP client response parsing", () => {
     const client = createFetchMemoryMcpClient({
       fetchImpl: async (_input, init) => {
         payloads.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
-        return successResponse("Memory updated successfully");
+        return successResponse("Successfully updated memory metadata. Updated tags");
       },
     });
 
@@ -122,10 +277,51 @@ describe("memory MCP client response parsing", () => {
     });
   });
 
+  it.each([
+    "✅ Directory ingestion completed: memory\n📁 Files processed: 0/1\n💾 Total chunks stored: 0\n❌ Files failed: 1",
+    "✅ Directory ingestion completed: memory\n📁 Files processed: 1/2\n💾 Total chunks stored: 1\n❌ Files failed: 1",
+    "✅ Directory ingestion completed: memory\n📁 Files processed: 1/1\n💾 Total chunks stored: 1\n⚠️ Total errors: 1",
+  ])("rejects directory ingest with failed files", async (text) => {
+    const { parseMemoryIngestResult } = await import("./mcp-client.js");
+    expect(() => parseMemoryIngestResult({ content: [{ type: "text", text }] })).toThrow("files failed");
+  });
+
+  it.each([
+    { content: [{ type: "text", text: "Error: Directory not found: synthetic" }] },
+    { content: [{ type: "text", text: "Error ingesting directory: synthetic failure" }] },
+    { content: [{ type: "text", text: "No supported files found in directory" }] },
+    { content: [{ type: "text", text: "Files processed: 0/1; Total chunks stored: 0" }] },
+    { content: [{ type: "text", text: "unrecognized output" }] },
+    { isError: true, content: [{ type: "text", text: "Files processed: 1/1; 1 new chunks" }] },
+  ])("rejects unsuccessful or unrecognized ingest responses", async (result) => {
+    const { parseMemoryIngestResult } = await import("./mcp-client.js");
+    expect(() => parseMemoryIngestResult(result)).toThrow();
+  });
+
+  it("rejects a truncated or unverifiable result for a known directory inventory", async () => {
+    const { parseMemoryIngestResult } = await import("./mcp-client.js");
+    expect(() =>
+      parseMemoryIngestResult({ content: [{ type: "text", text: "Files processed: 100/100; 100 new chunks" }] }, 101),
+    ).toThrow();
+    expect(() => parseMemoryIngestResult({ structuredContent: { chunks_stored: 101 } }, 101)).toThrow();
+    expect(
+      parseMemoryIngestResult({ content: [{ type: "text", text: "Files processed: 101/101; 101 new chunks" }] }, 101),
+    ).toEqual({ chunksStored: 101 });
+  });
+
   it("reads structured and text memory_ingest chunk counts", async () => {
     const { parseMemoryIngestResult } = await import("./mcp-client.js");
 
     expect(parseMemoryIngestResult({ structuredContent: { chunks_stored: 7 } })).toEqual({ chunksStored: 7 });
+    expect(() => parseMemoryIngestResult({ structuredContent: { chunks_stored: 1, files_failed: 1 } })).toThrow(
+      "files failed",
+    );
+    expect(() =>
+      parseMemoryIngestResult({ structuredContent: { chunks_stored: 1, all_errors: ["synthetic error"] } }),
+    ).toThrow("errors");
+    expect(parseMemoryIngestResult({ structuredContent: { chunks_stored: 0, files_failed: 0 } })).toEqual({
+      chunksStored: 0,
+    });
     expect(
       parseMemoryIngestResult({
         content: [{ type: "text", text: "Files processed: 2/2; 3 new chunks" }],

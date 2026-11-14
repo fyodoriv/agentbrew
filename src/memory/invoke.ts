@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { MEMORY_UVX_ARGS } from "./constants.js";
+import { resolveMemoryDbPath } from "./paths.js";
 
 export interface MemoryInvokeOptions {
   memoryBin?: string;
@@ -76,7 +77,7 @@ export function invokeMemoryMaintenance(options?: MemoryInvokeOptions): {
     return { ...maintain, command: "maintain" };
   }
   if (maintain.stderr.includes("No such command 'maintain'")) {
-    const checkDb = invokeMemory(["check-db"], options);
+    const checkDb = invokeMemory(["check-db", "--db-path", resolveMemoryDbPath(options?.env)], options);
     return { ...checkDb, command: "check-db" };
   }
   return { ...maintain, command: "maintain" };

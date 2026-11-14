@@ -66,6 +66,8 @@ pub fn validate(observed: &[Identity], entries: &[Entry]) -> Vec<Error> {
     let mut errors = Vec::new();
     let mut facts = BTreeSet::new();
     let mut recorded = BTreeSet::new();
+    let mut fact_keys = BTreeSet::new();
+    let mut entry_keys = BTreeSet::new();
     if observed.is_empty() {
         errors.push(Error::EmptyDiscovery);
     }
@@ -73,18 +75,20 @@ pub fn validate(observed: &[Identity], entries: &[Entry]) -> Vec<Error> {
         if !valid_identity(id) {
             errors.push(Error::InvalidIdentity(id.clone()));
         }
-        if !facts.insert(id.clone()) {
+        if !fact_keys.insert((&id.path, &id.kind, &id.boundary)) {
             errors.push(Error::DuplicateObserved(id.clone()));
         }
+        facts.insert(id.clone());
     }
     for entry in entries {
         let id = &entry.identity;
         if !valid_identity(id) {
             errors.push(Error::InvalidIdentity(id.clone()));
         }
-        if !recorded.insert(id.clone()) {
+        if !entry_keys.insert((&id.path, &id.kind, &id.boundary)) {
             errors.push(Error::DuplicateEntry(id.clone()));
         }
+        recorded.insert(id.clone());
         if entry.owner.trim().is_empty() || entry.caller.trim().is_empty() {
             errors.push(Error::MissingOwnerOrCaller(id.clone()));
         }
@@ -130,6 +134,11 @@ mod tests {
         let mut duplicate = entries.clone();
         duplicate.push(entries[0].clone());
         assert!(validate(&ids, &duplicate).contains(&Error::DuplicateEntry(ids[0].clone())));
+        let mut second_version = entries[0].clone();
+        second_version.identity.source_digest = "c".repeat(40);
+        duplicate = entries.clone();
+        duplicate.push(second_version.clone());
+        assert!(validate(&ids, &duplicate).contains(&Error::DuplicateEntry(second_version.identity)));
         assert!(validate(&ids[..2], &entries).contains(&Error::UndiscoveredEntry(ids[2].clone())));
         let mut bad = entries.clone();
         bad[0].owner.clear();

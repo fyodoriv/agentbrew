@@ -36,7 +36,9 @@ describe("goal plan artifact", () => {
     expect(judge).toMatch(/pass, fail, or unverified/);
     expect(judge).toMatch(/current file timestamp alone does\s+not prove/);
     expect(judge).toMatch(/proven missing\s+artifact fails.*inaccessible listing is unverified/s);
-    expect(judge).toMatch(/proven different identity fails continuity;\s+an unknown prior identity makes it unverified/);
+    expect(judge).toMatch(
+      /proven different identity fails continuity;\s+an unknown prior identity makes it unverified/,
+    );
     expect(judge).toMatch(/entries as failed only when the milestone and plan state are evidenced/);
     expect(judge).toMatch(/Each needs evidence, blockers \(or none\), and the next action/);
     expect(judge).toMatch(/unverified result does not stop ongoing work or the private\s+fallback/);

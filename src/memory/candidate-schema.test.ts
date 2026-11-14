@@ -10,12 +10,13 @@ it("checks the exact database with the pinned upstream candidate and fails close
     const tool = join(dir, "uvx");
     const db = join(dir, "memory.db");
     writeFileSync(db, "synthetic");
+    writeFileSync(join(dir, "cwd-marker"), "synthetic");
     writeFileSync(
       tool,
-      '#!/bin/sh\n[ "$1" = "--python" ] && [ "$2" = "3.13" ] && [ "$3" = "--system-certs" ] && [ "$4" = "--from" ] && [ "$5" = "mcp-memory-service[sqlite]==12.9.0" ] && [ "$6" = "memory" ] && [ "$7" = "check-db" ] && [ "$8" = "--db-path" ] && [ "$9" = "$EXPECTED_DB" ] || exit 1\nexit "${FAKE_STATUS:-0}"\n',
+      '#!/bin/sh\n[ -f cwd-marker ] && [ "$1" = "--python" ] && [ "$2" = "3.13" ] && [ "$3" = "--system-certs" ] && [ "$4" = "--from" ] && [ "$5" = "mcp-memory-service[sqlite]==12.9.0" ] && [ "$6" = "memory" ] && [ "$7" = "check-db" ] && [ "$8" = "--db-path" ] && [ "$9" = "$EXPECTED_DB" ] || exit 1\nexit "${FAKE_STATUS:-0}"\n',
     );
     chmodSync(tool, 0o700);
-    const options = { uvxBin: tool, env: { ...process.env, EXPECTED_DB: db } };
+    const options = { uvxBin: tool, cwd: dir, env: { ...process.env, EXPECTED_DB: db } };
     expect(checkCandidateSchema(db, "mcp-memory-service[sqlite]==12.9.0", options)).toBe(true);
     expect(
       checkCandidateSchema(db, "mcp-memory-service[sqlite]==12.9.0", {

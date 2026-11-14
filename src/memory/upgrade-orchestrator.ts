@@ -14,7 +14,7 @@ export interface MemoryUpgradeOrchestration {
   oldJobLabel: string;
   candidateSpec: string;
   /** The caller must verify this matches the candidate's launch settings. */
-  candidateRuntime: { uvxBin: string; env: NodeJS.ProcessEnv };
+  candidateRuntime: { uvxBin: string; cwd: string; env: NodeJS.ProcessEnv };
   attemptId: string;
   /** The caller must establish and retain real control of every daemon mutator. */
   assertControl: () => Promise<void>;
@@ -61,7 +61,9 @@ export async function orchestrateMemoryUpgrade(ops: MemoryUpgradeOrchestration):
   const protectedBackups = join(dirname(ops.intentPath), MEMORY_UPGRADE_SNAPSHOT_DIR);
   try {
     if (![ops.dbPath, ops.backupsDir, ops.intentPath].every(isAbsolute)) throw new Error("paths must be absolute");
-    if (!validCandidateSchemaInputs(ops.dbPath, ops.candidateSpec, ops.candidateRuntime.uvxBin)) {
+    if (
+      !validCandidateSchemaInputs(ops.dbPath, ops.candidateSpec, ops.candidateRuntime.uvxBin, ops.candidateRuntime.cwd)
+    ) {
       throw new Error("invalid candidate schema check inputs");
     }
     const dir = lstatSync(dirname(ops.intentPath));

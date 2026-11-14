@@ -40,7 +40,7 @@ it.runIf(process.platform === "darwin" && hasSqlite)("holds the shared lock thro
       backupsDir: join(dir, "backups"),
       oldJobLabel: "com.example.memory",
       candidateSpec: "mcp-memory-service[sqlite]==12.9.0",
-      candidateRuntime: { uvxBin: "/fixture/uvx", env: {} },
+      candidateRuntime: { uvxBin: "/fixture/uvx", cwd: "/fixture", env: {} },
       attemptId: "synthetic",
       assertControl: async () => undefined,
       inspect: () => ({ visibleEvidenceConsistent: true }),
@@ -68,7 +68,9 @@ it.runIf(process.platform === "darwin" && hasSqlite)("holds the shared lock thro
   }
 });
 
-it.runIf(process.platform === "darwin" && hasSqlite).each(["held", "intent", "operation", "schema", "runtime", "path"])(
+it
+  .runIf(process.platform === "darwin" && hasSqlite)
+  .each(["held", "intent", "operation", "schema", "runtime", "path", "cwd"])(
   "releases control after a blocked or failed %s handoff",
   async (scenario) => {
     const dir = mkdtempSync(join(tmpdir(), "memory-coordinated-failure-"));
@@ -91,7 +93,11 @@ it.runIf(process.platform === "darwin" && hasSqlite).each(["held", "intent", "op
         backupsDir: join(dir, "backups"),
         oldJobLabel: "com.example.memory",
         candidateSpec: "mcp-memory-service[sqlite]==12.9.0",
-        candidateRuntime: { uvxBin: scenario === "runtime" ? "relative" : "/fixture/uvx", env: {} },
+        candidateRuntime: {
+          uvxBin: scenario === "runtime" ? "relative" : "/fixture/uvx",
+          cwd: scenario === "cwd" ? "relative" : "/fixture",
+          env: {},
+        },
         attemptId: "synthetic",
         assertControl: async () => undefined,
         inspect: () => ({ visibleEvidenceConsistent: true }),
@@ -103,7 +109,8 @@ it.runIf(process.platform === "darwin" && hasSqlite).each(["held", "intent", "op
       });
       expect(result.ok).toBe(false);
       expect(stopOld).toHaveBeenCalledTimes(scenario === "operation" || scenario === "schema" ? 1 : 0);
-      if (scenario === "runtime" || scenario === "path") expect(startCandidate).not.toHaveBeenCalled();
+      if (scenario === "runtime" || scenario === "path" || scenario === "cwd")
+        expect(startCandidate).not.toHaveBeenCalled();
       if (scenario === "schema") {
         expect(result).toMatchObject({ stage: "candidate", snapshot: expect.any(String) });
         expect(startOld).not.toHaveBeenCalled();

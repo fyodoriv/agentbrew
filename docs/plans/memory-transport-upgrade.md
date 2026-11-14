@@ -145,6 +145,26 @@ success for preference synchronization; it did not read or print preference
 values. The cause in this trial is not established; Codex on 12.9.0 remains
 unverified.
 
+### Linux Codex read transport follow-up
+
+An isolated Linux container ran Codex CLI 0.167.0 against a separate 12.9.0
+scratch memory service over stdio, using hash embeddings. The repeat checked
+the runtime package version and image identity. The container had no host
+mounts or external network;
+a host-created synthetic sentinel was absent inside. The service stored and
+independently recalled a synthetic fact before the client test. A scripted local
+Responses provider then directed Codex to call `memory_search`; Codex received
+the fact as a numbered memory entry and exited successfully.
+
+This verifies one read transport path with scripted inference. It does not
+prove that a real model will choose the tool, that the macOS client works, or
+that Codex can save a session. In the separate scratch test, headless approval
+policy `never` denied the write-classified bootstrap and session-save calls.
+No approval policy or live memory setting was changed to bypass those denials.
+The 0.6B local model made no memory calls; a 4B local model timed out. The
+first scratch configuration also pointed the client to a different database;
+the successful read explicitly set the scratch server environment.
+
 ### Version 12.9.0 Claude save and recall prediction
 
 - **Hypothesis:** Claude Code with a local model can save a synthetic session

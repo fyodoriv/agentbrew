@@ -16,6 +16,15 @@
 
 This does not establish safe live migration or package-cache provenance.
 
+A scratch offline uvx service using HTTP stored a synthetic fact and returned
+it in parsed exact and semantic result rows. A repeat used a differently worded
+semantic query and also returned the fact. ONNX and CPU were configured and
+hash fallback was disabled, but the logs did not confirm the actual provider.
+The directly spawned launcher and known listener stopped. The test copied a
+prior scratch package cache, compared one model file with its local source,
+and used an unsandboxed client; it did not attest package provenance, every
+model file, or all descendants. The live memory port was denied to the service.
+
 ## Disposable uvx resolution prediction
 
 - **Hypothesis:** The actual uvx launcher can resolve the pinned upstream

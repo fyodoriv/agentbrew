@@ -1,5 +1,21 @@
 # Shared memory transport upgrade prediction
 
+## Disable failure state prediction
+
+- **Root cause hypothesis:** `disableMemory` clears managed state before it
+  attempts to remove the service. An uninstall error can leave the caller's
+  in-memory state disabled even though removal failed.
+- **Hypothesis:** Removing the service first preserves state on a failed
+  uninstall while retaining successful disable behavior.
+- **Measurement:** Run a scratch-HOME failure reproduction and the memory
+  enable/disable focused tests, including a successful disable control.
+- **Success:** A failed uninstall changes zero state fields; the successful
+  disable control still removes managed wiring and preserves pack paths; all
+  focused tests pass.
+- **Pivot:** If uninstall can partly remove a service before failing, report
+  the uncertainty and do not claim that state alone proves service health.
+- **Anchor:** `src/memory/enable.ts` and `src/memory/launchagent.ts`.
+
 ## Cooperative service-control lock prediction
 
 - **Hypothesis:** A macOS native descriptor lock shared by Agentbrew's memory

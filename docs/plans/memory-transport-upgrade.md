@@ -1,5 +1,25 @@
 # Shared memory transport upgrade prediction
 
+## Upgrade orchestration prediction
+
+- **Hypothesis:** Connecting the existing reservation, visible database check,
+  and durable intent record prevents a candidate start when preflight or
+  receipt creation is uncertain, while preserving candidate-stage writes.
+- **Measurement:** Run the orchestration and sequence tests with synthetic
+  SQLite data. Exercise an existing receipt, failed in-reservation preflight,
+  successful intent-before-candidate ordering, and lost candidate response.
+- **Success:** All focused tests pass; blocked cases stop before daemon changes;
+  the candidate never starts without a readable intent, and its possible writes
+  are never overwritten automatically.
+- **Pivot:** On any missing identity or unexpected restart, leave the live
+  upgrade unavailable and preserve the database and any receipt.
+- **Anchor:** `src/memory/upgrade-sequence.ts`, `upgrade-intent.ts`, and the
+  synthetic lost-registration-response rehearsal.
+
+An orchestration test with controlled callbacks does not prove that launchd
+or old external controllers are exclusive. A live adapter must establish and
+maintain that separate condition before invoking this sequence.
+
 ## Test guard setup failure prediction
 
 - **Root cause hypothesis:** If an earlier test setup hook times out before the

@@ -1,5 +1,22 @@
 # Shared memory transport upgrade prediction
 
+## Memory database preflight prediction
+
+- **Hypothesis:** A read-only macOS preflight can identify the database held by
+  the memory listener and refuse a handoff when that evidence is ambiguous.
+- **Measurement:** Run focused synthetic tests for one matching listener and
+  database, missing or multiple listeners, a different database, extra holders,
+  malformed process evidence, and probe failures.
+- **Success:** The matching case succeeds and every ambiguous case refuses
+  before any daemon or database mutation.
+- **Pivot:** If process, file identity, or probe errors cannot be distinguished,
+  keep the live handoff unavailable.
+- **Anchor:** macOS `lsof(8)`, `launchctl(1)`, and the existing read-only
+  listener/database identity observation in this plan.
+
+This is a point-in-time check. It does not lock launchd, block new writers,
+or establish that the job cannot change after the check.
+
 ## Durable candidate intent record prediction
 
 - **Hypothesis:** An exclusive, owner-only recovery record synced before

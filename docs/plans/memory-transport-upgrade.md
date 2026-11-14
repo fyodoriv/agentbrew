@@ -18,6 +18,16 @@
 Matching known configuration does not prove the absence of hidden upstream
 configuration sources or exclusive control.
 
+The draft derives a candidate in memory and reparses it to verify that its
+saved job structure differs only in the version argument. It accepts a narrow
+job shape and checks the loaded program, arguments, directory, environment,
+output paths, runtime and properties. Review found and reproduced two gaps:
+a literal pin in a comment could be changed instead of an encoded argument,
+and a changed saved KeepAlive setting could go unnoticed. Both regressions now
+refuse the candidate. A read-only comparison against the current job produced
+a candidate without writing it. Unusual job shapes fail closed. The caller
+still must establish fresh evidence, safe file publication and live control.
+
 ## Coordinated launchd rehearsal prediction
 
 - **Hypothesis:** The coordinated upgrade entry point and real launchd runtime

@@ -278,6 +278,22 @@ the old service is stopped.
 - **Anchor:** MCP Memory Service 12.9's dotenv discovery and the loaded
   launchd job's working-directory field.
 
+### Candidate environment prediction
+
+- **Hypothesis:** Combining the loaded job's default, inherited, and explicit
+  environment in precedence order carries the Python selection setting into
+  the schema check without losing explicit overrides.
+- **Measurement:** Test inherited values, overrides, malformed blocks and
+  duplicate keys using synthetic launchd output.
+- **Success:** All 4 controls pass. Do not print environment values.
+- **Pivot:** If precedence or completeness cannot be established, retain the
+  output as a candidate only and do not use it for a live handoff.
+- **Anchor:** macOS `launchctl print` output for the managed memory job and
+  `src/memory/upgrade-candidate.ts`.
+
+An earlier read-only live observation matched relevant values to the process;
+it was exploratory and does not prove that the merged environment is complete.
+
 ## Multi-process runtime rehearsal prediction
 
 - **Hypothesis:** The real runtime will identify a listener descended from a

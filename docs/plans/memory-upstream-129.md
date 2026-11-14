@@ -29,3 +29,22 @@ A stopped, modified, or unknown-version job must still be refused.
   rewritten or restarted.
 - **Pivot:** Refuse reconciliation when the running job cannot be identified.
 - **Anchor:** `src/memory/launchagent.ts` and `src/memory/sync-hooks.ts`.
+
+## Bounded local cutover
+
+- **Hypothesis:** The upstream migration can update the existing store during a
+  short service restart, while a separate local test port keeps ordinary
+  clients from writing until schema and health checks pass.
+- **Measurement:** Verify the old service and other database holders are gone;
+  take and verify a fresh private snapshot; start the candidate on a separate
+  loopback port; check its exact database, schema, and health; stop it; then
+  start the canonical service and test each requested client.
+- **Success:** All identity, backup, schema, health, and client checks pass;
+  no other database writer is observed during migration.
+- **Pivot:** Stop on an ambiguous identity or failed check. Keep the snapshot
+  for recovery; never overwrite possible candidate writes automatically.
+- **Anchor:** The upstream release and security advisory above; the synthetic
+  migration and restore trials in the memory research draft.
+
+This is a bounded maintenance procedure, not protection against an unknown
+same-user process or a manually started controller.

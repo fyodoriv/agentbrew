@@ -173,6 +173,19 @@
 
 ## P1
 
+- [ ] Report OpenCode memory readiness accurately during startup
+  - **ID**: opencode-mcp-cold-start-readiness
+  - **Tags**: opencode, memory, stability, readiness
+  - **Mode**: AFK
+  - **Details**: OpenCode 2.2.6 can report no MCP servers while a location starts, even though its configuration contains them. The upstream issue is open. Agentbrew should avoid treating one cold status response as proof that shared memory is absent, and should prefer the upstream fix when available.
+  - **Output**: code
+  - **Acceptance**: A cold empty response followed by a connected memory server is reported as connected. A persistently empty or failed response remains visible as a failure. Do not restart another user's service.
+  - **Hypothesis**: Bounded readiness observation removes false missing-memory reports during startup without masking a persistent failure.
+  - **Measurement**: Focused readiness tests with a cold-then-connected response and persistent-empty and failed-response controls.
+  - **Success**: All 3 controls report the correct outcome; 0 service restarts occur.
+  - **Pivot**: If the upstream fix ships first, remove any local workaround and verify that release instead.
+  - **Anchor**: https://github.com/anomalyco/opencode/issues/54192 and https://github.com/anomalyco/opencode/pull/54191.
+
 - [ ] Memory disable reports an unverified service stop
   - **ID**: memory-disable-unload-errors
   - **Tags**: memory, stability, cli

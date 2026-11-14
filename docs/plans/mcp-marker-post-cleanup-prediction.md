@@ -24,3 +24,14 @@ child close and owned-process checks. The hosted cause remains unknown.
   pathname replacement and same-user races remain possible.
 - **Anchor:** Hosted job 132299647921, `mcp-interrupted-ready-marker`, and
   `src/mcp/mcp-git-install.test.ts:1112,1391–1406`; Basili et al. (1994), GQM.
+
+## Focused result
+
+A no-signal scratch-file control passed for missing, empty, nonempty, symlink and
+directory cases; it exposed no path or content canary. An independent source
+review confirmed placement after the existing cleanup checks and no new signal.
+The final-component no-follow check does not protect ancestor replacement, and
+opening precedes the regular-file check; this remains limited to the
+fixture-owned directory. A later state cannot identify the writer. The physical
+test and its numeric PID checks are unchanged and are not qualified by this
+control. Hosted verification is still required.

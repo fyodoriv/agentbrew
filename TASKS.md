@@ -611,26 +611,13 @@
   - **Pivot**: Any missed embedded or extensionless component -> abandon suffix-only discovery and use content/caller analysis. Missing evidence is not passing.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
 
-- [ ] Rule on the default choices in the Rust re-plan
-  - **ID**: rust-owner-rules-on-replan-defaults
-  - **Tags**: migration, rust, decision
-  - **Mode**: HITL
-  - **Details**: The 2026-11-09 validation review said the final audit needs an owner decision. The re-plan shipped without a question round, so the [Decisions (2026-11-10)](docs/plans/rust-migration.md#decisions-2026-11-10) table holds defaults adopted on the reviewer's recommendation. The owner did not decide them. The owner reads the seven rows and writes "kept" or the changed choice beside each, in this plan and in the dotfiles plan. The two rows that most need a ruling: the five audit states (`ported`, `exception`, `frozen`, `grandfathered`, `out-of-scope`), and existing Rust code as `grandfathered`. Porting stays paused until the owner starts it; this ruling does not start it.
-  - **Output**: docs
-  - **Acceptance**: Each row of the Decisions table in both plans carries the owner's ruling and its date. A reversed default updates the matching plan step and task in the same PR.
-  - **Hypothesis**: One owner pass over the table moves the count of default choices with no owner ruling from 7 to 0 in both plans, so the final audit rests on a decision and not on a default.
-  - **Measurement**: `rg -c 'Owner ruling' docs/plans/rust-migration.md` in each repository after the ruling lands: one match per row of the table.
-  - **Success**: 7 rulings in each plan; 0 rows without one.
-  - **Pivot**: If the owner reverses the audit states (more than 2 of the five rejected), stop the audit task and re-plan the audit; do not patch the states one by one.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
-
 - [ ] Prove every owned executable has one of the five audit states
   - **ID**: rust-final-audit
   - **Tags**: migration, rust
   - **Mode**: AFK
-  - **Details**: Step 6 of the [Rust migration](docs/plans/rust-migration.md). Reconcile the manifest, each ported slice's receipts, generated targets, installed source and docs. Delete only proven unused implementations. The five audit states (`ported`, `exception`, `frozen`, `grandfathered`, `out-of-scope`) are a default adopted on 2026-11-10; the owner rules on them in `rust-owner-rules-on-replan-defaults`. A slice that ended at its Pivot counts as `exception`. The audit claims "all measured hot paths ported". It never claims "all code is Rust".
+  - **Details**: Step 6 of the [Rust migration](docs/plans/rust-migration.md). Reconcile the manifest, each ported slice's receipts, generated targets, installed source and docs. Delete only proven unused implementations. The owner confirmed the five audit states (`ported`, `exception`, `frozen`, `grandfathered`, `out-of-scope`) on 2026-11-12. A slice that ended at its Pivot counts as `exception`. The audit claims "all measured hot paths ported". It never claims "all code is Rust".
   - **Output**: measurement
-  - **Blocked by**: rust-hook-dispatcher, rust-hooks-and-generated-helpers, rust-cold-path-profile, rust-source-inventory, rust-owner-rules-on-replan-defaults
+  - **Blocked by**: rust-hook-dispatcher, rust-hooks-and-generated-helpers, rust-cold-path-profile, rust-source-inventory
   - **Acceptance**: Every owned component in the manifest has one of the five states; `ported` has receipts and `exception` has a plan row. Every ported slice still meets its number on the current tree. Installed artifacts agree with receipts.
   - **Hypothesis**: Reconciling the manifest with the tree exposes every gap: 0 unrecorded owned components, and 100% of ported slices still at or under their registered `ratio`.
   - **Measurement**: `heavy-run rust/target/release/migration-check inventory --check` (runnable after `rust-source-inventory` merges) and `npm run --silent perf:gate -- --force --json`.

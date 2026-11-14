@@ -92,3 +92,9 @@ test guards are not a blanket inertness proof. No process was started or
 signaled in this review.
 Their invocation, failure and cleanup paths need their own source-bound review
 before they can enter a complete ledger. This trace does not claim all callers.
+
+The source spells `Path(__file__).with_name(...)`, but source bytes alone do
+not bind the deployed `__file__`, Python import resolution, runtime rebinding,
+or the selected loader implementation. The test paths are not proof of the
+installed path. These inputs need a reviewed trust and resolution contract;
+unknowns cannot be converted to exact runtime targets by matching strings.

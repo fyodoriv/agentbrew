@@ -44,6 +44,7 @@ import { requireState, saveState } from "../state.js";
 import { addMcpServer } from "../sync/mcp-sync.js";
 import type { AgentBrewState } from "../types.js";
 import { MCP_BUILD_DIR } from "./git-candidate.js";
+import { observeMarker } from "./marker-observation.js";
 import { GIT_CACHE_DIR, installMcpFromGit, updateMcpFromGit } from "./mcp-git.js";
 import { getShellConfigPath } from "./mcp-wizard.js";
 
@@ -1403,6 +1404,7 @@ describe("isolated candidate boundary", () => {
       throw new Error("fixture setup: invalid owned process receipt");
     await ownedPidsGone(owned);
     if (setupError) throw setupError;
+    if (!prepared) throw new Error(`fixture setup: empty readiness marker; later state: ${observeMarker(ready)}`);
     const interrupted = tree(prepared);
     process.env.BOUNDARY_READY = ready;
     process.env.BOUNDARY_RELEASE = release;

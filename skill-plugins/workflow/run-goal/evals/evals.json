@@ -3592,6 +3592,16 @@
         "Keeps the refused tasks pending in the plan",
         "Continues with the running workers' PRs or inline work"
       ]
+    },
+    {
+      "id": 314,
+      "prompt": "Goal: pick between two restaurants for Friday dinner for two: Bar A or Bistro B. Tell me which.",
+      "expected_output": "Use the research or choice path: print a 3-line contract (Done when, Metric, Pivot), check each restaurant's own page or listing for hours and price, then answer in chat with the pick and a source link per claim. No plan Artifact, HTML report, or skill PR.",
+      "expectations": [
+        "Prints a 3-line contract with Done when, Metric, and Pivot",
+        "Gives a pick with a source link for each claim",
+        "Skips the plan Artifact, HTML report, and skill PR"
+      ]
     }
   ]
 }

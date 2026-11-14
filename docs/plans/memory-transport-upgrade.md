@@ -18,6 +18,17 @@
 
 This does not prove live handoff exclusivity or dependency immutability.
 
+The actual uvx command resolved the pinned 12.9.0 package in a scratch cache.
+The download stage used a local proxy restricted to public package hosts. An
+initial offline service start failed because the test sandbox denied the shell
+used by uvx's generated launcher. After allowing that system shell and its
+path utilities, uvx ran the service offline against a scratch database and
+stored and retrieved a numbered synthetic entry. The directly spawned process
+stopped. The passing run reused the earlier scratch cache; it did not attest
+artifact hashes or every descendant's exit. It used hash embeddings and stdio,
+not the production ONNX and HTTP configuration. The external-control problem
+remains unresolved.
+
 ## Derived candidate handoff rehearsal prediction
 
 - **Hypothesis:** A candidate derived from a temporary loaded job can run the

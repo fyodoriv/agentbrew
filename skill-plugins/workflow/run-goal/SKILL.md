@@ -146,20 +146,8 @@ Write the contract in the chat before you change anything. Fill in the template 
   you cannot cite, such as "if the repo rules allow it", is not granted.
   When another team owns a required change, keep the original acceptance criteria blocked or unverified. Only explicit user approval may replace those criteria with a narrower goal.
   Name the owner, route and test path. An owner-ask draft or filed request is not evidence the original goal is complete; post only with authorization.
-- **Budget**: rough time or turn budget. Retain the original start, elapsed
-  time and known waits across resumes; report active time and waits separately
-  when known. Check progress at the user's budget and
-  after a correction that narrows the goal. At twice the budget, before more
-  discretionary work, report current evidence, unmet criteria and the shortest
-  safe path. Stop new benchmarks, prototypes and repeat reviews that are not
-  needed for an unmet criterion or a specific decision-critical uncertainty.
-  Continue required safety, acceptance and delivery checks,
-  and investigate failures. Proceed with already-authorized, read-only and
-  isolated diagnostic work without asking again. Gather the evidence needed to
-  choose a safe path before asking for a decision. For a failed live-data check,
-  do not modify the live data during diagnosis. Establish a consistent snapshot
-  and account for concurrent writes before repair, restore or replacement. Do not treat a healthy long task as blocked or override an explicit
-  user deadline.
+- **Budget**: retain elapsed time and known waits across resumes. At the budget,
+  after a narrowing correction and at twice the budget, apply the [scope checkpoint](references/execution.md#budget-and-scope-checkpoint).
 - **Assumptions and risks**: what you believe without proof.
 - **Suggestions**: one to three ways to make the goal better. For example:
   split it, add a missing metric, reuse a tool, or take a cheaper path. Adopt

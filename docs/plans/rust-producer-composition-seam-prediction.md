@@ -25,7 +25,11 @@ native coverage comparator. Frozen N15 and N18 therefore remain unqualified.
   inspection, and consecutive invocation isolation. Identify whether the
   inspector-failure fixture is real or a separately labeled error seam.
   No-injection C01/P01/N02a projections and full reports remain
-  byte-identical to retained B0. Normal non-test compilation succeeds.
+  byte-identical to retained B0. A helper-level nonempty inspector result
+  retains its original record when the synthetic record is appended and when
+  input is rejected. Test the 2 MiB source boundary and the largest reachable
+  combined text total at or below 65,536 and the smallest above it. Normal
+  non-test compilation succeeds.
 - **Pivot:** Stop if failed inspection is replaced, injected data can reach
   a normal invocation, an absent or mismatched source yields an event, a
   conflict is silently admitted, or no-injection reports change. Missing
@@ -55,8 +59,9 @@ evidence and conflict path.
 
 Use one borrowed fixed-shape test input: source path and independently supplied
 complete bytes, call/output/body ranges, and expected literal values. The
-builder fixes operation, API, labels, mode and empty environment inputs; it
-does not accept arbitrary recursive `Evidence` or `Datum`. Before allocating
+builder fixes operation, API, labels, mode, empty environment inputs, call and
+literal spellings and decoded values. It does not accept arbitrary recursive
+`Evidence` or `Datum`. Before allocating
 owned strings or vectors, verify the regular indexed source, UTF-8, full byte
 equality, each ordered in-bounds character-boundary range and expected source
 slice, and the aggregate size of every retained string and nested site. The

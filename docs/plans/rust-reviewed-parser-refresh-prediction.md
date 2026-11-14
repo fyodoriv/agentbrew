@@ -43,3 +43,10 @@ stale and the source unresolved until the import boundary has a reviewed model
 and independent oracle. The existing integration controls invoke the snapshot
 worker and cannot be treated as no-worker tests. No analyzed Python or worker
 was run for this review.
+
+The current `validation::validate` also rejects any second component whose
+source path matches a reviewed parser program. Therefore a complete imported
+function path would need a separately reviewed discovery, component and typed
+edge contract as well as a schema change. A standalone literal oracle cannot
+satisfy these obligations. Preserve the stale diagnostic until that complete
+path and its independent negative controls are established.

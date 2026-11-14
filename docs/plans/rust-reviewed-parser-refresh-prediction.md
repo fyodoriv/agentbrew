@@ -23,3 +23,23 @@ source is safe to admit. Register the following before an oracle or code change.
 - **Anchor:** `docs/plans/rust-source-reviewed-registry.md`,
   `rust/src/reviewed_sources.rs`, `rust/tests/reviewed_sources.rs`, and Basili
   et al. (1994), Goal Question Metric.
+
+## Source-only result and pivot
+
+The record binds blob `b27c7c158c08ac255496dffd6427bf8763fba3e3`; the current
+parser at revision `08de070f` is blob
+`fd4447d1593298fd5a92e714d048f0d1ef715b9b`. The change adds a function that
+parses a reviewer request and returns a Boolean. The existing command-line
+entry reads the transcript path; missing input yields the existing unavailable
+result and extra arguments are ignored. The hook supplies an explicit path.
+
+An independent source review found another owned route:
+`hooks/lib/review_ask_event.py` loads the parser via `importlib` and calls the
+new function. The current whole-program record has a fixed command-line entry
+and data regions, but no imported-function entry or caller edge. A textual
+caller search is not proof of all callers. Updating only the blob and spans
+would silently omit this route, so the registered pivot applies: keep the record
+stale and the source unresolved until the import boundary has a reviewed model
+and independent oracle. The existing integration controls invoke the snapshot
+worker and cannot be treated as no-worker tests. No analyzed Python or worker
+was run for this review.

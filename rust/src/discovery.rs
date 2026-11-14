@@ -77,12 +77,13 @@ pub(crate) struct DiscoveryObserver {
     routed_seen: [bool; 2],
     routed_invalid: bool,
     routed_round: usize,
+    root_candidate: bool,
 }
 
 #[cfg(test)]
 struct ExpectedRoute<'a> {
     snapshot: &'a Snapshot,
-    target: &'a str,
+    target: Option<&'a str>,
 }
 
 #[cfg(test)]
@@ -186,7 +187,7 @@ impl DiscoveryObserver {
     ) {
         let index = if path == "src/lib.rs" {
             0
-        } else if path == route.target {
+        } else if Some(path) == route.target {
             1
         } else {
             return;
@@ -211,13 +212,21 @@ impl DiscoveryObserver {
         (self.complete && !self.routed_invalid && self.routed_seen == [true, true])
             .then_some(self.routed_round)
     }
+
+    pub(crate) fn root_routed_round(&self) -> Option<usize> {
+        (self.complete && !self.routed_invalid && self.routed_seen[0]).then_some(self.routed_round)
+    }
+
+    pub(crate) fn root_candidate(&self) -> bool {
+        self.root_candidate
+    }
 }
 
 #[cfg(test)]
 pub(crate) fn routed_helper_controls(expected: &Snapshot) {
     let route = ExpectedRoute {
         snapshot: expected,
-        target: "src/emit.rs",
+        target: Some("src/emit.rs"),
     };
     let root = std::str::from_utf8(&expected.entries["src/lib.rs"].bytes).unwrap();
     let target = std::str::from_utf8(&expected.entries["src/emit.rs"].bytes).unwrap();
@@ -249,7 +258,7 @@ pub(crate) fn routed_helper_controls(expected: &Snapshot) {
     let large = std::str::from_utf8(&oversized.entries["src/emit.rs"].bytes).unwrap();
     let route = ExpectedRoute {
         snapshot: &oversized,
-        target: "src/emit.rs",
+        target: Some("src/emit.rs"),
     };
     let mut observer = DiscoveryObserver::default();
     assert_eq!(
@@ -259,6 +268,24 @@ pub(crate) fn routed_helper_controls(expected: &Snapshot) {
     observer.observe_routed(&route, "src/emit.rs", large, false);
     assert!(observer.routed_invalid);
     assert!(!observer.routed_seen[1]);
+}
+
+#[cfg(test)]
+pub(crate) fn root_reset_helper_control(expected: &Snapshot) {
+    let route = ExpectedRoute {
+        snapshot: expected,
+        target: None,
+    };
+    let root = std::str::from_utf8(&expected.entries["src/lib.rs"].bytes).unwrap();
+    let mut observer = DiscoveryObserver::default();
+    observer.observe_routed(&route, "src/lib.rs", root, false);
+    observer.observe_routed(&route, "src/lib.rs", root, false);
+    observer.finish();
+    assert!(observer.root_routed_round().is_none());
+    observer = DiscoveryObserver::default();
+    observer.observe_routed(&route, "src/lib.rs", root, false);
+    observer.finish();
+    assert!(observer.root_routed_round().is_some());
 }
 
 #[derive(Clone)]
@@ -708,7 +735,7 @@ pub(crate) fn discover_routed_observed(
         })
         .map(|target| ExpectedRoute {
             snapshot: expected,
-            target,
+            target: Some(target),
         });
     discover_inner(
         snapshot,
@@ -716,6 +743,54 @@ pub(crate) fn discover_routed_observed(
         Some(observer),
         route.as_ref(),
     )
+}
+
+#[cfg(test)]
+pub(crate) fn discover_root_observed(
+    snapshot: &Snapshot,
+    expected: &Snapshot,
+    limit: Option<usize>,
+    observer: &mut DiscoveryObserver,
+) -> Discovery {
+    *observer = DiscoveryObserver::default();
+    let route = expected
+        .entries
+        .get("src/lib.rs")
+        .filter(|root| {
+            root.path == "src/lib.rs" && root.mode == 0o100644 && root.bytes.len() <= 2_097_152
+        })
+        .map(|_| ExpectedRoute {
+            snapshot: expected,
+            target: None,
+        });
+    let found = discover_inner(
+        snapshot,
+        limit.unwrap_or(SOURCE_COUNT),
+        Some(observer),
+        route.as_ref(),
+    );
+    if let (Some(root), Some(manifest), Some(actual_manifest)) = (
+        expected.entries.get("src/lib.rs"),
+        expected.entries.get("Cargo.toml"),
+        snapshot.entries.get("Cargo.toml"),
+    ) {
+        observer.root_candidate = manifest.path == "Cargo.toml"
+            && manifest.mode == 0o100644
+            && manifest.bytes.len() <= 2_097_152
+            && actual_manifest.bytes.len() <= 2_097_152
+            && actual_manifest.path == "Cargo.toml"
+            && actual_manifest.mode == manifest.mode
+            && actual_manifest.bytes == manifest.bytes
+            && observer.root_routed_round().is_some()
+            && observer
+                .rust_partial_records()
+                .is_some_and(|records| records.iter().any(|record| record.path == "src/lib.rs"))
+            && crate::rust_family_tests::rust_namespace_screen::screen(
+                &manifest.bytes,
+                &root.bytes,
+            );
+    }
+    found
 }
 
 fn discover_inner(

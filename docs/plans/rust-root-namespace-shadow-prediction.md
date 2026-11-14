@@ -57,3 +57,13 @@ actual physical path and bytes, publish only after final-round completion, and
 invalidate on early return, worklist limit, duplicate or overflow. Clear prior
 evidence before an observer is reused. A helper-level reset test is not proof
 of a real stale-only restart.
+
+## Focused result
+
+The exact shadow control, retained routed and namespace tests, normal library
+check and 28 workflow controls passed. Independent review found two false
+candidate paths in the first version: a swapped expected manifest and a writer
+from another file. The corrected test binds the manifest to the same snapshot
+and requires a root-specific routed record; both planted cases were refused.
+Screen-only mutations and helper-level reset remain labeled as such. This is
+not Cargo or standard-library authority or approval to admit a writer.

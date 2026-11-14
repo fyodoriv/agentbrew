@@ -604,7 +604,7 @@ pub(crate) mod rust_syntax_slice;
 
 #[cfg(test)]
 #[path = "rust_namespace_screen.rs"]
-mod rust_namespace_screen;
+pub(crate) mod rust_namespace_screen;
 
 #[cfg(test)]
 #[path = "rust_discovery_syntax.rs"]
@@ -612,4 +612,4 @@ mod rust_discovery_syntax;
 
 #[cfg(test)]
 #[path = "rust_module_relation.rs"]
-mod rust_module_relation;
+pub(crate) mod rust_module_relation;

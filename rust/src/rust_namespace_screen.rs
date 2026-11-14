@@ -1,6 +1,6 @@
 const LIMIT: usize = 2_097_152;
 
-fn screen(manifest: &[u8], source: &[u8]) -> bool {
+pub(crate) fn screen(manifest: &[u8], source: &[u8]) -> bool {
     if manifest.len() > LIMIT || source.len() > LIMIT {
         return false;
     }

@@ -1,6 +1,7 @@
 use super::rust_legacy_baseline_tests::{canonical, discovery, input_metadata, report};
 use crate::discovery::{
-    discover, discover_observed, discover_routed_observed, DiscoveryObserver, RustSyntaxObservation,
+    discover, discover_observed, discover_root_observed, discover_routed_observed,
+    DiscoveryObserver, RustSyntaxObservation,
 };
 use crate::snapshot::{Entry, Snapshot};
 use serde_json::{json, Value};
@@ -341,4 +342,179 @@ fn witnesses_p04_routed_buffers() {
     let found = discover_routed_observed(&restart, &expected, None, &mut observer);
     assert!(found.programs.contains_key("src/helper"));
     assert!(observer.routed_round().is_some_and(|round| round > 1));
+}
+
+#[test]
+fn shadows_root_namespace() {
+    let mut observer = DiscoveryObserver::default();
+    for id in [
+        "P01", "P02", "P03", "P04", "N04a", "N04b", "N04c", "N04d", "N04e", "N04f",
+    ] {
+        let case = super::materialize(id);
+        for path in ["src/lib.rs", "Cargo.toml"] {
+            assert!(case.snapshot.entries[path].bytes.len() <= 2_097_152);
+        }
+        let expected = copy_snapshot(&case.snapshot);
+        let plain = discover(&case.snapshot);
+        let observed = discover_root_observed(&case.snapshot, &expected, None, &mut observer);
+        assert_eq!(discovery(&plain), discovery(&observed));
+        assert!(observed
+            .diagnostics
+            .iter()
+            .any(|item| item.code == "reviewed-source-registry-required"));
+        assert_eq!(
+            observer.root_candidate(),
+            ["P01", "P02", "P03"].contains(&id),
+            "{id}"
+        );
+        if observer.root_candidate() {
+            let records = observer.rust_partial_records().unwrap();
+            assert_eq!(records.len(), case.witnesses.len());
+            for (record, witness) in records.iter().zip(&case.witnesses) {
+                assert!(matches(record, witness));
+            }
+        }
+        assert_eq!(
+            report(&crate::validation::validate(
+                &case.snapshot,
+                "rust/inventory.json",
+                &case.manifest,
+                plain
+            )),
+            report(&crate::validation::validate(
+                &case.snapshot,
+                "rust/inventory.json",
+                &case.manifest,
+                observed
+            ))
+        );
+    }
+    let original = super::materialize("P01");
+    let expected = copy_snapshot(&original.snapshot);
+    discover_root_observed(&original.snapshot, &expected, None, &mut observer);
+    assert!(observer.root_candidate());
+    let mut swapped = copy_snapshot(&expected);
+    swapped
+        .entries
+        .get_mut("Cargo.toml")
+        .unwrap()
+        .bytes
+        .push(b' ');
+    assert!(super::rust_namespace_screen::screen(
+        &swapped.entries["Cargo.toml"].bytes,
+        &swapped.entries["src/lib.rs"].bytes
+    ));
+    discover_root_observed(&original.snapshot, &swapped, None, &mut observer);
+    assert!(!observer.root_candidate());
+    let mut empty_root = copy_snapshot(&expected);
+    empty_root.entries.get_mut("src/lib.rs").unwrap().bytes = b"fn empty() {}".to_vec();
+    empty_root.entries.insert(
+        "src/other.rs".into(),
+        entry(
+            "src/other.rs",
+            "fn other() { ::std::fs::write(\"a\", \"b\"); }",
+        ),
+    );
+    discover_root_observed(&empty_root, &empty_root, None, &mut observer);
+    assert!(observer
+        .rust_partial_records()
+        .unwrap()
+        .iter()
+        .any(|record| record.path == "src/other.rs"));
+    assert!(!observer.root_candidate());
+    let mut changed = copy_snapshot(&expected);
+    changed
+        .entries
+        .get_mut("src/lib.rs")
+        .unwrap()
+        .bytes
+        .push(b' ');
+    discover_root_observed(&original.snapshot, &changed, None, &mut observer);
+    assert!(!observer.root_candidate());
+    discover_root_observed(&original.snapshot, &expected, Some(0), &mut observer);
+    assert!(!observer.root_candidate());
+    let mut symlink = copy_snapshot(&expected);
+    symlink.entries.get_mut("src/lib.rs").unwrap().mode = 0o120000;
+    discover_root_observed(&symlink, &symlink, None, &mut observer);
+    assert!(!observer.root_candidate());
+    let mut bad = copy_snapshot(&expected);
+    bad.entries.get_mut("src/lib.rs").unwrap().bytes = vec![0xff];
+    discover_root_observed(&bad, &bad, None, &mut observer);
+    assert!(!observer.root_candidate());
+    bad.entries.get_mut("src/lib.rs").unwrap().bytes = vec![b' '; 2_097_153];
+    discover_root_observed(&bad, &bad, None, &mut observer);
+    assert!(!observer.root_candidate());
+    // Helper-level duplicate/reset, not an actual stale-only restart.
+    crate::discovery::root_reset_helper_control(&expected);
+
+    let cargo = &expected.entries["Cargo.toml"].bytes;
+    let source = &expected.entries["src/lib.rs"].bytes;
+    let cargo_text = std::str::from_utf8(cargo).unwrap();
+    let source_text = std::str::from_utf8(source).unwrap();
+    // Screen-only mutations; they do not claim separate discovery routes.
+    for (manifest, code) in [
+        (
+            cargo_text.replace("edition = \"2021\"", "edition = \"2018\""),
+            source_text.to_owned(),
+        ),
+        (
+            cargo_text.replace("src/lib.rs", "src/other.rs"),
+            source_text.to_owned(),
+        ),
+        (
+            format!("{cargo_text}\n[workspace]\n"),
+            source_text.to_owned(),
+        ),
+        (
+            format!("{cargo_text}\n[dependencies]\nstd = \"1\"\n"),
+            source_text.to_owned(),
+        ),
+        (
+            cargo_text.to_owned(),
+            format!("mod std {{}}\n{source_text}"),
+        ),
+        (
+            cargo_text.to_owned(),
+            format!("extern crate core as std;\n{source_text}"),
+        ),
+        (
+            cargo_text.to_owned(),
+            format!("use core as std;\n{source_text}"),
+        ),
+        (
+            cargo_text.to_owned(),
+            format!("use core::*;\n{source_text}"),
+        ),
+        (
+            cargo_text.to_owned(),
+            format!("#[cfg(unix)]\n{source_text}"),
+        ),
+        (
+            cargo_text.to_owned(),
+            format!("macro_rules! x {{ () => {{}} }}\n{source_text}"),
+        ),
+    ] {
+        assert!(!super::rust_namespace_screen::screen(
+            manifest.as_bytes(),
+            code.as_bytes()
+        ));
+    }
+    let ids = ["C01", "P01", "N02a"];
+    let mut baseline = Vec::new();
+    for id in ids {
+        let control = super::materialize(id);
+        let routed = discover_root_observed(&control.snapshot, &expected, None, &mut observer);
+        let projection = discovery(&routed);
+        let validated = crate::validation::validate(
+            &control.snapshot,
+            "rust/inventory.json",
+            &control.manifest,
+            routed,
+        );
+        baseline.push(json!({"discovery": projection, "report": report(&validated)}));
+    }
+    assert_eq!(
+        super::sha(&encoded(json!({"ids": ids, "records": baseline}))),
+        "1f4d827984fcf4ab3ce5f57d3120e2fee4d05b2c1212730e0b17947edd0d29f3"
+    );
 }

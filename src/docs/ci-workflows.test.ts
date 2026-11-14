@@ -59,6 +59,7 @@ describe("hosted workflows", () => {
       "auto-publish.yml": ["workflow_dispatch"],
       "beacon-retrieval-trial.yml": ["pull_request", "workflow_dispatch"],
       "ci.yml": ["pull_request", "push", "workflow_dispatch"],
+      "memory-lockf-trial.yml": ["pull_request", "workflow_dispatch"],
       "oss-readiness.yml": ["pull_request", "push", "workflow_dispatch"],
       "pr-vision-trace.yml": ["workflow_dispatch"],
       "publish.yml": ["push"],

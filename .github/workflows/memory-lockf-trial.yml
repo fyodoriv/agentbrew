@@ -1,0 +1,43 @@
+name: Synthetic memory lock trial
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/memory-lockf-trial.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lockf-descriptor:
+    runs-on: macos-latest
+    timeout-minutes: 5
+    steps:
+      - name: Test descriptor ownership on scratch file
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import subprocess
+          import tempfile
+
+          with tempfile.TemporaryDirectory(prefix="agentbrew-lockf-") as tmp:
+              path = pathlib.Path(tmp) / "coordination.lock"
+              fd = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
+              try:
+                  first = subprocess.run(["/usr/bin/lockf", "-t", "0", str(fd)], pass_fds=(fd,), capture_output=True, timeout=10)
+                  second = subprocess.run(["/usr/bin/lockf", "-k", "-t", "0", str(path), "/usr/bin/true"], capture_output=True, timeout=10)
+                  print("descriptor acquisition:", first.returncode, "competitor while held:", second.returncode, flush=True)
+                  if first.returncode != 0 or second.returncode != 75:
+                      raise RuntimeError("descriptor failed to exclude competing process")
+              finally:
+                  os.close(fd)
+              third = subprocess.run(["/usr/bin/lockf", "-k", "-t", "0", str(path), "/usr/bin/true"], capture_output=True, timeout=10)
+              print("competitor after close:", third.returncode, flush=True)
+              if third.returncode != 0:
+                  raise RuntimeError("descriptor lock did not release")
+              print("PASS synthetic descriptor lock", flush=True)
+          PY

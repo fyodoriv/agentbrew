@@ -35,9 +35,12 @@ function loaded(xml = plist): string {
     "\t}",
     "\tinherited environment = {",
     "\t\tPATH => /bin",
+    "\t\tUV_PYTHON_PREFERENCE => synthetic-inherited",
+    "\t\tLANG => synthetic-overridden",
     "\t}",
     "\tdefault environment = {",
     "\t\tLANG => C",
+    "\t\tSYNTHETIC_DEFAULT => synthetic-default",
     "\t}",
   ].join("\n");
 }
@@ -58,11 +61,46 @@ it.runIf(process.platform === "darwin")("derives only the version change from ma
   expect(after.ProgramArguments).toEqual(before.ProgramArguments.map((arg) => (arg === oldSpec ? newSpec : arg)));
   expect(result.job.args).toEqual(after.ProgramArguments);
   expect(result.job.path).toBe(newPath);
+  expect(result.observedRuntime).toEqual({
+    uvxBin: "/fixture/uvx",
+    cwd: "/fixture",
+    env: {
+      ...before.EnvironmentVariables,
+      UV_PYTHON_PREFERENCE: "synthetic-inherited",
+      SYNTHETIC_DEFAULT: "synthetic-default",
+      XPC_SERVICE_NAME: "fixture",
+    },
+  });
 });
+
+it.runIf(process.platform === "darwin").each(["duplicate", "malformed", "second block"])(
+  "rejects %s inherited environment",
+  (scenario) => {
+    const line = "\t\tUV_PYTHON_PREFERENCE => synthetic-inherited";
+    const output =
+      scenario === "second block"
+        ? `${loaded()}\n\tinherited environment = {\n\t\tUV_PYTHON_PREFERENCE => other\n\t}`
+        : loaded().replace(
+            line,
+            scenario === "duplicate" ? `${line}\n\t\tUV_PYTHON_PREFERENCE => other` : "\t\tbroken entry",
+          );
+    expect(() =>
+      deriveMemoryCandidate({
+        plist,
+        loadedOutput: output,
+        oldPath,
+        newPath,
+        oldSpec,
+        newSpec,
+        label: MEMORY_AGENT_LABEL,
+      }),
+    ).toThrow();
+  },
+);
 
 it
   .runIf(process.platform === "darwin")
-  .each(["environment", "arguments", "directory", "extra", "duplicate", "malformed"])(
+  .each(["environment", "arguments", "directory", "extra", "duplicate", "malformed", "launcher options"])(
   "refuses %s mismatch before creating a candidate",
   (scenario) => {
     let xml = plist;
@@ -73,6 +111,10 @@ it
     if (scenario === "extra") output = output.replace("\t\tXPC_SERVICE_NAME => fixture", "\t\tUNEXPECTED => fixture");
     if (scenario === "duplicate") xml += `\n<!-- <string>${oldSpec}</string> -->`;
     if (scenario === "malformed") xml = "not a plist";
+    if (scenario === "launcher options") {
+      xml = plist.replace("--system-certs", "--no-config");
+      output = loaded(xml);
+    }
     expect(() =>
       deriveMemoryCandidate({
         plist: xml,

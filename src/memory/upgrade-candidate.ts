@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { isAbsolute } from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { MEMORY_PYTHON_VERSION } from "./constants.js";
 import { type LaunchdJob, parseMemoryUpgradeLaunchdJob } from "./upgrade-launchagent.js";
 
 interface CandidateInput {
@@ -13,8 +14,13 @@ interface CandidateInput {
   label: string;
 }
 
-function loadedEnvironment(output: string): Record<string, string> {
-  const block = /^\tenvironment = \{\n([\s\S]*?)^\t\}/m.exec(output)?.[1];
+function loadedEnvironment(
+  output: string,
+  name: "environment" | "inherited environment" | "default environment",
+): Record<string, string> {
+  const blocks = [...output.matchAll(new RegExp(`^\\t${name} = \\{\\n([\\s\\S]*?)^\\t\\}`, "gm"))];
+  if (blocks.length !== 1) throw new Error("memory job environment unavailable or ambiguous");
+  const block = blocks[0]?.[1];
   if (block === undefined) throw new Error("memory job environment unavailable");
   const values: Record<string, string> = Object.create(null);
   for (const line of block.split("\n")) {
@@ -70,7 +76,12 @@ function supportedJobShape(data: Record<string, unknown>, output: string, args: 
 }
 
 /** Derive a candidate in memory; the caller must verify and safely publish its job file. */
-export function deriveMemoryCandidate(input: CandidateInput): { plist: string; job: LaunchdJob } {
+export function deriveMemoryCandidate(input: CandidateInput): {
+  plist: string;
+  job: LaunchdJob;
+  /** An observation, not proof of the new process's effective environment. */
+  observedRuntime: { uvxBin: string; cwd: string; env: NodeJS.ProcessEnv };
+} {
   const { plist, loadedOutput, oldPath, newPath, oldSpec, newSpec, label } = input;
   const spec = /^mcp-memory-service\[sqlite\]==\d+\.\d+\.\d+$/;
   if (
@@ -94,6 +105,13 @@ export function deriveMemoryCandidate(input: CandidateInput): { plist: string; j
     data.WorkingDirectory !== loaded.workingDirectory ||
     !Array.isArray(args) ||
     !args.every((arg) => typeof arg === "string") ||
+    !isAbsolute(args[0] ?? "") ||
+    !isAbsolute(loaded.workingDirectory) ||
+    JSON.stringify(args.slice(1, 5)) !==
+      JSON.stringify(["--python", MEMORY_PYTHON_VERSION, "--system-certs", "--from"]) ||
+    args[5] !== oldSpec ||
+    args[6] !== "memory" ||
+    args[7] !== "server" ||
     JSON.stringify(args) !== JSON.stringify(loaded.args) ||
     !supportedJobShape(data, loadedOutput, args) ||
     !env ||
@@ -102,7 +120,9 @@ export function deriveMemoryCandidate(input: CandidateInput): { plist: string; j
   )
     throw new Error("memory job file differs from loaded job");
   const saved = env as Record<string, unknown>;
-  const actual = loadedEnvironment(loadedOutput);
+  const actual = loadedEnvironment(loadedOutput, "environment");
+  const inherited = loadedEnvironment(loadedOutput, "inherited environment");
+  const defaults = loadedEnvironment(loadedOutput, "default environment");
   if (
     saved.HOME !== loaded.home ||
     Object.entries(saved).some(([key, value]) => typeof value !== "string" || actual[key] !== value) ||
@@ -129,5 +149,10 @@ export function deriveMemoryCandidate(input: CandidateInput): { plist: string; j
   return {
     plist: candidatePlist,
     job: { ...loaded, path: newPath, args: candidateArgs, pid: null },
+    observedRuntime: {
+      uvxBin: args[0],
+      cwd: loaded.workingDirectory,
+      env: { ...defaults, ...inherited, ...actual },
+    },
   };
 }

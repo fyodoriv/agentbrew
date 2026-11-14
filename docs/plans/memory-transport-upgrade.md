@@ -293,6 +293,9 @@ the old service is stopped.
 
 An earlier read-only live observation matched relevant values to the process;
 it was exploratory and does not prove that the merged environment is complete.
+The builder returns this as `observedRuntime`, not a verified runtime. It can
+contain secrets: do not log it or save it in a receipt. A live adapter must
+independently verify the candidate's effective environment before using it.
 
 ## Multi-process runtime rehearsal prediction
 

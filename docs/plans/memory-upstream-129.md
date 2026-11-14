@@ -53,7 +53,9 @@ same-user process or a manually started controller.
 
 Use the upstream `memory migrate --db-path` command while the shared daemon is
 stopped, then run `memory check-db --db-path` before starting the new daemon.
-This removes the temporary server from the earlier proposal.
+Before reopening the shared port, start the migrated service briefly on a
+separate loopback port and verify it. Stop that process before starting the
+canonical job.
 
 - **Hypothesis:** The upstream command can migrate the verified local store
   without custom migration code or concurrent client writes.

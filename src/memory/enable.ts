@@ -95,8 +95,8 @@ export function enableMemory(state: AgentBrewState): MemoryEnableResult {
 }
 
 export function disableMemory(state: AgentBrewState): void {
-  disableMemoryInState(state);
   uninstallMemoryLaunchAgents();
+  disableMemoryInState(state);
 }
 
 export function mergeMemoryPackPaths(state: AgentBrewState, paths: string[]): void {

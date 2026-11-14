@@ -3,6 +3,7 @@ import type { AgentBrewState, McpServer } from "../types.js";
 import { MEMORY_MANAGED_SERVER_NAME, MEMORY_MANAGED_SOURCE, MEMORY_MCP_URL } from "./constants.js";
 import {
   disableMemoryInState,
+  disableMemory,
   enableMemory,
   enableMemoryInState,
   ensureMemoryMcpServer,
@@ -10,7 +11,7 @@ import {
   isMemoryEnabled,
   mergeMemoryPackPaths,
 } from "./enable.js";
-import { installMemoryLaunchAgents, memoryLaunchAgentSupported } from "./launchagent.js";
+import { installMemoryLaunchAgents, memoryLaunchAgentSupported, uninstallMemoryLaunchAgents } from "./launchagent.js";
 
 vi.mock("./launchagent.js", () => ({
   installMemoryLaunchAgents: vi.fn(() => ({ installed: true })),
@@ -89,5 +90,17 @@ describe("memory enable state wiring", () => {
     expect(isMemoryEnabled(state)).toBe(false);
     expect(state.mcpServers?.some((s) => s.source === MEMORY_MANAGED_SOURCE)).toBe(false);
     expect(state.memory?.packPaths).toEqual(["/tmp/pack-a"]);
+  });
+
+  it("preserves memory state when service removal fails", () => {
+    const state = baseState();
+    enableMemoryInState(state);
+    mergeMemoryPackPaths(state, ["/tmp/pack-a"]);
+    const before = structuredClone(state);
+    vi.mocked(uninstallMemoryLaunchAgents).mockImplementationOnce(() => {
+      throw new Error("service removal refused");
+    });
+    expect(() => disableMemory(state)).toThrow("service removal refused");
+    expect(state).toEqual(before);
   });
 });

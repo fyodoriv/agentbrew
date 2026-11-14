@@ -537,7 +537,9 @@ Setup also refuses to reconcile when it finds relevant custom launchd settings
 or an upstream home `.env`. When the job file is missing, an existing default
 database also blocks setup. These checks do not establish every possible
 upstream configuration source.
-On refusal, the existing memory-enabled setting is preserved.
+On refusal, the existing memory-enabled setting is preserved. If service removal
+throws during disable, the caller's memory state stays unchanged; service health
+may still need checking after a partial removal.
 
 The backup command returns an error when its integrity check fails.
 Each backup gets a unique name and is published without replacing an existing

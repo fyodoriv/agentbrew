@@ -16,6 +16,13 @@
   the uncertainty and do not claim that state alone proves service health.
 - **Anchor:** `src/memory/enable.ts` and `src/memory/launchagent.ts`.
 
+A scratch-HOME reproduction failed before the ordering change: removal threw
+and the caller's state changed. Afterward, removal still threw but state stayed
+unchanged; a separate successful disable preserved pack paths. The focused test
+suite is pending. The existing unload helper catches launchctl errors, so an
+unload failure may still go unreported; this ordering change does not fix that
+separate service-health risk.
+
 ## Cooperative service-control lock prediction
 
 - **Hypothesis:** A macOS native descriptor lock shared by Agentbrew's memory

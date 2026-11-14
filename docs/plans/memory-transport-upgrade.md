@@ -406,6 +406,14 @@ outputs confirmed the result. Outside-file and live-port access were denied,
 and the scratch server stopped. This does not verify the other clients or
 OpenRouter.
 
+A corrected repeat used OpenCode 2 with its configured Kimi provider and an
+isolated 12.9.0 service. In one session, its completed execution called
+bootstrap, session save, and exact search in order. The search returned the
+synthetic marker as a numbered memory entry with a hash. The outside-file and
+live-memory-port controls denied access, and the scratch server stopped. The
+package version was checked separately after the run. This covers that
+provider and scratch configuration, not a live upgrade or other clients.
+
 ### Version 12.9.0 local-client read prediction
 
 - **Hypothesis:** Codex and Claude Code can discover the 12.9.0 scratch MCP

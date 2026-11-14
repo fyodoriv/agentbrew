@@ -17,6 +17,15 @@
 This is a point-in-time check. It does not lock launchd, block new writers,
 or establish that the job cannot change after the check.
 
+The draft checks the visible listener's process ancestry and open database
+identity, observes visible database and sidecar holders, and repeats those
+checks. Synthetic fixtures passed for matching and ambiguous evidence. The
+result is explicitly named as visible evidence; a successful `lsof` scan does
+not prove that the OS exposed every process. A real macOS scratch listener and
+file test passed after a path-alias fix: macOS reported `/private/var` for a
+file opened through `/var`. The file device and inode must still match.
+An additional scratch case with a second process holding the file is queued.
+
 ## Durable candidate intent record prediction
 
 - **Hypothesis:** An exclusive, owner-only recovery record synced before

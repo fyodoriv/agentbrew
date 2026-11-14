@@ -1,7 +1,7 @@
 # Shared memory before research
 
 Install the optional `memory-first-research` rule when research needs shared
-context across Claude Code and ChatGPT Work/Codex. It adds a research protocol
+context across Claude Code, ChatGPT Work/Codex, and OpenCode. It adds a research protocol
 to the existing rules pipeline. It does not install a memory service or
 activate account memory, privacy options, or schedules.
 

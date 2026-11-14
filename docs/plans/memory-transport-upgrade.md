@@ -1,5 +1,24 @@
 # Shared memory transport upgrade prediction
 
+## Durable candidate intent record prediction
+
+- **Hypothesis:** An exclusive, owner-only recovery record synced before
+  candidate startup preserves the database and snapshot identities for a later
+  recovery, and an incomplete record never looks like a clean state.
+- **Measurement:** Run a scratch-file receipt suite and the memory upgrade
+  sequence suite. Check successful write/read, existing-record refusal, malformed
+  or partial record handling, file permissions, and the real sequence callback.
+- **Success:** All focused tests pass; an existing or partial record always
+  blocks a new record and reports recovery required. The candidate starts only
+  after the receipt write succeeds.
+- **Pivot:** If the local filesystem cannot sync the record and its directory,
+  or if readback is uncertain, do not start the candidate.
+- **Anchor:** Node's `fs.open`, `fs.fsync`, and `fs.readFile` APIs; the
+  `persistCandidateIntent` boundary in `src/memory/upgrade-sequence.ts`.
+
+This local record cannot stop older tools or direct service commands. Its
+caller must verify job identity and coordinate the real handoff.
+
 ## Candidate recovery intent prediction
 
 - **Root cause:** The draft sequence can register a candidate without first

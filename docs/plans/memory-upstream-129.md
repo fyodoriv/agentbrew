@@ -48,3 +48,24 @@ change on November 14, so the compatibility approach below is not being shipped.
 
 This is a bounded maintenance procedure, not protection against an unknown
 same-user process or a manually started controller.
+
+## Simpler cutover using the upstream migration command
+
+Use the upstream `memory migrate --db-path` command while the shared daemon is
+stopped, then run `memory check-db --db-path` before starting the new daemon.
+This removes the temporary server from the earlier proposal.
+
+- **Hypothesis:** The upstream command can migrate the verified local store
+  without custom migration code or concurrent client writes.
+- **Measurement:** Verify daemon and database holders have stopped, create and
+  check a fresh private snapshot, run upstream migrate and check-db on the
+  exact database, then start the managed service and check client recall.
+- **Success:** Every identity, snapshot, migration, schema, and client check
+  passes, and no other database holder is observed during migration.
+- **Pivot:** Stop on any uncertain state. Retain the snapshot and do not
+  automatically restore over possible new writes.
+- **Anchor:** Upstream 12.9.0 `memory migrate` and `memory check-db`; the
+  isolated migration and restoration trials in the memory research draft.
+
+Do not use `migrate --dry-run` as a read-only check: upstream can change the
+SQLite journal mode even in that mode.

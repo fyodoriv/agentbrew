@@ -552,6 +552,11 @@ Each backup gets a unique name and is published without replacing an existing
 snapshot. Backup creation fails if the destination filesystem cannot create
 the required hard link. Backup rotation refuses the reserved
 `.agentbrew-upgrade-snapshots` directory, including paths that resolve to it.
+On macOS, backup files are owner-readable only. The backup directory
+must be owned by the current user and must not be writable by other users; its
+ancestor directories must also prevent untrusted replacement. A symlinked
+backup directory or a path containing a single quote is refused. Linux and
+Windows access-control behavior has not yet been verified.
 Memory backup and health checks honor `MCP_MEMORY_SQLITE_PATH` and the upstream
 `MCP_MEMORY_SQLITEVEC_PATH` alias, in that order. When neither is set, they
 use `MCP_MEMORY_BASE_DIR` if present. Backup directories also honor the upstream

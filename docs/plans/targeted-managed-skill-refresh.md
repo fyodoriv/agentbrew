@@ -116,3 +116,35 @@ second stale save discarded the first edit; after invalidating and reloading
 before that edit, both changes survived. Independent review checked cloned
 reads and writes and the control order. This demonstrates the manager-level
 interleaving only. It does not reproduce a live process race or fix it.
+
+## Overlapping reload prediction
+
+Register before adding or running this control. A reload alone is not a lock.
+
+- **Hypothesis:** Two fresh loads that overlap can still lose an unrelated
+  edit; a fully serialized load/edit/save sequence preserves both edits.
+- **Measurement:** Add one focused test in `src/skills/targeted-refresh.test.ts`
+  and run `heavy-run npx vitest run src/skills/targeted-refresh.test.ts`.
+  Use two real managers and the existing cloned in-memory store. Invalidate
+  and load A; then invalidate, load, edit and save B; then edit and save A's
+  earlier loaded object. Separately save A before B reloads and saves.
+- **Success:** The selected test demonstrates exactly one lost B edit in the
+  overlapping order and retains both edits in the serialized order. Assert
+  distinct object identities and exact field values throughout.
+- **Pivot:** Stop if object aliases, schema changes, a missing test or a
+  different result make the interleaving ambiguous. Do not infer a fix or
+  cross-process safety from this in-memory model.
+- **Anchor:** `src/core/state-manager.ts`, the baseline above, Basili et al.
+  (1994), Goal Question Metric, and Munafò et al. (2017), preregistration.
+
+This control touches no real state, filesystem, subprocess or worker. It does
+not prove lock ownership, recovery, other writer cooperation, or atomicity
+across staging, links, manifest and state. A later real transaction must reload
+inside a shared ownership boundary or use a reviewed versioned merge.
+
+### Overlapping reload result (2026-11-13)
+
+Both focused tests passed. The new synthetic control showed the unrelated
+server edit lost after two overlapping fresh loads; the serialized control
+retained both edits. Independent review checked the order, cloned objects and
+assertions. This does not establish a live race or a transaction fix.

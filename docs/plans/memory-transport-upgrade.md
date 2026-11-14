@@ -264,6 +264,20 @@ The caller must verify the candidate executable and environment. Until upstream
 escapes SQLite URI paths, paths containing `%`, `?`, or `#` are rejected before
 the old service is stopped.
 
+### Candidate working-directory prediction
+
+- **Hypothesis:** Running the upstream check in the candidate's verified
+  working directory prevents a different local configuration from influencing
+  the result.
+- **Measurement:** Exercise a fake launcher that reports its working directory,
+  and test rejection of a non-absolute directory before handoff.
+- **Success:** Both controls pass and the existing schema and handoff tests
+  remain green.
+- **Pivot:** If the real working directory cannot be verified, stop before
+  handoff and do not claim candidate equivalence.
+- **Anchor:** MCP Memory Service 12.9's dotenv discovery and the loaded
+  launchd job's working-directory field.
+
 ## Multi-process runtime rehearsal prediction
 
 - **Hypothesis:** The real runtime will identify a listener descended from a

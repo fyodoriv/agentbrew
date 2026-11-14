@@ -1,5 +1,21 @@
 # Shared memory transport upgrade prediction
 
+## uvx HTTP and local embeddings prediction
+
+- **Hypothesis:** The pinned upstream package can run through uvx using the
+  HTTP transport and local ONNX embeddings in a disposable environment.
+- **Measurement:** Reuse the synthetic package cache and verified public model
+  files, start an isolated offline HTTP service, store a unique synthetic fact,
+  and check numbered exact and semantic results and process cleanup.
+- **Success:** Package version, isolation, both retrieval modes and cleanup all
+  pass; the test must not reach the live memory store.
+- **Pivot:** If the service, recall, isolation or cleanup fails, do not count
+  production-like uvx transport as verified.
+- **Anchor:** `src/memory/constants.ts`, upstream 12.9.0, and the disposable
+  uvx and local ONNX rehearsals in this plan.
+
+This does not establish safe live migration or package-cache provenance.
+
 ## Disposable uvx resolution prediction
 
 - **Hypothesis:** The actual uvx launcher can resolve the pinned upstream

@@ -173,6 +173,19 @@
 
 ## P1
 
+- [ ] Keep memory research trials reproducible and bounded
+  - **ID**: memory-research-trial-maintenance
+  - **Tags**: memory, testing, stability
+  - **Mode**: AFK
+  - **Details**: The synthetic research workflows `.github/workflows/beacon-retrieval-trial.yml`, `.github/workflows/memory-lockf-trial.yml`, and `.github/workflows/supermemory-local-trial.yml` exercise competitor retrieval and memory locking without private records. Keep their inputs isolated and remove a trial if it no longer provides evidence for a memory decision.
+  - **Output**: code
+  - **Acceptance**: Each retained trial has a bounded synthetic input and reports its actual result. No private memory or credentials are added to trial data.
+  - **Hypothesis**: Keeping the three trials reproducible makes changes to retrieval and lock behavior visible before release.
+  - **Measurement**: Run each retained workflow on the changed revision and inspect its result and isolation controls.
+  - **Success**: 3 of 3 retained workflows complete successfully and 0 private records are used.
+  - **Pivot**: Remove or replace a trial if its upstream dependency is unavailable or its isolation cannot be maintained.
+  - **Anchor**: The three workflow files and `docs/competition/agent-memory-2026-11-11.md`.
+
 - [ ] Verify the memory schema after an upgrade
   - **ID**: memory-upgrade-schema-readiness
   - **Tags**: memory, stability, security

@@ -107,6 +107,18 @@ Native health check-ins may still occur at the host's documented interval.
 On one, inspect the existing handle rather than restart it. No changed state
 means no duplicate waiting reply. Do not change account or check-in settings.
 
+## A failure in one CI event type only
+
+A step that fails in a pull-request run and passes in a push run of the same
+commit (or the reverse) points at a tool that reads the event, not at your
+code. List the tools the step starts and check what each does with
+`GITHUB_EVENT_PATH` or `GITHUB_EVENT_NAME`. Example: Playwright 1.59 runs
+`git fetch origin <base> --depth=1` in a pull request, which makes the
+checkout shallow (off with `captureGitInfo: { commit: false, diff: false }`).
+To find it, use a small throwaway workflow on a scratch branch that runs one
+step per variant, not full gate runs; delete the branch after. Reproduce the
+cause locally before the fix, and add a test that fails without the fix.
+
 ## Capability sources and proof limits
 
 [Claude goal documentation](https://code.claude.com/docs/en/goal) describes

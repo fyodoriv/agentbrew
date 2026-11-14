@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { launchdTargetsThisHome, probeLaunchctl, runLaunchctl } from "../core/launchctl.js";
 import {
@@ -50,8 +50,8 @@ export function memoryDaemonPath(home: string, uvxBin: string): string {
   return [...new Set(dirs), "/usr/sbin", "/sbin"].join(":");
 }
 
-export function buildMemoryDaemonPlist(home: string, logDir: string, uvxBin: string): string {
-  const pathValue = memoryDaemonPath(home, uvxBin);
+export function buildMemoryDaemonPlist(home: string, logDir: string, uvxBin: string, savedPath?: string): string {
+  const pathValue = savedPath ?? memoryDaemonPath(home, uvxBin);
   const daemonEnvironmentXml = Object.entries(MEMORY_DAEMON_ENVIRONMENT)
     .map(([key, value]) => `    <key>${escapeXml(key)}</key>\n    <string>${escapeXml(value)}</string>`)
     .join("\n");
@@ -288,6 +288,7 @@ export function memoryMaintenanceLaunchAgentStatus(): MemoryMaintenanceLaunchAge
 }
 
 interface MemoryDaemonPlist {
+  [key: string]: unknown;
   WorkingDirectory?: unknown;
   EnvironmentVariables?: unknown;
   ProgramArguments?: unknown;
@@ -311,6 +312,11 @@ function loadedMemoryEnvironmentMatches(output: string, home: string): boolean {
   if (!block) return false;
   const entries = [...block.matchAll(/^\t\t([^\n]+?) => (.*)$/gm)];
   const env = Object.fromEntries(entries.map((entry) => [entry[1], entry[2]]));
+  if (Object.keys(env).length !== entries.length) return false;
+  const saved = readMemoryDaemonPlist(memoryPlistPath())?.EnvironmentVariables;
+  if (!saved || typeof saved !== "object") return false;
+  const savedEnv = saved as Record<string, unknown>;
+  if (env.PATH !== savedEnv.PATH || env.LANG !== savedEnv.LANG) return false;
   const expected: Record<string, string> = { HOME: home, ...MEMORY_DAEMON_ENVIRONMENT };
   if (Object.entries(expected).some(([key, value]) => env[key] !== value)) return false;
   if (
@@ -331,41 +337,80 @@ function loadedMemoryEnvironmentMatches(output: string, home: string): boolean {
   return true;
 }
 
-function loadedMemoryJobPinMatches(): boolean {
+function loadedMemoryJobState(): "loaded" | "absent" | "blocked" {
   const job = probeLaunchctl(["print", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], 5_000);
-  if (!job) return false;
-  if (job.status !== 0 && job.status !== 113) return false;
-  if (!noCustomLaunchdMemoryEnvironment()) return false;
-  if (job.status === 113) return true;
+  if (!job) return "blocked";
+  if (job.status !== 0 && job.status !== 113) return "blocked";
+  if (!noCustomLaunchdMemoryEnvironment()) return "blocked";
+  if (job.status === 113) return "absent";
   const identity = parseLaunchctlJobIdentity(job.stdout);
   const workingDirectory = /^\tworking directory = (.+)$/m.exec(job.stdout)?.[1]?.trim();
+  if (/^\troot directory = /m.test(job.stdout)) return "blocked";
   if (identity.path !== memoryPlistPath() || identity.home !== homedir() || workingDirectory !== homedir())
-    return false;
-  if (!loadedMemoryEnvironmentMatches(job.stdout, homedir())) return false;
+    return "blocked";
+  if (!loadedMemoryEnvironmentMatches(job.stdout, homedir())) return "blocked";
   const args = /^\targuments = \{\n([\s\S]*?)^\t\}/m.exec(job.stdout)?.[1] ?? "";
   const values = args
     .split("\n")
     .map((value) => value.trim())
     .filter(Boolean);
-  const savedArgs = readMemoryDaemonPlist(memoryPlistPath())?.ProgramArguments;
-  return Array.isArray(savedArgs) && JSON.stringify(values) === JSON.stringify(savedArgs);
+  const saved = readMemoryDaemonPlist(memoryPlistPath());
+  const savedArgs = saved?.ProgramArguments;
+  const field = (name: string) => new RegExp(`^\\t${name} = (.*)$`, "m").exec(job.stdout)?.[1];
+  const properties = field("properties")?.split(" | ") ?? [];
+  const matches =
+    Array.isArray(savedArgs) &&
+    JSON.stringify(values) === JSON.stringify(savedArgs) &&
+    field("program") === savedArgs[0] &&
+    field("stdout path") === saved?.StandardOutPath &&
+    field("stderr path") === saved?.StandardErrorPath &&
+    field("minimum runtime") === String(saved?.ThrottleInterval) &&
+    properties.includes("keepalive") &&
+    properties.includes("runatload") &&
+    properties.every((value) => ["keepalive", "runatload", "inferred program"].includes(value));
+  return matches ? "loaded" : "blocked";
 }
 
-function installedMemoryJobIdentityMatches(plistPath: string, home: string): boolean {
+function installedMemoryJobIdentityMatches(plistPath: string, home: string, uvxBin: string): boolean {
   if (!existsSync(plistPath)) return true;
   try {
     const plist = readMemoryDaemonPlist(plistPath);
     if (!plist) return false;
+    const allowed = [
+      "Label",
+      "ProgramArguments",
+      "RunAtLoad",
+      "KeepAlive",
+      "ThrottleInterval",
+      "WorkingDirectory",
+      "EnvironmentVariables",
+      "StandardOutPath",
+      "StandardErrorPath",
+    ];
+    const logDir = memoryLaunchAgentLogDir();
     if (
+      Object.keys(plist).length !== allowed.length ||
+      !allowed.every((key) => Object.hasOwn(plist, key)) ||
+      plist.Label !== MEMORY_AGENT_LABEL ||
+      plist.RunAtLoad !== true ||
+      plist.KeepAlive !== true ||
+      plist.ThrottleInterval !== 10 ||
+      plist.StandardOutPath !== join(logDir, "mcp-memory.out.log") ||
+      plist.StandardErrorPath !== join(logDir, "mcp-memory.err.log") ||
       plist.WorkingDirectory !== home ||
       !plist.EnvironmentVariables ||
       typeof plist.EnvironmentVariables !== "object"
     )
       return false;
     const env = plist.EnvironmentVariables as Record<string, unknown>;
-    const expected: Record<string, string> = { HOME: home, ...MEMORY_DAEMON_ENVIRONMENT };
+    if (typeof env.PATH !== "string" || !env.PATH || env.PATH.includes("\0")) return false;
+    const expected: Record<string, string> = {
+      HOME: home,
+      LANG: LAUNCHAGENT_LANG,
+      ...MEMORY_DAEMON_ENVIRONMENT,
+    };
     for (const [key, value] of Object.entries(env)) {
-      if (key === "PATH" || key === "LANG") continue;
+      if (key === "PATH") continue;
       if (!(key in expected) || expected[key] !== value) return false;
     }
     if (Object.entries(expected).some(([key, value]) => env[key] !== value)) return false;
@@ -381,7 +426,10 @@ function installedMemoryJobIdentityMatches(plistPath: string, home: string): boo
     ];
     return (
       Array.isArray(args) &&
-      typeof args[0] === "string" &&
+      // The configured uvx is trusted; this check prevents switching launchers.
+      isAbsolute(uvxBin) &&
+      basename(uvxBin) === "uvx" &&
+      args[0] === uvxBin &&
       JSON.stringify(args.slice(1)) === JSON.stringify(expectedArgs)
     );
   } catch {
@@ -521,23 +569,31 @@ function installMemoryLaunchAgentsUnlocked(): MemoryLaunchAgentResult {
       reason: "memory setup requires a verified database path when upstream dotenv files exist",
     };
   }
-  if (!loadedMemoryJobPinMatches()) {
+  const loadedState = loadedMemoryJobState();
+  if (loadedState === "blocked") {
     return {
       installed: false,
       upgradeBlocked: true,
       reason: "memory upgrade requires a protected backup and a verified running job",
     };
   }
-  if (!installedMemoryJobIdentityMatches(daemonPlist, home) || !installedMemoryJobPinMatches(daemonPlist)) {
+  if (!installedMemoryJobIdentityMatches(daemonPlist, home, uvxBin) || !installedMemoryJobPinMatches(daemonPlist)) {
     return {
       installed: false,
       upgradeBlocked: true,
       reason: "memory upgrade requires a protected backup and a verified restart",
     };
   }
-  const daemon = reconcilePlist(daemonPlist, MEMORY_AGENT_LABEL, buildMemoryDaemonPlist(home, logDir, uvxBin), {
-    required: true,
-  });
+  const savedEnv = (existsSync(daemonPlist) ? readMemoryDaemonPlist(daemonPlist)?.EnvironmentVariables : undefined) as
+    | Record<string, unknown>
+    | undefined;
+  const savedPath = typeof savedEnv?.PATH === "string" ? savedEnv.PATH : undefined;
+  const daemon =
+    loadedState === "loaded" && existsSync(daemonPlist)
+      ? { changed: false, loaded: true, disabled: false, reloaded: false }
+      : reconcilePlist(daemonPlist, MEMORY_AGENT_LABEL, buildMemoryDaemonPlist(home, logDir, uvxBin, savedPath), {
+          required: true,
+        });
 
   const maintain = maintainPlistPath();
   const maintenance = reconcilePlist(maintain, MEMORY_MAINTAIN_LABEL, buildMaintainPlist(home, pathValue, logDir), {

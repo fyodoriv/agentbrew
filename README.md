@@ -532,7 +532,8 @@ If an existing managed job file or loaded job has a different or unreadable
 service pin, sync and memory repair refuse to replace or restart it. They also
 refuse when the saved or running job has an unexpected database setting, home,
 working directory, or command. A protected upgrade workflow is still needed
-before that version can change automatically.
+before that version can change automatically. The configured `uvx` executable
+is trusted; the check does not verify its contents.
 Setup also refuses to reconcile when it finds relevant custom launchd settings
 or an upstream home `.env`. When the job file is missing, an existing default
 database also blocks setup. These checks do not establish every possible

@@ -17,5 +17,15 @@
   [12.9.0 release](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.9.0),
   and the isolated trials in the memory research draft.
 
-Changing the pin alone does not migrate an existing database. The existing
-version guard refuses to replace a different running job.
+Changing the pin alone does not migrate an existing database. A verified,
+running 11.7 job should remain untouched and allow sync with an upgrade warning.
+A stopped, modified, or unknown-version job must still be refused.
+
+- **Hypothesis:** Preserving the known running job avoids interrupting sync
+  while making the remaining security upgrade visible.
+- **Measurement:** Test a matching running 11.7 job, a mismatched job, and a
+  sync using the older job.
+- **Success:** All three controls report the intended result; no fixture job is
+  rewritten or restarted.
+- **Pivot:** Refuse reconciliation when the running job cannot be identified.
+- **Anchor:** `src/memory/launchagent.ts` and `src/memory/sync-hooks.ts`.

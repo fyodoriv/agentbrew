@@ -49,6 +49,23 @@ describe("prepareMemoryForMcpSync", () => {
     expect(waitUntilHealthy).toHaveBeenCalledTimes(1);
   });
 
+  it("does not kick-start during a refused daemon upgrade", async () => {
+    const kickstart = vi.fn();
+    await expect(
+      prepareMemoryForMcpSync(state(true), {
+        launchAgentSupported: () => true,
+        installLaunchAgents: () => ({
+          installed: false,
+          upgradeBlocked: true,
+          reason: "memory upgrade requires a protected backup",
+        }),
+        initializeHealthy: vi.fn(async () => false),
+        kickstart,
+      }),
+    ).rejects.toThrow("memory upgrade requires a protected backup");
+    expect(kickstart).not.toHaveBeenCalled();
+  });
+
   it("requires tools/list during unchanged-daemon readiness", async () => {
     const toolsListHealthy = vi.fn(async () => false);
     const kickstart = vi.fn();

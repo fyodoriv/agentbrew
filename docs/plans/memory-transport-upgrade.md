@@ -237,6 +237,19 @@ not coordinated by this lock.
 
 ## Upstream migration commands: scratch observations
 
+### Backup staging privacy prediction
+
+- **Hypothesis:** Creating the SQLite temporary backup inside a private
+  directory prevents other local users from reading it during a backup.
+- **Measurement:** Inspect synthetic temporary and published backup permissions
+  during a deliberately paused backup under a permissive umask.
+- **Success:** The temporary parent denies group and other access, the
+  published file denies group and other access, and existing collision and
+  integrity controls pass.
+- **Pivot:** If private staging or exclusive publication cannot be verified,
+  fail the backup and do not proceed with the upgrade.
+- **Anchor:** `src/memory/backup.ts` and the SQLite online backup command.
+
 The 12.9.0 package provides `memory check-db` and `memory migrate`. The
 `check-db` implementation opens the database read-only. The migration command
 opens it for writing and runs `PRAGMA journal_mode=WAL` even with `--dry-run`.

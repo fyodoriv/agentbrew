@@ -1,5 +1,23 @@
 # Shared memory transport upgrade prediction
 
+## Disposable uvx resolution prediction
+
+- **Hypothesis:** The actual uvx launcher can resolve the pinned upstream
+  memory package into a disposable cache and start it against an isolated
+  synthetic database without accessing the live store.
+- **Measurement:** Run the pinned package with a scratch home and cache.
+  Attest its installed version, confirm the isolated service can store and
+  retrieve a synthetic marker, and verify outside-file, live-port and cleanup
+  controls. Package downloads may use the network; the memory service is
+  restricted to its scratch endpoint.
+- **Success:** Exact package version, all isolation controls, actual numbered
+  recall and process cleanup pass. No live memory or configuration is changed.
+- **Pivot:** If package resolution, isolation or recall fails, do not infer that
+  the live launcher can run the candidate.
+- **Anchor:** `src/memory/constants.ts`, upstream 12.9.0, and `uvx --help`.
+
+This does not prove live handoff exclusivity or dependency immutability.
+
 ## Derived candidate handoff rehearsal prediction
 
 - **Hypothesis:** A candidate derived from a temporary loaded job can run the

@@ -67,9 +67,7 @@ it.runIf(process.platform === "darwin")("retains the plist when shutdown cannot 
 it.runIf(process.platform === "darwin")("removes the plist after the matching job stops", () => {
   mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
   writeFileSync(path, "fixture");
-  vi.mocked(probeLaunchctl)
-    .mockReturnValueOnce(loaded())
-    .mockReturnValue({ status: 113, stdout: "" });
+  vi.mocked(probeLaunchctl).mockReturnValueOnce(loaded()).mockReturnValue({ status: 113, stdout: "" });
   uninstallMemoryLaunchAgents();
   expect(existsSync(path)).toBe(false);
   expect(runLaunchctl).toHaveBeenCalledWith(

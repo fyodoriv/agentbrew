@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { AgentBrewState, McpServer } from "../types.js";
 import { MEMORY_MANAGED_SERVER_NAME, MEMORY_MANAGED_SOURCE, MEMORY_MCP_URL } from "./constants.js";
 import {
-  disableMemoryInState,
   disableMemory,
+  disableMemoryInState,
   enableMemory,
   enableMemoryInState,
   ensureMemoryMcpServer,

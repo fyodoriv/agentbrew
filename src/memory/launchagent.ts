@@ -524,29 +524,29 @@ export function installMemoryLaunchAgents(): {
   };
 }
 
+function removeMemoryLaunchAgent(plist: string, label: string): void {
+  const job = `gui/${userInfo().uid}/${label}`;
+  const before = probeLaunchctl(["print", job], 5_000);
+  if (!before || (before.status !== 0 && before.status !== 113)) {
+    throw new Error(`cannot verify memory service ${label}`);
+  }
+  if (before.status === 0) {
+    const identity = parseLaunchctlJobIdentity(before.stdout);
+    if (identity.path !== plist || identity.home !== homedir()) {
+      throw new Error(`memory service ${label} has an unexpected identity`);
+    }
+    runLaunchctl(["bootout", job], { stdio: "pipe", timeout: 20_000 });
+    const after = probeLaunchctl(["print", job], 5_000);
+    if (!after || after.status !== 113) throw new Error(`cannot verify memory service ${label} stopped`);
+  }
+  if (existsSync(plist)) unlinkSync(plist);
+}
+
 export function uninstallMemoryLaunchAgents(): void {
   if (!memoryLaunchAgentSupported()) return;
   if (!launchdTargetsThisHome()) throw new Error("memory service removal requires the user's HOME");
-  for (const [plist, label] of [
-    [memoryPlistPath(), MEMORY_AGENT_LABEL],
-    [maintainPlistPath(), MEMORY_MAINTAIN_LABEL],
-  ]) {
-    const job = `gui/${userInfo().uid}/${label}`;
-    const before = probeLaunchctl(["print", job], 5_000);
-    if (!before || (before.status !== 0 && before.status !== 113)) {
-      throw new Error(`cannot verify memory service ${label}`);
-    }
-    if (before.status === 0) {
-      const identity = parseLaunchctlJobIdentity(before.stdout);
-      if (identity.path !== plist || identity.home !== homedir()) {
-        throw new Error(`memory service ${label} has an unexpected identity`);
-      }
-      runLaunchctl(["bootout", job], { stdio: "pipe", timeout: 20_000 });
-      const after = probeLaunchctl(["print", job], 5_000);
-      if (!after || after.status !== 113) throw new Error(`cannot verify memory service ${label} stopped`);
-    }
-    if (existsSync(plist)) unlinkSync(plist);
-  }
+  removeMemoryLaunchAgent(memoryPlistPath(), MEMORY_AGENT_LABEL);
+  removeMemoryLaunchAgent(maintainPlistPath(), MEMORY_MAINTAIN_LABEL);
 }
 
 export function kickstartMemoryDaemon(): boolean {

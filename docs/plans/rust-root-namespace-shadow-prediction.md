@@ -67,3 +67,20 @@ from another file. The corrected test binds the manifest to the same snapshot
 and requires a root-specific routed record; both planted cases were refused.
 Screen-only mutations and helper-level reset remain labeled as such. This is
 not Cargo or standard-library authority or approval to admit a writer.
+
+## Authority still needed
+
+The [Rust reference](https://doc.rust-lang.org/reference/names/preludes.html)
+describes root `extern crate` names and `--extern` inputs in the extern
+prelude; `std` is normally present unless the root uses `no_std`. Cargo can
+read [hierarchical and home configuration](https://doc.rust-lang.org/cargo/reference/config.html)
+and accepts compiler flags from configuration or environment. Cargo can also
+discover a package-root [build script](https://doc.rust-lang.org/cargo/reference/build-scripts.html)
+without an explicit manifest key. The shadow does not establish those effective
+inputs or a particular override outcome.
+
+A later conditional authority contract needs complete source and absence
+checks plus a bound invocation context: configuration, compiler and wrappers,
+target, sysroot and effective arguments. It must state its toolchain and
+filesystem trust assumptions. Unknown inputs remain inconclusive. No compiler
+or analyzed source was run for this research.

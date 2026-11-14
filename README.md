@@ -524,10 +524,12 @@ agentbrew sync                # keeps the daemon definition and every agent's MC
 
 The managed endpoint is `http://127.0.0.1:18765/mcp`.
 
+New installations use upstream MCP Memory Service 12.9.0, which includes the
+[local-origin security fix](https://github.com/doobidoo/mcp-memory-service/security/advisories/GHSA-8p26-g7wp-65jw).
 If an existing managed job has a different or unreadable service version or
-launch settings, sync and repair leave it in place. A protected upgrade is
-required before changing the version. The configured `uvx` executable is
-trusted; this check does not verify its contents.
+launch settings, sync and repair leave it in place. A controlled upgrade with
+a verified recovery backup is required before changing the version. The
+configured `uvx` executable is trusted; this check does not verify its contents.
 
 Readiness performs the
 Streamable HTTP discovery contract in order — `initialize`,

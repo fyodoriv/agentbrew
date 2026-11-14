@@ -1,5 +1,5 @@
-/** Pinned upstream memory service spec — matches dotfiles mcp-memory-launchagent. */
-export const MEMORY_PINNED_SPEC = "mcp-memory-service[sqlite]==11.7.0" as const;
+/** Pinned upstream memory service spec for managed installations. */
+export const MEMORY_PINNED_SPEC = "mcp-memory-service[sqlite]==12.9.0" as const;
 
 /**
  * Python version uvx uses for the memory service. Without a pin, uvx picks the

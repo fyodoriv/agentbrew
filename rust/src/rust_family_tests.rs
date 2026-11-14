@@ -609,3 +609,7 @@ mod rust_namespace_screen;
 #[cfg(test)]
 #[path = "rust_discovery_syntax.rs"]
 mod rust_discovery_syntax;
+
+#[cfg(test)]
+#[path = "rust_module_relation.rs"]
+mod rust_module_relation;

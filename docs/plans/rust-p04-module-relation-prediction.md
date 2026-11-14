@@ -49,3 +49,11 @@ filesystem, Cargo/compiler execution of analyzed source, worker, or production
 acceptance is involved. This is a partial lexical relation, not proof of Cargo
 root authority, full module resolution, standard-library identity, all writers,
 or permission to admit a Rust adapter.
+
+## Focused result
+
+The exact P04 relation test passed, including frozen witness, refusal and
+boundary controls. Both retained discovery tests passed, the non-test library
+check succeeded, and all 28 workflow controls passed. Independent review
+checked the bounded relation, reachable text boundary and hosted selection.
+The relation remains partial and test-only; it does not qualify the adapter.

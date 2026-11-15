@@ -134,7 +134,7 @@ Write the contract in the chat before you change anything. Fill in the template 
 
 - **Outcome**: one sentence. What is true when you are done?
 - **Done when**: two to five checkable criteria. Each one names a command, a
-  file, a URL, or a reviewable artifact. Read a check's success path before you promise it passes ([reachable criteria](references/goal-contract.md#reachable-criteria)).
+  file, a URL, or a reviewable artifact. Read a check's code before you promise it passes ([reachable criteria](references/goal-contract.md#reachable-criteria)).
 - **Metric**: the primary number (Goal → Question → Metric), with its baseline,
   target, and the exact command that measures it. Add guard metrics that must
   not get worse (tests, lint, build).

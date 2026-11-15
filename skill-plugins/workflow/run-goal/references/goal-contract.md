@@ -51,10 +51,12 @@ every turn.
 
 Before you write "check X passes" or "exits 0", read X's code path to success.
 A check can fail closed on purpose, for example "discovery remains
-incomplete" after every ledger is filled. Then that criterion can never be
-met by the work you plan. Write the reachable one instead ("reviews complete;
-the check fails only at the discovery guard"). Name the guard under
-Assumptions and risks. Never delete or weaken the guard to reach exit 0.
+incomplete" after every ledger is filled. Then the work you plan can never
+meet that criterion. Ask the user once. Keep the original criterion and mark
+it blocked. Replace it with the reachable one ("reviews complete; the check
+fails only at the discovery guard") only with the user's explicit approval.
+Name the guard under Assumptions and risks. Never delete, weaken or edit the
+guard or the check to reach exit 0.
 
 ## Example
 

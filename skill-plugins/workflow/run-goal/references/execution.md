@@ -412,6 +412,15 @@ start it again after the edits; never report its result for the new code.
   in with a password yourself. One goal left its dashboard read-back for the
   end; by then the browser extension had dropped, and two other browsers
   showed the login page.
+- A send-versus-store proof (sent N events, the store holds N) needs a
+  private id to scope the read: an install id, a user id, an account id.
+  Never print that id in chat or put it in a query you quote. Scope the read
+  with a subquery, for example `distinct_id IN (SELECT distinct_id FROM
+  events WHERE event = '<the send event>' AND timestamp >= '<send time>')`.
+  Then compare the count with the sender's own line, row by row, with
+  timestamps. In one goal, a background send fired between the dry run and
+  the real send. The first count showed 4 rows for a send of 3, and only the
+  timestamps showed which row came from the other batch.
 - A changed-files gate can skip the guards for the files you changed. Before
   you push a change to a task queue, an agent guide, or a rules file, find
   the repo tests that read that file: `rg -l "<file name>" tests src`. Then

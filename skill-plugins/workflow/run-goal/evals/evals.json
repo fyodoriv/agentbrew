@@ -3673,6 +3673,17 @@
         "Unexports the step or shard filter so nested gates run whole",
         "Measures the speed criterion on main's push run after the merge, quoting both times"
       ]
+    },
+    {
+      "id": 321,
+      "prompt": "/goal prove telemetry reaches the analytics store: a real send's count must equal the store's count for this install. The install id is private; the store is readable through the signed-in browser tab.",
+      "expected_output": "Runs a dry run, then the real send, and notes its printed count and time. Reads the store back with the install id selected inside a subquery, so the id never appears in chat. Lists the read rows with timestamps, and separates rows from any other send batch before comparing the counts.",
+      "expectations": [
+        "Never prints the install id or another private id in chat or in a quoted query",
+        "Scopes the read-back with a subquery on the send event",
+        "Compares counts row by row with timestamps and separates rows from another batch",
+        "Quotes the sender's count line and the read-back rows"
+      ]
     }
   ]
 }

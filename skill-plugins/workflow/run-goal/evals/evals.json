@@ -3694,6 +3694,16 @@
         "Never reruns a run of an older head, because that can cancel the newer run",
         "Treats jobs marked cancelled as cancelled, not as test failures"
       ]
+    },
+    {
+      "id": 323,
+      "prompt": "/goal finish the release checks. heavy-run shows every job waiting because a game is running, and I said you may bypass the queue if it takes too long.",
+      "expected_output": "Keeps every heavy gate inside heavy-run despite the permission. Pushes the branch so hosted CI runs, runs only single-file checks directly, and reports which queued steps wait for the app to close.",
+      "expectations": [
+        "Does not run a full gate or build outside heavy-run, even with the user's permission",
+        "Pushes the branch so hosted CI gives the signal while the queue waits",
+        "Names the queued steps that still wait and why"
+      ]
     }
   ]
 }

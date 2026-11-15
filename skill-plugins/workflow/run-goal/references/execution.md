@@ -255,6 +255,11 @@ start it again after the edits; never report its result for the new code.
 - A gate that fetches a package manager (corepack) fails on DNS in the
   sandbox. Rerun the repo's own gate outside the sandbox, and expect
   `heavy-run` queues of 15 or more jobs.
+- Never bypass `heavy-run`, even when the user permits it. A permitted
+  bypass (a gate under `nice -n 15` beside a `dotfiles apply`) froze the
+  Mac on 2026-11-15, and the user had to force it off. While the queue
+  waits (for example for a real-time app), push the branch for hosted CI,
+  run only single-file checks directly, and say which steps wait.
 - `git symbolic-ref HEAD refs/heads/NEW` leaves an unborn branch, so every
   file shows as staged. Follow it with `git reset --soft <base>`.
 - Fetch the base branch and diff it against your start point before the

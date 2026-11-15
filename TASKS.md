@@ -330,11 +330,11 @@
 - [ ] wrap-up fetch-caller tests W03 and W04 time out under load
   - **ID**: wrap-up-fetch-caller-timeout
   - **Tags**: tests, flaky, wrap-up
-  - **Details**: On 2026-11-15, under a busy machine, `npx vitest run src/skills/wrap-up-open-work.test.ts` failed `'W03' observes the real wrap-up caller` with `W03 fixture did not complete` (32.6 s) and W04 (6.0 s); the observation printed `{"id":"W03","status":"inconclusive"}`. The file took 323 s. The same file failed on unchanged main (9 tests), so it is not caused by a recent change. Find what the fixture waits on and give it a wait sized for a busy machine, or mark the case inconclusive without failing.
+  - **Details**: On 2026-11-15, under a busy machine, `npx vitest run src/skills/wrap-up-open-work.test.ts` failed `'W03' observes the real wrap-up caller` with `W03 fixture did not complete` (32.6 s) and W04 (6.0 s); the observation printed `{"id":"W03","status":"inconclusive"}`. The file took 323 s. The same file failed on unchanged main, so it is not caused by a recent change. Find what the fixture waits on and give it a wait sized for a busy machine, or mark the case inconclusive without failing.
   - **Files**: src/skills/wrap-up-open-work.test.ts
-  - **Hypothesis**: with a load-sized wait, the file fails 0 times in 10 runs on a busy machine, against 2 of 2 seen now.
-  - **Measurement**: `for i in $(seq 10); do npx vitest run src/skills/wrap-up-open-work.test.ts >/dev/null 2>&1 || echo fail; done | wc -l` while another heavy job runs.
-  - **Success**: 0 failures in 10 runs under load, and the file stays under 120 s alone.
+  - **Hypothesis**: with a load-sized wait, the file fails 0 times in 10 queued runs, against 2 of 2 seen now.
+  - **Measurement**: `heavy-run bash -c 'for i in $(seq 10); do npx vitest run src/skills/wrap-up-open-work.test.ts >/dev/null 2>&1 || echo fail; done | wc -l'`, plus the hosted `verify` jobs. Never add load on purpose: an unqueued heavy run froze this Mac on 2026-11-15.
+  - **Success**: 0 failures in 10 queued runs and green hosted `verify` jobs, and the file stays under 120 s alone.
   - **Pivot**: if the wait must exceed 60 s per case, move W03 and W04 out of the default suite into a serial job.
   - **Anchor**: Luo et al. 2014, "An empirical analysis of flaky tests" (FSE; asynchronous waits).
 

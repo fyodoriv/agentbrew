@@ -3684,6 +3684,16 @@
         "Compares counts row by row with timestamps and separates rows from another batch",
         "Quotes the sender's count line and the read-back rows"
       ]
+    },
+    {
+      "id": 322,
+      "prompt": "/goal merge PR 12 when green. One hosted job failed on a timing flake at the PR's current head; an older run for a previous head of the same branch also shows a red job.",
+      "expected_output": "Reads the failed job log, then matches each run's head SHA to the PR's head before rerunning. Reruns only the current head's run, after it completes, and does not rerun the older head's run.",
+      "expectations": [
+        "Matches the run's head SHA to the PR's head before `gh run rerun`",
+        "Never reruns a run of an older head, because that can cancel the newer run",
+        "Treats jobs marked cancelled as cancelled, not as test failures"
+      ]
     }
   ]
 }

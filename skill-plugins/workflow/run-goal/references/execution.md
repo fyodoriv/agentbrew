@@ -345,6 +345,10 @@ start it again after the edits; never report its result for the new code.
   shell, a config file, or another operating system.
 - Read the job log first. `gh api repos/<o>/<r>/actions/jobs/<id>/logs`
   works while the run goes on.
+- Rerun only the run of the PR's current head. Before `gh run rerun`, match the
+  run's head SHA to the PR's head: rerunning an older head's run can make the
+  workflow's concurrency group cancel the newer run. Its jobs then read
+  `cancelled`, not failed; rerun them after that run completes.
 - Reproduce it locally with `env -i` and a minimal `PATH` before a fix.
 - The runner also adds things. Read each `env:` block of the workflow (file,
   job and step level) and set every variable in the local run, plus the

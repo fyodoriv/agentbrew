@@ -368,6 +368,15 @@ start it again after the edits; never report its result for the new code.
   the edited workflow. An outage never permits a merge on a red check.
 - Never push an empty commit to start a run again. Close and reopen the pull
   request, or push the real fix.
+- A goal that moves agents onto hosted CI changes every agent entry point
+  that still runs the local gate (a checkup, a grind loop). Each one reads
+  the hosted runs for the exact tip commit of the default branch: an older
+  green run never counts, and a pending run is pending, not a pass.
+- Measure a CI speed criterion on the default branch's push run after the
+  change merges, not only on the pull request's run. Quote both times.
+- A variable that filters or shards the gate (a step list, a shard index)
+  stops at the gate: unexport it, so a test that starts a nested gate runs
+  that whole gate. One leaked step filter made unit tests fail only in CI.
 - A test of one operating system's feature runs only there
   (`it.runIf(process.platform === "darwin")`). Never weaken its assertion.
 

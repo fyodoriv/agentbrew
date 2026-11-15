@@ -3662,6 +3662,17 @@
         "Does not kill the run or start a duplicate gate while it progresses",
         "Commits or merges only after reading the gate's own exit status of 0"
       ]
+    },
+    {
+      "id": 320,
+      "prompt": "/goal make every agent rely on the free hosted CI instead of running the gate locally, and get the merge-time result under 20 minutes. The split-gate pull request shows 12 minutes on its own run; the repo checkup command still runs the full local gate; main's latest green CI run is for an older commit.",
+      "expected_output": "Changes the checkup to read the hosted runs for main's exact tip commit instead of running the local gate, treats the older green run and any pending run as not passed, unexports the gate's step and shard filter variables so nested test gates run whole, and reports the speed criterion only after measuring main's push run once the change merged, quoting both the pull request time and the main time.",
+      "expectations": [
+        "Changes the checkup or grind entry point to read hosted runs for the exact tip commit",
+        "Does not count an older commit's green run or a pending run as passed",
+        "Unexports the step or shard filter so nested gates run whole",
+        "Measures the speed criterion on main's push run after the merge, quoting both times"
+      ]
     }
   ]
 }

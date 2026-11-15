@@ -31,6 +31,8 @@ pattern); never expand `.eslintrc*` as an unquoted zsh glob.
 Run each heavy step as its own `heavy-run <command>` call where available;
 never combine a full suite and a linter in a compound shell command. Start a
 potentially queued run in the background and wait for its real exit status.
+A run that seems hung may be paused. `heavy-run --status` shows why. Before
+you stop it or start a second run, check its child process start time.
 Use `yarn <script>` on Yarn 2+, never `yarn -s <script>`.
 
 ## Trust the result

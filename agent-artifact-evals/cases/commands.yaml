@@ -23,3 +23,16 @@
       value: "PASS src/cli-commands/jenkins-cli/jenkins-status.md"
     - type: contains
       value: "diagnostic_count=0"
+
+- description: verify command keeps queued-gate and real exit status behavior
+  vars:
+    artifact_path: commands/verify.md
+  metadata:
+    artifact: commands/verify.md
+    surface: command
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS commands/verify.md"
+    - type: contains
+      value: "diagnostic_count=0"

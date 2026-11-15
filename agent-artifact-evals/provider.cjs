@@ -54,6 +54,13 @@ const AGENTS_RULES = [
 ];
 
 const COMMAND_RULES = {
+  "commands/verify.md": [
+    {
+      id: "verify-paused-gate",
+      message: "missing paused-gate and real exit status guidance",
+      patterns: [/heavy-run --status/, /child process start time/i, /real exit status/i],
+    },
+  ],
   "src/cli-commands/storybook-screenshot/storybook-screenshot.md": [
     {
       id: "storybook-command",

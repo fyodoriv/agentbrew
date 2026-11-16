@@ -3775,6 +3775,17 @@
         "Compares the two failure lists before calling anything pre-existing or load-caused",
         "Does not merge while the gate is red"
       ]
+    },
+    {
+      "id": 330,
+      "prompt": "/goal ship the hook fix PR. `gh pr checks` shows test=fail after 15 minutes, and `gh run view --job <id> --log` prints \"log not found\". Lint passed. The PR adds a new agent hook that the doctor scans.",
+      "expected_output": "Reads the job's annotations before calling the PR broken, finds the runner-capacity message, and reruns the failed jobs once instead of merging or patching code. Reads the rerun's real result and fixes any true failure it shows. After merge, runs apply and the doctor, and adds a CI test with the doctor's rule if the doctor flags the new hook.",
+      "expectations": [
+        "Reads the check-run annotations when the job log is missing",
+        "Treats a never-acquired job as no result, not as a pass or a code failure",
+        "Reruns the failed jobs once and acts on the rerun's real result",
+        "Runs the health check after apply and mirrors its rule as a CI test"
+      ]
     }
   ]
 }

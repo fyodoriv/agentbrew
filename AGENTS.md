@@ -14,7 +14,7 @@ is the user manual. `CLAUDE.md` links here. Docs map: [`docs/README.md`](docs/RE
 
 Run every command from the repo root.
 
-Tests run on CI only ([opt-out](docs/ci.md#tests-run-on-hosted-ci-only)).
+Tests run on CI ([opt-out](docs/ci.md#tests-run-on-hosted-ci-only)).
 
 | Task | Command |
 |---|---|

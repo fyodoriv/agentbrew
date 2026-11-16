@@ -1152,6 +1152,8 @@ AgentBrew has two config files:
 
 ## Development
 
+Tests run on hosted CI. The opt-in `block-local-tests` hook blocks them in an agentbrew checkout; `export AGENTBREW_ALLOW_LOCAL_TESTS=1` before the agent starts to run them here ([docs/ci.md](docs/ci.md#tests-run-on-hosted-ci-only)).
+
 ```bash
 bash scripts/worktree-deps.sh          # install deps; no-op when package-lock.json is unchanged
 npm run dev -- status                  # run the CLI from source

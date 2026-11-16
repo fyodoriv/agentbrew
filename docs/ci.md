@@ -23,7 +23,29 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 
 ## Step cache (like nx)
 
-`scripts/verify.sh` records each step that passed, keyed on the step's inputs. A later run skips a step whose inputs did not change (today the hook-fixture step on a pull request; the lint steps also key on `origin/main`, and the test step always runs), and prints `cached (inputs unchanged since it passed)`. The hosted job keeps that record between runs with `actions/cache`. A cache entry cannot be changed, so each run saves a new entry and restores the newest one. A pull request can read `main`'s entries and its own; it cannot write to `main`'s. The last gate line shows the effect: `verify: passed; N of M steps from cache`. To run every step, delete the entries: `gh cache delete --all` (this also removes the npm and browser caches).
+`scripts/verify.sh` records each step that passed, keyed on the step's inputs. A later run skips a step whose inputs did not change (today the hook-fixture step on a pull request; the lint steps also key on `origin/main`, and the test step always runs), and prints `cached (inputs unchanged since it passed)`. The hosted job keeps that record between runs with `actions/cache`. A cache entry cannot be changed, so each run saves a new entry and restores the newest one. A pull request can read `main`'s entries and its own; it cannot write to `main`'s. The last gate line shows the effect: `verify: passed; N of M steps from cache`. To run every step, delete the entries: `gh cache delete --all` (this also removes the browser cache).
+
+## Tests run on hosted CI only
+
+Run lint, typecheck and build on your machine. Push the branch and let hosted CI run the tests.
+
+- The opt-in PreToolUse:Bash hook `block-local-tests` (`hooks/checks/block-local-tests.sh`) blocks a test run inside an agentbrew checkout: `vitest`, `npm test`, `npm run test*`, `npm run verify*`, `npm run check:oss`, `node --test`, `tsx --test`, `bun test`, `yarn vitest`, `playwright test`, `scripts/verify*.sh`, `scripts/run-hook-fixtures.sh`. It also catches them behind `xargs`, `find -exec`, `npx`, `npm exec`, `pnpm dlx`, `bash -c` and `eval`.
+- It allows lint, typecheck, build, `shellcheck`, one hook's own `.test.sh`, and every command outside an agentbrew checkout.
+- Turn it on: add `block-local-tests` under `enabled:` in your hooks overlay, then `agentbrew sync`.
+- Opt out: `export AGENTBREW_ALLOW_LOCAL_TESTS=1` before the agent starts. Setting it inside an agent command does nothing: the hook reads its own environment.
+- It is a guardrail, not a security boundary. A command name built at run time (`$(which vitest)`) passes. `npm run verify:build-pipeline` (a build check) is allowed. The session folder always counts, so `cd ~ && npx vitest` started in a checkout is blocked too.
+
+## Cache measurements
+
+Measured 2026-11-16 from `gh run view --log` and the jobs API on `ci.yml` runs: 10 warm `main` runs (2026-11-15 to 11-16) and the cold runs of 2026-11-10 (the first `main` run and the `ci/hosted-gate-on` PR runs, before any entry existed). Each cell is the median seconds the cache touches: restore + save + the work it saves.
+
+| Cache | What the time covers | Ubuntu cold | Ubuntu warm | macOS cold | macOS warm | Verdict |
+|---|---|---|---|---|---|---|
+| npm (`setup-node` `cache: npm`) | setup-node + `npm ci` | 26 (n=1) | 28 (n=16) | 26 (n=4) | 41 (n=13) | **Removed**: no gain; restoring ~0.5 GB costs more than `npm ci` downloads |
+| Playwright browsers | cache step + its save + `playwright-install` | 8.9 (n=3) | 4.7 (n=14) | 11.7 (n=4) | 7.3 (n=13) | Kept: saves ~4 s per job |
+| Gate step cache | `hook-fixtures` step (+ ~2 s restore/save) | 37 (n=3) | ~2 (n=16) | 71 (n=4) | ~2 (n=13) | Kept: saves 35-69 s per job |
+
+Re-measure after a lockfile or workflow change; drop a cache whose warm median is not below its cold median.
 
 ## Cost and limits
 

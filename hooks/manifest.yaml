@@ -56,6 +56,18 @@ hooks:
     agents: ["claude-code"]
     defaultEnabled: false  # PreToolUse:Bash hooks are opt-in; enable via the overlay `enabled:`
 
+  - id: block-local-tests
+    description: Block local test runs (vitest, npm test, npm run verify*) in an agentbrew checkout; tests run on hosted CI only
+    event: PreToolUse
+    matcher: Bash
+    script: checks/block-local-tests.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: AGENTBREW_ALLOW_LOCAL_TESTS
+    sourceRule: AGENTS.md "Tests run on hosted CI only" (docs/ci.md)
+    agents: ["claude-code"]
+    defaultEnabled: false  # PreToolUse:Bash hooks are opt-in; enable via the overlay `enabled:`
+
   - id: code-no-timestamps
     description: Reject Write|Edit that adds a literal date-stamp comment to source code
     event: PreToolUse

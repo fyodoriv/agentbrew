@@ -137,6 +137,20 @@
 
 ## P0
 
+- [ ] An org overlay adopts the November 2026 core (plugin form, hosted CI, telemetry sink, core paths)
+  - **ID**: org-overlay-adopt-core-2026-11
+  - **Tags**: plugins, org-overlay, ci, telemetry, org-sink
+  - **Blocked**: needs-org-machine — an agent on a company machine does this in the company overlay repo (`agentbrew-<org>`). The personal Mac never touches that repo. Nothing in this public repo changes, except to delete this block when the work is done.
+  - **Details**: Follow [org overlay update plan](docs/plans/org-overlay-update-plan.md) step by step. It is the work order: the public boundary and the move from `catalog-overlay.yaml` to a signed plugin, hooks through `contributes.hooks`, hosted CI only (SHA-pinned actions, caches only with a measured gain, a weekly run against the newest core), the org log sink, the core-path check, docs, release, rollout and rollback. The telemetry step is task `org-overlay-splunk-sink-agentbrew`; do it there, not twice. Get the owner's inputs under "Before you start" first; do not guess any of them. Never paste, print, log or commit the HEC token or the signer key. Every company value stays in the overlay repo, never in this repo, its tests, PRs or issues.
+  - **Files**: overlay repo only: `agentbrew-plugin.yaml`, its CI workflow, README, one employee doc page. This repo: `TASKS.md` (delete this block when done).
+  - **Output**: mixed
+  - **Acceptance**: on a company machine `agentbrew plugin test <overlay-dir>` exits 0 and `agentbrew plugin list` shows the new locked version; no `catalog-overlay.yaml` or `agentbrew team` remains; overlay CI is green on its PR and its first weekly run; the leak check on this public repo still prints 0.
+  - **Hypothesis**: overlay breaks caught by CI before a company machine breaks go from 0 to every break the weekly job sees; company machines on the plugin form with 0 legacy overlay use go from unknown to every machine with the overlay.
+  - **Measurement**: `agentbrew plugin list && agentbrew plugin test <overlay-dir>; echo "exit=$?"` on each machine, plus the weekly overlay CI result.
+  - **Success**: exit 0 on every machine with the overlay, and the first weekly CI run is green.
+  - **Pivot**: if more than 1 in 4 weekly runs fail for core reasons the overlay cannot fix, track tagged core releases instead of newest `main`.
+  - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); Forsgren, Humble, Kim 2018 (Accelerate, change failure rate).
+
 - [ ] An org overlay sends agentbrew's telemetry and error logs to the company Splunk
   - **ID**: org-overlay-splunk-sink-agentbrew
   - **Tags**: telemetry, org-sink, org-overlay

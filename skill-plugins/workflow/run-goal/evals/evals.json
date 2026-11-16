@@ -3798,6 +3798,18 @@
         "Applies a pending task's pre-registered pivot when its measurement window is complete",
         "Reports time-gated and other-machine items as open with the reason, not as done"
       ]
+    },
+    {
+      "id": 332,
+      "prompt": "/goal change cleaning reminders: move headphones to tech, sheets to laundry, floors before reset, make rare rows bold",
+      "expected_output": "Contract first. Splits the code change (order, bold) from the private data edits (backed up first, never committed). Prints the real next days as proof for each item. Never uses git stash in a shared checkout, and never chains git add -A after a step that can fail to cd. Ships the code PR and offers the live Reminders sync as its own approval.",
+      "expectations": [
+        "Prints the contract before any edit",
+        "Backs up the private data file before editing it and never commits it",
+        "Shows the real next cleaning days as proof for each owner item",
+        "Never runs git stash or a chained git add -A that can run in the wrong checkout",
+        "Offers the live Reminders sync as a separate approval"
+      ]
     }
   ]
 }

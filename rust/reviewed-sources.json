@@ -1,0 +1,228 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "path": "hooks/lib/pr-command-target.py",
+      "git_blob": "b27c7c158c08ac255496dffd6427bf8763fba3e3",
+      "owner": "agentbrew",
+      "migration_slice": "rust-hooks-and-generated-helpers",
+      "language": "python",
+      "reason": "Exact source review: stdlib token/JSON parser and data-file/stdout flow; no command evaluation, subprocess or generated executable. Caller program entry and all reviewed data consumers are explicit.",
+      "scope": "program",
+      "kind": "data-parser",
+      "complete": true,
+      "program": {
+        "start": 0,
+        "end": 4629
+      },
+      "entry": {
+        "source": {
+          "start": 4591,
+          "end": 4629
+        },
+        "expected_source": "if __name__ == \"__main__\":\n    main()\n",
+        "interpreter": "python3",
+        "arguments": [
+          "owned-program",
+          "data-path"
+        ]
+      },
+      "data_regions": [
+        {
+          "id": "tokenize-command",
+          "source": {
+            "start": 360,
+            "end": 423
+          },
+          "callee": {
+            "start": 360,
+            "end": 371
+          },
+          "spelling": "shlex.shlex",
+          "identity": "python:shlex/shlex",
+          "kind": "parse-data",
+          "inputs": [
+            "parameter:command-text"
+          ],
+          "outputs": [
+            "data:command-words"
+          ],
+          "consumer": "target(command, words) parses words; never executes them"
+        },
+        {
+          "id": "read-transcript",
+          "source": {
+            "start": 2834,
+            "end": 2869
+          },
+          "callee": {
+            "start": 2834,
+            "end": 2838
+          },
+          "spelling": "open",
+          "identity": "python:builtins/open",
+          "kind": "data-file-read",
+          "inputs": [
+            "argv:1:data-path"
+          ],
+          "outputs": [
+            "data:transcript-lines"
+          ],
+          "consumer": "JSON records selected by caller-provided input path; no source execution"
+        },
+        {
+          "id": "parse-row",
+          "source": {
+            "start": 2968,
+            "end": 2984
+          },
+          "callee": {
+            "start": 2968,
+            "end": 2978
+          },
+          "spelling": "json.loads",
+          "identity": "python:json/loads",
+          "kind": "parse-data",
+          "inputs": [
+            "data:transcript-line"
+          ],
+          "outputs": [
+            "data:parsed-record"
+          ],
+          "consumer": "Extract tool metadata as data and pass command text to tokenizer"
+        },
+        {
+          "id": "emit-target",
+          "source": {
+            "start": 4501,
+            "end": 4588
+          },
+          "callee": {
+            "start": 4501,
+            "end": 4506
+          },
+          "spelling": "print",
+          "identity": "python:builtins/print",
+          "kind": "data-output",
+          "inputs": [
+            "data:target-record"
+          ],
+          "outputs": [
+            "stdout:json"
+          ],
+          "consumer": "Hook caller consumes bounded target metadata, never source text"
+        }
+      ],
+      "executable_boundaries": [],
+      "unresolved": []
+    }
+  ],
+  "producers": [
+    {
+      "path": "rust/tests/snapshot.rs",
+      "git_blob": "5c6794f8e0751e3e3d1045972def717bbd1be8d3",
+      "language": "rust",
+      "kind": "literal-producer",
+      "owner": "agentbrew",
+      "migration_slice": "rust-tests-and-evals",
+      "reason": "Targeted canary generator only. Exact Rust FS writer, literal body, output variable, executable mode and local helper consumers are reviewed; the rest of this Rust program remains unsupported.",
+      "call": {
+        "source": {
+          "start": 1301,
+          "end": 1420
+        },
+        "expected_source": "fs::write(\n        &program,\n        b\"#!/bin/sh\\nprintf 'called\\\\n' >> \\\"$MIGRATION_FIXTURE_MARKER\\\"\\nexit 1\\n\",\n    )"
+      },
+      "callee": {
+        "source": {
+          "start": 1301,
+          "end": 1310
+        },
+        "expected_source": "fs::write"
+      },
+      "caller": {
+        "source": {
+          "start": 1083,
+          "end": 1155
+        },
+        "expected_source": "fn canary_program(fixture: &Fixture, name: &str) -> (PathBuf, PathBuf) {"
+      },
+      "output": {
+        "name": "canary-output",
+        "binding_name": "program",
+        "binding": {
+          "source": {
+            "start": 1261,
+            "end": 1296
+          },
+          "expected_source": "let program = directory.join(name);"
+        },
+        "argument": {
+          "source": {
+            "start": 1320,
+            "end": 1328
+          },
+          "expected_source": "&program"
+        },
+        "inputs": [
+          "fixture-scratch",
+          "helper-name"
+        ]
+      },
+      "body": {
+        "source": {
+          "start": 1338,
+          "end": 1413
+        },
+        "decoder": "rust-byte-string",
+        "language": "sh",
+        "environment_inputs": [
+          "MIGRATION_FIXTURE_MARKER"
+        ]
+      },
+      "mode": {
+        "call": {
+          "source": {
+            "start": 1440,
+            "end": 1504
+          },
+          "expected_source": "fs::set_permissions(&program, fs::Permissions::from_mode(0o700))"
+        },
+        "argument": {
+          "source": {
+            "start": 1460,
+            "end": 1468
+          },
+          "expected_source": "&program"
+        },
+        "literal": {
+          "start": 1497,
+          "end": 1502
+        }
+      },
+      "consumers": [
+        {
+          "source": {
+            "start": 18109,
+            "end": 18174
+          },
+          "expected_source": "let (directory, marker) = canary_program(&fixture, &helper_name);"
+        },
+        {
+          "source": {
+            "start": 21245,
+            "end": 21331
+          },
+          "expected_source": "let (directory, marker) = canary_program(&fixture, &format!(\"git-remote-{protocol}\"));"
+        }
+      ],
+      "caller_scope": {
+        "source": {
+          "start": 1083,
+          "end": 1572
+        },
+        "expected_source": "fn canary_program(fixture: &Fixture, name: &str) -> (PathBuf, PathBuf) {\n    let directory = fixture.scratch.join(\"canary-bin\");\n    fs::create_dir_all(&directory).unwrap();\n    let program = directory.join(name);\n    fs::write(\n        &program,\n        b\"#!/bin/sh\\nprintf 'called\\\\n' >> \\\"$MIGRATION_FIXTURE_MARKER\\\"\\nexit 1\\n\",\n    )\n    .unwrap();\n    fs::set_permissions(&program, fs::Permissions::from_mode(0o700)).unwrap();\n    (directory, fixture.scratch.join(\"helper-marker\"))\n}\n"
+      }
+    }
+  ]
+}

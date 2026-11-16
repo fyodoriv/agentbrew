@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "purpose": "upstream ownership preparation; not executable-family or runtime safety proof",
+  "previous_lock_sha256": "707bb0f2ebadf1a390de7ced617ddb87cc212cf7f436ac5c04a0c1878ace6a28",
+  "current_lock_sha256": "70d791fde70fe45587adc970d1b37b83f3ca7eeae0fe9b55dad5ce8ded4c5459",
+  "direct_features": {
+    "sha2": [],
+    "toml": [
+      "parse",
+      "serde",
+      "std"
+    ],
+    "syn": [
+      "parsing",
+      "full",
+      "visit"
+    ]
+  },
+  "removed_previous_packages": [],
+  "changed_previous_checksums": [],
+  "new_locked_packages": [
+    {
+      "name": "block-buffer",
+      "version": "0.12.1",
+      "sha256": "d2f6c7dbe95a6ed67ad9f18e57daf93a2f034c524b99fd2b76d18fdfeb6660aa",
+      "rust_version": "1.85",
+      "license": "MIT OR Apache-2.0",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 15902
+    },
+    {
+      "name": "cpufeatures",
+      "version": "0.3.1",
+      "sha256": "5ca28b0ae3115b884660db4118d803791fd6756b6e88f39c0f3f7859060d7566",
+      "rust_version": "1.85",
+      "license": "MIT OR Apache-2.0",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 14272
+    },
+    {
+      "name": "crypto-common",
+      "version": "0.2.2",
+      "sha256": "ce6e4c961d6cd6c9a86db418387425e8bdeaf05b3c8bc1411e6dca4c252f1453",
+      "rust_version": "1.85",
+      "license": "MIT OR Apache-2.0",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 15449
+    },
+    {
+      "name": "digest",
+      "version": "0.11.3",
+      "sha256": "f1dd6dbb5841937940781866fa1281a1ff7bd3bf827091440879f9994983d5c2",
+      "rust_version": "1.85",
+      "license": "MIT OR Apache-2.0",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 28955
+    },
+    {
+      "name": "hybrid-array",
+      "version": "0.4.15",
+      "sha256": "27f864f10dfb56725ce5ce5472bc52252c8f93a4ab86327122cebf62c5f59a17",
+      "rust_version": "1.85",
+      "license": "MIT OR Apache-2.0",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 36801
+    },
+    {
+      "name": "serde_spanned",
+      "version": "1.1.2",
+      "sha256": "4e7523beb55eece201a2356bee0bbca0d1ab466c14c07703b2e0ee6d42cb0c2c",
+      "rust_version": "1.85",
+      "license": "MIT OR Apache-2.0",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 11124
+    },
+    {
+      "name": "sha2",
+      "version": "0.11.1",
+      "sha256": "47d7069beb7d6ac7b9acd1039986e73443f24234f41074da099d6f994ac9ad19",
+      "rust_version": "1.88",
+      "license": "MIT OR Apache-2.0",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 32748
+    },
+    {
+      "name": "toml",
+      "version": "1.2.0+spec-1.1.0",
+      "sha256": "c5ffcdf8f50436dbbfd675c1fe1b8e0854f42b7defea8584bdebe1aee900e561",
+      "rust_version": "1.85",
+      "license": "MIT OR Apache-2.0",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 57795
+    },
+    {
+      "name": "toml_datetime",
+      "version": "1.1.2+spec-1.1.0",
+      "sha256": "2b86d767906c6c42421dcba507eb9d203e779497710a47782a224bb871653053",
+      "rust_version": "1.85",
+      "license": "MIT OR Apache-2.0",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 18204
+    },
+    {
+      "name": "toml_parser",
+      "version": "1.1.5+spec-1.1.0",
+      "sha256": "baa693a8032d7e1cada7d0041e96126df243179ff061456783ac7f12bda4744c",
+      "rust_version": "1.85",
+      "license": "MIT OR Apache-2.0",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 36159
+    },
+    {
+      "name": "toml_writer",
+      "version": "1.2.0+spec-1.1.0",
+      "sha256": "009dbb7700f11c55ef83aebbe4c0e9cf1f1ac0844bd8d6f00dc38f302026e13a",
+      "rust_version": "1.85",
+      "license": "MIT OR Apache-2.0",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 19388
+    },
+    {
+      "name": "typenum",
+      "version": "1.20.1",
+      "sha256": "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20",
+      "rust_version": "1.41.0",
+      "license": "MIT OR Apache-2.0",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 105479
+    },
+    {
+      "name": "winnow",
+      "version": "1.0.5",
+      "sha256": "8c3b93199df0ab874cdf0c6a94f0a0dc3423fe41f1cafb62b8bd7b1deb277aef",
+      "rust_version": "1.65.0",
+      "license": "MIT",
+      "build": false,
+      "proc_macro": false,
+      "archive_bytes": 188758
+    }
+  ]
+}

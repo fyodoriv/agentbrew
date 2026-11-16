@@ -1,0 +1,46 @@
+[package]
+name = "migration-check"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.97"
+publish = false
+license = "MIT"
+
+[dependencies]
+rustix = { version = "=1.1.4", features = ["fs", "process", "time"] }
+signal-hook = "=0.4.5"
+nix = { version = "=0.31.3", default-features = false, features = ["signal"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+oxc_allocator = "=0.156.0"
+oxc_ast = "=0.156.0"
+oxc_ast_visit = "=0.156.0"
+oxc_parser = { version = "=0.156.0", default-features = false }
+oxc_semantic = { version = "=0.156.0", default-features = false }
+oxc_span = "=0.156.0"
+tree-sitter = { version = "=0.27.1", default-features = false, features = ["std"] }
+tree-sitter-bash = "=0.25.1"
+yaml-rust2 = { version = "=0.13.0", default-features = false }
+syn = { version = "=2.0.119", default-features = false, features = ["parsing", "full", "visit"] }
+sha2 = { version = "=0.11.1", default-features = false }
+toml = { version = "=1.2.0", default-features = false, features = ["parse", "serde", "std"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libproc = { version = "=0.14.11", path = "vendor/libproc-0.14.11" }
+
+[dev-dependencies]
+proc-macro2 = { version = "=1.0.107", features = ["span-locations"] }
+sysinfo = { version = "=0.40.1", default-features = false, features = ["system"] }
+
+[[bin]]
+name = "migration-check"
+path = "src/main.rs"
+
+[[bin]]
+name = "lifecycle-fixture"
+path = "tests/fixtures/lifecycle.rs"
+test = false
+bench = false
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(owner_hosted_experiment)'] }

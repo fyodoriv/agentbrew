@@ -16,12 +16,22 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      run_n02b:
+        description: Run the reviewed synthetic source-count experiment
+        type: boolean
+        default: false
+      expected_sha:
+        description: Full reviewed commit SHA for the experiment
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id) || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -92,3 +102,160 @@ jobs:
 
       - name: Gate (npm run verify)
         run: npm run verify
+
+  inventory-receipt:
+    name: inventory receipt (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the declared Rust toolchain
+        run: rustup toolchain install 1.97.0 --profile minimal
+      - name: Fetch locked dependencies
+        run: cargo +1.97.0 fetch --locked --manifest-path rust/Cargo.toml
+      - name: Run pure receipt controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/inventory-receipt-tests.log"
+          cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --test owner_success_receipt -- --test-threads=1 2>&1 | tee "$log"
+          names='complete_record_accepted missing_field_refused unknown_terminal_unqualified unknown_reservation_unqualified unknown_ownership_unqualified invalid_enum_refused private_fields_refused cleanup_outcome_unchanged eperm_success_conflict_unqualified'
+          for name in $names; do
+            [ "$(grep -Ec "^test $name \.\.\. ok$" "$log")" -eq 1 ]
+          done
+          grep -Eq '^test result: ok\. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out' "$log"
+
+  inventory-guard-compile:
+    name: inventory guard compile (macos-latest)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the declared Rust toolchain
+        run: rustup toolchain install 1.97.0 --profile minimal
+      - name: Fetch locked dependencies
+        run: |
+          cargo +1.97.0 fetch --locked --manifest-path rust/Cargo.toml
+          cargo +1.97.0 fetch --locked --manifest-path rust/owner-hosted-fixture/Cargo.toml
+      - name: Check compile-only guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset RUSTFLAGS CARGO_ENCODED_RUSTFLAGS RUSTC_WRAPPER RUSTC_WORKSPACE_WRAPPER
+          export CARGO_TARGET_DIR="$RUNNER_TEMP/owner-guard-target"
+          python3 rust/tests/hosted_signal_boundary_test.py -v 2>&1 | tee "$RUNNER_TEMP/owner-source-tests.log"
+          grep -Eq '^test_boundary_and_distinct_refusal_are_present .* \.\.\. ok$' "$RUNNER_TEMP/owner-source-tests.log"
+          grep -Eq '^test_bypass_and_cfg_removal_mutations_are_rejected .* \.\.\. ok$' "$RUNNER_TEMP/owner-source-tests.log"
+          grep -Eq '^Ran 2 tests? in ' "$RUNNER_TEMP/owner-source-tests.log"
+          rustup run 1.97.0 rustc --test rust/src/owner_guarded_dispatch.rs -o "$RUNNER_TEMP/owner-guard-tests"
+          "$RUNNER_TEMP/owner-guard-tests" | tee "$RUNNER_TEMP/owner-guard-tests.log"
+          test "$(grep -Ec '^test tests::term_kill_and_drop_retries_never_call_the_syscall \.\.\. ok$' "$RUNNER_TEMP/owner-guard-tests.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out' "$RUNNER_TEMP/owner-guard-tests.log"
+          rustup run 1.97.0 rustc --test rust/src/owner_hosted_receipt.rs -o "$RUNNER_TEMP/owner-receipt-tests"
+          "$RUNNER_TEMP/owner-receipt-tests" | tee "$RUNNER_TEMP/owner-receipt-tests.log"
+          names='exact_capacity_is_valid overflow_is_sticky invalidation_refuses_fake_syscall missing_result_is_inconclusive illegal_transition_is_rejected direct_transactional_record_is_rejected invalid_receipt_refuses_cleanup_retries unexpected_admission_is_inconclusive ordinary_observation_then_refusal_is_closed closed_evidence_categories_are_retained unknown_ownership_blocks_later_attempts unproved_reap_after_drop_stays_inconclusive closed_refusal_after_drop_reap_is_diagnostic_only reap_before_drop_is_allowed drop_retry_without_main_attempt_is_allowed missing_final_or_reap_is_inconclusive no_refusal_is_inconclusive early_or_duplicate_finalization_is_inconclusive unknown_ownership_cannot_close_diagnostic duplicate_reap_cannot_close_diagnostic receipt_can_be_claimed_only_once attempt_after_reap_cannot_close_diagnostic pending_attempt_cannot_close_diagnostic empty_or_unclaimed_receipt_is_inconclusive finalization_overflow_is_sticky drop_before_spawn_is_inconclusive reap_before_spawn_is_inconclusive event_after_finalization_is_inconclusive'
+          for name in $names; do test "$(grep -Ec "^test tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/owner-receipt-tests.log")" -eq 1; done
+          grep -Eq '^test result: ok\. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out' "$RUNNER_TEMP/owner-receipt-tests.log"
+          RUSTC="$(rustup which --toolchain 1.97.0 rustc)" python3 rust/tests/hosted_evidence_mapping_test.py | tee "$RUNNER_TEMP/owner-mapping-tests.log"
+          grep -Fxq 'closed mapping: 23 cases passed' "$RUNNER_TEMP/owner-mapping-tests.log"
+          rustup run 1.97.0 rustc --test rust/src/owner_hosted_export_writer.rs -o "$RUNNER_TEMP/owner-export-tests"
+          "$RUNNER_TEMP/owner-export-tests" --test-threads=1 | tee "$RUNNER_TEMP/owner-export-tests.log"
+          names='exact_fit_round_trips short_buffer_is_untouched empty_is_inconclusive missing_event_never_writes unknown_is_inconclusive invalid_closed_sequence_never_writes valid_events_can_be_explicitly_inconclusive capacity_is_bounded_and_preserves_tail_canary every_closed_category_has_a_fixed_code_without_canary actual_closed_receipt_round_trips actual_invalid_receipt_exports_only_inconclusive actual_pending_receipt_exports_only_inconclusive short_export_still_invalidates_pending_receipt actual_overflow_receipt_exports_only_inconclusive'
+          for name in $names; do test "$(grep -Ec "^test tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/owner-export-tests.log")" -eq 1; done
+          grep -Eq '^test result: ok\. 55 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out' "$RUNNER_TEMP/owner-export-tests.log"
+          rustup run 1.97.0 rustc --test rust/src/owner_hosted_frame_capture.rs -o "$RUNNER_TEMP/owner-frame-tests"
+          "$RUNNER_TEMP/owner-frame-tests" --test-threads=1 | tee "$RUNNER_TEMP/owner-frame-tests.log"
+          names='accepts_one_frame_after_clean_eof accepts_every_two_chunk_split rejects_every_truncated_prefix rejects_full_frame_without_clean_eof rejects_delayed_extra_byte_and_duplicate_frame rejects_oversized_input_and_keeps_failure_sticky accepts_maximum_frame_and_rejects_one_more_byte rejects_failure_before_a_complete_frame rejects_read_failure_after_a_complete_frame rejects_empty_and_bad_classification'
+          for name in $names; do test "$(grep -Ec "^test tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/owner-frame-tests.log")" -eq 1; done
+          grep -Eq '^test result: ok\. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out' "$RUNNER_TEMP/owner-frame-tests.log"
+          names='fixed_corpus_replaces_repeated_component_visits indexed_membership_matches_legacy_including_diagnostic_order'
+          for name in $names; do
+            CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib "validation::membership_tests::$name" -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-membership-tests.log"
+            test "$(grep -Ec "^test validation::membership_tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/inventory-membership-tests.log")" -eq 1
+            grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-membership-tests.log"
+          done
+          names='initial_limit_preserves_empty_below_and_exact_reports initial_limit_refuses_one_over_with_root_facts initial_limit_skips_observable_closure_parsing initial_limit_preserves_prior_synthetic_evidence initial_limit_root_recording_preserves_collision_precedence initial_limit_keeps_existing_diagnostic initial_limit_counts_package_script_roots initial_limit_counts_registry_promoted_root initial_limit_does_not_count_non_source_data initial_limit_does_not_recheck_later_promoted_roots'
+          for name in $names; do
+            CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib "discovery::tests::$name" -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-source-limit-tests.log"
+            test "$(grep -Ec "^test discovery::tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/inventory-source-limit-tests.log")" -eq 1
+            grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-source-limit-tests.log"
+          done
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_observer_tests::observer_preserves_legacy -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-observer-tests.log"
+          test "$(grep -Ec '^test rust_family_tests::rust_observer_tests::observer_preserves_legacy \.\.\. ok$' "$RUNNER_TEMP/inventory-observer-tests.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-observer-tests.log"
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_span_probe::p03_original_byte_ranges -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-span-probe.log"
+          test "$(grep -Ec '^test rust_family_tests::rust_span_probe::p03_original_byte_ranges \.\.\. ok$' "$RUNNER_TEMP/inventory-span-probe.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-span-probe.log"
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_syntax_slice::frozen_syntax_controls -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-syntax-slice.log"
+          test "$(grep -Ec '^test rust_family_tests::rust_syntax_slice::frozen_syntax_controls \.\.\. ok$' "$RUNNER_TEMP/inventory-syntax-slice.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-syntax-slice.log"
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_namespace_screen::frozen_namespace_controls -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-namespace-screen.log"
+          test "$(grep -Ec '^test rust_family_tests::rust_namespace_screen::frozen_namespace_controls \.\.\. ok$' "$RUNNER_TEMP/inventory-namespace-screen.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-namespace-screen.log"
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_discovery_syntax::observes_real_discovery_sources -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-rust-observation.log"
+          test "$(grep -Ec '^test rust_family_tests::rust_discovery_syntax::observes_real_discovery_sources \.\.\. ok$' "$RUNNER_TEMP/inventory-rust-observation.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-rust-observation.log"
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_discovery_syntax::observes_inline_modules -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-inline-modules.log"
+          test "$(grep -Ec '^test rust_family_tests::rust_discovery_syntax::observes_inline_modules \.\.\. ok$' "$RUNNER_TEMP/inventory-inline-modules.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-inline-modules.log"
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_module_relation::frozen_p04_relation -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-p04-relation.log"
+          test "$(grep -Ec '^test rust_family_tests::rust_module_relation::frozen_p04_relation \.\.\. ok$' "$RUNNER_TEMP/inventory-p04-relation.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-p04-relation.log"
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_discovery_syntax::witnesses_p04_routed_buffers -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-p04-routed.log"
+          test "$(grep -Ec '^test rust_family_tests::rust_discovery_syntax::witnesses_p04_routed_buffers \.\.\. ok$' "$RUNNER_TEMP/inventory-p04-routed.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-p04-routed.log"
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_discovery_syntax::shadows_root_namespace -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-root-shadow.log"
+          test "$(grep -Ec '^test rust_family_tests::rust_discovery_syntax::shadows_root_namespace \.\.\. ok$' "$RUNNER_TEMP/inventory-root-shadow.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-root-shadow.log"
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_producer_composition::synthetic_host_conflict -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-host-conflict.log"
+          test "$(grep -Ec '^test rust_family_tests::rust_producer_composition::synthetic_host_conflict \.\.\. ok$' "$RUNNER_TEMP/inventory-host-conflict.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-host-conflict.log"
+          if cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture > "$RUNNER_TEMP/fixture-refusal.log" 2>&1; then exit 1; fi
+          grep -Fq 'requires target-scoped owner_hosted_experiment cfg' "$RUNNER_TEMP/fixture-refusal.log"
+          cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture -- --cfg owner_hosted_experiment --check-cfg 'cfg(owner_hosted_experiment)'
+          if cargo +1.97.0 rustc --locked --offline --manifest-path rust/Cargo.toml --lib -- --cfg owner_hosted_experiment > "$RUNNER_TEMP/main-refusal.log" 2>&1; then exit 1; fi
+          grep -Fq 'owner_hosted_experiment is forbidden in the main package' "$RUNNER_TEMP/main-refusal.log"
+          cargo +1.97.0 check --locked --offline --manifest-path rust/Cargo.toml --lib
+
+  inventory-n02b-experiment:
+    name: inventory source-count experiment
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_n02b == true }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check reviewed input identity
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$GITHUB_SHA" = "$EXPECTED_SHA"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          echo 'b500bf9c8ade0e5cbe7dc70e26c2ef019e5d230da04576af198fc018bf2dd527  docs/plans/rust-literal-adapter-corpus-proposal-20261105.md' | sha256sum -c -
+          echo '6c67033499c7b86031a864a2136c25ae8828c69dacc463e6625360639951e89d  rust/src/rust_family_tests.rs' | sha256sum -c -
+      - name: Install the declared Rust toolchain
+        run: rustup toolchain install 1.97.0 --profile minimal
+      - name: Fetch locked dependencies
+        run: cargo +1.97.0 fetch --locked --manifest-path rust/Cargo.toml
+      - name: Run the frozen source-count control
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset RUSTFLAGS CARGO_ENCODED_RUSTFLAGS RUSTC_WRAPPER RUSTC_WORKSPACE_WRAPPER
+          export CARGO_TARGET_DIR="$RUNNER_TEMP/inventory-n02b-target"
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::n02b -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-n02b.log"
+          test "$(grep -Ec '^test rust_family_tests::n02b \.\.\. ok$' "$RUNNER_TEMP/inventory-n02b.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-n02b.log"

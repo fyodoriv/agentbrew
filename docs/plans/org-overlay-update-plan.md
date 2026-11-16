@@ -31,8 +31,8 @@ overlay must follow. An overlay that does nothing mostly keeps working, but:
 Get these from the owner. Do not guess any of them.
 
 1. A written yes from the company security or IT contact to send events and
-   error lines to the company log system. With no written yes, skip step 4
-   and do the rest.
+   error lines to the company log system. With no written yes, stop the
+   telemetry work (skip step 4) and do the rest.
 2. The log system details, exactly as task
    `org-overlay-splunk-sink-agentbrew` lists them (HEC URL, index, token and
    where it is kept, consent mode `managed` or `ask`, error logs on or off).
@@ -75,11 +75,15 @@ private key and any CI secret.
 
 1. Ship overlay hooks through `contributes.hooks` in `agentbrew-plugin.yaml`,
    not by editing `~/.claude/settings.json` or the core manifest.
+   Declare every hook event in `capabilities.hooks` (`Event` or
+   `Event:matcher`). Capabilities are deny by default; an undeclared event
+   makes `plugin add` and `sync` exit 3 with `capability not declared`.
 2. Per-machine choices (turn a core hook off or an opt-in hook on) stay in
    `~/.config/agentbrew/hooks-overlay/manifest.yaml` (`disabled:` /
    `enabled:`). The overlay may document them; it must not overwrite that
    file.
-3. The coming local-test block hook is a core hook. Do not disable it
+3. The local-test block hook does not exist yet; agentbrew is adding it.
+   When it lands, it is a core hook. Do not disable it
    fleet-wide. A person who must reproduce a CI failure sets
    `AGENTBREW_ALLOW_LOCAL_TESTS=1` for that one command.
 4. Check: `agentbrew sync --dry-run` lists the overlay hooks and shows no
@@ -112,13 +116,16 @@ private key and any CI secret.
    the log system receives, the `kind: file` forwarder option and the known
    limit. Do this step as part of that task; do not open a second one.
 2. Delivery: the agentbrew plugin manifest has no telemetry-sink
-   contribution. Deliver `~/.config/agentbrew/telemetry-sink.json` (mode 600)
+   contribution, so the Splunk task's fallback route applies. Deliver `~/.config/agentbrew/telemetry-sink.json` (mode 600)
    through the dotfiles company plugin, next to its own dotfiles policy
    (dotfiles plan step 3). Use sourcetype `agentbrew:telemetry` and source
    `agentbrew`.
 3. If a machine already has a hand-placed policy with different bytes,
    remove that one file during rollout (step 7), then apply.
-4. Check: `agentbrew telemetry status` shows the company sink and no
+4. Add the Splunk task's overlay test (step 3 there): it runs
+   `agentbrew telemetry status` in a scratch HOME with the policy and fails
+   on `sink policy invalid`. It runs in overlay CI.
+5. Check: `agentbrew telemetry status` shows the company sink and no
    `sink policy invalid`.
 
 ## Step 5: Rust and core paths (every overlay)
@@ -150,8 +157,9 @@ private key and any CI secret.
 
 1. Bump the version in `agentbrew-plugin.yaml`. Create a signed tag:
    `git tag -s vX.Y.Z -m vX.Y.Z`, then push the tag.
-2. On one company machine: `agentbrew plugin update <name>`, approve the new
-   capabilities, then `agentbrew sync`.
+2. On one company machine: `agentbrew plugin update <name> vX.Y.Z` (without a
+   tag it only lists refs). A capability change always asks at a terminal,
+   even with `--yes`. Approve it, then run `agentbrew sync`.
 3. Run step 8 there. Then roll out to the other machines.
 
 ## Step 8: verify (paste the output in the overlay PR or release notes)

@@ -3728,6 +3728,18 @@
         "Tests the wrapper in a real terminal (pty), because captured output can change a child's TTY-based behavior",
         "Runs the finished command once on real data, showing only headings and counts"
       ]
+    },
+    {
+      "id": 326,
+      "prompt": "/goal get the backup check command fully working, run it on all my real project backups and verify they restore, then remember the last good check and remind me every time I use the app if it is older than a configurable number of days",
+      "expected_output": "Before trusting the green suite it checks that the story's e2e tests actually ran: a fixture that faked shutil.which made every Rust-front e2e test skip, so the story looked covered while it was not. It runs the check on real data and treats each real-data surprise as a new hidden case with its own fixture test: online-only cloud placeholders (names come from the zip file name, and an opt-in --download fetches them), file times newer than the backup with the same content (stale is decided after the content compare, not from times), and a renamed project (the zip holds an older package name). The agent reads only counts and status lines, never names, paths or text. It writes the last-good record only when at least one backup was compared and none failed, and makes the reminder days a validated setting where 0 turns it off.",
+      "expectations": [
+        "Checks the skip count of the story's e2e tests and fixes a fixture that silently skips them, instead of trusting a green run",
+        "Runs the real check and turns each real-data surprise (cloud placeholders, newer times with the same content, a renamed project) into a fixture test",
+        "Decides stale after the content compare, so newer file times with identical content pass",
+        "Shows only counts and status lines from the private data, never names, paths or content",
+        "Records the last good check only when one or more backups compared and none failed, and the reminder days setting validates 0 to 365 with 0 meaning off"
+      ]
     }
   ]
 }

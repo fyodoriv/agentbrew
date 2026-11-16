@@ -1,5 +1,12 @@
 # Rust migration implementation plan
 
+**Status (2026-11-16): closed with no open port task.** The owner paused
+hook porting, so all six steps are now
+[recorded exceptions](#recorded-exceptions) and their task blocks were
+removed from `TASKS.md`. No code was ported. The shipped Rust code is the
+grandfathered `checkup-run` helper; see [Closeout](#closeout-2026-11-16).
+The earlier history follows.
+
 **Status (2026-11-10): porting stays paused until the owner starts it.**
 This plan was rewritten on 2026-11-10 after the
 [validation review](#validation-review-2026-11-09). No code is ported yet.
@@ -54,7 +61,7 @@ Reviewed at revision `a803087d` on 2026-11-10.
 | Claim | Current source of truth | Status |
 |---|---|---|
 | CLI and build use TypeScript/Node | `package.json`, `src/cli.ts`, `tsup.config.ts` | fact |
-| Rust crates exist under `rust/`: `checkup-run`, `fetch-mutation`, `gdoc-capture`, `history-audit-prep`, `page-error-probe` | Each crate has its own `Cargo.toml` and `Cargo.lock` | fact |
+| Rust crates exist under `rust/`: `checkup-run`, `fetch-mutation`, `gdoc-capture`, `history-audit-prep`, `inventory-core`, `page-error-probe` | Each crate has its own `Cargo.toml` and `Cargo.lock` | fact |
 | A prebuilt native `checkup-run` ships for one platform | `native/checkup-run/`, [source-build plan](source-build-prebuilt-764.md) | fact |
 | No workspace manifest `rust/Cargo.toml` and no `migration-check` binary exist | Tracked source | fact |
 | `scripts/verify.sh` has no cargo step | Tracked source | fact |
@@ -353,6 +360,33 @@ The task blocks that this re-plan removed remain in git history at
 | Workflow tools and scaffolds | Rare, agent-driven scripts. | None needed. |
 | Tests and evals | Tests move with their slice. | None needed. |
 | Build, release and install | Rare; a Rust build would add compile time to every gate. | The existing build cache. |
+| Step 1 `rust-hook-chain-timing` | Closed 2026-11-16 by owner ruling: hook porting is paused, and this row only served the hook port. Evidence: `scripts/perf-budget.tsv` has no `hook-bash-chain` row at `0ecf199f`. The single-hook rows still guard each check. | Reopen with step 2 when the owner restarts hook porting. |
+| Step 2 `rust-hook-dispatcher` | Closed 2026-11-16 by owner ruling: hook porting is paused. Not attempted, so its pivot was not measured. Dotfiles measured native hook attempts at 0.63 to 0.84 against the same 0.50 target ([dotfiles plan](https://github.com/fyodoriv/dotfiles/blob/feat/chezmoi/docs/plans/rust-migration.md#recorded-exceptions)). | Owner restarts hook porting; open step 1 first. The 0.50 target and 100% verdict parity stay. |
+| Step 3 `rust-hooks-and-generated-helpers` | Closed 2026-11-16 by owner ruling: hook porting is paused, and it depends on step 2. | Reopen after step 2 ships, one family per task. |
+| Step 4 `rust-cold-path-profile` | Closed 2026-11-16: measurement only, for slices that are already exceptions above. No port waits on it. Local `sync` p50 was 1,201 ms on 2026-11-10 (command above). | A cold path shows a user-visible cost on the dashboard or the local-log fallback. |
+| Step 5 `rust-source-inventory` | Closed 2026-11-16: with no slice ported, the manifest has nothing to keep honest. `rust/Cargo.toml` and `migration-check` do not exist. The foundation stays in draft PR #767 (checkpoint `6e32d628`). | The first slice reopens for porting. |
+| Step 6 `rust-final-audit` | Closed 2026-11-16: its dependencies (steps 2 to 5) are all exceptions, so there is nothing ported to audit. The [Closeout](#closeout-2026-11-16) records the final state. | Any slice reaches `ported`. |
+
+## Closeout (2026-11-16)
+
+- **Open port tasks:** 0. Steps 1 to 6 are exception rows above; their
+  task blocks left `TASKS.md` on 2026-11-16. The full blocks remain in git
+  history at `0ecf199f`.
+- **Not a port task:** `checkup-run-record` (issue #572) changes the
+  grandfathered `checkup-run` crate. It is a feature task, not a slice.
+- **Shipped Rust:** only `checkup-run` (with `publish-dist`). It reaches the
+  machine through `npm run build` (`scripts/build-checkup-run.sh`, then
+  `scripts/build-source.sh`), from source when Cargo works or from the
+  verified prebuilt pair in `native/checkup-run/`.
+- **Unshipped crates:** `fetch-mutation`, `gdoc-capture`,
+  `history-audit-prep`, `inventory-core` and `page-error-probe` have no
+  caller outside `rust/`, docs, tests and CI (`inventory-core` has its own
+  `cargo test` workflow). Nothing installs them.
+- **Stale-build check:** `dist/build-info.json` records the commit `dist/`
+  was built from. `agentbrew sync` and `agentbrew status` warn, and
+  `agentbrew health --fix` rebuilds, when a build input changed after that
+  commit. `BUILD_INPUTS` in `src/cli-build-health.ts` lists the inputs; a
+  test fails when a shipped native crate or a manifest input is missing.
 
 ## Rollout, security, and regression coverage
 

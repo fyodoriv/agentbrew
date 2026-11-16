@@ -5,8 +5,11 @@ import { fileURLToPath } from "node:url";
 import { logSkipped } from "./core/logger.js";
 import type { DriftItem } from "./drift.js";
 
-/** Build inputs: a commit that touches none of these leaves `dist/` current. */
-const BUILD_INPUTS = [
+/**
+ * Build inputs: a commit that touches none of these leaves `dist/` current.
+ * A test checks that every input of each shipped native binary is listed.
+ */
+export const BUILD_INPUTS = [
   "src",
   "templates",
   "scripts/check-pr-vision-trace.mjs",

@@ -108,6 +108,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
 - Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`.
 - opencode.json rejects unknown keys; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins the bootstrap shape. Refresh it from https://opencode.ai/config.json.
+- A `git pull` does not rebuild `dist/` or the native `checkup-run`. Run `npm run build` (or `agentbrew health --fix`). A new shipped native crate or build input goes into `BUILD_INPUTS` in `src/cli-build-health.ts`, or its test fails ([closeout](docs/plans/rust-migration.md#closeout-2026-11-16)).
 - Fast gate order: `git diff --check "$base"`, then the `@tasks-md/lint` check. Fix schema, whitespace and conflict errors first.
 
 ## Delivery

@@ -1,10 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { BUILD_INFO_FILE, builtCliRoot, checkCliBuildDrift } from "./cli-build-health.js";
+import { BUILD_INFO_FILE, BUILD_INPUTS, builtCliRoot, checkCliBuildDrift } from "./cli-build-health.js";
 
 let root: string;
 
@@ -98,5 +98,31 @@ describe("checkCliBuildDrift", () => {
     const drift = checkCliBuildDrift(root);
     expect(drift).toHaveLength(1);
     expect(drift[0]?.detail).toContain("unknown commit 01234567");
+  });
+});
+
+describe("BUILD_INPUTS", () => {
+  const repo = join(fileURLToPath(new URL(".", import.meta.url)), "..");
+  const covered = (path: string) => BUILD_INPUTS.some((input) => path === input || path.startsWith(`${input}/`));
+
+  it("lists every shipped native crate and its prebuilt directory", () => {
+    const shipped = readdirSync(join(repo, "native"));
+    expect(shipped.length).toBeGreaterThan(0);
+    for (const crate of shipped) {
+      expect(BUILD_INPUTS).toContain(`native/${crate}`);
+      expect(BUILD_INPUTS).toContain(`rust/${crate}`);
+    }
+  });
+
+  it("covers every source input named in each native manifest", () => {
+    for (const crate of readdirSync(join(repo, "native"))) {
+      for (const platform of readdirSync(join(repo, "native", crate))) {
+        const manifest = JSON.parse(readFileSync(join(repo, "native", crate, platform, "manifest.json"), "utf-8")) as {
+          inputs: { path: string }[];
+        };
+        const missing = manifest.inputs.map((input) => input.path).filter((path) => !covered(path));
+        expect(missing).toEqual([]);
+      }
+    }
   });
 });

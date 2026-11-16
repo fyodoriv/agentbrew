@@ -401,6 +401,13 @@ start it again after the edits; never report its result for the new code.
   Offer, as a suggestion, a measurement that every install can produce.
   One goal promised six dashboard tiles with real data; this machine had no
   install record and no install was 14 days old, so three tiles stayed empty.
+- A goal that runs a saved plan (a reminder, a task, a checklist) inherits
+  its premise: "switch back once the cap resets" assumes the rate is still
+  worth it. Before you run the steps, re-check the premise in the provider's
+  current terms or data, dated. When it no longer holds, close or rewrite
+  the plan with the evidence; do not run the stale steps. One reminder said
+  to move rent back to a card; its terms had cut rent to 1% three weeks
+  earlier, so every step after "verify the reset" was obsolete.
 - A measurement with a registered line stops when the verdict is decided.
   When the line is "0 false alarms" and one run is a false alarm, more runs
   cannot change the verdict. Stop it, report the partial counts as measured,

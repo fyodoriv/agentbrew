@@ -14,9 +14,7 @@ is the user manual. `CLAUDE.md` links here. Docs map: [`docs/README.md`](docs/RE
 
 Run every command from the repo root.
 
-**Tests run on hosted CI only.** Run lint, typecheck and build locally; push and read CI for tests.
-The opt-in hook `block-local-tests` blocks the test rows below in a checkout.
-Opt out with `export AGENTBREW_ALLOW_LOCAL_TESTS=1` before the agent starts ([CI](docs/ci.md#tests-run-on-hosted-ci-only)).
+Tests run on hosted CI only; locally run lint, typecheck, build ([opt-out](docs/ci.md#tests-run-on-hosted-ci-only)).
 
 | Task | Command |
 |---|---|
@@ -118,7 +116,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 
 1. Branch `type/short-description` from `main`, in a worktree.
 2. Make the change, with its tests and its docs.
-3. Iterate with `npm run lint:changed` and `npx tsc --noEmit`, then push: the hosted check runs the full `npm run verify`. Run tests here only when Actions is off (`AGENTBREW_ALLOW_LOCAL_TESTS=1`).
+3. Iterate with `npm run lint:changed` and `npx tsc --noEmit`; hosted CI runs `npm run verify`.
    Then run the leak check:
    `bash -c 'source ~/.config/oss-readiness/oss-readiness.env; git diff origin/main | grep -icE -- "$OSS_READINESS_INTERNAL_PATTERN"'` must print `0`.
 4. Commit with a conventional header and the pre-registered hypothesis in the body.

@@ -29,11 +29,11 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 
 Run lint, typecheck and build on your machine. Push the branch and let hosted CI run the tests.
 
-- The opt-in PreToolUse:Bash hook `block-local-tests` (`hooks/checks/block-local-tests.sh`) blocks a test run inside an agentbrew checkout: `vitest`, `npm test`, `npm run test*`, `npm run verify*`, `npm run check:oss`, `node --test`, `playwright test`, `scripts/verify*.sh`, `scripts/run-hook-fixtures.sh`. It also catches them behind `xargs`, `find -exec`, `npx`, `npm exec`, `pnpm dlx`, `bash -c` and `eval`.
+- The opt-in PreToolUse:Bash hook `block-local-tests` (`hooks/checks/block-local-tests.sh`) blocks a test run inside an agentbrew checkout: `vitest`, `npm test`, `npm run test*`, `npm run verify*`, `npm run check:oss`, `node --test`, `tsx --test`, `bun test`, `yarn vitest`, `playwright test`, `scripts/verify*.sh`, `scripts/run-hook-fixtures.sh`. It also catches them behind `xargs`, `find -exec`, `npx`, `npm exec`, `pnpm dlx`, `bash -c` and `eval`.
 - It allows lint, typecheck, build, `shellcheck`, one hook's own `.test.sh`, and every command outside an agentbrew checkout.
 - Turn it on: add `block-local-tests` under `enabled:` in your hooks overlay, then `agentbrew sync`.
 - Opt out: `export AGENTBREW_ALLOW_LOCAL_TESTS=1` before the agent starts. Setting it inside an agent command does nothing: the hook reads its own environment.
-- It is a guardrail, not a security boundary. A command name built at run time (`$(which vitest)`) passes.
+- It is a guardrail, not a security boundary. A command name built at run time (`$(which vitest)`) passes. `npm run verify:build-pipeline` (a build check) is allowed. The session folder always counts, so `cd ~ && npx vitest` started in a checkout is blocked too.
 
 ## Cache measurements
 

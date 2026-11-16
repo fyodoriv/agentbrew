@@ -39,7 +39,8 @@ for c in "ls src | xargs npx vitest run" "xargs -n1 -I{} npx vitest run {}" "ls 
          "find src -name '*.test.ts' -exec npx vitest run {} +" "find . -execdir vitest {} \\;" \
          "npx vitest" "npm exec vitest" "npm exec -- vitest run" "npm x vitest" \
          "npm exec -c 'vitest run'" "npx -c 'npm test'" "pnpm dlx vitest run" "pnpm exec vitest" \
-         "bash -c 'npm run test:all'" "sh -c \"npx vitest run\"" "eval npm test" "eval 'npm run verify'"; do
+         "bash -c 'npm run test:all'" "npx -p @vitest/x vitest" "yarn vitest" "pnpm vitest run" \
+         "bun test" "npx tsx --test x.ts" "sh -c \"npx vitest run\"" "eval npm test" "eval 'npm run verify'"; do
   check 2 "$c"
 done
 
@@ -52,7 +53,7 @@ for c in "npm run lint" "npm run lint:changed" "npx tsc --noEmit" "npm run typec
          "ls | xargs rg vitest" "find . -exec rg vitest {} +" "npm exec biome check src" \
          "pnpm dlx prettier ." "npx -c 'tsc --noEmit'" "git commit -m 'npm test'" \
          "echo 'npm test' | xargs echo" "vitest --version" "npx vitest list" \
-         "bash hooks/checks/block-local-tests.test.sh" "gh pr checks 1 --watch"; do
+         "bash hooks/checks/block-local-tests.test.sh" "gh pr checks 1 --watch" "npm run verify:build-pipeline" "yarn biome check src"; do
   check 0 "$c"
 done
 

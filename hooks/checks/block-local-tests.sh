@@ -100,6 +100,7 @@ done < <(printf '%s\n' "$stripped" \
 # True when an npm script name runs tests.
 _is_test_script() {
   case "$1" in
+    verify:build-pipeline) return 1 ;;
     test|test:*|t|verify|verify:*|check:oss) return 0 ;;
   esac
   return 1
@@ -143,7 +144,11 @@ _is_test_run() {
           _is_test_script "${w[0]}"; return ;;
       esac
       # `yarn test:all` and `pnpm verify` run the script without `run`.
-      [ "$tool" != npm ] && _is_test_script "${w[0]}" && return 0
+      # `yarn vitest` and `pnpm vitest` start the tool, like npx.
+      if [ "$tool" != npm ]; then
+        _is_test_script "${w[0]}" && return 0
+        _is_test_run "npx ${w[*]}"; return
+      fi
       return 1 ;;
     xargs|npx|bunx)
       # A launcher: skip its own flags (and their values), then judge the
@@ -151,7 +156,7 @@ _is_test_run() {
       w=("${w[@]:1}")
       while [ "${#w[@]}" -gt 0 ] && [[ "${w[0]}" == -* ]]; do
         case "$tool:${w[0]}" in
-          xargs:-[adEIJLnPRSs]|xargs:--arg-file|xargs:--delimiter|xargs:--max-args|xargs:--max-chars|xargs:--max-procs) w=("${w[@]:2}") ;;
+          npx:-p|npx:--package|bunx:-p|bunx:--package|xargs:-[adEIJLnPRSs]|xargs:--arg-file|xargs:--delimiter|xargs:--max-args|xargs:--max-chars|xargs:--max-procs) w=("${w[@]:2}") ;;
           # GNU `--replace` takes no separate value (`--replace=R` is one word).
           *) w=("${w[@]:1}") ;;
         esac
@@ -175,7 +180,10 @@ _is_test_run() {
     playwright)
       [ "${w[1]:-}" = test ] && return 0
       return 1 ;;
-    node)
+    bun)
+      [ "${w[1]:-}" = test ] && return 0
+      return 1 ;;
+    node|tsx|ts-node)
       for a in "${w[@]:1}"; do
         case "$a" in --test|--test=*) return 0 ;; esac
       done

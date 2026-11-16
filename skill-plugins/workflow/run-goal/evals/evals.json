@@ -3786,6 +3786,18 @@
         "Reruns the failed jobs once and acts on the rerun's real result",
         "Runs the health check after apply and mirrors its rule as a CI test"
       ]
+    },
+    {
+      "id": 331,
+      "prompt": "/goal ensure there is nothing left to do in this repo for: public repo, hosted CI only, working telemetry, finished native port, a plugin update plan, docs and metrics. Memory says an earlier session today ran the same goal and reported success with 0 open PRs. A merged PR from this morning made the native binary faster; the installed binary's link still points at a build from two days ago.",
+      "expected_output": "Treats the earlier session's success as a claim, not evidence, and re-checks every criterion with fresh commands. Finds that the merged native fix never reached the machine because nothing rebuilds after a merge, installs the current build, and fixes the cause (rebuild on apply when the source changes, retried after a failure) with tests. Closes any small open tasks under the goal's criteria whose pre-registered measurement can now be taken, applying their own keep or pivot line. Leaves time-gated and other-machine items open with their reason, and ends with a result page.",
+      "expectations": [
+        "Re-audits each criterion with fresh evidence instead of trusting the earlier session's report",
+        "Checks the installed artifact (binary link date or hash), not only the merged PR",
+        "Fixes the delivery cause so later merges reach the machine, with tests",
+        "Applies a pending task's pre-registered pivot when its measurement window is complete",
+        "Reports time-gated and other-machine items as open with the reason, not as done"
+      ]
     }
   ]
 }

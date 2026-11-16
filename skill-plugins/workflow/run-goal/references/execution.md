@@ -377,6 +377,15 @@ start it again after the edits; never report its result for the new code.
   its source repo, or add a second registry as a fallback), and say so in
   the body. One goal lost 90 minutes and five runs to a package-server DNS
   outage before two small workflow edits made both gates pass.
+- A job that reads `cancelled` with no log ("log not found") never ran.
+  Read its annotations (`gh api repos/<o>/<r>/check-runs/<job-id>/annotations`):
+  "not acquired by Runner" means the runner pool was full. That is not a
+  test result and not a pass. Rerun the failed jobs once and read the real
+  result: one goal's rerun then found a true perf-gate failure.
+- A new part that a local health check covers (a hook the doctor scans, a
+  file a lint rule reads) can pass CI and then fail that check after apply.
+  Run the health check after apply, and add a CI test with the same rule in
+  the fix, so the next new part fails on its pull request.
 - A changed gate still has to pass: the merge waits for the green run of
   the edited workflow. An outage never permits a merge on a red check.
 - Never push an empty commit to start a run again. Close and reopen the pull

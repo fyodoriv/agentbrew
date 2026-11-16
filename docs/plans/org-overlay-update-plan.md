@@ -21,7 +21,7 @@ overlay must follow. An overlay that does nothing mostly keeps working, but:
 | Area | What changed in the core | What an overlay misses if it does nothing |
 |---|---|---|
 | Public repo | The core is public on github.com. Its leak gates (pre-commit, pre-push, `gh`) fail closed. agentbrew 1.0 removed `catalog-overlay.yaml` and team overlays; org content ships as a signed company plugin. | A legacy `catalog-overlay.yaml` is ignored, so its skills and MCP servers silently disappear. Leaks into the public core get blocked late, or not at all without the pattern file. |
-| CI | Tests run on hosted CI, not on laptops. agentbrew is adding a PreToolUse hook that blocks local test runs (opt-out `AGENTBREW_ALLOW_LOCAL_TESTS=1`). Core CI pins actions to SHAs and caches only what was measured to help. | Agents on company laptops get blocked mid-task. Unpinned actions (`@v4`) and no early warning when a core change breaks the overlay. |
+| CI | Tests run on hosted CI, not on laptops. the opt-in PreToolUse hook `block-local-tests` blocks local test runs in an agentbrew checkout (opt-out `AGENTBREW_ALLOW_LOCAL_TESTS=1`). Core CI pins actions to SHAs and caches only what was measured to help. | Agents on company laptops get blocked mid-task. Unpinned actions (`@v4`) and no early warning when a core change breaks the overlay. |
 | Telemetry | One policy file, `~/.config/agentbrew/telemetry-sink.json`, sends events and error lines to a company log system. | Company machines send opt-in events to the public PostHog project, or send nothing. |
 | Rust | The core prebuilds and rebuilds its native helpers (`checkup-run`, `publish-dist`). Hooks stay in shell. | Nothing, unless the overlay calls a core script or binary by path. |
 | Docs and metrics | The docs map, metrics and scorecard are current. | Employee docs point at removed commands (`agentbrew team ...`). |
@@ -82,10 +82,11 @@ private key and any CI secret.
    `~/.config/agentbrew/hooks-overlay/manifest.yaml` (`disabled:` /
    `enabled:`). The overlay may document them; it must not overwrite that
    file.
-3. The local-test block hook does not exist yet; agentbrew is adding it.
-   When it lands, it is a core hook. Do not disable it
-   fleet-wide. A person who must reproduce a CI failure sets
-   `AGENTBREW_ALLOW_LOCAL_TESTS=1` for that one command.
+3. The core hook `block-local-tests` blocks local test runs inside an
+   agentbrew checkout. It is opt-in: add it under `enabled:` in the hooks
+   overlay. Do not disable it fleet-wide. A person who must reproduce a CI
+   failure exports `AGENTBREW_ALLOW_LOCAL_TESTS=1` before the agent starts;
+   setting it inside an agent command has no effect ([CI](../ci.md#tests-run-on-hosted-ci-only)).
 4. Check: `agentbrew sync --dry-run` lists the overlay hooks and shows no
    conflict with a core hook ID.
 

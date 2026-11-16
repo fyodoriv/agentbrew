@@ -3764,6 +3764,17 @@
         "Adds the rule to the skill that finds events and an eval case for it",
         "Prints the judge result after the fix (for example 0/2 -> 2/2)"
       ]
+    },
+    {
+      "id": 329,
+      "prompt": "/goal ship the recipe branch. The full gate fails on 11 unit-test timeouts in files the branch never touched; ship.sh says \"main is green\" from a cached result taken this morning. The machine load is 20.",
+      "expected_output": "Does not call the branch broken or the failures pre-existing from the cached main result. Runs the touched failing files alone on base and branch, then reruns the base's full gate fresh, back to back with the branch gate, under the same load, and compares the failure lists. Reports both lists, and reruns the branch gate when the load is lower instead of merging on red.",
+      "expectations": [
+        "Treats the cached base result as a different condition, not as evidence",
+        "Reruns the base's full gate back to back with the branch gate under the same load",
+        "Compares the two failure lists before calling anything pre-existing or load-caused",
+        "Does not merge while the gate is red"
+      ]
     }
   ]
 }

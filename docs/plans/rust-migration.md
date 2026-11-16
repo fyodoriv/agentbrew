@@ -380,7 +380,8 @@ The task blocks that this re-plan removed remain in git history at
   verified prebuilt pair in `native/checkup-run/`.
 - **Unshipped crates:** `fetch-mutation`, `gdoc-capture`,
   `history-audit-prep`, `inventory-core` and `page-error-probe` have no
-  caller outside `rust/`, docs and tests. Nothing installs them.
+  caller outside `rust/`, docs, tests and CI (`inventory-core` has its own
+  `cargo test` workflow). Nothing installs them.
 - **Stale-build check:** `dist/build-info.json` records the commit `dist/`
   was built from. `agentbrew sync` and `agentbrew status` warn, and
   `agentbrew health --fix` rebuilds, when a build input changed after that

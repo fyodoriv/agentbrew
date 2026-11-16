@@ -103,10 +103,14 @@ describe("checkCliBuildDrift", () => {
 
 describe("BUILD_INPUTS", () => {
   const repo = join(fileURLToPath(new URL(".", import.meta.url)), "..");
+  const dirs = (path: string) =>
+    readdirSync(path, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
   const covered = (path: string) => BUILD_INPUTS.some((input) => path === input || path.startsWith(`${input}/`));
 
   it("lists every shipped native crate and its prebuilt directory", () => {
-    const shipped = readdirSync(join(repo, "native"));
+    const shipped = dirs(join(repo, "native"));
     expect(shipped.length).toBeGreaterThan(0);
     for (const crate of shipped) {
       expect(BUILD_INPUTS).toContain(`native/${crate}`);
@@ -115,8 +119,8 @@ describe("BUILD_INPUTS", () => {
   });
 
   it("covers every source input named in each native manifest", () => {
-    for (const crate of readdirSync(join(repo, "native"))) {
-      for (const platform of readdirSync(join(repo, "native", crate))) {
+    for (const crate of dirs(join(repo, "native"))) {
+      for (const platform of dirs(join(repo, "native", crate))) {
         const manifest = JSON.parse(readFileSync(join(repo, "native", crate, platform, "manifest.json"), "utf-8")) as {
           inputs: { path: string }[];
         };

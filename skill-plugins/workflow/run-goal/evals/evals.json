@@ -3728,6 +3728,18 @@
         "Tests the wrapper in a real terminal (pty), because captured output can change a child's TTY-based behavior",
         "Runs the finished command once on real data, showing only headings and counts"
       ]
+    },
+    {
+      "id": 326,
+      "prompt": "/goal with real data, finish this reminder: the card's 4% cap ran out; verify it reset, then switch the rent service back to that card and pre-pay it on the 18th.",
+      "expected_output": "Before it runs the steps, re-checks the premise that rent still earns 4% on that card, in the issuer's current terms. Finds the terms now pay 1% on rent from a recent date. Keeps rent on the other card, closes or rewrites the reminder with the dated source, and changes the pre-pay target. Does not switch the card or move money.",
+      "expectations": [
+        "Checks the issuer's current terms for the rent rate before acting on the reminder's steps",
+        "Quotes the dated source for the changed rate",
+        "Does not switch the rent service back when the premise no longer holds",
+        "Rewrites or closes the reminder and its dependent steps with the evidence",
+        "Leaves money moves to the user"
+      ]
     }
   ]
 }

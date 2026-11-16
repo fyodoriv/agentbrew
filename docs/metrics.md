@@ -25,6 +25,18 @@ history is not a real zero.
 | `zero_to_configured_s`: cold one-step install to a clean `agentbrew status --ci` | US01 | ≤ 120 s | > 300 s: cut install steps or delegate them | `bash scripts/metrics.sh` (reads `run.seconds` from the install receipt that `scripts/install.sh run` saves; `(stub)` without a finished run) |
 | `gate_ms`: median wall time of the last 10 passing `npm run verify` runs, each cached step counted at its last uncached time (a run with a step never seen uncached is left out) | contributor | ≤ 300000 ms | > 600000 ms: split the slowest step or cache it | `bash scripts/metrics.sh` (reads `.metrics/gate-timings.jsonl`) |
 
+## Current state (2026-11-16)
+
+Checked values, not goals. Re-measure before you quote them.
+
+| Item | Value | How it was checked |
+|---|---|---|
+| Hosted CI time per job, median of the last 5 green `main` CI runs (2026-11-16) | `verify (ubuntu-24.04)`: 439 s (~7.3 min, range 418-540); `verify (macos-latest)`: 1117 s (~18.6 min, range 1000-1255) | `gh run list --branch main --workflow CI --status success --limit 5`, then the jobs API `completed_at - started_at` per job |
+| npm cache keep/drop check | Baseline with the npm cache, macOS `setup-node` + `Install` steps: median 38 s (n=5, the runs above). The cache was removed in #1029 ([table](ci.md)). **Success**: median ≤ 30 s over the next 5 green `main` runs. **Pivot**: median > 45 s, restore `cache: npm` | the same jobs API, summing the `actions/setup-node` and `Install` step times of the macOS job |
+| Telemetry last send | `agentbrew telemetry send` exited 0 and sent 166 events on 2026-11-16; `agentbrew telemetry status` shows last send 2026-11-16 | `agentbrew telemetry status` |
+| Rust migration | Closed out 2026-11-16 (#1031): 0 open port tasks, 6 steps recorded as exceptions with reopen triggers; only `checkup-run` ships. A test checks that every native crate input is in `BUILD_INPUTS` | [`plans/rust-migration.md`](plans/rust-migration.md) |
+| Tests | Run on hosted CI only; the opt-in `block-local-tests` hook blocks them in a checkout | [`ci.md`](ci.md#tests-run-on-hosted-ci-only) |
+
 ## Notes
 
 - The README `## Proof` section is generated. `npm run docs:proof` saves the

@@ -1,29 +1,29 @@
 {
-  "lastRefreshed": "2026-11-01",
-  "summary": "All 55 entries checked against current primary sources: 51 accessible GitHub repos, one unavailable repo, and three hosted/manual entries. Several tools now cover multiple surfaces; stale uniqueness, stagnation and language-mismatch claims were removed. Skills compatibility remains partial pending native-runtime checks for new targets; the weekly recurring task is not complete.",
+  "lastRefreshed": "2026-11-16",
+  "summary": "2026-11-16: star counts re-read from the GitHub API for all 52 GitHub-hosted entries; OldJii/mcp-dock is reachable again. Verdicts, release notes and the three hosted/manual entries are from the 2026-11-01 full review. Skills compatibility remains partial pending native-runtime checks for new targets; the weekly recurring task is not complete.",
   "freshness": [
     {
       "tool": "Caliber (@rely-ai/caliber)",
       "lastResearched": "2026-11-01",
-      "stars": "1,310",
+      "stars": "1,315",
       "status": "2026-11-01: [caliber-ai-org/ai-setup](https://github.com/caliber-ai-org/ai-setup): 129 forks; pushed 2026-09-24; [repository release v1.55.2](https://github.com/caliber-ai-org/ai-setup/releases/tag/v1.55.2) (2026-09-24). Project context now includes deterministic skill, rule, plugin and MCP mirroring and sync status. Project-level overlap increased; machine-wide parity was not proved. Verdict: Keep separate."
     },
     {
       "tool": "Bridle (neiii/bridle)",
       "lastResearched": "2026-11-01",
-      "stars": "441",
+      "stars": "444",
       "status": "2026-11-01: [neiii/bridle](https://github.com/neiii/bridle): 20 forks; pushed 2026-10-31; [repository release skills-locate-v0.4.1](https://github.com/neiii/bridle/releases/tag/skills-locate-v0.4.1) (2026-10-17). Active Rust profile manager translates skills, agents, commands and MCP across six named harnesses. Ownership and scheduled repair parity were not proved. Verdict: Keep separate."
     },
     {
       "tool": "skills CLI (Vercel)",
       "lastResearched": "2026-11-01",
-      "stars": "37,518",
+      "stars": "39,695",
       "status": "2026-11-01: [vercel-labs/skills](https://github.com/vercel-labs/skills): 3,242 forks; pushed 2026-10-30; [repository release v1.7.4](https://github.com/vercel-labs/skills/releases/tag/v1.7.4) (2026-10-19). Primary delegated skills installer. Docs list 79 targets. Skills scope still leaves MCP, rules and cross-surface ownership outside this CLI. Configuration PR937 closed unmerged; successor2348 remains open. Verdict: Contribute."
     },
     {
       "tool": "Skills Manager (desktop)",
       "lastResearched": "2026-11-01",
-      "stars": "7,130",
+      "stars": "7,547",
       "status": "2026-11-01: [xingkongliang/skills-manager](https://github.com/xingkongliang/skills-manager): 579 forks; pushed 2026-11-01; [repository release v1.43.2](https://github.com/xingkongliang/skills-manager/releases/tag/v1.43.2) (2026-10-31). Desktop skills library for 50+ agents, private GitHub backup and OS-keychain storage. Full configuration parity was not established. Verdict: Complementary."
     },
     {
@@ -35,13 +35,13 @@
     {
       "tool": "Compound Engineering",
       "lastResearched": "2026-11-01",
-      "stars": "25,805",
+      "stars": "26,126",
       "status": "2026-11-01: [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin): 2,050 forks; pushed 2026-10-31; [repository release compound-engineering-v3.34.0](https://github.com/EveryInc/compound-engineering-plugin/releases/tag/compound-engineering-v3.34.0) (2026-10-31). Curated engineering workflow plugin with multi-agent installation. Content source rather than machine-configuration owner. Verdict: Complementary."
     },
     {
       "tool": "gstack",
       "lastResearched": "2026-11-01",
-      "stars": "138,550",
+      "stars": "141,811",
       "status": "2026-11-01: [garrytan/gstack](https://github.com/garrytan/gstack): 20,543 forks; pushed 2026-11-01; [repository release v1.91.318.0](https://github.com/garrytan/gstack/releases/tag/v1.91.318.0) (2026-10-29). Sprint, QA and shipping pipeline. Recent releases include team update channels. Workflow content rather than configuration ownership. Verdict: Complementary."
     },
     {
@@ -53,13 +53,13 @@
     {
       "tool": "MCPM (mcpm.sh)",
       "lastResearched": "2026-11-01",
-      "stars": "1,019",
+      "stars": "1,025",
       "status": "2026-11-01: [pathintegral-institute/mcpm.sh](https://github.com/pathintegral-institute/mcpm.sh): 179 forks; pushed 2026-10-25; [repository release v2.15.0](https://github.com/pathintegral-institute/mcpm.sh/releases/tag/v2.15.0) (2026-05-22). Existing selective MCP delegation remains. Python profiles and client integration are documented; CLI delegation does not require a language rewrite. Verdict: Contribute."
     },
     {
       "tool": "Smithery CLI",
       "lastResearched": "2026-11-01",
-      "stars": "849",
+      "stars": "847",
       "status": "2026-11-01: [arcadeai-labs/smithery-cli](https://github.com/arcadeai-labs/smithery-cli): 98 forks; pushed 2026-05-31; [repository release v1.2.0](https://github.com/arcadeai-labs/smithery-cli/releases/tag/v1.2.0) (2026-05-31). MCP tools, skills and authentication CLI. Canonical repo now redirects to arcadeai-labs/smithery-cli. Not full multi-surface desired state. Verdict: Complementary."
     },
     {
@@ -71,13 +71,13 @@
     {
       "tool": "block/ai-rules",
       "lastResearched": "2026-11-01",
-      "stars": "142",
+      "stars": "146",
       "status": "2026-11-01: [block/ai-rules](https://github.com/block/ai-rules): 26 forks; pushed 2026-05-11; [repository release v1.7.0](https://github.com/block/ai-rules/releases/tag/v1.7.0) (2026-05-11). Existing selective rules delegation remains. Rust CLI with prebuilt installer, rule status and MCP output. The old Go/runtime-mismatch explanation was incorrect. Verdict: Contribute."
     },
     {
       "tool": "skillfile",
       "lastResearched": "2026-11-01",
-      "stars": "177",
+      "stars": "182",
       "status": "2026-11-01: [eljulians/skillfile](https://github.com/eljulians/skillfile): 37 forks; pushed 2026-10-05; [repository release v1.9.2](https://github.com/eljulians/skillfile/releases/tag/v1.9.2) (2026-08-31). Declarative Skillfile and locked skill installation. Full machine ownership and scheduled repair were not established. Verdict: Keep separate."
     },
     {
@@ -89,7 +89,7 @@
     {
       "tool": "OpenViking",
       "lastResearched": "2026-11-01",
-      "stars": "41,286",
+      "stars": "42,313",
       "status": "2026-11-01: [volcengine/OpenViking](https://github.com/volcengine/OpenViking): 3,351 forks; pushed 2026-11-01; [repository release v0.5.2.1](https://github.com/volcengine/OpenViking/releases/tag/v0.5.2.1) (2026-10-27). Runtime context database for knowledge, memory and skills. Popularity does not establish configuration-sync parity. Verdict: Complementary."
     },
     {
@@ -101,13 +101,13 @@
     {
       "tool": "MCP Dock",
       "lastResearched": "2026-11-01",
-      "stars": "N/A",
-      "status": "2026-11-01: [Repository check](https://github.com/OldJii/mcp-dock): unavailable; forks, last push and release cannot be verified. Repeated GitHub API reads could not retrieve OldJii/mcp-dock. Unavailable evidence does not prove the product is dead. Verdict: Unavailable."
+      "stars": "135",
+      "status": "2026-11-01: [Repository check](https://github.com/OldJii/mcp-dock): unavailable; forks, last push and release cannot be verified. Repeated GitHub API reads could not retrieve OldJii/mcp-dock. Unavailable evidence does not prove the product is dead. Verdict: Unavailable. 2026-11-16: the repository is reachable again (135 stars); verdict not re-reviewed."
     },
     {
       "tool": "agent-config-sync (skill)",
       "lastResearched": "2026-11-01",
-      "stars": "2",
+      "stars": "3",
       "status": "2026-11-01: [liamdmcgarrigle/agent-config-sync](https://github.com/liamdmcgarrigle/agent-config-sync): 0 forks; pushed 2026-02-28; no published GitHub release returned. Source-agent sync skill wrapping vsync. Independent state and recovery contracts were not established. Verdict: Keep separate."
     },
     {
@@ -119,19 +119,19 @@
     {
       "tool": "awesome-codex-subagents",
       "lastResearched": "2026-11-01",
-      "stars": "6,430",
+      "stars": "6,484",
       "status": "2026-11-01: [VoltAgent/awesome-codex-subagents](https://github.com/VoltAgent/awesome-codex-subagents): 699 forks; pushed 2026-10-30; no published GitHub release returned. Codex-native TOML subagent catalog. Agentbrew already supports Codex agentsDirFormat; the old unsupported-format claim is stale. Verdict: Complementary."
     },
     {
       "tool": "claude-peers-mcp",
       "lastResearched": "2026-11-01",
-      "stars": "2,207",
+      "stars": "2,214",
       "status": "2026-11-01: [louislva/claude-peers-mcp](https://github.com/louislva/claude-peers-mcp): 307 forks; pushed 2026-04-26; no published GitHub release returned. Runtime peer messaging MCP server. Execution messaging is outside configuration ownership. Verdict: Keep separate."
     },
     {
       "tool": "Warden",
       "lastResearched": "2026-11-01",
-      "stars": "421",
+      "stars": "425",
       "status": "2026-11-01: [getsentry/warden](https://github.com/getsentry/warden): 38 forks; pushed 2026-10-30; [repository release v0.51.1](https://github.com/getsentry/warden/releases/tag/v0.51.1) (2026-10-09). Review and diagnostic execution tool. It can consume configuration without replacing its owner. Verdict: Complementary."
     },
     {
@@ -143,31 +143,31 @@
     {
       "tool": "React Doctor",
       "lastResearched": "2026-11-01",
-      "stars": "15,072",
+      "stars": "15,150",
       "status": "2026-11-01: [millionco/react-doctor](https://github.com/millionco/react-doctor): 493 forks; pushed 2026-11-01; [repository release react-doctor@0.9.21](https://github.com/millionco/react-doctor/releases/tag/react-doctor%400.9.21) (2026-11-01). React code-health scanner and skill setup. Use the scanner independently; avoid two installers owning the same path. Verdict: Keep separate."
     },
     {
       "tool": "Chops",
       "lastResearched": "2026-11-01",
-      "stars": "2,105",
+      "stars": "2,115",
       "status": "2026-11-01: [Shpigford/chops](https://github.com/Shpigford/chops): 133 forks; pushed 2026-08-23; [repository release v1.16.0](https://github.com/Shpigford/chops/releases/tag/v1.16.0) (2026-08-23). macOS skills GUI. Native-path safety and multi-surface replacement were not tested. Verdict: Complementary."
     },
     {
       "tool": "OpenClaw / ClawHub",
       "lastResearched": "2026-11-01",
-      "stars": "53,478",
+      "stars": "53,826",
       "status": "2026-11-01: [VoltAgent/awesome-openclaw-skills](https://github.com/VoltAgent/awesome-openclaw-skills): 5,069 forks; pushed 2026-10-30; no published GitHub release returned. Curated OpenClaw skill catalog. Content source rather than universal configuration manager. Verdict: Complementary."
     },
     {
       "tool": "GitAgent",
       "lastResearched": "2026-11-01",
-      "stars": "2,983",
+      "stars": "3,169",
       "status": "2026-11-01: [open-gitagent/opengap](https://github.com/open-gitagent/opengap): 353 forks; pushed 2026-07-02; [repository release v0.5.0](https://github.com/open-gitagent/opengap/releases/tag/v0.5.0) (2026-07-02). Git-native agent-definition standard. Canonical repo redirects to open-gitagent/opengap. A format alone does not provide drift repair. Verdict: Complementary."
     },
     {
       "tool": "**anthropics/skills**",
       "lastResearched": "2026-11-01",
-      "stars": "186,173",
+      "stars": "196,024",
       "status": "2026-11-01: [anthropics/skills](https://github.com/anthropics/skills): 21,984 forks; pushed 2026-10-28; no published GitHub release returned. Primary skill-spec examples and content. Source catalog rather than machine-state manager. Verdict: Complementary."
     },
     {
@@ -179,7 +179,7 @@
     {
       "tool": "mcpick (spences10/mcpick)",
       "lastResearched": "2026-11-01",
-      "stars": "96",
+      "stars": "100",
       "status": "2026-11-01: [spences10/mcpick](https://github.com/spences10/mcpick): 15 forks; pushed 2026-10-30; [repository release v0.2.1](https://github.com/spences10/mcpick/releases/tag/v0.2.1) (2026-10-11). Now vendor-neutral multi-client MCP and portable-skills management, with adapters, profiles, provenance and rollback backups. The old Claude-only classification is obsolete. Verdict: Complementary."
     },
     {
@@ -197,19 +197,19 @@
     {
       "tool": "akm (itlackey/akm)",
       "lastResearched": "2026-11-01",
-      "stars": "68",
+      "stars": "70",
       "status": "2026-11-01: [itlackey/akm](https://github.com/itlackey/akm): 4 forks; pushed 2026-11-01; [repository release v0.10.261101-beta](https://github.com/itlackey/akm/releases/tag/v0.10.261101-beta) (2026-11-01). Knowledge, memory and skill layer. Machine-ownership parity was not demonstrated. Verdict: Keep separate."
     },
     {
       "tool": "syncode (donnes/syncode)",
       "lastResearched": "2026-11-01",
-      "stars": "43",
+      "stars": "45",
       "status": "2026-11-01: [donnes/syncode](https://github.com/donnes/syncode): 4 forks; pushed 2026-10-25; [repository release v2.0.0](https://github.com/donnes/syncode/releases/tag/v2.0.0) (2026-10-25). Version2 uses a Git source with explicit adopt, link, status and conflict backups across six named agents. The old whole-folder characterization is obsolete. Verdict: Keep separate."
     },
     {
       "tool": "faf-cli (Wolfe-Jam/faf-cli)",
       "lastResearched": "2026-11-01",
-      "stars": "43",
+      "stars": "44",
       "status": "2026-11-01: [Wolfe-Jam/faf-cli](https://github.com/Wolfe-Jam/faf-cli): 6 forks; pushed 2026-10-31; [repository release v8.7.0](https://github.com/Wolfe-Jam/faf-cli/releases/tag/v8.7.0) (2026-10-31). Stack-derived project context and .faf specification. Instruction authoring complements deployment. Verdict: Complementary."
     },
     {
@@ -323,13 +323,13 @@
     {
       "tool": "Agent Deck (asheshgoplani/agent-deck)",
       "lastResearched": "2026-11-01",
-      "stars": "1,190",
+      "stars": "1,267",
       "status": "2026-11-01: [asheshgoplani/agent-deck](https://github.com/asheshgoplani/agent-deck): 216 forks; pushed 2026-11-01; [repository release v1.16.35](https://github.com/asheshgoplani/agent-deck/releases/tag/v1.16.35) (2026-10-31). Session-management TUI. Execution and coordination differ from configuration state. Verdict: Complementary."
     },
     {
       "tool": "Tons of Skills / ccpi (jeremylongshore/claude-code-plugins-plus-skills)",
       "lastResearched": "2026-11-01",
-      "stars": "2,890",
+      "stars": "2,925",
       "status": "2026-11-01: [jeremylongshore/tons-of-skills-marketplace](https://github.com/jeremylongshore/tons-of-skills-marketplace): 426 forks; pushed 2026-11-01; [repository release @intentsolutionsio/intent-labs-pack@0.1.0](https://github.com/jeremylongshore/tons-of-skills-marketplace/releases/tag/%40intentsolutionsio/intent-labs-pack%400.1.0) (2026-07-23). Harness-free canonical skill platform; Claude Code is its verified-native harness. Other harnesses remain candidates until native verification. The old architecture claim is stale. Verdict: Complementary."
     }
   ],

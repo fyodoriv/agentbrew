@@ -3752,6 +3752,18 @@
         "Shows only counts and status lines from the private data, never names, paths or content",
         "Records the last good check only when one or more backups compared and none failed, and the reminder days setting validates 0 to 365 with 0 meaning off"
       ]
+    },
+    {
+      "id": 328,
+      "prompt": "/goal epic events in my planner must always have full info, e.g. the Santa parade card says 'time TBA'. Improve the event-finding process with skills and judges.",
+      "expected_output": "Takes a baseline with a deterministic judge over the real data (share of epic items with time, place and link), fixes the named bad item from its official source, wires the judge into the scheduled job with an agent fix pass, adds a full-facts rule plus an eval to the finding skill, and reports the judge before and after.",
+      "expectations": [
+        "Builds or runs a deterministic judge on the real data before changing anything and prints the baseline count",
+        "Fixes the named example (time, place, link) from a cited official or agreeing source",
+        "Puts the judge into the recurring job so a future gap is caught, not only this one",
+        "Adds the rule to the skill that finds events and an eval case for it",
+        "Prints the judge result after the fix (for example 0/2 -> 2/2)"
+      ]
     }
   ]
 }

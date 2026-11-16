@@ -232,7 +232,11 @@ served output after the deploy, not only the pipeline's output.
 
 Before you call a failure "pre-existing", run the same test files with the
 same flags on the unchanged base (a detached worktree) and compare the two
-failure lists. Only a failure on both lists is pre-existing. A wait loop on
+failure lists. Only a failure on both lists is pre-existing. A saved "base is
+green" result from a quieter hour is not the same conditions: when your gate
+fails only on timeouts in code you did not touch, rerun the base's full gate
+now, back to back with yours, and compare (a cached green main failed 9 of the
+same timeouts on a fresh run under the same load). A wait loop on
 a background job must run outside the agent sandbox: `pgrep` and `ps` fail
 inside it, so the loop exits at once and looks finished.
 

@@ -14,7 +14,7 @@ is the user manual. `CLAUDE.md` links here. Docs map: [`docs/README.md`](docs/RE
 
 Run every command from the repo root.
 
-Tests run on hosted CI only; locally run lint, typecheck, build ([opt-out](docs/ci.md#tests-run-on-hosted-ci-only)).
+Tests run on CI only ([opt-out](docs/ci.md#tests-run-on-hosted-ci-only)).
 
 | Task | Command |
 |---|---|
@@ -116,7 +116,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 
 1. Branch `type/short-description` from `main`, in a worktree.
 2. Make the change, with its tests and its docs.
-3. Iterate with `npm run lint:changed` and `npx tsc --noEmit`; hosted CI runs `npm run verify`.
+3. Iterate with `npm run lint:changed`; CI runs `npm run verify`.
    Then run the leak check:
    `bash -c 'source ~/.config/oss-readiness/oss-readiness.env; git diff origin/main | grep -icE -- "$OSS_READINESS_INTERNAL_PATTERN"'` must print `0`.
 4. Commit with a conventional header and the pre-registered hypothesis in the body.

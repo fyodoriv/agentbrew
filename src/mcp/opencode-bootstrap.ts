@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { arch, cpus, platform, totalmem } from "node:os";
 import chalk from "chalk";
@@ -308,19 +308,6 @@ function loadLaunchdAgent(plistPath: string): boolean {
     } catch {
       // Not loaded — fine
     }
-    // Stop any existing ollama serve (brew services or manual)
-    try {
-      execFileSync("brew", ["services", "stop", "ollama"], { stdio: "pipe", timeout: 10_000 });
-    } catch {
-      // Not running via brew — fine
-    }
-    try {
-      execFileSync("pkill", ["-f", "ollama serve"], { stdio: "pipe", timeout: 3_000 });
-    } catch {
-      // Not running — fine
-    }
-    // Brief pause for port release
-    execFileSync("sleep", ["1"], { stdio: "pipe" });
     // Load our optimized agent
     runLaunchctl(["load", plistPath], { stdio: "pipe", timeout: 5_000 });
     return true;
@@ -353,6 +340,36 @@ function isOllamaRunning(): boolean {
   } catch {
     return false;
   }
+}
+
+/** Probe a local process table without printing its arguments. */
+function readProcessTable(command: string, args: string[]): string | undefined {
+  const result = spawnSync(command, args, { encoding: "utf-8", timeout: 3_000, maxBuffer: 65_536 });
+  if (result.error) return undefined;
+  if (result.status === 0) return result.stdout;
+  return result.status === 1 && !result.stderr.trim() && !result.stdout.trim() ? "" : undefined;
+}
+
+export function localOllamaProcesses(listeners: string, commands: string): Set<string> {
+  const pids = new Set([...listeners.matchAll(/^p(\d+)$/gm)].map((match) => match[1]));
+  for (const line of commands.split("\n")) {
+    const server = /^\s*(\d+)\s+(?:\/[^\n]*\/)?ollama[ \t]+serve(?:\s|$)/.exec(line);
+    if (server) pids.add(server[1]);
+  }
+  return pids;
+}
+
+function probeLocalOllama(): Set<string> | undefined {
+  const listeners = readProcessTable("/usr/sbin/lsof", ["-nP", "-iTCP:11434", "-sTCP:LISTEN", "-Fp"]);
+  const ollama = readProcessTable("/usr/bin/pgrep", ["-x", "ollama"]);
+  if (listeners === undefined || ollama === undefined) return undefined;
+  const candidates = ollama
+    .trim()
+    .split(/\s+/)
+    .filter((pid) => /^\d+$/.test(pid));
+  const commands =
+    candidates.length === 0 ? "" : readProcessTable("/bin/ps", ["-ww", "-p", candidates.join(","), "-o", "pid=,args="]);
+  return commands === undefined ? undefined : localOllamaProcesses(listeners, commands);
 }
 
 /** Check if a model is already pulled in Ollama. */
@@ -605,6 +622,27 @@ export async function bootstrapOpencode(options?: { model?: string; dryRun?: boo
 
   console.log(chalk.bold("\n── Setup ───────────────────────────────────\n"));
 
+  let reuseOllama = false;
+  if (profile.os === "darwin") {
+    const processes = probeLocalOllama();
+    if (!processes || processes.size > 1) {
+      const reason = processes
+        ? `found ${processes.size} competing processes`
+        : "process ownership could not be checked";
+      console.error(`  Ollama readiness failed at ${OLLAMA_URL}: ${reason}. Existing services were left running.`);
+      process.exitCode = 1;
+      return;
+    }
+    reuseOllama = isOllamaRunning();
+    if (processes.size === 1 && !reuseOllama) {
+      console.error(
+        `  Ollama readiness failed at ${OLLAMA_URL}: a local process is present but the endpoint is unavailable.`,
+      );
+      process.exitCode = 1;
+      return;
+    }
+  }
+
   // ── 2. Install Ollama ───────────────────────────────────────────────────
   if (isInstalled("ollama")) {
     console.log(chalk.green("  ✓ Ollama installed"));
@@ -616,7 +654,9 @@ export async function bootstrapOpencode(options?: { model?: string; dryRun?: boo
   }
 
   // ── 3. Configure + start Ollama with optimal settings ───────────────────
-  if (profile.isAppleSilicon && profile.os === "darwin") {
+  if (reuseOllama) {
+    console.log(chalk.green(`  ✓ Reusing the existing Ollama endpoint at ${OLLAMA_URL}`));
+  } else if (profile.isAppleSilicon && profile.os === "darwin") {
     const ollamaEnv = computeOllamaEnv(profile);
 
     if (dryRun) {
@@ -645,8 +685,9 @@ export async function bootstrapOpencode(options?: { model?: string; dryRun?: boo
           console.log(chalk.yellow("  ⚠ Launchd loaded but Ollama not responding — check ~/Library/Logs/ollama.log"));
         }
       } else {
-        console.log(chalk.yellow("  ⚠ Could not load launchd agent — falling back to manual start"));
-        if (!isOllamaRunning()) startOllamaFallback(ollamaEnv);
+        console.log(chalk.yellow("  ⚠ Could not load the Ollama launchd agent. Check ~/Library/Logs/ollama.log."));
+        process.exitCode = 1;
+        return;
       }
 
       // Print tuning summary

@@ -17,23 +17,13 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-// scripts/perf-gate.mjs: a tracked command may not get slower than the
-// merge-base. Each test builds a small git repo with one tracked script that
-// sleeps, so the times are known: 100 ms at the base, 120 ms (20% more) in a
-// slowed head. A timing test retries, because the wall clock of a loaded host
-// can hide a 20 ms step.
-
+// Each test builds a small real Git repo. Its synthetic commands specify
+// durations so runner load cannot change the expected verdict.
 const REPO_ROOT = resolve(import.meta.dirname, "..", "..");
 const GATE = join(REPO_ROOT, "scripts", "perf-gate.mjs");
 const BUDGET = join(REPO_ROOT, "scripts", "perf-budget.tsv");
 const PATHS = ["tool.sh", "new.sh", "build.sh", "scripts/perf-budget.tsv"].map((path) => `PERF_GATE_PATH=${path}`);
-const TIMING = { retry: 3, timeout: 60_000 };
-// The hosted macOS runner is too noisy for these wall-clock fixtures: other
-// cases failed in each of 3 runs, with the retry too. They run on the hosted
-// Linux runner and on a local Mac. Task: perf-gate-tests-hosted-noise.
-const HOSTED_MAC = process.env.GITHUB_ACTIONS === "true" && process.platform === "darwin";
-// A head tool for the tests whose subject is not the verdict: quicker than the
-// base (0.10), so no load on the host can make it look slower.
+const TIMING = { timeout: 60_000 };
 const QUICKER = "#!/bin/sh\nsleep 0.05\n# touch\n";
 // A 50% step for the tests that need a slowdown but not the exact 20% one.
 const SLOW = "0.15";
@@ -41,6 +31,34 @@ const SLOW = "0.15";
 let dir = "";
 let fix = "";
 let env: NodeJS.ProcessEnv = {};
+
+// The command and its exit status stay real. Only the timing child reads
+// the duration produced by the synthetic sleep command.
+const clockSource = `
+const command = require("node:child_process");
+const { existsSync, readFileSync, unlinkSync } = require("node:fs");
+const { syncBuiltinESMExports } = require("node:module");
+const { join } = require("node:path");
+
+if (process.argv[2] === "--time") {
+  let elapsed = 0n;
+  const spawn = command.spawnSync;
+  command.spawnSync = (file, args, options) => {
+    const result = spawn(file, args, options);
+    const stdio = options?.stdio;
+    if (!Array.isArray(stdio) || typeof stdio[0] !== "number" ||
+        stdio[1] !== "ignore" || stdio[2] !== "ignore") return result;
+    const sample = join(options.env.HOME, "perf-gate-test-duration");
+    const value = existsSync(sample) ? readFileSync(sample, "utf8").trim() : "0.001";
+    if (existsSync(sample)) unlinkSync(sample);
+    if (!/^\\d+\\.\\d+$/.test(value)) throw new Error("bad fixture duration");
+    elapsed += BigInt(Math.round(Number(value) * 1e9));
+    return result;
+  };
+  syncBuiltinESMExports();
+  process.hrtime.bigint = () => elapsed;
+}
+`;
 
 function git(...args: string[]): string {
   return execFileSync("git", ["-C", fix, "-c", "user.name=t", "-c", "user.email=t@example.com", ...args], {
@@ -50,7 +68,7 @@ function git(...args: string[]): string {
   }).trim();
 }
 
-/** Write a tracked script that sleeps that long. */
+/** Write a tracked script that supplies a synthetic duration. */
 function tool(seconds: string, file = "tool.sh"): void {
   writeFileSync(join(fix, file), `#!/bin/sh\nsleep ${seconds}\n`);
 }
@@ -79,8 +97,17 @@ const cacheDir = () => join(dir, "cache", "agentbrew", "perf-gate.noindex");
 beforeEach(() => {
   dir = realpathSync(mkdtempSync(join(tmpdir(), "agentbrew-perf-gate-")));
   fix = join(dir, "repo");
+  const fixtureBin = join(dir, "timed-bin");
+  const clock = join(dir, "clock.cjs");
+  mkdirSync(fixtureBin);
+  writeFileSync(join(fixtureBin, "sleep"), '#!/bin/sh\nprintf "%s\\n" "$1" > "$HOME/perf-gate-test-duration"\n', {
+    mode: 0o700,
+  });
+  writeFileSync(clock, clockSource);
   env = {
     ...process.env,
+    PATH: `${fixtureBin}:${process.env.PATH ?? "/usr/bin:/bin"}`,
+    NODE_OPTIONS: `--require ${JSON.stringify(clock)}`,
     GIT_CONFIG_GLOBAL: "/dev/null",
     GIT_CONFIG_NOSYSTEM: "1",
     XDG_CACHE_HOME: join(dir, "cache"),
@@ -102,7 +129,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe.skipIf(HOSTED_MAC)("perf gate verdicts", () => {
+describe("perf gate verdicts", () => {
   it("fails on a seeded 20% slowdown and names the command and the fixes", TIMING, () => {
     tool("0.12");
     const result = gate([], { PERF_GATE_RUNS: "9" });
@@ -269,8 +296,8 @@ describe.skipIf(HOSTED_MAC)("perf gate verdicts", () => {
     expect(report.base).toHaveLength(40);
     expect(report.commands).toHaveLength(1);
     expect(report.commands[0]).toMatchObject({ name: "tool", verdict: "slower", ceiling_ms: 2000 });
-    expect(report.commands[0].base_min).toBeGreaterThanOrEqual(100);
-    expect(report.commands[0].head_min).toBeGreaterThanOrEqual(150);
+    expect(report.commands[0].base_min).toBe(100);
+    expect(report.commands[0].head_min).toBe(150);
     expect(report.commands[0].ratio).toBeGreaterThan(1.1);
   });
 });
@@ -321,7 +348,7 @@ describe("perf gate slower rule on noise-free samples", () => {
   });
 });
 
-describe.skipIf(HOSTED_MAC)("perf gate scope", () => {
+describe("perf gate scope", () => {
   it("skips a diff with no runtime change, and a test file is not one", () => {
     budget("PERF_GATE_PATH=lib/", "tool\t2000\tsh tool.sh");
     commit("scope");
@@ -387,7 +414,7 @@ describe.skipIf(HOSTED_MAC)("perf gate scope", () => {
   });
 });
 
-describe.skipIf(HOSTED_MAC)("perf gate runs", () => {
+describe("perf gate runs", () => {
   it("gives the commands a scratch HOME and not the caller's environment", () => {
     const check = `[ -z "\${SECRET_THING:-}" ] && [ "$DO_NOT_TRACK" = 1 ] && [ "$AGENTBREW_EVENTS" = 0 ] && [ "$AGENTBREW_TELEMETRY" = 0 ] && [ "$AGENTBREW_EVENTS_FILE" = "$HOME/events.jsonl" ] && [ "$HOME" != "${process.env.HOME}" ]`;
     writeFileSync(join(fix, "tool.sh"), `#!/bin/sh\n${check}\n`);
@@ -402,7 +429,7 @@ describe.skipIf(HOSTED_MAC)("perf gate runs", () => {
     writeFileSync(join(bin, "heavy-run"), `#!/bin/sh\necho "$1" >> "${calls}"\nshift\nexec "$@"\n`);
     chmodSync(join(bin, "heavy-run"), 0o755);
     writeFileSync(join(fix, "tool.sh"), QUICKER);
-    const withHeavyRun = { PATH: `${bin}:${process.env.PATH}`, PERF_GATE_HEAVY_RUN: "1" };
+    const withHeavyRun = { PATH: `${bin}:${env.PATH}`, PERF_GATE_HEAVY_RUN: "1" };
 
     const queued = gate([], withHeavyRun);
     expect(queued.status, queued.all).toBe(0);
@@ -462,7 +489,7 @@ describe.skipIf(HOSTED_MAC)("perf gate runs", () => {
   });
 });
 
-describe.skipIf(HOSTED_MAC)("perf gate builds", () => {
+describe("perf gate builds", () => {
   const BUILD = [
     "PERF_GATE_BUILD=sh build.sh",
     "PERF_GATE_BUILD_OUTPUT=out/tool.sh",
@@ -527,7 +554,7 @@ describe.skipIf(HOSTED_MAC)("perf gate builds", () => {
   });
 });
 
-describe.skipIf(HOSTED_MAC)("perf gate has no silent pass", () => {
+describe("perf gate has no silent pass", () => {
   it("exits 2 when the command fails at the base", () => {
     writeFileSync(join(fix, "tool.sh"), "#!/bin/sh\nexit 4\n");
     commit("broken base");

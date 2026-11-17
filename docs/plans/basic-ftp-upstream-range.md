@@ -11,3 +11,7 @@ exactly. Proxy-agent 8.0.3 permits the supported chain:
 pac-proxy-agent 9.1.1, get-uri 8.0.2, and basic-ftp 6.2.4 or newer 6.x.
 The existing Promptfoo parent range already permits proxy-agent 8.0.3.
 Keep every lock entry outside this chain unchanged.
+
+The resolver selected basic-ftp 6.2.6. The published PAC chain also requires
+pac-resolver 9.0.2, degenerator 7.0.2 and QuickJS-WASI 3.x. The lock changes
+only this dependency chain. The candidate audit reported no basic-ftp finding.

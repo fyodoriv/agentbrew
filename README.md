@@ -934,6 +934,8 @@ What does not carry over on its own:
 
  An old `team:` block in `state.yaml` is ignored.
 
+A company overlay that already moved to a plugin follows the [org overlay update plan](docs/plans/org-overlay-update-plan.md) to adopt the 2026-11 core (task `org-overlay-adopt-core-2026-11`).
+
 `agentbrew sync` soft-updates **agentbrew-managed skill sources** (catalog and global Agentfile `origin: global`) when their cache is older than 30 minutes, then re-copies any installed skills from the refreshed cache before deploying symlinks. User-, project-, and agentfile-added sources refresh only on explicit `agentbrew sync --pull`. Within the TTL window, plain `sync` stays quiet (no network).
 
 Offline or auth failures on plain `sync` print a one-line warning and fall back to the cached copy. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**.
@@ -1007,7 +1009,7 @@ Skills-only agents are experimental. Sync only writes to their `skillsDir`, and 
 ## How agentbrew compares
 
 <!-- competition-readme-table:start -->
-<!-- Last refreshed: 2026-11-01. Source: docs/competition-snapshot.json; run `npm run docs:competition` after updating it. -->
+<!-- Last refreshed: 2026-11-16. Source: docs/competition-snapshot.json; run `npm run docs:competition` after updating it. -->
 
 | | AgentBrew | [skills CLI](https://github.com/vercel-labs/skills) | [MCPM](https://github.com/pathintegral-institute/mcpm.sh) | [ai-rules-sync](https://github.com/lbb00/ai-rules-sync) | [block/ai-rules](https://github.com/block/ai-rules) | [skillfile](https://github.com/eljulians/skillfile) |
 |---|---|---|---|---|---|---|

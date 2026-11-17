@@ -699,12 +699,17 @@ describe("exact build guard comparison", () => {
     expect(result.stdout).not.toContain("dependencies match package-lock.json");
   });
 
-  it.each(["failed", "missing", "malformed"] as const)("refuses %s npm evidence", (variant) => {
+  it.each(["failed", "missing", "malformed", "partial"] as const)("refuses %s npm evidence", (variant) => {
     createObservationFixture("P1");
     const bin = join(testDir, "fixture-bin");
     mkdirSync(bin);
     const npm = join(bin, "npm");
-    const response = { failed: "exit 5\n", missing: "exit 0\n", malformed: "echo not-json\n" }[variant];
+    const response = {
+      failed: "exit 5\n",
+      missing: "exit 0\n",
+      malformed: "echo not-json\n",
+      partial: `printf '%s\\n' '[{"name":"fixture-root","version":"1.0.0","location":""}]'\n`,
+    }[variant];
     writeFileSync(npm, `#!/bin/bash\n${response}`, { mode: 0o700 });
     const result = runGuard("--deps-only", { PATH: `${bin}:${process.env.PATH}` });
     expect(result.status).toBe(1);

@@ -19,3 +19,5 @@ gate reported three hits across 23 steps. The two lints accounted for 66 ms
 of cold command execution. That is not a measurement of net gate speedup.
 The stale-install evidence from PR #765 still applies to steps that read
 installed dependencies, so those steps keep the existing cache policy.
+
+This docs-only change measures warm reuse of the raw-input cache.

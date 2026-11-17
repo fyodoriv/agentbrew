@@ -590,6 +590,17 @@ describe("refreshInstalledSkills", () => {
     expect(mockCopySkillFromCache).not.toHaveBeenCalled();
   });
 
+  it("keeps a user conversion owner when plain sync refreshes only managed sources", () => {
+    const name = "insecure-defaults";
+    const managed = makeSource({ url: "other/skills", skillsInstalled: [name] });
+    const converted = makeSource({ url: "trailofbits/skills", skillsInstalled: [name] });
+    mockGetSourceCachePath.mockReturnValue("/cache/other-skills");
+    mockCopySkillFromCache.mockReturnValue("/installed/skill");
+    const results = refreshInstalledSkills([managed], undefined, [], [managed, converted]);
+    expect(results).toEqual([{ source: managed.url, skill: name, status: "skipped" }]);
+    expect(mockCopySkillFromCache).not.toHaveBeenCalled();
+  });
+
   it("skips local sources", () => {
     const source = makeSource({ type: "local" });
     mockGetSourceCachePath.mockReturnValue("/cache/local");

@@ -213,6 +213,17 @@ describe("verify-changed.sh", () => {
     expect(result.stdout).toContain("the hosted check must pass npm run verify before merge");
   });
 
+  it("runs the docs and privacy guards for a task-queue-only change", () => {
+    const root = repoWithChange("TASKS.md");
+    const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" },
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("  npx vitest run src/docs src/oss\n");
+  });
+
   it("calls a skill, eval, docs, and task-queue diff merge-ready", () => {
     const root = repoWithChange("skill-plugins/workflow/demo/SKILL.md");
     for (const file of ["skill-plugins/workflow/demo/evals/evals.json", "docs/guide.md", "TASKS.md", "README.md"]) {

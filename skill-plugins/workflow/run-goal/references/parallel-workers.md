@@ -8,6 +8,8 @@ Contents: Starting workers · Steering running agents · Files the main session 
 
 ## Starting workers
 
+- **Another repo:** `isolation: "worktree"` makes the worktree from the session's own repo, not the repo the prompt names. In one run, 3 workers landed in dotfiles and could not touch agentbrew. For any repo other than the session's, create each worktree yourself first (`git -C <repo> worktree add -b <branch> <path> origin/<base>`, outside the sandbox). Then start workers with no isolation, each told to work only in its path.
+
 - Pin the base. The shared brief names the exact base commit
   (`git rev-parse HEAD` at spawn) and says "do not move the base". In one
   run, three worktree workers started from different bases (one from `main`,

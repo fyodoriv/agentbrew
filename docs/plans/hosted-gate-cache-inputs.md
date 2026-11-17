@@ -19,3 +19,19 @@ gate reported three hits across 23 steps. The two lints accounted for 66 ms
 of cold command execution. That is not a measurement of net gate speedup.
 The stale-install evidence from PR #765 still applies to steps that read
 installed dependencies, so those steps keep the existing cache policy.
+
+## Literal-input follow-up
+
+Three fixtures showed unsafe reuse after Git normalized changed line endings,
+after an ignored task queue changed, and after a lint script became a symlink
+to a different module type. All three failed on the old key and passed with
+literal-byte hashing and regular-file admission. The revised key used its own
+cache version.
+
+- [Cold runner](https://github.com/fyodoriv/agentbrew/actions/runs/44197739765/job/134443506740)
+  ran the two lints in 23 ms and 44 ms on image `20261111.127.1`.
+- [Changed image](https://github.com/fyodoriv/agentbrew/actions/runs/44199171238/job/134448470512)
+  used `20261111.370.1` and missed the earlier record.
+- [Same-image warm run](https://github.com/fyodoriv/agentbrew/actions/runs/44200347191/job/134452521983)
+  returned to `20261111.127.1`, restored its record, reused both lints,
+  and finished green with three cached steps.

@@ -3839,6 +3839,11 @@
       "id": 335,
       "prompt": "/goal let's find what to do this week, update it in ui. Review week and ideas functionality to ensure that there is nothing lame there",
       "expected_output": "Re-runs the plan, then reads the real plan output and the live view (not only seeds) and lists each concrete defect with its cause. Fixes the code defects with failing-first tests, fixes wrong facts at their source (a private plugin seed that wins over the store), checks a changed fact on the official page, re-plans and re-reads the view to show each defect gone, and files the rest as measured tasks.",
+      "expectations": [
+        "Reads the real plan output and the live view, not only seed or fixture data, before calling anything fine",
+        "Fixes code defects with a failing-first test and wrong facts at their source, checking a changed fact on the official page",
+        "Re-plans and re-reads the view to show each defect gone, and files what is left as measured tasks"
+      ],
       "files": []
     },
     {

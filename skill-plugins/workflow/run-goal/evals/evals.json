@@ -3883,6 +3883,16 @@
         "Reads the target repo's AGENTS.md test rules before running any test (no local Bats in dotfiles)",
         "Ships a regression check (doctor + test) and leaves the in-app confirmation as a named user step"
       ]
+    },
+    {
+      "id": 339,
+      "prompt": "/goal add a new CLI command that watches for the app's save and verifies the result, with tests and docs, and ship it",
+      "expected_output": "Intake finds the repo's slow recorded step (a golden or snapshot re-record that any source edit makes stale) and its fast registry tests. After the feature tests pass, the agent runs the fast checks that every new command or test file must satisfy (command-to-story or registry maps, per-file test targets, doc word lints) before it starts the long re-record, so the gate does not force a second re-record.",
+      "expectations": [
+        "Names the long recorded step and what makes it stale before starting it",
+        "Runs the repo's fast registry and doc-lint tests for a new command before the long re-record",
+        "If the gate still finds a miss after the re-record, fixes it, re-records once, and records the trap in the repo's agent guide"
+      ]
     }
   ]
 }

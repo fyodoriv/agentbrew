@@ -423,8 +423,11 @@ describe("update", () => {
   it("reports a recorded plugin conversion repeatedly without replacing existing copies", async () => {
     const name = "insecure-defaults";
     const source = makeSource({ url: "trailofbits/skills", skillsInstalled: [name] });
-    mockLoadState.mockReturnValue({ ...makeState(), sources: [source] });
-    mockGetSourceCachePath.mockReturnValue("/cache/no-skills");
+    const fallback = makeSource({ url: "other/skills", skillsInstalled: [name] });
+    mockLoadState.mockReturnValue({ ...makeState(), sources: [fallback, source] });
+    mockGetSourceCachePath.mockImplementation((entry) =>
+      entry.url === source.url ? "/cache/no-skills" : "/cache/other-skills",
+    );
     mockCopySkillFromCache.mockReturnValue(undefined);
     mockExecFileSync.mockReturnValue("update available" as never);
     const staging = join(homedir(), ".config", "agentbrew", "installed-skills", name);

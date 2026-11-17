@@ -9,3 +9,13 @@
 The first Ubuntu job used image `ubuntu24-20261111.127.1-X64`. Both added lint
 steps ran and a cache record was saved for that image. The next dispatch changes
 only this plan and measures reuse from that record.
+
+## Hosted result
+
+The [cold Ubuntu job](https://github.com/fyodoriv/agentbrew/actions/runs/44190741623/job/134419153228)
+ran both lints in 25 ms and 41 ms. The [warm Ubuntu job](https://github.com/fyodoriv/agentbrew/actions/runs/44192772811/job/134434267603)
+restored the same image record and served both results from the cache. The
+gate reported three hits across 23 steps. The two lints accounted for 66 ms
+of cold command execution. That is not a measurement of net gate speedup.
+The stale-install evidence from PR #765 still applies to steps that read
+installed dependencies, so those steps keep the existing cache policy.

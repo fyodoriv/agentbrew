@@ -51,7 +51,7 @@ function splitIntoTaskBlocks(markdown: string): string[] {
 
 /** Pull the `**ID**: <id>` from a task block for human-readable error messages. */
 function extractTaskId(block: string): string | null {
-  const match = block.match(/^[ \t]+(?:-[ \t]+)?\*\*ID\*\*:[ \t]*([a-z][a-z0-9-]*[a-z0-9])[ \t\r]*$/mu);
+  const match = block.match(/^ {2}(?:-[ \t]+)?\*\*ID\*\*:[ \t]*([a-z][a-z0-9-]*[a-z0-9])[ \t\r]*$/mu);
   return match ? match[1] : null;
 }
 
@@ -88,6 +88,11 @@ describe("TASKS.md required fields", () => {
   it("requires Success at the task metadata level", () => {
     const task = "- [ ] Task\n  - **ID**: sample-task\n  - **Details**: Notes\n    - **Success**: An example.";
     expect(missingRequiredFields(task)).toEqual(["Success"]);
+  });
+
+  it("requires ID at the task metadata level", () => {
+    const task = "- [ ] Task\n  - **Success**: All checks pass.\n  - **Details**: Notes\n    - **ID**: nested-example";
+    expect(missingRequiredFields(task)).toEqual(["ID"]);
   });
 
   it("requires both fields on every queued task", () => {

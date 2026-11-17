@@ -3840,6 +3840,18 @@
       "prompt": "/goal let's find what to do this week, update it in ui. Review week and ideas functionality to ensure that there is nothing lame there",
       "expected_output": "Re-runs the plan, then reads the real plan output and the live view (not only seeds) and lists each concrete defect with its cause. Fixes the code defects with failing-first tests, fixes wrong facts at their source (a private plugin seed that wins over the store), checks a changed fact on the official page, re-plans and re-reads the view to show each defect gone, and files the rest as measured tasks.",
       "files": []
+    },
+    {
+      "id": 336,
+      "prompt": "/goal ensure that this weekly sync will properly happen every Sunday in claude",
+      "expected_output": "Before any edit, the agent reads the scheduled task, its last runs and the steps it points to, and lists each way an unattended run could fail without the user's doing. It compares the lifetime of every grant, token or consent the job needs with the schedule: a permission that lasts 8 days on a weekly job lapses every other week unless renewed by hand, so it asks the user once for a longer lifetime or a reminder, and adds an early warning a week before it ends. It checks that the job's helpers come from the same checkout as the engine it runs, so a stale helper cannot receive a newer plan. It makes the job's done-proof concrete (the exact report line that must read clean). It proves the change with one run the scheduler starts, not only with tests.",
+      "expectations": [
+        "Compares each credential or consent lifetime with the job's schedule interval and flags one shorter than two intervals",
+        "Asks the owner once about the lifetime, with each option's effect, instead of changing the owner's privacy choice silently",
+        "Adds a warning that names the exact renew command before the grant lapses",
+        "Checks that helpers the job runs come from the same checkout or version as the engine",
+        "Proves the job with a scheduler-started run and reads that run's report, not only unit tests"
+      ]
     }
   ]
 }

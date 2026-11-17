@@ -85,7 +85,8 @@ state.yaml (mcpServers)          →  mcp-sync.ts                  →  Native M
 shared-rules.md                  →  rules-sync.ts                →  Native writes for `AGENTBREW_ONLY_RULES_AGENTS` (paths in
                                                                       src/sync/rules-sync-carveout-matrix.test.ts); agents in
                                                                       `CANARY_DELEGATED_AGENTS` go through `ai-rules generate`
-                                                                      via rules-delegate.ts.
+                                                                      via rules-delegate.ts. A native writer can cover a shared path
+                                                                      when delegation returns no content. Status checks the same writer.
 ~/.config/agentbrew/commands/    →  command-sync.ts              →  Native carve-outs per `src/core/commands-agent-map.ts`;
                                                                       `CANARY_DELEGATED_AGENTS` go through `ai-rules generate`
                                                                       via commands-delegate.ts

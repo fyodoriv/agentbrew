@@ -1158,18 +1158,15 @@ describe("clean-slate new user", () => {
     } catch {
       aiRulesInstalled = false;
     }
-    // Only a delegated write may be missing. A natively synced agent must
-    // have one section, unless its file is also a delegated agent's file:
-    // the sync gives that write to the delegated agent.
     const { AGENTBREW_ONLY_RULES_AGENTS } = await import("./core/rules-agent-map.js");
     const real = (file: string): string => (existsSync(file) ? realpathSync(file) : file);
-    const delegatedFiles = new Set(
+    const nativeFiles = new Set(
       AGENT_DEFINITIONS.filter(
-        (a) => a.rulesFile && detectedNames.has(a.name) && !AGENTBREW_ONLY_RULES_AGENTS.has(a.name),
+        (a) => a.rulesFile && detectedNames.has(a.name) && AGENTBREW_ONLY_RULES_AGENTS.has(a.name),
       ).map((a) => real(expandHome(a.rulesFile ?? ""))),
     );
-    const minManagedSections = (agentName: string, filePath: string): number =>
-      aiRulesInstalled || (AGENTBREW_ONLY_RULES_AGENTS.has(agentName) && !delegatedFiles.has(real(filePath))) ? 1 : 0;
+    const minManagedSections = (filePath: string): number =>
+      aiRulesInstalled || nativeFiles.has(real(filePath)) ? 1 : 0;
     for (const agent of detectedRulesFiles) {
       const filePath = expandHome(agent.rulesFile ?? "");
       if (!existsSync(filePath)) continue;
@@ -1177,7 +1174,7 @@ describe("clean-slate new user", () => {
       const managedStartCount = (content.match(/<!-- agentbrew:start -->/g) ?? []).length;
       const label = `${agent.name} (${agent.rulesFile}) should have exactly one managed section after sync 1`;
       expect(managedStartCount, label).toBeLessThanOrEqual(1);
-      expect(managedStartCount, label).toBeGreaterThanOrEqual(minManagedSections(agent.name, filePath));
+      expect(managedStartCount, label).toBeGreaterThanOrEqual(minManagedSections(filePath));
     }
 
     // Second sync — must be a no-op for the file-sharing modules.
@@ -1204,7 +1201,7 @@ describe("clean-slate new user", () => {
       const managedStartCount = (content.match(/<!-- agentbrew:start -->/g) ?? []).length;
       const label = `${agent.name} (${agent.rulesFile}) should have exactly one managed section after sync 2`;
       expect(managedStartCount, label).toBeLessThanOrEqual(1);
-      expect(managedStartCount, label).toBeGreaterThanOrEqual(minManagedSections(agent.name, filePath));
+      expect(managedStartCount, label).toBeGreaterThanOrEqual(minManagedSections(filePath));
     }
 
     // Cleanup

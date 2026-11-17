@@ -1638,12 +1638,13 @@ describe("update lifecycle (US08)", () => {
   it("keeps an unmanaged same-name skill during real sync after a recorded conversion", async () => {
     const name = "insecure-defaults";
     const staging = join(INSTALLED_DIR, name);
-    const manual = join(TEST_HOME, ".claude", "skills", name);
+    const manual = join(TEST_HOME, ".codex", "skills", name);
     mkdirSync(staging, { recursive: true });
     mkdirSync(manual, { recursive: true });
     writeFileSync(join(staging, "SKILL.md"), "# Retained staging copy\n");
     writeFileSync(join(manual, "SKILL.md"), "# Owner-managed copy\n");
     const state = loadState()!;
+    expect(state.agents.some((agent) => agent.name === "codex" && agent.detected)).toBe(true);
     state.sources = [
       {
         url: "ssh://git@github.com:22/trailofbits/skills.git",

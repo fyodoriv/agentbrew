@@ -3857,6 +3857,19 @@
         "Checks that helpers the job runs come from the same checkout or version as the engine",
         "Proves the job with a scheduler-started run and reads that run's report, not only unit tests"
       ]
+    },
+    {
+      "id": 337,
+      "prompt": "/goal so I have this Validate book backup reminder. First let's do that, second let's actually make it automated so that I don't even need this reminder",
+      "expected_output": "Intake finds the reminder in its system of record (read-only: title, due date, notes, repeat rule) and learns that a background check already runs daily. It names the real gap before coding: the job alerts only when a backup fails, so a check that stops passing (a project left open, a dead job) stays silent outside Terminal, and that silence is why the manual reminder still exists. It runs today's check first and quotes the result. The contract's metric is manual validations per year (4 to 0, from the repeat rule), with a bounded silent-gap guard. The one question asks what to do with the reminder (done and stop repeating, keep, delete, leave it). The reminder change is dry-run first, applied only after the answer, and read back. The alert ships with a test that fails on the old code, covers the dead-job case from a second scheduler, and updates docs and the e2e story.",
+      "expectations": [
+        "Reads the reminder read-only from its store before deciding what 'do that' means, and quotes its repeat rule",
+        "Checks the existing automation and names the gap between it and the manual reminder before writing code",
+        "Runs today's check and quotes the result before automating",
+        "Asks one question about retiring the reminder, with each option's effect, before changing it",
+        "Dry-runs the reminder change, then reads it back after the write (0 open copies, no repeat rule)",
+        "Proves the new alert with a test that fails on the old code, and covers a stopped background job"
+      ]
     }
   ]
 }

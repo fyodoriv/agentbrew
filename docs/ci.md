@@ -35,6 +35,9 @@ Run lint, typecheck and build on your machine. Push the branch and let hosted CI
 - Opt out: `export AGENTBREW_ALLOW_LOCAL_TESTS=1` before the agent starts. Setting it inside an agent command does nothing: the hook reads its own environment.
 - It is a guardrail, not a security boundary. A command name built at run time (`$(which vitest)`) passes. `npm run verify:build-pipeline` (a build check) is allowed. The session folder always counts, so `cd ~ && npx vitest` started in a checkout is blocked too.
 
+The clean health-check fixture in `src/integration.test.ts` deploys its own
+commands and hooks. You can filter it by its test name to check it in isolation.
+
 ## Cache measurements
 
 Measured 2026-11-16 from `gh run view --log` and the jobs API on `ci.yml` runs: 10 warm `main` runs (2026-11-15 to 11-16) and the cold runs of 2026-11-10 (the first `main` run and the `ci/hosted-gate-on` PR runs, before any entry existed). Each cell is the median seconds the cache touches: restore + save + the work it saves.

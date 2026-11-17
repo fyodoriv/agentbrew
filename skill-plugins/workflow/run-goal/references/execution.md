@@ -281,6 +281,11 @@ start it again after the edits; never report its result for the new code.
   checkouts before the final report. Goal runs once left 40 GB of copies
   and Rust targets there and filled the disk; dotfiles'
   `agent-scratch-prune` is only the backstop.
+- Before a long recorded step that a later source edit makes stale (a golden
+  re-record, a snapshot rebuild), run the repo's fast registry and lint
+  tests: the command-to-story map, per-file test targets, doc word lints.
+  One goal found three such misses only in the gate after a 40-minute
+  re-record, and the fix forced a second re-record.
 - Append a new row to an ordered golden list; inserting one mid-file
   renumbered every golden after it.
 - A retro skill update covered by a standing approval is done in this

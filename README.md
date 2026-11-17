@@ -452,8 +452,8 @@ One command translates the source of truth into every agent's native format.
 When a source refresh finds a recorded skill-to-plugin conversion, it names
 the plugin and links to the upstream setup. Existing copies stay in place.
 For example, Trail of Bits moved `insecure-defaults` to its plugin marketplace.
-Agentbrew withholds the external skills updater when it has a record of an
-installed skill with a known conversion. Managed source refreshes still run.
+Agentbrew withholds the external skills updater when it finds an existing
+copy of a skill with a known conversion. Managed source refreshes still run.
 
 - **MCP servers** → JSON (Claude, Kiro), TOML (Codex), YAML (Goose); exact definitions are reconciled into mcpm so backend changes cannot leave stale same-name servers
 - **MCP permissions** → `permissions.allow` entries for agents that declare `mcpPermissionsConfig` (none in the core list today)

@@ -1635,6 +1635,39 @@ describe("update lifecycle (US08)", () => {
     expect(content).toContain("Updated content");
   });
 
+  it("keeps an unmanaged same-name skill during real sync after a recorded conversion", async () => {
+    const name = "insecure-defaults";
+    const staging = join(INSTALLED_DIR, name);
+    const manual = join(TEST_HOME, ".claude", "skills", name);
+    mkdirSync(staging, { recursive: true });
+    mkdirSync(manual, { recursive: true });
+    writeFileSync(join(staging, "SKILL.md"), "# Retained staging copy\n");
+    writeFileSync(join(manual, "SKILL.md"), "# Owner-managed copy\n");
+    const state = loadState()!;
+    state.sources = [
+      {
+        url: "ssh://git@github.com:22/trailofbits/skills.git",
+        type: "url",
+        skillsInstalled: [name],
+        availableItems: [],
+        addedAt: "2026-11-17",
+      },
+    ];
+    state.skillSourceDirs = [{ label: "catalog-installed", path: INSTALLED_DIR }];
+    saveState(state);
+    try {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const result = await syncSkills({ quiet: true });
+        expect(result.replacedCopies).toHaveLength(0);
+        expect(lstatSync(manual).isDirectory()).toBe(true);
+        expect(readFileSync(join(manual, "SKILL.md"), "utf8")).toBe("# Owner-managed copy\n");
+        expect(readFileSync(join(staging, "SKILL.md"), "utf8")).toBe("# Retained staging copy\n");
+      }
+    } finally {
+      rmSync(manual, { recursive: true, force: true });
+    }
+  });
+
   it("refreshInstalledSkills skips local sources (served via symlinks)", () => {
     const sources = [
       {

@@ -50,6 +50,7 @@ vi.mock("./catalog/index-source.js", () => ({
       source: source.url,
       status: "refreshed",
       reason: "fixture checkout",
+      path: source.url === "trailofbits/skills" ? "/cache/no-skills" : undefined,
       sha: "fresh-sha",
     })),
   ),
@@ -568,6 +569,25 @@ describe("refreshInstalledSkills", () => {
     mockGetSourceCachePath.mockReturnValue(cachePath);
     mockCopySkillFromCache.mockReturnValue(cachePath.endsWith("/old") ? "/installed/skill" : undefined);
     expect(refreshInstalledSkills([source])[0]).toEqual({ source: url, skill: "insecure-defaults", status });
+  });
+
+  it.each(["skipped", "failed"] as const)("does not report a conversion from a %s checkout", (status) => {
+    const source = makeSource({
+      url: "https://github.com:443/trailofbits/skills.git",
+      skillsInstalled: ["insecure-defaults"],
+    });
+    mockGetSourceCachePath.mockReturnValue("/cache/no-skills");
+    const result = refreshInstalledSkills([source], undefined, [
+      {
+        source: source.url,
+        status,
+        reason: "unverified fixture",
+        path: "/cache/no-skills",
+        sha: "retained",
+      },
+    ]);
+    expect(result[0]?.status).toBe("skipped");
+    expect(mockCopySkillFromCache).not.toHaveBeenCalled();
   });
 
   it("skips local sources", () => {

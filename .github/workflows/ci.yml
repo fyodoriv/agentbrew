@@ -17,4 +17,4 @@ jobs:
         with:
           node-version-file: .node-version
       - run: npm ci
-      - run: npx vitest run src/update.test.ts --maxWorkers=1 --retry=0 -t 'recorded plugin conversion|ordinary refresh behavior'
+      - run: npx vitest run src/update.test.ts src/integration.test.ts --maxWorkers=1 --retry=0 -t 'recorded plugin conversion|ordinary refresh behavior|report a conversion from a|during real sync after a recorded conversion'

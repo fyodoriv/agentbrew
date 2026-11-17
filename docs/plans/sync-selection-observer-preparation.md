@@ -11,7 +11,8 @@ and update call observations before proposing a behavior change.
 - **Measurement**: Validate dedicated and default discovery using
   `npx vitest list --filesOnly --staticParse`. The dedicated config is
   `vitest.sync-selection-observation.config.ts`. Run its calibration
-  only on hosted CI. It observes one complete receipt, one guarded
+  only on hosted CI. A separate filtered calibration proves the selection
+  flag survives the isolated home setup. It observes one complete receipt, one guarded
   action refusal and one missing or ambiguous result.
 - **Success**: Default discovery excludes the single preparation file.
   The dedicated config includes it and inherits both isolation setup
@@ -30,3 +31,8 @@ Track each module by its fixed label. Block subprocesses and network in
 the selected test worker. The scratch paths and final real native output
 checks remain a separate phase. Do not infer missing real writes from
 mock call counts.
+
+`SYNC_SELECTION_OBSERVATION_CAPTURE=1` only selects tests in the dedicated
+config. Check it using the filter `observer calibration preserves an
+incomplete exit` and require `SYNC_SELECTION_CAPTURE_ENABLED true` in
+the log. The four sealed cases are outside that filter.

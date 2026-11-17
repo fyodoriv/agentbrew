@@ -122,6 +122,8 @@ import { buildProgram } from "./cli.js";
 import { buildSyncModules } from "./sync-runner.js";
 import { update } from "./update.js";
 
+const captureEnabled = process.env.SYNC_SELECTION_OBSERVATION_CAPTURE === "1";
+
 type Case = "emptyAPI" | "emptyPull" | "unknownPlain" | "selectedPlain";
 
 beforeEach(() => {
@@ -170,6 +172,7 @@ it("observer calibration refuses child and fetch canaries", () => {
 
 it("observer calibration preserves an incomplete exit", () => {
   process.exitCode = 2;
+  process.stdout.write(`SYNC_SELECTION_CAPTURE_ENABLED ${captureEnabled}\n`);
   expect(receipt("calibration", false)).toMatchObject({ outcome: "inconclusive", exit: 2, calls: [] });
 });
 
@@ -181,7 +184,7 @@ const cases: Array<{ id: Case; cli?: string[] }> = [
 ];
 
 for (const { id, cli } of cases) {
-  it.skipIf(process.env.AGENTBREW_SYNC_SELECTION_CAPTURE !== "1")(`sealed observation ${id}`, async () => {
+  it.skipIf(!captureEnabled)(`sealed observation ${id}`, async () => {
     let completed = false;
     try {
       if (cli) {

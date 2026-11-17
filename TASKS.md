@@ -378,19 +378,6 @@
   - **Pivot**: if the test needs the whole earlier chain by design, merge it into that chain's test and delete the separate case.
   - **Anchor**: Luo et al. 2014 (an empirical analysis of flaky tests: test order dependency).
 
-- [ ] The changed-files gate runs the task-queue guards when TASKS.md changes
-  - **ID**: verify-changed-runs-tasks-md-guards
-  - **Tags**: ci, tests, dx
-  - **Details**: On 2026-11-10 two pull requests passed `npm run verify:changed` and then failed the hosted check on a task-queue guard: `src/docs/tasks-md-output-cadence.test.ts` (an **Output** value outside the allowed list) and `src/docs/volatile-count-claims.test.ts`. The changed-files gate did not select these tests for a change to `TASKS.md` alone. Each miss cost one hosted round of about 20 minutes. Map `TASKS.md` and `docs/*.md` to the `src/docs/` guard tests in the changed-files selection.
-  - **Files**: `scripts/verify-changed.mjs`, `src/verify-changed.test.ts`
-  - **Output**: code
-  - **Acceptance**: a change to `TASKS.md` alone makes `npm run verify:changed` run the tests under `src/docs/`.
-  - **Hypothesis**: hosted failures on a task-queue guard that the local gate passed go from 2 in one day to 0 in the next 10 pull requests that change `TASKS.md`.
-  - **Measurement**: `npx vitest run src/verify-changed.test.ts`, with a new case that asserts the selection for a `TASKS.md`-only change holds `src/docs/tasks-md-output-cadence.test.ts`.
-  - **Success**: the new case passes, and it is red on the unchanged selection.
-  - **Pivot**: if the selection cannot map a doc file to tests, run the whole `src/docs/` folder on every changed-files gate and measure the added seconds; drop it above 20 seconds.
-  - **Anchor**: Gligoric, Eloussi, Marinov 2015 (practical regression test selection); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
-
 - [ ] The task lint rejects a task with no Success line or no ID
   - **ID**: task-lint-success-and-id-gaps
   - **Tags**: tasks, lint, measurement

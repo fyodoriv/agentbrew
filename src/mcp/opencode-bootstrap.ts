@@ -200,6 +200,7 @@ export function selectModel(profile: MachineProfile): ModelRecommendation {
  */
 export function computeOllamaEnv(profile: MachineProfile): Record<string, string> {
   const env: Record<string, string> = {};
+  if (profile.os === "darwin") env.OLLAMA_HOST = OLLAMA_HOST;
 
   // Flash Attention: massive speedup on Apple Silicon Metal backend
   env.OLLAMA_FLASH_ATTENTION = "1";
@@ -377,6 +378,25 @@ function probeLocalOllama(): ReturnType<typeof localOllamaProcesses> | undefined
   const commands =
     candidates.length === 0 ? "" : readProcessTable("/bin/ps", ["-ww", "-p", candidates.join(","), "-o", "pid=,args="]);
   return commands === undefined ? undefined : localOllamaProcesses(listeners, commands);
+}
+
+function checkLocalOllamaReadiness(): "available" | "reuse" | "invalid" {
+  const processes = probeLocalOllama();
+  const pids = processes ? new Set([...processes.listening, ...processes.serving]) : new Set();
+  if (!processes || pids.size > 1) {
+    const reason = processes ? `found ${pids.size} competing processes` : "process ownership could not be checked";
+    console.error(`  Ollama readiness failed at ${OLLAMA_URL}: ${reason}. Existing services were left running.`);
+    process.exitCode = 1;
+    return "invalid";
+  }
+  const responding = isOllamaRunning();
+  if (processes.listening.size === 1 && processes.serving.size === 1 && responding) return "reuse";
+  if (pids.size === 0 && !responding) return "available";
+  console.error(
+    `  Ollama readiness failed at ${OLLAMA_URL}: the listener could not be verified as an active Ollama server.`,
+  );
+  process.exitCode = 1;
+  return "invalid";
 }
 
 function ollamaCommandEnv(): NodeJS.ProcessEnv {
@@ -637,26 +657,8 @@ export async function bootstrapOpencode(options?: { model?: string; dryRun?: boo
 
   console.log(chalk.bold("\n── Setup ───────────────────────────────────\n"));
 
-  let reuseOllama = false;
-  if (profile.os === "darwin") {
-    const processes = probeLocalOllama();
-    const pids = processes ? new Set([...processes.listening, ...processes.serving]) : new Set();
-    if (!processes || pids.size > 1) {
-      const reason = processes ? `found ${pids.size} competing processes` : "process ownership could not be checked";
-      console.error(`  Ollama readiness failed at ${OLLAMA_URL}: ${reason}. Existing services were left running.`);
-      process.exitCode = 1;
-      return;
-    }
-    const responding = isOllamaRunning();
-    reuseOllama = processes.listening.size === 1 && processes.serving.size === 1 && responding;
-    if (!reuseOllama && (pids.size > 0 || responding)) {
-      console.error(
-        `  Ollama readiness failed at ${OLLAMA_URL}: the listener could not be verified as an active Ollama server.`,
-      );
-      process.exitCode = 1;
-      return;
-    }
-  }
+  let ollamaReadiness = profile.os === "darwin" ? checkLocalOllamaReadiness() : "available";
+  if (ollamaReadiness === "invalid") return;
 
   // ── 2. Install Ollama ───────────────────────────────────────────────────
   if (isInstalled("ollama")) {
@@ -666,10 +668,12 @@ export async function bootstrapOpencode(options?: { model?: string; dryRun?: boo
   } else {
     if (!installOllama()) return;
     console.log(chalk.green("  ✓ Ollama installed"));
+    if (profile.os === "darwin") ollamaReadiness = checkLocalOllamaReadiness();
+    if (ollamaReadiness === "invalid") return;
   }
 
   // ── 3. Configure + start Ollama with optimal settings ───────────────────
-  if (reuseOllama) {
+  if (ollamaReadiness === "reuse") {
     console.log(chalk.green(`  ✓ Reusing the existing Ollama endpoint at ${OLLAMA_URL}`));
   } else if (profile.isAppleSilicon && profile.os === "darwin") {
     const ollamaEnv = computeOllamaEnv(profile);

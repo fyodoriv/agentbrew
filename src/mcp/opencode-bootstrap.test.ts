@@ -157,6 +157,17 @@ describe("buildOpencodeProviderConfig", () => {
     });
   });
 
+  it("pins both macOS launch paths to the endpoint used by OpenCode", () => {
+    type Profile = Parameters<typeof computeOllamaEnv>[0];
+    expect(computeOllamaEnv({ os: "darwin", arch: "x64", totalMemoryGB: 16 } as Profile).OLLAMA_HOST).toBe(
+      "http://localhost:11434",
+    );
+    expect(computeOllamaEnv({ os: "darwin", arch: "arm64", totalMemoryGB: 32 } as Profile).OLLAMA_HOST).toBe(
+      "http://localhost:11434",
+    );
+    expect(computeOllamaEnv({ os: "linux", totalMemoryGB: 16 } as Profile).OLLAMA_HOST).toBeUndefined();
+  });
+
   it("reads installed V1 and V2 version strings and rejects unknown versions", () => {
     expect(opencodeMajorFromVersion("1.19.5")).toBe(1);
     expect(opencodeMajorFromVersion("opencode v2.2.6")).toBe(2);

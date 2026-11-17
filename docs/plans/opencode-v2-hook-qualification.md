@@ -22,3 +22,12 @@ of the timeout.
 
 These controls diagnose startup only. A bridge port still needs real tool
 and session canaries under both supported host versions.
+
+## Isolated comparison
+
+The no-bridge session reached the 120-second bound without a reply and
+logged no bridge rejection. With the V1 bridge present, the second fresh
+process logged the rejection and returned the expected reply in 41 seconds.
+The registered two-pass target was not met. Rejection did not stop the
+second run from reaching the local model. The cause of the first timeout
+remains open, and this experiment gives no V2 hook enforcement credit.

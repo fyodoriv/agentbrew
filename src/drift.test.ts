@@ -7,6 +7,7 @@ vi.mock("node:fs", () => ({
   readFileSync: vi.fn(),
   readdirSync: vi.fn(() => []),
   lstatSync: vi.fn(),
+  realpathSync: vi.fn((path) => path),
   readlinkSync: vi.fn(),
 }));
 
@@ -56,6 +57,7 @@ vi.mock("./sync/rules-sync.js", async (importOriginal) => {
   const real = await importOriginal<typeof import("./sync/rules-sync.js")>();
   return {
     CANARY_DELEGATED_AGENTS: real.CANARY_DELEGATED_AGENTS,
+    chooseRulesFileWriters: real.chooseRulesFileWriters,
     loadSharedRules: vi.fn(() => undefined),
     extractManagedSection: vi.fn(() => undefined),
     collectCanaryDelegation: vi.fn(() => new Map()),

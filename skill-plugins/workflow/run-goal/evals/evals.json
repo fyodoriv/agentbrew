@@ -3870,6 +3870,19 @@
         "Dry-runs the reminder change, then reads it back after the write (0 open copies, no repeat rule)",
         "Proves the new alert with a test that fails on the old code, and covers a stopped background job"
       ]
+    },
+    {
+      "id": 338,
+      "prompt": "/goal investigate why the ChatGPT (Codex) desktop app doesn't respond to my questions and has broken git, npm, network access. Fix with long-term. I give permission to use it",
+      "expected_output": "Intake reads ~/.codex/config.toml, the app's logs and thread state read-only, and finds which permission profile today's threads ran under. It reproduces the failure with a deterministic probe (git commit, npm view, curl) inside the agent's sandbox before and after the fix, using a conventional commit message so the user's global commit hook does not cause a false failure. It separates 'the backend answers' (one tiny prompt through the bundled CLI) from 'the sandbox blocks tools'. The contract lands before any edit. The fix backs up the config, adds the access defaults, and reads them back. The long-term guard is a doctor check shipped as a PR that follows the target repo's rules, including 'no local Bats' (tests run on CI). A window on another full-screen Space is a user check, not a 'met' claim.",
+      "expectations": [
+        "Probes git, npm and network inside the sandbox before changing anything, and quotes the exact errors",
+        "Tests the model backend separately from tool access",
+        "Uses a probe commit message that passes the user's global commit hooks, or reads the hook error before blaming the sandbox",
+        "Backs up ~/.codex/config.toml before editing and reads the new values back",
+        "Reads the target repo's AGENTS.md test rules before running any test (no local Bats in dotfiles)",
+        "Ships a regression check (doctor + test) and leaves the in-app confirmation as a named user step"
+      ]
     }
   ]
 }

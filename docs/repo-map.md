@@ -175,3 +175,12 @@ lists the verified limits and user review step.
 Continuous sync watches registered source folders as well as configuration;
 watch-instance roots refresh when state registration changes. Generated sync
 bookkeeping cannot schedule another sync. See the [host contracts](support-matrix.md#continuous-repair-and-workflow-acceptance).
+
+## Review merged worktrees
+
+Run `bash scripts/prune-merged-worktrees.sh` from an Agentbrew checkout to
+preview the checkout inventory. It compares the local `origin/main` with
+the remote and keeps a worktree when it cannot prove a merge or classify its
+files. A verified GitHub squash merge also qualifies. Run the same command
+with `--yes` to remove eligible worktrees. Git's normal removal checks still
+apply. Archive Codex worktrees in Codex.

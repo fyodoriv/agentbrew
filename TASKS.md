@@ -758,20 +758,6 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] Classify upstream skill-to-plugin conversions during source refresh
-  - **ID**: classify-upstream-skill-plugin-conversions
-  - **Tags**: skills, sync, ownership, upstream
-  - **Mode**: AFK
-  - **Details**: On 2026-11-08, `agentbrew sync --pull` printed `insecure-defaults not found in trailofbits/skills`. Upstream commit `82e8e0a` intentionally removed its `SKILL.md` and converted it to a plugin-only workflow. A refresh should distinguish this from a missing or broken source, preserve owner-modified installed content, and never silently prune it.
-  - **Files**: `src/update.ts`, source/skill discovery and removal tests, `README.md`
-  - **Output**: code
-  - **Acceptance**: a synthetic upstream skill-to-plugin conversion produces an explicit classified result and supported migration guidance on repeated refreshes; owner edits and unmanaged copies survive; the status report does not keep calling the source missing.
-  - **Hypothesis**: source-aware conversion classification reduces unclassified `not found` refresh warnings for the fixture from 1 to 0 with 0 unowned removals.
-  - **Measurement**: `JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/update.test.ts` with a conversion fixture and a repeated-refresh ownership control.
-  - **Success**: 0 unclassified conversion warnings and 0 unowned removals in the fixture and repeat control.
-  - **Pivot**: if plugin conversion cannot be detected generically, require an explicit recorded classification instead of adding layout guesses or automatic deletion.
-  - **Anchor**: VISION G1 and "Never destroy data you didn't create"; trailofbits/skills commit `82e8e0a` (2026-08-05).
-
 ## P3
 
 - [ ] Propose the guard start-budget note to the built-in workflow-authoring skill

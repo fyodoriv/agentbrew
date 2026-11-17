@@ -18,3 +18,10 @@ but the receipt does not establish which operation stopped.
 - **Pivot**: Any wrong, missing or sensitive classification blocks a
   timing change. A passing replay leaves the original cause unknown.
 - **Anchor**: TASKS.md, `wrap-up-fetch-caller-timeout`; Luo et al. 2014.
+
+## Hosted result
+
+All four normal cases passed. The injected W04 setup timeout emitted
+`git-setup: timeout` and the injected W03 caller timeout emitted
+`caller: timeout`. Both still failed the test. The cause on Nov 15
+remains unknown. [Hosted log](https://github.com/fyodoriv/agentbrew/actions/runs/44196512820/job/134439295257)

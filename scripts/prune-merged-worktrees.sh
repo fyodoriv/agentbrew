@@ -17,9 +17,17 @@ trap 'rm -f "$inventory"' EXIT
 git worktree list --porcelain -z > "$inventory"
 
 merge_records=""
-if [ -n "$base" ] && [ "$base" = "$remote" ] && command -v gh >/dev/null; then
+origin_url=$(git remote get-url origin 2>/dev/null || true)
+case "$origin_url" in
+  https://github.com/*) github_repo=${origin_url#https://github.com/} ;;
+  git@github.com:*) github_repo=${origin_url#git@github.com:} ;;
+  ssh://git@github.com/*) github_repo=${origin_url#ssh://git@github.com/} ;;
+  *) github_repo="" ;;
+esac
+github_repo=${github_repo%.git}
+if [ -n "$base" ] && [ "$base" = "$remote" ] && [[ "$github_repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] && command -v gh >/dev/null; then
   merge_records=$(
-    gh pr list --state merged --base main --limit 500 --json headRefOid,mergeCommit \
+    gh pr list --repo "github.com/$github_repo" --state merged --base main --limit 500 --json headRefOid,mergeCommit \
       --jq '.[] | select(.mergeCommit.oid != null) | [.headRefOid,.mergeCommit.oid] | @tsv' 2>/dev/null
   ) || merge_records=""
 fi
@@ -51,17 +59,19 @@ consider() {
   elif ! merged; then
     emit kept "current commit has no verified merge into origin/main"
   else
-    local changes line
-    if ! changes=$(git -C "$path" status --porcelain=v1 --untracked-files=normal --ignored=matching); then
+    local entries changes
+    if ! entries=$(git -C "$path" ls-files -v) || grep -qE '^[a-zS] ' <<< "$entries"; then
+      emit kept "worktree index has hidden or unavailable entries"
+      return
+    fi
+    if ! changes=$(git --no-optional-locks -C "$path" status --porcelain=v1 --untracked-files=normal --ignored=matching); then
       emit kept "worktree status is unavailable"
       return
     fi
-    while IFS= read -r line; do
-      case "$line" in
-        ""|"!! node_modules/"|"!! node_modules") ;;
-        *) emit kept "uncommitted or unclassified ignored files"; return ;;
-      esac
-    done <<< "$changes"
+    if [ -n "$changes" ]; then
+      emit kept "uncommitted or unclassified ignored files"
+      return
+    fi
     if ! $apply; then
       emit eligible "clean worktree with a verified merge"
     elif [ "$(git -C "$path" rev-parse HEAD 2>/dev/null || true)" != "$head" ]; then

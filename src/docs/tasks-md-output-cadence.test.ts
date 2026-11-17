@@ -20,9 +20,8 @@ const ALLOWED_CADENCES = new Set<string>(["quarterly", "monthly", "weekly", "bi-
 
 /**
  * Splits a tasks-md document into one block per task. Same boundary
- * detection as `tasks-md-publishing-hold-tag.test.ts` — a task block
- * starts at `- [ ]` and ends when a non-indented, non-empty, non-task-
- * start line appears.
+ * detection follows the tasks.md checkbox grammar. A non-indented,
+ * non-empty line closes the current block.
  */
 function splitIntoTaskBlocks(markdown: string): string[] {
   const lines = markdown.split("\n");
@@ -30,7 +29,7 @@ function splitIntoTaskBlocks(markdown: string): string[] {
   let current: string[] | null = null;
 
   for (const line of lines) {
-    const isTaskStart = /^- \[[ x]\]/u.test(line);
+    const isTaskStart = /^-\s+\[[\sx]?\]\s+(.+)$/u.test(line);
     if (isTaskStart) {
       if (current) blocks.push(current.join("\n"));
       current = [line];
@@ -51,7 +50,7 @@ function splitIntoTaskBlocks(markdown: string): string[] {
 
 /** Pull the `**ID**: <id>` from a task block for human-readable error messages. */
 function extractTaskId(block: string): string | null {
-  const match = block.match(/^ {2}(?:-[ \t]+)?\*\*ID\*\*:[ \t]*([a-z][a-z0-9-]*[a-z0-9])[ \t\r]*$/mu);
+  const match = block.match(/^[ \t]{2,3}-[ \t]+\*\*ID\*\*:[ \t]*([a-z0-9]+(?:-[a-z0-9]+)*)[ \t\r]*$/mu);
   return match ? match[1] : null;
 }
 
@@ -70,7 +69,7 @@ function extractCadence(block: string): string | null {
 function missingRequiredFields(block: string): string[] {
   const missing = [];
   if (!extractTaskId(block)) missing.push("ID");
-  if (!/^ {2}(?:-[ \t]+)?\*\*Success\*\*:[ \t]*\S/mu.test(block)) missing.push("Success");
+  if (!/^[ \t]{2,3}-[ \t]+\*\*Success\*\*:[ \t]*\S/mu.test(block)) missing.push("Success");
   return missing;
 }
 
@@ -93,6 +92,11 @@ describe("TASKS.md required fields", () => {
   it("requires ID at the task metadata level", () => {
     const task = "- [ ] Task\n  - **Success**: All checks pass.\n  - **Details**: Notes\n    - **ID**: nested-example";
     expect(missingRequiredFields(task)).toEqual(["ID"]);
+  });
+
+  it("handles supported checkbox spacing and metadata indentation", () => {
+    const queue = "# Tasks\n\n## P1\n-  [ ] Missing fields\n- [] Complete\n   - **ID**: 1\n   - **Success**: One pass.";
+    expect(splitIntoTaskBlocks(queue).map(missingRequiredFields)).toEqual([["ID", "Success"], []]);
   });
 
   it("requires both fields on every queued task", () => {

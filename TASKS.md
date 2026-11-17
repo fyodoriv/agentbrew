@@ -403,6 +403,19 @@
   - **Pivot**: if the selection cannot map a doc file to tests, run the whole `src/docs/` folder on every changed-files gate and measure the added seconds; drop it above 20 seconds.
   - **Anchor**: Gligoric, Eloussi, Marinov 2015 (practical regression test selection); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
 
+- [ ] Report the required-field check gap to tasks.md
+  - **ID**: task-lint-required-fields-upstream-report
+  - **Tags**: tasks, lint, upstream
+  - **Details**: Agentbrew adds queue checks for an explicit ID and a separate Success field in PR #1053. The pinned tasks.md lint accepts a task without an ID and accepts Acceptance in place of Success. Prepare the exact report with the two synthetic fixtures before requesting publication approval.
+  - **Output**: docs
+  - **Acceptance**: An approved upstream report describes the two cases and points to the local controls.
+  - **Hypothesis**: One upstream report gives the tools maintainers both runnable cases.
+  - **Measurement**: Read the resulting issue and count the two cases with runnable examples.
+  - **Success**: One approved report records both cases.
+  - **Pivot**: If upstream has a matching issue, link it once and retire this task.
+  - **Anchor**: Agentbrew PR #1053 and the tasks.md metadata parser.
+  - **Blocked**: needs-exact-publication-approval — posting the upstream report requires review and approval of its exact text.
+
 - [ ] Old agent worktrees are removed when their branch is merged
   - **ID**: stale-worktrees-cleanup
   - **Tags**: dx, disk, cleanup

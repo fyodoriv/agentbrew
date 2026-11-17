@@ -460,8 +460,8 @@ describe("installed dependency cache admission", () => {
     const before = normalized();
     writeFileSync(path, source.replaceAll("\n", "\r\n"));
     expect(normalized()).toBe(before);
-    expect(run({ NO_CACHE: "1" }).status).not.toBe(0);
     const result = run();
+    expect(run({ NO_CACHE: "1" }).status).not.toBe(0);
     expect(result.status).not.toBe(0);
     expect(result.stdout).not.toContain("lint-artifacts: cached");
   });
@@ -476,11 +476,11 @@ describe("installed dependency cache admission", () => {
     writeFileSync(join(repo, ".gitignore"), ".metrics/\nTASKS.md\n");
     const queue = join(repo, "TASKS.md");
     const body = "\n\n- [ ] Fixture\n  - **ID**: fixture\n  - **Tags**: stability\n";
-    writeFileSync(queue, "## P1" + body);
+    writeFileSync(queue, `## P1${body}`);
     expect(run().status).toBe(0);
-    writeFileSync(queue, "## P2" + body);
-    expect(run({ NO_CACHE: "1" }).status).toBe(1);
+    writeFileSync(queue, `## P2${body}`);
     const result = run();
+    expect(run({ NO_CACHE: "1" }).status).toBe(1);
     expect(result.status).toBe(1);
     expect(result.stdout).not.toContain("lint-tasks: cached");
   });
@@ -497,8 +497,8 @@ describe("installed dependency cache admission", () => {
     writeFileSync(join(repo, "scripts/target.cjs"), source);
     rmSync(script);
     symlinkSync("target.cjs", script);
-    expect(run({ NO_CACHE: "1" }).status).toBe(1);
     const result = run();
+    expect(run({ NO_CACHE: "1" }).status).toBe(1);
     expect(result.status).toBe(1);
     expect(result.stdout).not.toContain("lint-tasks: cached");
   });

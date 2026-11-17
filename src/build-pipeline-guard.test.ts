@@ -54,13 +54,14 @@ function writePackageFiles(): void {
   );
 }
 
-function runGuard(mode: string): ReturnType<typeof spawnSync> {
+function runGuard(mode: string, extra: NodeJS.ProcessEnv = {}): ReturnType<typeof spawnSync> {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     AGENTBREW_REPO_ROOT: testDir,
     npm_config_audit: "false",
     npm_config_fund: "false",
     npm_config_offline: "true",
+    ...extra,
   };
   delete env.BASH_ENV;
   delete env.ENV;
@@ -689,3 +690,40 @@ describe.skipIf(process.env.LOCKED_INSTALL_OBSERVATION !== "1")(
     }, 60_000);
   },
 );
+
+describe("exact build guard comparison", () => {
+  it("refuses a stale transitive version that still satisfies its range", () => {
+    createObservationFixture("N1");
+    const result = runGuard("--deps-only");
+    expect(result.status).toBe(1);
+    expect(result.stdout).not.toContain("dependencies match package-lock.json");
+  });
+
+  it.each(["failed", "missing", "malformed"] as const)("refuses %s npm evidence", (variant) => {
+    createObservationFixture("P1");
+    const bin = join(testDir, "fixture-bin");
+    mkdirSync(bin);
+    const npm = join(bin, "npm");
+    const response = { failed: "exit 5\n", missing: "exit 0\n", malformed: "echo not-json\n" }[variant];
+    writeFileSync(npm, `#!/bin/bash\n${response}`, { mode: 0o700 });
+    const result = runGuard("--deps-only", { PATH: `${bin}:${process.env.PATH}` });
+    expect(result.status).toBe(1);
+    expect(result.stdout).not.toContain("dependencies match package-lock.json");
+  });
+
+  it("refuses a required transitive package missing from disk", () => {
+    createObservationFixture("P1");
+    rmSync(join(testDir, "node_modules", "fixture-leaf"), { recursive: true });
+    const result = runGuard("--deps-only");
+    expect(result.status).toBe(1);
+    expect(result.stdout).not.toContain("dependencies match package-lock.json");
+  });
+
+  it.each(["P1", "P3", "P4"] as const)("accepts supported installation %s", (scenario) => {
+    const fixture = createObservationFixture(scenario);
+    const result = runGuard("--deps-only");
+    expect(result.status, String(result.stderr)).toBe(0);
+    expect(result.stdout).toContain("dependencies match package-lock.json");
+    expect(observationFixtureState(fixture).valid).toBe(true);
+  });
+});

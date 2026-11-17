@@ -33,10 +33,10 @@ jobs:
           if PATH="$scratch:$PATH" npx vitest run "$fixture" --maxWorkers=1 --retry=0 -t 'W04.*observes the real wrap-up caller' > "$scratch/setup.log" 2>&1; then
             exit 1
           fi
-          rg -F 'FETCH_CALLER_OBSERVATION {"id":"W04","status":"inconclusive","phase":"git-setup","reason":"timeout"}' "$scratch/setup.log" || { tail -30 "$scratch/setup.log"; exit 1; }
+          grep -F 'FETCH_CALLER_OBSERVATION {"id":"W04","status":"inconclusive","phase":"git-setup","reason":"timeout"}' "$scratch/setup.log" || { tail -30 "$scratch/setup.log"; exit 1; }
           caller='skill-plugins/workflow/wrap-up/scripts/open-work.sh'
           sed -i '2i /bin/sleep 22' "$caller"
           if npx vitest run "$fixture" --maxWorkers=1 --retry=0 -t 'W03.*observes the real wrap-up caller' > "$scratch/caller.log" 2>&1; then
             exit 1
           fi
-          rg -F 'FETCH_CALLER_OBSERVATION {"id":"W03","status":"inconclusive","phase":"caller","reason":"timeout"}' "$scratch/caller.log" || { tail -30 "$scratch/caller.log"; exit 1; }
+          grep -F 'FETCH_CALLER_OBSERVATION {"id":"W03","status":"inconclusive","phase":"caller","reason":"timeout"}' "$scratch/caller.log" || { tail -30 "$scratch/caller.log"; exit 1; }

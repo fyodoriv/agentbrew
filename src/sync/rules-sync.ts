@@ -377,16 +377,13 @@ export function collectCanaryDelegation(
   return delegateRulesGenerate({ agents: canaryAgents, sharedRules: deployRules });
 }
 
-/** Carve-out: shared (rulesFile targets minus agents the state marks not detected).
- *
- *  Used by `syncRules` only — external callers (initRules, showRules,
- *  drift) iterate rulesFile-only via {@link getRulesTargets}. */
+/** Keep every eligible agent until writer selection checks the shared path. */
 function getAllSyncTargets(skip: ReadonlySet<string>): Array<{ agentName: string; expandedPath: string }> {
-  const fileTargets = getRulesTargets().map((t) => ({
-    agentName: t.agentName,
-    expandedPath: expandHome(t.path),
-  }));
-  return fileTargets.filter((target) => !skip.has(target.agentName));
+  return AGENT_DEFINITIONS.flatMap((agent) =>
+    agent.rulesFile === undefined || skip.has(agent.name)
+      ? []
+      : [{ agentName: agent.name, expandedPath: expandHome(agent.rulesFile) }],
+  );
 }
 
 function maybeDedupeSharedRules(dryRun: boolean, state: AgentBrewState, save: (state: AgentBrewState) => void): void {

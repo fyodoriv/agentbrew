@@ -5,6 +5,7 @@ vi.mock("node:fs", () => ({
   mkdirSync: vi.fn(),
   readFileSync: vi.fn(),
   readdirSync: vi.fn(),
+  realpathSync: vi.fn((path) => path),
 }));
 
 vi.mock("write-file-atomic", () => ({
@@ -757,16 +758,16 @@ describe("syncRules — slice 3a–3c canary delegation (delegate-rules-to-ai-ru
     }
   });
 
-  // Slice 4 changed this behavior: delegated agents no longer fall back
-  // to shared rules when ai-rules is missing. They SKIP — the native
-  // fallback is deleted. Carve-outs still get the native shared-rules path.
-  it("slice 4: delegated agents skip when delegateRulesGenerate returns an empty Map; carve-outs still sync natively", async () => {
+  it("writes a shared Claude file through the available native agent", async () => {
     mockLoadState.mockReturnValue({
-      agents: [],
+      agents: [
+        { name: "claude-code", detected: true },
+        { name: "claude-desktop", detected: true },
+      ],
       sources: [],
       mcpServers: [],
       catalogVersion: "0.1.0",
-    });
+    } as unknown as ReturnType<typeof loadState>);
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockImplementation((p) => {
       const path = String(p);
@@ -784,10 +785,11 @@ describe("syncRules — slice 3a–3c canary delegation (delegate-rules-to-ai-ru
 
     await syncRules();
 
-    // SLICE 4: delegated agents SKIP — their files are NOT rewritten with
-    // the shared rules content. The existing "old" managed section stays
-    // put on disk until the user installs ai-rules and re-runs sync.
-    for (const intersectionPath of ["CLAUDE.md", "codex/AGENTS.md", "gemini/GEMINI.md"]) {
+    const sharedWrites = writes.filter((write) => write.path.endsWith("/.claude/CLAUDE.md"));
+    expect(sharedWrites).toHaveLength(1);
+    expect(sharedWrites[0].content).toContain("fallback shared content");
+
+    for (const intersectionPath of ["codex/AGENTS.md", "gemini/GEMINI.md"]) {
       const w = writes.find((write) => write.path.includes(intersectionPath));
       expect(w).toBeUndefined();
     }

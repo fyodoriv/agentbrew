@@ -17,6 +17,7 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import yaml from "js-yaml";
 import { LOCAL_SKILL_DIRECTORY_ORIGIN } from "../agentfile-skill-directories.js";
 import { getSourceCacheDir } from "../catalog/index-source.js";
+import { recordedSkillConversion } from "../catalog/skill-conversions.js";
 import { loadCatalog } from "../catalog/types.js";
 import { filterReadsFromAgents } from "../core/agents.js";
 import type { Context } from "../core/context.js";
@@ -871,7 +872,7 @@ function ownerPreservingCatalogPaths(state: AgentBrewState | undefined): Set<str
   return new Set(
     (state?.sources ?? []).flatMap((source) =>
       source.skillsInstalled
-        .filter((name) => providers.get(name) === source.url)
+        .filter((name) => providers.get(name) === source.url || recordedSkillConversion(source, name))
         .map((name) => resolve(expandHome(INSTALLED_SKILLS_DIR), name)),
     ),
   );

@@ -11,6 +11,7 @@ import {
 } from "./catalog/index-source.js";
 import { refreshRecommendedCatalogRules } from "./catalog/install-other.js";
 import { copySkillFromCache, isInstalledSkillCurrent } from "./catalog/install-skill.js";
+import { recordedSkillConversion } from "./catalog/skill-conversions.js";
 import { installedSkillOwners } from "./catalog/skill-owners.js";
 import { withSourceCheckoutLeases } from "./catalog/source-checkout-lease.js";
 import { loadCatalog } from "./catalog/types.js";
@@ -49,28 +50,18 @@ type RefreshResult = { source: string; skill: string } & (
   | { status: "migrated"; plugin: string; instructions: string }
 );
 
-// A marketplace name alone does not establish that an installed skill moved.
-const SKILL_CONVERSIONS = [
-  {
-    source: "trailofbits/skills",
-    skill: "insecure-defaults",
-    plugin: "insecure-defaults@trailofbits",
-    instructions: "https://github.com/trailofbits/skills#installation",
-  },
-];
-
-function recordedSkillConversion(source: Source, skill: string) {
-  const repository = source.url
-    .toLowerCase()
-    .replace(/^(?:https:\/\/github\.com\/|ssh:\/\/git@github\.com\/|git@github\.com:)/, "")
-    .replace(/\/$/, "")
-    .replace(/\.git$/, "");
-  return SKILL_CONVERSIONS.find((entry) => entry.source === repository && entry.skill === skill);
-}
-
-function refreshSkillResult(source: Source, skillName: string, cachePath: string, dryRun: boolean): RefreshResult {
+function refreshSkillResult(
+  source: Source,
+  skillName: string,
+  cachePath: string,
+  dryRun: boolean,
+  checkout?: SourcePullOutcome,
+): RefreshResult {
   const conversion = recordedSkillConversion(source, skillName);
   if (conversion && !findSkillDirInCache(cachePath, skillName)) {
+    if (!checkout?.sha || checkout.path !== cachePath || !["refreshed", "unchanged"].includes(checkout.status)) {
+      return { source: source.url, skill: skillName, status: "skipped" };
+    }
     return {
       source: source.url,
       skill: skillName,
@@ -92,7 +83,7 @@ function refreshSkillResult(source: Source, skillName: string, cachePath: string
 /**
  * Cache path of each remote source with installed skills, plus the one owner
  * of every installed name (see installedSkillOwners). A source whose cache no
- * longer has the skill cannot own it, so the next source that ships it does.
+ * longer ships the skill can yield ownership, except for a recorded conversion.
  */
 function refreshPlan(
   sources: Source[],
@@ -107,7 +98,10 @@ function refreshPlan(
   }
   const owners = installedSkillOwners(sources, (source, name) => {
     const cachePath = cachePaths.get(source);
-    return cachePath !== undefined && findSkillDirInCache(cachePath, name) !== undefined;
+    return (
+      recordedSkillConversion(source, name) !== undefined ||
+      (cachePath !== undefined && findSkillDirInCache(cachePath, name) !== undefined)
+    );
   });
   return { cachePaths, owners };
 }
@@ -117,9 +111,14 @@ function refreshPlan(
  * has changed since the last install. This is the missing step between "pull latest
  * source" and "sync to agents" — without it, installed-skills/ contains stale copies.
  */
-export function refreshInstalledSkills(sources: Source[], options?: UpdateOptions): RefreshResult[] {
+export function refreshInstalledSkills(
+  sources: Source[],
+  options?: UpdateOptions,
+  outcomes: readonly SourcePullOutcome[] = [],
+): RefreshResult[] {
   const results: RefreshResult[] = [];
   const { cachePaths, owners } = refreshPlan(sources, options?.dryRun ?? false);
+  const checkouts = new Map(outcomes.map((outcome) => [outcome.source, outcome]));
 
   for (const [source, cachePath] of cachePaths) {
     const skillsToRefresh = options?.skillName
@@ -133,7 +132,9 @@ export function refreshInstalledSkills(sources: Source[], options?: UpdateOption
         results.push({ source: source.url, skill: skillName, status: "skipped" });
         continue;
       }
-      results.push(refreshSkillResult(source, skillName, cachePath, options?.dryRun ?? false));
+      results.push(
+        refreshSkillResult(source, skillName, cachePath, options?.dryRun ?? false, checkouts.get(source.url)),
+      );
     }
   }
 
@@ -222,7 +223,7 @@ function printRefreshResults(refreshResults: RefreshResult[]): void {
     } else if (result.status === "migrated") {
       migratedCount++;
       console.log(
-        `  ${result.skill} moved to the ${result.plugin} plugin. The installed copy was kept. Setup: ${result.instructions}`,
+        `  ${result.skill} moved to the ${result.plugin} plugin. Existing copies stay in place. Setup: ${result.instructions}`,
       );
     } else if (result.status === "failed") {
       console.error(`  ${ICON_ERROR} ${result.skill} ${chalk.dim(`not found in ${result.source}`)}`);
@@ -307,11 +308,7 @@ function updateBuiltinSkillsIfNeeded(
   if (!isDryRun && !options?.skillName) {
     let protectedOwner = true;
     try {
-      protectedOwner =
-        getStateSources(state).some(
-          (source) =>
-            source.type !== "local" && source.skillsInstalled.some((skill) => recordedSkillConversion(source, skill)),
-        ) || hasProtectedSkillOwner(state, options?.requestedSkills);
+      protectedOwner = hasProtectedSkillOwner(state, options?.requestedSkills);
     } catch (error) {
       console.warn(chalk.yellow(`  Could not verify skill owner protection: ${errorMessage(error)}`));
     }
@@ -348,11 +345,12 @@ function printInstalledSkillUpdates(
   options: UpdateOptions | undefined,
   prefix: string,
   isDryRun: boolean,
+  outcomes: readonly SourcePullOutcome[],
 ): void {
   if (sources.length === 0) return;
   console.log(chalk.bold(`\n${prefix}Installed skills`));
   if (isDryRun) console.log(chalk.dim("  Skipped (dry-run)"));
-  printRefreshResults(refreshInstalledSkills(sources, options));
+  printRefreshResults(refreshInstalledSkills(sources, options, outcomes));
 }
 
 function refreshCatalogRulesIfNeeded(isDryRun: boolean): void {
@@ -455,7 +453,7 @@ async function refreshSourceBytesAndReceipts(
   if (checkouts.failed) process.exitCode = 1;
 
   // 4. Refresh installed skill files from updated caches (skip writes in dry-run)
-  if (selectedModules.has("skills")) printInstalledSkillUpdates(sources, options, prefix, isDryRun);
+  if (selectedModules.has("skills")) printInstalledSkillUpdates(sources, options, prefix, isDryRun, outcomes);
 
   // 5. Update lock file with latest SHAs (skip in dry-run)
   if (!isDryRun) {

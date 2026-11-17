@@ -33,6 +33,7 @@ import { loadState } from "../state.js";
 import { delegateRulesGenerate } from "./rules-delegate.js";
 import {
   CANARY_DELEGATED_AGENTS,
+  chooseRulesFileWriters,
   computeRulesDiff,
   dedupeSharedRulesFile,
   extractManagedSection,
@@ -970,5 +971,20 @@ describe("syncRules — undetected agents get no rules", () => {
     expect(writes.filter((w) => w.includes("/.codex/"))).toEqual([]);
     const dirs = vi.mocked(mkdirSync).mock.calls.map((call) => String(call[0]));
     expect(dirs.filter((d) => d.includes("/.codex/"))).toEqual([]);
+  });
+});
+
+describe("shared rules file writer", () => {
+  const native = { agentName: "opencode", expandedPath: "/fixture/shared/AGENTS.md" };
+  const delegated = { agentName: "codex", expandedPath: native.expandedPath };
+
+  it("uses the native writer when delegation has no output", () => {
+    mockExistsSync.mockReturnValueOnce(false).mockReturnValueOnce(false);
+    expect(chooseRulesFileWriters([delegated, native], new Map())).toEqual([native]);
+  });
+
+  it("prefers the delegated writer when its output returns", () => {
+    mockExistsSync.mockReturnValueOnce(false).mockReturnValueOnce(false);
+    expect(chooseRulesFileWriters([native, delegated], new Map([["codex", "Rendered rules"]]))).toEqual([delegated]);
   });
 });

@@ -268,7 +268,7 @@ function treeManifest(dir: string, prefix = ""): unknown[] {
       const rel = prefix + name;
       const st = lstatSync(path);
       const mode = st.mode & 0o777;
-      if (st.isDirectory()) return [{ rel, mode, kind: "dir" }, ...treeManifest(path, rel + "/")];
+      if (st.isDirectory()) return [{ rel, mode, kind: "dir" }, ...treeManifest(path, `${rel}/`)];
       if (st.isSymbolicLink()) return [{ rel, mode, target: readlinkSync(path) }];
       if (!st.isFile()) throw new Error("unexpected fixture leaf");
       return [{ rel, mode, sha256: digest(path) }];
@@ -278,12 +278,12 @@ function treeManifest(dir: string, prefix = ""): unknown[] {
 function fixtureReceipt(id: string, data: Record<string, unknown>): void {
   const out = process.env.CHECKUP_N04_EVIDENCE;
   if (!out) throw new Error("CHECKUP_N04_EVIDENCE required");
-  writeFileSync(join(out, id + ".json"), JSON.stringify(data, null, 2) + "\n", { flag: "wx", mode: 0o600 });
+  writeFileSync(join(out, `${id}.json`), `${JSON.stringify(data, null, 2)}\n`, { flag: "wx", mode: 0o600 });
 }
 
 function tool(command: string, args: string[], cwd: string, env: Record<string, string>): string {
   const result = spawnSync(command, args, { cwd, env, encoding: "utf8", timeout: 20_000 });
-  if (result.status !== 0) throw new Error("fixture setup command failed: " + command + " " + args[0]);
+  if (result.status !== 0) throw new Error(`fixture setup command failed: ${command} ${args[0]}`);
   return result.stdout.trim();
 }
 
@@ -365,7 +365,7 @@ function buildPredecessor() {
       "(version 1)",
       "(allow default)",
       '(deny file-write* (subpath "/"))',
-      "(allow file-write* (subpath " + JSON.stringify(fixture.root) + ') (literal "/dev/null"))',
+      `(allow file-write* (subpath ${JSON.stringify(fixture.root)}) (literal "/dev/null"))`,
       '(deny process-exec (literal "/bin/launchctl") (literal "/usr/bin/osascript") (literal "/usr/bin/open"))',
     ].join("\n"),
     { flag: "wx", mode: 0o600 },
@@ -412,7 +412,7 @@ function buildPredecessor() {
         flag: "wx",
         mode: 0o600,
       });
-      throw new Error("public predecessor setup failed: " + executable + " " + args[0]);
+      throw new Error(`public predecessor setup failed: ${executable} ${args[0]}`);
     }
     return result.stdout.trim();
   };
@@ -420,7 +420,7 @@ function buildPredecessor() {
   run(
     fixture.root,
     "/usr/bin/git",
-    ["clone", "--template=" + template, "--no-local", "--no-checkout", "--", realpathSync(source), repo],
+    ["clone", `--template=${template}`, "--no-local", "--no-checkout", "--", realpathSync(source), repo],
     120_000,
   );
   git("checkout", "--detach", predecessorCommit);
@@ -544,7 +544,7 @@ function makeInPlaceFixture() {
   const cli = join(dist, "cli.js");
   const launcher = join(home, ".local/bin/agentbrew");
   const state = join(home, ".local/state");
-  const record = join(state, "checkups", fixtureId + ".json");
+  const record = join(state, "checkups", `${fixtureId}.json`);
   const settings = join(home, ".claude/settings.json");
   const zshrc = join(home, ".zshrc");
   const npmUser = join(root, "npm-user");
@@ -590,7 +590,7 @@ function makeInPlaceFixture() {
   const git = (...args: string[]) => tool("/usr/bin/git", args, repo, command.env);
   const emptyTemplate = join(root, "empty-git-template");
   mkdirSync(emptyTemplate);
-  git("init", "-q", "--initial-branch=main", "--template=" + emptyTemplate);
+  git("init", "-q", "--initial-branch=main", `--template=${emptyTemplate}`);
   git("add", "--all");
   git(
     "-c",
@@ -682,15 +682,15 @@ function injectGuard(f: InPlace, mode: "fail" | "hold"): string {
     [
       "#!/bin/bash",
       "set -euo pipefail",
-      "/bin/bash " + JSON.stringify(original) + ' "$@"',
+      `/bin/bash ${JSON.stringify(original)} "$@"`,
       'if [[ "${1:-}" != --dist-only ]]; then exit 0; fi',
-      "printf '%s\\n' complete > " + JSON.stringify(ready + ".tmp"),
-      "/bin/mv " + JSON.stringify(ready + ".tmp") + " " + JSON.stringify(ready),
+      `printf '%s\\n' complete > ${JSON.stringify(`${ready}.tmp`)}`,
+      `/bin/mv ${JSON.stringify(`${ready}.tmp`)} ${JSON.stringify(ready)}`,
       ...(mode === "fail"
         ? ["exit 73"]
         : [
             "for ((i=0; i<30; i++)); do",
-            "  [[ ! -e " + JSON.stringify(join(f.root, "release")) + " ]] || exit 74",
+            `  [[ ! -e ${JSON.stringify(join(f.root, "release"))} ]] || exit 74`,
             "  /bin/sleep 1",
             "done",
             "exit 74",
@@ -867,7 +867,7 @@ function preparePublication(f: InPlace, caseId: string): void {
   );
   if (result.status !== 0) {
     const out = process.env.CHECKUP_N04_EVIDENCE!;
-    writeFileSync(join(out, caseId + ".setup.log"), String(result.stdout) + String(result.stderr), {
+    writeFileSync(join(out, `${caseId}.setup.log`), String(result.stdout) + String(result.stderr), {
       flag: "wx",
       mode: 0o600,
     });
@@ -881,7 +881,7 @@ function preparePublication(f: InPlace, caseId: string): void {
     [
       "#!/bin/bash",
       "set -euo pipefail",
-      "/bin/bash " + JSON.stringify(realGuard) + ' "$@"',
+      `/bin/bash ${JSON.stringify(realGuard)} "$@"`,
       '[[ "$1" = --dist-only && -d "$2" ]]',
       '[[ "$N04_BUILD" = A || "$N04_BUILD" = B ]]',
       'ready="$N04_CONTROL/$N04_BUILD.ready"',
@@ -902,12 +902,12 @@ function preparePublication(f: InPlace, caseId: string): void {
 function startPublication(f: InPlace, id: "A" | "B", caseId: string) {
   const { cmd, cmdArgs, cwd, env } = f.command;
   const out = process.env.CHECKUP_N04_EVIDENCE!;
-  const log = openSync(join(out, caseId + "-" + id + ".build.log"), "wx", 0o600);
+  const log = openSync(join(out, `${caseId}-${id}.build.log`), "wx", 0o600);
   const child = spawn(cmd, [...cmdArgs.slice(0, 2), "/bin/bash", "scripts/build-source.sh"], {
     cwd,
     env: {
       ...env,
-      PATH: join(f.repo, "node_modules/.bin") + ":" + env.PATH,
+      PATH: `${join(f.repo, "node_modules/.bin")}:${env.PATH}`,
       N04_CONTROL: f.root,
       N04_BUILD: id,
     },
@@ -923,8 +923,8 @@ function startPublication(f: InPlace, id: "A" | "B", caseId: string) {
   child.once("exit", (code, signal) => {
     terminal = { code, signal };
   });
-  const ready = join(f.root, id + ".ready");
-  const release = join(f.root, id + ".release");
+  const ready = join(f.root, `${id}.ready`);
+  const release = join(f.root, `${id}.release`);
   let released = false;
   const proceed = () => {
     if (!released) writeFileSync(release, "continue\n", { flag: "wx", mode: 0o600 });
@@ -1015,7 +1015,7 @@ describe.skipIf(!IN_PLACE).sequential("N04 in-place publication identity", () =>
         const moved = join(f.root, "validated-aside");
         const replacement = join(f.root, "replacement");
         cpSync(leaf, replacement, { recursive: true, errorOnExist: true, force: false });
-        writeFileSync(join(replacement, "n04-substitution-sentinel"), id + "\n", { flag: "wx", mode: 0o600 });
+        writeFileSync(join(replacement, "n04-substitution-sentinel"), `${id}\n`, { flag: "wx", mode: 0o600 });
         const original = publicationTree(leaf);
         const foreign = publicationTree(replacement);
         expect(original.identity).not.toBeNull();

@@ -806,6 +806,7 @@ describe("health check & fix", () => {
   it("reports clean when everything is in sync", async () => {
     const state = makeState();
     saveState(state);
+    await syncCommands({ quiet: true });
     await syncHooks({ quiet: true });
 
     const log = captureLog();

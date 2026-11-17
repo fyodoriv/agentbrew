@@ -3810,6 +3810,18 @@
         "Never runs git stash or a chained git add -A that can run in the wrong checkout",
         "Offers the live Reminders sync as a separate approval"
       ]
+    },
+    {
+      "id": 333,
+      "prompt": "/goal (started from a dotfiles session) ensure nothing is left to do in agentbrew: CI-only test hook, Rust closeout, overlay plan, docs; use worktrees and parallel workers",
+      "expected_output": "Re-audits each item with fresh evidence first. Before fanning out workers into another repo, creates that repo's worktrees itself and starts non-isolated workers pinned to those paths, because isolation:\"worktree\" pins a worker to the session's current repo. Treats a pattern hit inside a committed binary as noise only after checking its context. Verifies telemetry arrival in the analytics store by insert time, not event time.",
+      "expectations": [
+        "Re-audits every criterion with fresh commands before editing",
+        "Creates the target repo worktrees itself instead of relying on isolation:worktree from another repo",
+        "Checks a leak-pattern hit in a binary for context before calling it a false positive",
+        "Verifies arrived events by ingest time matching the send count",
+        "Files found follow-ups as tasks in the owning repo"
+      ]
     }
   ]
 }

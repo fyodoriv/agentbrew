@@ -18,3 +18,11 @@ jobs:
           node-version-file: .node-version
       - run: npm ci
       - run: npx vitest run src/update.test.ts src/integration.test.ts --maxWorkers=1 --retry=0 -t 'recorded plugin conversion|ordinary refresh behavior|report a conversion from a|during real sync after a recorded conversion|when plain sync refreshes'
+
+      - name: Verify that the real sync fixture rejects missing ownership protection
+        run: |
+          sed -i 's/ || recordedSkillConversion(source, name)//' src/sync/skills-sync.ts
+          if npx vitest run src/integration.test.ts --maxWorkers=1 --retry=0 -t 'during real sync after a recorded conversion' > "$RUNNER_TEMP/absent-protection.log" 2>&1; then
+            exit 1
+          fi
+          grep -F 'expected [ { label:' "$RUNNER_TEMP/absent-protection.log"

@@ -35,9 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-24.04, not ubuntu-latest: Playwright has no Chromium build
-        # for the newer image yet (TASKS.md ci-ubuntu-latest-playwright).
-        os: [ubuntu-24.04, macos-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:

@@ -23,7 +23,20 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 
 ## Step cache (like nx)
 
-`scripts/verify.sh` records each step that passed, keyed on the step's inputs. A later run skips a step whose inputs did not change (today the hook-fixture step on a pull request; the lint steps also key on `origin/main`, and the test step always runs), and prints `cached (inputs unchanged since it passed)`. The hosted job keeps that record between runs with `actions/cache`. A cache entry cannot be changed, so each run saves a new entry and restores the newest one. A pull request can read `main`'s entries and its own; it cannot write to `main`'s. The last gate line shows the effect: `verify: passed; N of M steps from cache`. To run every step, delete the entries: `gh cache delete --all` (this also removes the browser cache).
+`scripts/verify.sh` records steps that pass, keyed on their inputs. Reuse in
+GitHub Actions is limited to the same runner image name, image version and
+architecture. If the runner does not report all three, the hosted cache
+restore and save are skipped.
+
+The source-only artifact and task-stability lints can reuse a pass across an
+unrelated docs change. The artifact lint checks for a root artifact before
+using a cached pass. The task lint checks the queue and allowlist and declines
+cache reuse for untracked ignored inputs or unresolved file types. Tools that
+read the installed dependency graph keep their current cache policy.
+
+The last gate line reports `verify: passed; N of M steps from cache`. To run
+every step, delete the entries with `gh cache delete --all`. This also removes
+the browser cache.
 
 ## Tests run on hosted CI only
 

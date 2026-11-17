@@ -55,6 +55,8 @@ input_hash() {
 step_inputs() {
   case "$1" in
   lockfile-sync) echo "package.json package-lock.json scripts/check-lockfile-sync.sh scripts/stubs" ;;
+  lint-artifacts) echo "scripts/lint-repo-artifacts.sh scripts/verify.sh" ;;
+  lint-tasks) echo "TASKS.md .tasks-stability-allowlist scripts/lint-tasks-stability.mjs scripts/verify.sh" ;;
   # The fixtures run hook scripts, the perf helper, and the wrap-up skill's
   # open-work script (src/scripts/verify-cache.test.ts checks this list).
   hook-fixtures) echo "hooks templates/scripts skill-plugins/workflow/wrap-up scripts/run-hook-fixtures.sh" ;;
@@ -76,7 +78,16 @@ source_only_step() {
       [ -z "$artifact" ] || return 1
       tools="basename sed"
       ;;
-    "lint-tasks node scripts/lint-tasks-stability.mjs TASKS.md") tools="" ;;
+    "lint-tasks node scripts/lint-tasks-stability.mjs TASKS.md")
+      [ ! -L TASKS.md ] && [ ! -L .tasks-stability-allowlist ] || return 1
+      if [ -e .tasks-stability-allowlist ]; then
+        [ -f .tasks-stability-allowlist ] || return 1
+        local ignore_rc=0
+        git check-ignore --quiet -- .tasks-stability-allowlist || ignore_rc=$?
+        [ "$ignore_rc" = 1 ] || return 1
+      fi
+      tools=""
+      ;;
     *) return 2 ;;
   esac
 

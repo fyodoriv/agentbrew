@@ -44,9 +44,41 @@ interface UpdateOptions {
 }
 
 type RefreshStatus = "refreshed" | "unchanged" | "skipped" | "failed";
-type RefreshResult = { source: string; skill: string; status: RefreshStatus };
+type RefreshResult = { source: string; skill: string } & (
+  | { status: RefreshStatus }
+  | { status: "migrated"; plugin: string; instructions: string }
+);
+
+// A marketplace name alone does not establish that an installed skill moved.
+const SKILL_CONVERSIONS = [
+  {
+    source: "trailofbits/skills",
+    skill: "insecure-defaults",
+    plugin: "insecure-defaults@trailofbits",
+    instructions: "https://github.com/trailofbits/skills#installation",
+  },
+];
+
+function recordedSkillConversion(source: Source, skill: string) {
+  const repository = source.url
+    .toLowerCase()
+    .replace(/^(?:https:\/\/github\.com\/|ssh:\/\/git@github\.com\/|git@github\.com:)/, "")
+    .replace(/\/$/, "")
+    .replace(/\.git$/, "");
+  return SKILL_CONVERSIONS.find((entry) => entry.source === repository && entry.skill === skill);
+}
 
 function refreshSkillResult(source: Source, skillName: string, cachePath: string, dryRun: boolean): RefreshResult {
+  const conversion = recordedSkillConversion(source, skillName);
+  if (conversion && !findSkillDirInCache(cachePath, skillName)) {
+    return {
+      source: source.url,
+      skill: skillName,
+      status: "migrated",
+      plugin: conversion.plugin,
+      instructions: conversion.instructions,
+    };
+  }
   // Re-copying an unchanged skill rewrites every file for nothing.
   if (isInstalledSkillCurrent(cachePath, skillName))
     return { source: source.url, skill: skillName, status: "unchanged" };
@@ -182,15 +214,21 @@ export function clearMcpmBridgeAttemptedMissing(): void {
 
 function printRefreshResults(refreshResults: RefreshResult[]): void {
   let refreshedCount = 0;
+  let migratedCount = 0;
   for (const result of refreshResults) {
     if (result.status === "refreshed") {
       refreshedCount++;
       console.log(`  ${chalk.yellow("↑")} ${result.skill} ${chalk.dim(`from ${result.source}`)}`);
+    } else if (result.status === "migrated") {
+      migratedCount++;
+      console.log(
+        `  ${result.skill} moved to the ${result.plugin} plugin. The installed copy was kept. Setup: ${result.instructions}`,
+      );
     } else if (result.status === "failed") {
       console.error(`  ${ICON_ERROR} ${result.skill} ${chalk.dim(`not found in ${result.source}`)}`);
     }
   }
-  if (refreshedCount === 0 && refreshResults.length > 0) {
+  if (refreshedCount === 0 && migratedCount === 0 && refreshResults.length > 0) {
     console.log(`  ${ICON_SUCCESS} All installed skills up to date`);
   } else if (refreshResults.length === 0) {
     console.log(chalk.dim("  No installed skills from remote sources"));
@@ -269,7 +307,11 @@ function updateBuiltinSkillsIfNeeded(
   if (!isDryRun && !options?.skillName) {
     let protectedOwner = true;
     try {
-      protectedOwner = hasProtectedSkillOwner(state, options?.requestedSkills);
+      protectedOwner =
+        getStateSources(state).some(
+          (source) =>
+            source.type !== "local" && source.skillsInstalled.some((skill) => recordedSkillConversion(source, skill)),
+        ) || hasProtectedSkillOwner(state, options?.requestedSkills);
     } catch (error) {
       console.warn(chalk.yellow(`  Could not verify skill owner protection: ${errorMessage(error)}`));
     }

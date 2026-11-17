@@ -11,7 +11,8 @@ import { readMcpJson, writeMcpJson } from "./mcp.js";
 const OPENCODE_CONFIG = "~/.config/opencode/opencode.json";
 const OPENCODE_SKILLS_DIR = "~/.config/opencode/skills";
 const OPENCODE_COMMANDS_DIR = "~/.config/opencode/commands";
-const OLLAMA_URL = "http://localhost:11434/v1";
+const OLLAMA_HOST = "http://localhost:11434";
+const OLLAMA_URL = `${OLLAMA_HOST}/v1`;
 
 // ── Hardware detection ──────────────────────────────────────────────────────
 
@@ -332,11 +333,13 @@ function isInstalled(bin: string): boolean {
 /** Check if Ollama service is running. */
 function isOllamaRunning(): boolean {
   try {
-    execFileSync("curl", ["-sf", "http://localhost:11434/api/tags"], {
+    const result = execFileSync("curl", ["--noproxy", "*", "-sf", `${OLLAMA_HOST}/api/tags`], {
       stdio: "pipe",
+      encoding: "utf-8",
       timeout: 5_000,
     });
-    return true;
+    const response = JSON.parse(result) as { models?: unknown } | null;
+    return Array.isArray(response?.models);
   } catch {
     return false;
   }
@@ -350,16 +353,20 @@ function readProcessTable(command: string, args: string[]): string | undefined {
   return result.status === 1 && !result.stderr.trim() && !result.stdout.trim() ? "" : undefined;
 }
 
-export function localOllamaProcesses(listeners: string, commands: string): Set<string> {
-  const pids = new Set([...listeners.matchAll(/^p(\d+)$/gm)].map((match) => match[1]));
+export function localOllamaProcesses(
+  listeners: string,
+  commands: string,
+): { listening: Set<string>; serving: Set<string> } {
+  const listening = new Set([...listeners.matchAll(/^p(\d+)$/gm)].map((match) => match[1]));
+  const serving = new Set<string>();
   for (const line of commands.split("\n")) {
-    const server = /^\s*(\d+)\s+(?:\/[^\n]*\/)?ollama[ \t]+serve(?:\s|$)/.exec(line);
-    if (server) pids.add(server[1]);
+    const server = /^\s*(\d+)\s+(?:[^\n]*\/)?ollama[ \t]+serve(?:\s|$)/.exec(line);
+    if (server) serving.add(server[1]);
   }
-  return pids;
+  return { listening, serving };
 }
 
-function probeLocalOllama(): Set<string> | undefined {
+function probeLocalOllama(): ReturnType<typeof localOllamaProcesses> | undefined {
   const listeners = readProcessTable("/usr/sbin/lsof", ["-nP", "-iTCP:11434", "-sTCP:LISTEN", "-Fp"]);
   const ollama = readProcessTable("/usr/bin/pgrep", ["-x", "ollama"]);
   if (listeners === undefined || ollama === undefined) return undefined;
@@ -372,10 +379,18 @@ function probeLocalOllama(): Set<string> | undefined {
   return commands === undefined ? undefined : localOllamaProcesses(listeners, commands);
 }
 
+function ollamaCommandEnv(): NodeJS.ProcessEnv {
+  return platform() === "darwin" ? { ...process.env, OLLAMA_HOST } : process.env;
+}
+
 /** Check if a model is already pulled in Ollama. */
 function isModelPulled(model: string): boolean {
   try {
-    const output = execFileSync("ollama", ["list"], { stdio: "pipe", timeout: 10_000 }).toString();
+    const output = execFileSync("ollama", ["list"], {
+      stdio: "pipe",
+      timeout: 10_000,
+      env: ollamaCommandEnv(),
+    }).toString();
     // Match the base model name (before any quantization suffix)
     const baseName = model.split(":")[0];
     const tag = model.split(":")[1] ?? "";
@@ -422,7 +437,7 @@ function startOllamaFallback(environment: Record<string, string>): boolean {
 function pullModel(model: string): boolean {
   try {
     console.log(chalk.dim(`  Pulling ${model} (this may take a while on first run)...`));
-    execFileSync("ollama", ["pull", model], { stdio: "inherit", timeout: 1_200_000 });
+    execFileSync("ollama", ["pull", model], { stdio: "inherit", timeout: 1_200_000, env: ollamaCommandEnv() });
     return true;
   } catch (e) {
     logSkipped("opencode-bootstrap/pullModel", e);
@@ -625,18 +640,18 @@ export async function bootstrapOpencode(options?: { model?: string; dryRun?: boo
   let reuseOllama = false;
   if (profile.os === "darwin") {
     const processes = probeLocalOllama();
-    if (!processes || processes.size > 1) {
-      const reason = processes
-        ? `found ${processes.size} competing processes`
-        : "process ownership could not be checked";
+    const pids = processes ? new Set([...processes.listening, ...processes.serving]) : new Set();
+    if (!processes || pids.size > 1) {
+      const reason = processes ? `found ${pids.size} competing processes` : "process ownership could not be checked";
       console.error(`  Ollama readiness failed at ${OLLAMA_URL}: ${reason}. Existing services were left running.`);
       process.exitCode = 1;
       return;
     }
-    reuseOllama = isOllamaRunning();
-    if (processes.size === 1 && !reuseOllama) {
+    const responding = isOllamaRunning();
+    reuseOllama = processes.listening.size === 1 && processes.serving.size === 1 && responding;
+    if (!reuseOllama && (pids.size > 0 || responding)) {
       console.error(
-        `  Ollama readiness failed at ${OLLAMA_URL}: a local process is present but the endpoint is unavailable.`,
+        `  Ollama readiness failed at ${OLLAMA_URL}: the listener could not be verified as an active Ollama server.`,
       );
       process.exitCode = 1;
       return;

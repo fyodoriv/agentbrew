@@ -169,16 +169,25 @@ describe("local Ollama process evidence", () => {
   it("counts one server once when it appears in both probes", () => {
     const listeners = "p101\nf4\np101\nf5\n";
     const commands = "  101 /Applications/Ollama Test.app/Contents/Resources/ollama serve\n  112 ollama runner";
-    expect([...localOllamaProcesses(listeners, commands)]).toEqual(["101"]);
+    expect(localOllamaProcesses(listeners, commands)).toEqual({
+      listening: new Set(["101"]),
+      serving: new Set(["101"]),
+    });
   });
 
   it("reports a competing server even if only one can listen", () => {
-    const commands = "101 ollama serve\n202 /opt/bin/ollama serve\n203 ollama list";
-    expect([...localOllamaProcesses("p101\nf3\n", commands)]).toEqual(["101", "202"]);
+    const commands = "101 ollama serve\n202 ./bin/ollama serve\n203 ollama list";
+    expect(localOllamaProcesses("p101\nf3\n", commands)).toEqual({
+      listening: new Set(["101"]),
+      serving: new Set(["101", "202"]),
+    });
   });
 
   it("keeps an unrelated listener visible and ignores client commands", () => {
-    expect([...localOllamaProcesses("p301\nf3\n", "112 ollama list")]).toEqual(["301"]);
-    expect([...localOllamaProcesses("", "112 ollama runner")]).toEqual([]);
+    expect(localOllamaProcesses("p301\nf3\n", "112 ollama list")).toEqual({
+      listening: new Set(["301"]),
+      serving: new Set(),
+    });
+    expect(localOllamaProcesses("", "112 ollama runner")).toEqual({ listening: new Set(), serving: new Set() });
   });
 });

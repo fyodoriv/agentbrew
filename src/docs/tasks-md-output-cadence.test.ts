@@ -51,7 +51,7 @@ function splitIntoTaskBlocks(markdown: string): string[] {
 
 /** Pull the `**ID**: <id>` from a task block for human-readable error messages. */
 function extractTaskId(block: string): string | null {
-  const match = block.match(/^\s*(?:-\s+)?\*\*ID\*\*:\s*([a-z][a-z0-9-]*[a-z0-9])\s*$/mu);
+  const match = block.match(/^[ \t]+(?:-[ \t]+)?\*\*ID\*\*:[ \t]*([a-z][a-z0-9-]*[a-z0-9])[ \t\r]*$/mu);
   return match ? match[1] : null;
 }
 
@@ -66,6 +66,40 @@ function extractCadence(block: string): string | null {
   const match = block.match(/^\s*(?:-\s+)?\*\*Cadence\*\*:\s*(.+?)\s*$/mu);
   return match ? match[1].trim() : null;
 }
+
+function missingRequiredFields(block: string): string[] {
+  const missing = [];
+  if (!extractTaskId(block)) missing.push("ID");
+  if (!/^ {2}(?:-[ \t]+)?\*\*Success\*\*:[ \t]*\S/mu.test(block)) missing.push("Success");
+  return missing;
+}
+
+describe("TASKS.md required fields", () => {
+  it("requires Success even when Acceptance is present", () => {
+    const task = "- [ ] Task\n  - **ID**: sample-task\n  - **Acceptance**: The check passes.";
+    expect(missingRequiredFields(task)).toEqual(["Success"]);
+  });
+
+  it("requires ID even when Success is present", () => {
+    const task = "- [ ] Task\n  - **Success**: All checks pass.";
+    expect(missingRequiredFields(task)).toEqual(["ID"]);
+  });
+
+  it("requires Success at the task metadata level", () => {
+    const task = "- [ ] Task\n  - **ID**: sample-task\n  - **Details**: Notes\n    - **Success**: An example.";
+    expect(missingRequiredFields(task)).toEqual(["Success"]);
+  });
+
+  it("requires both fields on every queued task", () => {
+    const repoRoot = resolve(import.meta.dirname, "..", "..");
+    const tasks = readFileSync(resolve(repoRoot, "TASKS.md"), "utf8");
+    const violations = splitIntoTaskBlocks(tasks).flatMap((block) => {
+      const missing = missingRequiredFields(block);
+      return missing.length ? [`${block.split("\n")[0]} is missing ${missing.join(", ")}`] : [];
+    });
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+});
 
 describe("ALLOWED_OUTPUTS", () => {
   it("contains the canonical 5 output shapes", () => {

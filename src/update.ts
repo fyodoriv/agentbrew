@@ -88,6 +88,7 @@ function refreshSkillResult(
 function refreshPlan(
   sources: Source[],
   dryRun: boolean,
+  ownershipSources: Source[],
 ): { cachePaths: Map<Source, string>; owners: Map<string, string> } {
   const cachePaths = new Map<Source, string>();
   for (const source of sources) {
@@ -96,7 +97,7 @@ function refreshPlan(
     if (dryRun && (!cachePath || !existsSync(cachePath))) continue;
     if (cachePath) cachePaths.set(source, cachePath);
   }
-  const owners = installedSkillOwners(sources, (source, name) => {
+  const owners = installedSkillOwners(ownershipSources, (source, name) => {
     const cachePath = cachePaths.get(source);
     return (
       recordedSkillConversion(source, name) !== undefined ||
@@ -115,9 +116,10 @@ export function refreshInstalledSkills(
   sources: Source[],
   options?: UpdateOptions,
   outcomes: readonly SourcePullOutcome[] = [],
+  ownershipSources: Source[] = sources,
 ): RefreshResult[] {
   const results: RefreshResult[] = [];
-  const { cachePaths, owners } = refreshPlan(sources, options?.dryRun ?? false);
+  const { cachePaths, owners } = refreshPlan(sources, options?.dryRun ?? false, ownershipSources);
   const checkouts = new Map(outcomes.map((outcome) => [outcome.source, outcome]));
 
   for (const [source, cachePath] of cachePaths) {

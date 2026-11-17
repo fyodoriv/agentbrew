@@ -263,6 +263,20 @@
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration; the actual terminal timeout and current in-process `Command.parseAsync` lifecycle fixture.
 
 
+- [ ] Qualify the Claude hook bridge on OpenCode 2
+  - **ID**: opencode-v2-claude-hook-bridge
+  - **Tags**: opencode, hooks, reliability, security
+  - **Mode**: AFK
+  - **Details**: A bounded standalone OpenCode 2.3.0 session rejected the installed `claude-hooks.js` because it exports the V1 hook map. Startup also timed out separately before reaching the local model. Qualify V2 loader admission and hook behavior before claiming that either problem is fixed. V1 remains supported.
+  - **Files**: `templates/opencode/`, `src/opencode-hooks/`, the helper deployment code, `docs/support-matrix.md`.
+  - **Output**: code
+  - **Acceptance**: A fresh V2 CLI accepts the bridge, runs supported hook events, blocks a synthetic denied action before execution, and keeps the V1 behavior and owner files safe.
+  - **Hypothesis**: The V2 loader goes from one rejection to zero, and registered actions have zero lost guard decisions across approved, denied, amended and session-event controls.
+  - **Measurement**: Register exact V1/V2 versions and synthetic fixtures before running a fresh isolated server. Record load, guard inputs and final output. Run the existing `src/opencode-hooks/claude-hooks.test.ts` and the hosted gate.
+  - **Success**: 2/2 loaders accept their artifacts, all four effect controls match, zero denied effects run, and zero owner files change.
+  - **Pivot**: If any V2 lifecycle or guard effect cannot be verified, keep that host capability unqualified. Do not infer coverage from plugin load alone.
+  - **Anchor**: OpenCode 2.3.0 loader output and [V1 migration guide](https://opencode.ai/docs/build/plugins/migrate-v1).
+
 - [ ] Build and install evidence rejects stale locked dependencies
   - **ID**: locked-install-evidence
   - **Tags**: security, stability, dependencies

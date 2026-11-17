@@ -27,3 +27,10 @@ jobs:
           test "$(grep -c 'test.ts' "$RUNNER_TEMP/dedicated.list")" = 1
       - name: Calibrate the observer with target capture disabled
         run: npx vitest run --config vitest.sync-selection-observation.config.ts --maxWorkers=1 --retry=0
+
+      - name: Verify selector survives isolation without selecting sealed cases
+        env:
+          SYNC_SELECTION_OBSERVATION_CAPTURE: "1"
+        run: |
+          npx vitest run --config vitest.sync-selection-observation.config.ts --maxWorkers=1 --retry=0 -t 'observer calibration preserves an incomplete exit' | tee "$RUNNER_TEMP/selector.log"
+          grep -Fq 'SYNC_SELECTION_CAPTURE_ENABLED true' "$RUNNER_TEMP/selector.log"

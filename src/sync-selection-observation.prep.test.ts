@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { CommanderError } from "commander";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const observed = vi.hoisted(() => ({ calls: [] as string[], denied: 0 }));
@@ -81,6 +82,12 @@ vi.mock("./plugins/leak-audit.js", async (original) => ({
   ...(await original<typeof import("./plugins/leak-audit.js")>()),
   writeRedactPatterns: () => record("redaction-write"),
 }));
+vi.mock("./core/errors.js", async (original) => ({
+  ...(await original<typeof import("./core/errors.js")>()),
+  clearSyncErrors: () => record("sync-error-log-clear"),
+  saveSyncErrors: () => record("sync-error-log-save"),
+}));
+vi.mock("./motd.js", () => ({ printMotd: () => record("startup-repair-log") }));
 vi.mock("./core/events.js", async (original) => ({
   ...(await original<typeof import("./core/events.js")>()),
   recordEvent: () => record("event-write"),
@@ -125,6 +132,7 @@ import { update } from "./update.js";
 const captureEnabled = process.env.SYNC_SELECTION_OBSERVATION_CAPTURE === "1";
 
 type Case = "emptyAPI" | "emptyPull" | "unknownPlain" | "selectedPlain";
+type Outcome = "returned" | "commander-exit" | "inconclusive";
 
 beforeEach(() => {
   observed.calls.length = 0;
@@ -141,11 +149,11 @@ afterEach(() => {
   process.exitCode = undefined;
 });
 
-function receipt(id: Case | "calibration", completed: boolean) {
+function receipt(id: Case | "calibration", outcome: Outcome, explicitExit?: number) {
   return {
     id,
-    outcome: completed ? "returned" : "inconclusive",
-    exit: typeof process.exitCode === "number" ? process.exitCode : 0,
+    outcome,
+    exit: explicitExit ?? (typeof process.exitCode === "number" ? process.exitCode : 0),
     calls: [...observed.calls],
     denied: observed.denied,
   };
@@ -155,7 +163,7 @@ it("observer calibration measures one real module binding", async () => {
   const hooks = buildSyncModules({ dryRun: true }).find((module) => module.name === "hooks");
   expect(hooks).toBeDefined();
   await hooks?.fn();
-  expect(receipt("calibration", true)).toEqual({
+  expect(receipt("calibration", "returned")).toEqual({
     id: "calibration",
     outcome: "returned",
     exit: 0,
@@ -167,13 +175,14 @@ it("observer calibration measures one real module binding", async () => {
 it("observer calibration refuses child and fetch canaries", () => {
   expect(() => spawnSync("synthetic-canary")).toThrow("blocked external action");
   expect(() => fetch("http://127.0.0.1:9/")).toThrow("blocked external action");
-  expect(receipt("calibration", false).denied).toBe(2);
+  expect(receipt("calibration", "inconclusive").denied).toBe(2);
 });
 
 it("observer calibration preserves an incomplete exit", () => {
   process.exitCode = 2;
   process.stdout.write(`SYNC_SELECTION_CAPTURE_ENABLED ${captureEnabled}\n`);
-  expect(receipt("calibration", false)).toMatchObject({ outcome: "inconclusive", exit: 2, calls: [] });
+  expect(receipt("calibration", "inconclusive")).toMatchObject({ outcome: "inconclusive", exit: 2, calls: [] });
+  expect(receipt("calibration", "commander-exit", 1)).toMatchObject({ outcome: "commander-exit", exit: 1 });
 });
 
 const cases: Array<{ id: Case; cli?: string[] }> = [
@@ -185,7 +194,8 @@ const cases: Array<{ id: Case; cli?: string[] }> = [
 
 for (const { id, cli } of cases) {
   it.skipIf(!captureEnabled)(`sealed observation ${id}`, async () => {
-    let completed = false;
+    let outcome: Outcome = "inconclusive";
+    let explicitExit: number | undefined;
     try {
       if (cli) {
         const program = buildProgram();
@@ -195,9 +205,13 @@ for (const { id, cli } of cases) {
       } else {
         await update({ only: "" });
       }
-      completed = true;
+      outcome = "returned";
+    } catch (error) {
+      if (!(error instanceof CommanderError)) throw error;
+      outcome = "commander-exit";
+      explicitExit = error.exitCode;
     } finally {
-      const result = receipt(id, completed);
+      const result = receipt(id, outcome, explicitExit);
       process.stdout.write(`SYNC_SELECTION_OBSERVATION ${JSON.stringify(result)}\n`);
     }
     expect(observed.denied).toBe(0);

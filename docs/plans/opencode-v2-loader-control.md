@@ -170,3 +170,25 @@ server environment or generates one.
 - **Pivot**: Any failed authenticated read leaves the loader unqualified.
   Preserve all previous results and keep the host outside the live path.
 - **Anchor**: The observed 401 and the exact server and client source.
+
+The [authenticated route](https://github.com/fyodoriv/agentbrew/actions/runs/44293997253)
+reported 401 without authentication and 200 with the scratch credential.
+Config and inventory reads both exited zero. The config response contained
+one known document and one matching local package target. The server was
+reaped. The earlier persistent inventory attempts had no authenticated
+client, so they cannot qualify loader admission.
+
+## Confirm the V2 definition through the verified configuration route
+
+- **Hypothesis**: The verified route lists the explicit local V2 definition
+  and its setup writes one marker.
+- **Measurement**: Reuse the pinned CLI, declared package path, native
+  JavaScript definition and verified loopback authentication. First
+  verify the same config response. Then observe the active list and
+  the marker for up to 30 seconds. Stop the owned server.
+- **Success**: One expected active plugin, one exact setup marker,
+  verified configuration, and successful cleanup.
+- **Pivot**: Any absent, repeated or unknown output leaves loader
+  admission open. Record the result separately from hook behavior.
+- **Anchor**: The authenticated config receipt and the pinned V2
+  module schema above.

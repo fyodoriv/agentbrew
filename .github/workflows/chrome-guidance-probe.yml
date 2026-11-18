@@ -49,8 +49,8 @@ jobs:
           safe_node search 'light dismiss dialog' > "$fixture/search.json"
           jq -e 'any(.[]; .id == "light-dismiss-a-dialog")' "$fixture/search.json"
           safe_node retrieve light-dismiss-a-dialog > "$fixture/guide.md"
-          rg -qi 'closedby|light dismiss' "$fixture/guide.md"
+          grep -qiE 'closedby|light dismiss' "$fixture/guide.md"
           safe_node legacy-scan "$fixture/site" --json > "$fixture/scan.json"
           jq -e 'type == "object" or type == "array"' "$fixture/scan.json"
-          rg -q 'form-fields-automatically-fit-contents' "$fixture/scan.json"
+          grep -q 'form-fields-automatically-fit-contents' "$fixture/scan.json"
           printf '%s\n' 'Pinned search, retrieval, seeded scan, and extension reference passed.'

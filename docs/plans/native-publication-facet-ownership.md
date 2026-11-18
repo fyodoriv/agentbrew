@@ -313,3 +313,19 @@ compare the lock file inode across every attempt.
   revalidation or settings publication.
 - **Anchor**: macOS `lockf(1)` descriptor mode, Linux util-linux
   `flock(1)` descriptor mode, and the native lifecycle review.
+
+The descriptor test passed on this Mac and on the
+[Ubuntu runner](https://github.com/fyodoriv/agentbrew/actions/runs/44243184248).
+Both used the system lock utility with a descriptor held by Node.
+A separate process refused while the holder was active and acquired
+after normal close and after abrupt holder exit. The original mode-0600
+inode stayed in place.
+
+Agentbrew and Dotfiles both update the allowed signers registry.
+Agentbrew's short fence by itself cannot cover the shell trust and
+revoke commands. Qualify one lock address derived from the configured
+registry path, and make both writers hold it during read, change and
+atomic replace. Existing tools, symlink or inode changes, external
+editors and a missing platform lock utility remain outside this
+accepted experiment. Certify a source only after the integrated
+publisher and both signer writers pass the ordering controls.

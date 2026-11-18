@@ -178,3 +178,22 @@ qualify independently.
 - **Anchor**: The signed selected and default receipts, native publisher
   and plugin lifecycle entry points, and the independent source and
   destination review.
+
+## Ambiguous registry identities and retained claims
+
+- **Hypothesis**: A selected repair refuses an ambiguous registry identity
+  or a launcher already referenced by a retained plugin. It preserves a
+  well-formed retained entry and every unrelated file.
+- **Measurement**: Place a duplicate existing registry entry in one
+  scratch home. In a separate scratch home, give a retained synthetic
+  plugin a native server configuration that references the selected
+  plugin's already-present launcher. Compare file bytes, modes and
+  modification times on refusal. Also retain a synthetic server with an
+  unrelated command as a positive control.
+- **Success**: Both ambiguous cases refuse before any changes. The
+  unrelated command case can repair its selected payload and leaves
+  retained output unchanged. Pass all eleven prior scoped controls.
+- **Pivot**: Any unsafe permit, unowned overwrite or unexpected write
+  stops the candidate. No live CLI activation in this phase.
+- **Anchor**: The marketplace index and launcher reference written in
+  `src/plugins/claude-native.ts`, plus the independent claim review.

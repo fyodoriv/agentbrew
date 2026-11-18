@@ -731,9 +731,17 @@ export function certifyFullNativeOutput(
 export function publishSelectedNativePlugins(
   plugins: readonly ActivePlugin[],
   modules: readonly NativeFacet[],
-  marketplace: string,
-  name: string,
-  rulesHook: unknown,
+  {
+    marketplace,
+    name,
+    rulesHook,
+    beginMutation,
+  }: {
+    marketplace: string;
+    name: string;
+    rulesHook: unknown;
+    beginMutation: () => void;
+  },
 ): void {
   if (!modules.length || !plugins.length) return;
   const path = join(marketplace, ".claude-plugin", "marketplace.json");
@@ -770,6 +778,7 @@ export function publishSelectedNativePlugins(
   withSignerCommitFence(allowedSignersPath(), () => {
     assertCurrentNativeSources(planned);
     assertNativeTargetsUnchanged([...writes, ...receiptTargets, ...observations]);
+    beginMutation();
     for (const write of writes) writeNativeOutput(write);
     certifySelectedNativeOutput(receipts);
     if (index) writeNativeOutput(index);

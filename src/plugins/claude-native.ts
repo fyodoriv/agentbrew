@@ -112,19 +112,27 @@ function updateSettings(names: string[]): void {
 
 /** Regenerate the local marketplace and settings from the active plugins. */
 export function emitClaudeNative(options?: { modules?: readonly NativeFacet[]; certifyFullOutput?: boolean }): void {
-  if (options?.modules || options?.certifyFullOutput) {
-    withNativePublicationLock(() => publishNative(options.modules, options.certifyFullOutput));
+  const modules = options?.modules;
+  if (modules) {
+    withNativePublicationLock((beginMutation) => {
+      publishSelectedNativePlugins(activePlugins(), modules, {
+        marketplace: marketplaceDir(),
+        name: MARKETPLACE_NAME,
+        rulesHook: RULES_HOOK,
+        beginMutation,
+      });
+    });
     return;
   }
-  publishNative(undefined);
+  if (options?.certifyFullOutput) {
+    withNativePublicationLock(() => publishNative(true));
+    return;
+  }
+  publishNative();
 }
 
-function publishNative(modules: readonly NativeFacet[] | undefined, certify = false): void {
+function publishNative(certify = false): void {
   const plugins = activePlugins();
-  if (modules) {
-    publishSelectedNativePlugins(plugins, modules, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK);
-    return;
-  }
   const entries = plugins.map(emitPlugin);
   pruneLaunchers(
     new Set(

@@ -23,7 +23,7 @@ function acquire(path: string): number {
 }
 
 /** The invoking process owns the lock through one synchronous publication. */
-export function withNativePublicationLock<T>(publish: () => T): T {
+export function withNativePublicationLock<T>(publish: (beginMutation: () => void) => T): T {
   const home = realpathSync.native(homedir());
   const directory = lstatSync(home);
   if (!directory.isDirectory() || directory.uid !== process.getuid?.()) {
@@ -53,12 +53,19 @@ export function withNativePublicationLock<T>(publish: () => T): T {
       }
     };
 
+    let mutationStarted = false;
+    let finished = false;
     assertOwner();
     try {
-      return publish();
+      const result = publish(() => {
+        assertOwner();
+        mutationStarted = true;
+      });
+      finished = true;
+      return result;
     } finally {
       assertOwner();
-      unlinkSync(path);
+      if (!mutationStarted || finished) unlinkSync(path);
     }
   } finally {
     closeSync(fd);

@@ -393,3 +393,22 @@ with one prompt note and one after-tool note.
   a supported location with transactional ownership.
 - **Anchor**: The pinned [source discovery](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/core/src/plugin/source-directory.ts)
   and the current managed helper destination in `src/sync/helper-scripts.ts`.
+
+The [V2 single-file control](https://github.com/fyodoriv/agentbrew/actions/runs/44300093697)
+passed without an explicit plugin config.
+
+## Verify the unchanged V1 bridge on a real V1 server
+
+- **Hypothesis**: The unchanged legacy artifact at the same managed
+  destination still loads and runs its existing two lifecycle callbacks.
+- **Measurement**: Use published `opencode-ai@1.19.5`. Install only the
+  existing source at `opencode/plugin/claude-hooks.js` under a new temporary
+  home. Create and delete a session over loopback and check fixed markers
+  from the two real Claude commands. No provider is needed.
+- **Success**: Two successful session operations, one start marker and
+  one end marker for the same session, zero extra markers, and the server
+  process stopped.
+- **Pivot**: A refused installed artifact, a missing marker, a duplicate
+  or an unexpected provider dependency leaves cross-version routing open.
+- **Anchor**: The pinned [V1 session API](https://github.com/anomalyco/opencode/blob/810c0eba1a7348036f8bdf61e6632d0c36c6876c/packages/opencode/src/server/routes/instance/httpapi/groups/session.ts)
+  and the existing `ClaudeHooks` named V1 export.

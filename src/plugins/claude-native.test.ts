@@ -530,6 +530,50 @@ describe("cold native receipt coverage", () => {
   });
 });
 
+describe("partial native receipt progression", () => {
+  const sequences = [
+    { first: "hooks", next: "mcp", retained: ["hooks", "script"] },
+    { first: "mcp", next: "hooks", retained: ["mcp", "launcher"] },
+    { first: "hooks", next: "rules", retained: ["script"] },
+  ] as const;
+
+  it.each(sequences)("extends $first coverage with $next", ({ first, next, retained }) => {
+    installFacetFixture();
+    const paths = nativeFacetPaths();
+    emitClaudeNative({ modules: [first] });
+    const receipt = nativeProofPath();
+    const original = JSON.parse(readFileSync(receipt, "utf8"));
+    const frozen = [paths.envelope, paths.index, ...retained.map((name) => paths[name])];
+    for (const path of frozen) utimesSync(path, 1, 1);
+    const previous = observeNativeFiles(frozen);
+
+    emitClaudeNative({ modules: [next] });
+
+    const updated = JSON.parse(readFileSync(receipt, "utf8"));
+    expect(updated).toMatchObject({ schema: 2, facets: [first, next].sort(), sourceDigest: original.sourceDigest });
+    expect(observeNativeFiles(frozen)).toEqual(previous);
+    const slotted =
+      next === "rules" ? [paths.hooks, paths.script] : [paths.hooks, paths.script, paths.mcp, paths.launcher];
+    const expected = [paths.envelope, ...slotted].map((path) => relative(home, path)).sort();
+    expect(updated.files.map(({ path }: { path: string }) => path)).toEqual(expected);
+    expect(existsSync(paths.settings)).toBe(false);
+  });
+
+  it("refuses to extend coverage when an unselected signed payload changed", () => {
+    installFacetFixture();
+    const paths = nativeFacetPaths();
+    emitClaudeNative({ modules: ["hooks"] });
+    const receipt = nativeProofPath();
+    writeFileSync(paths.script, "Synthetic edited retained payload.\n");
+    const previous = observeNativeFiles([paths.hooks, paths.script, paths.envelope, paths.index, receipt]);
+
+    expect(() => emitClaudeNative({ modules: ["mcp"] })).toThrow(/native receipt/u);
+    expect(observeNativeFiles([paths.hooks, paths.script, paths.envelope, paths.index, receipt])).toEqual(previous);
+    expect(existsSync(paths.launcher)).toBe(false);
+    expect(existsSync(paths.settings)).toBe(false);
+  });
+});
+
 describe("warm native receipt admission", () => {
   it.each([
     "missing",

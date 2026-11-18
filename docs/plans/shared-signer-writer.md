@@ -104,3 +104,10 @@ its mode when staging on macOS and Linux.
   fixture, keep this candidate out of delivery.
 - **Anchor**: The repository's earlier atomic writer and the
   exact metadata review for Agentbrew #1081.
+
+The [group baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44256142101)
+changed the existing file group. The
+[group candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44256370577)
+used two distinct real groups on Linux and retained the original
+group and mode. The earlier lock, row and staging candidate also
+passed its [hosted macOS job](https://github.com/fyodoriv/agentbrew/actions/runs/44255087314/job/134634744336).

@@ -17,4 +17,4 @@ jobs:
         with:
           node-version-file: .node-version
       - run: npm ci
-      - run: npx vitest run src/worktree-deps.test.ts --maxWorkers=1 --retry=0
+      - run: npx vitest run src/worktree-deps.test.ts --maxWorkers=1 --retry=0 --reporter=default --silent=false

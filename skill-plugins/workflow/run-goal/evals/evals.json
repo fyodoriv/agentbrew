@@ -3939,11 +3939,11 @@
     },
     {
       "id": 344,
-      "prompt": "/goal prepare this report every day and verify the outside team's delivery. The team has not delivered. A previous contact replied with an alternate support route. We asked less than a day ago. The session restarted and its former worker and schedule may have stopped.",
-      "expected_output": "The agent checks the original contract, live work, and existing schedule. It resumes missing owned work and restores at most one authorized daily schedule if it is missing. It records the outside owner and the observed handoff, checks the recommended support route, and prepares an authorized draft without repeating the recent ask. It reports the handoff separately and keeps the outside delivery open. The goal status remains partly met while outside delivery is unverified.",
+      "prompt": "/goal prepare this report every day and verify the outside team's delivery. The team has not delivered. The earlier ask is visible with its channel and send time from less than a day ago. The reply points to an alternate support route. After a session restart, the daily schedule and its worker are missing, and a separate owned verification watcher is still live.",
+      "expected_output": "The agent checks the original contract, live work, and existing schedule. It resumes the missing worker, restores the authorized daily schedule once, and confirms the worker and exactly one schedule are live. It preserves the live verification watcher. If a readback is unavailable, it reports recovery as unverified. It records the outside owner and the earlier ask's channel and time, checks the recommended support route, and prepares an authorized draft without repeating the recent ask. It reports the handoff separately and keeps the outside delivery open. The goal status remains partly met while outside delivery is unverified.",
       "expectations": [
-        "Checks live workers and the daily schedule before resuming or restoring only missing owned work",
-        "Records the outside owner and the observed handoff separately from outside delivery",
+        "Confirms the missing worker resumed and exactly one authorized schedule is live, while preserving the live watcher",
+        "Records the outside owner and the earlier ask's channel and send time separately from outside delivery",
         "Checks the suggested support route and prepares a draft without repeating the recent ask",
         "Reports partial progress and keeps outside delivery open without live confirmation"
       ]

@@ -16,6 +16,7 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
 import { cacheGitEnv } from "../mcp/git-ref.js";
+import { withSignerCommitFence } from "./signer-commit-fence.js";
 
 export interface AllowedSigner {
   principal: string;
@@ -39,7 +40,10 @@ export function normalizeKey(raw: string): string {
 }
 
 export function readSigners(): AllowedSigner[] {
-  const path = allowedSignersPath();
+  return readSignersFrom(allowedSignersPath());
+}
+
+function readSignersFrom(path: string): AllowedSigner[] {
   if (!existsSync(path)) return [];
   const signers: AllowedSigner[] = [];
   for (const line of readFileSync(path, "utf-8").split("\n")) {
@@ -50,11 +54,9 @@ export function readSigners(): AllowedSigner[] {
   return signers;
 }
 
-function writeSigners(signers: AllowedSigner[]): void {
-  const path = allowedSignersPath();
-  mkdirSync(dirname(path), { recursive: true });
+function writeSigners(path: string, mode: number, signers: AllowedSigner[]): void {
   const body = signers.map((s) => `${s.principal} namespaces="git" ${s.key}`).join("\n");
-  writeFileSync(path, signers.length ? `${body}\n` : "", { mode: 0o644 });
+  writeFileSync(path, signers.length ? `${body}\n` : "", { mode });
 }
 
 export function signersFor(principal: string): string[] {
@@ -66,18 +68,26 @@ export function signersFor(principal: string): string[] {
 /** Trust `key` for plugin `principal`. Idempotent. */
 export function trustSigner(principal: string, rawKey: string): void {
   const key = normalizeKey(rawKey);
-  const signers = readSigners();
-  if (signers.some((s) => s.principal === principal && s.key === key)) return;
-  writeSigners([...signers, { principal, key }]);
+  const path = allowedSignersPath();
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  withSignerCommitFence(path, (registry, mode) => {
+    const signers = readSignersFrom(registry);
+    if (signers.some((s) => s.principal === principal && s.key === key)) return;
+    writeSigners(registry, mode, [...signers, { principal, key }]);
+  });
 }
 
 /** Stop trusting `key` for plugin `principal`. */
 export function revokeSigner(principal: string, rawKey: string): void {
   const key = normalizeKey(rawKey);
-  const signers = readSigners();
-  const kept = signers.filter((s) => !(s.principal === principal && s.key === key));
-  if (kept.length === signers.length) throw new Error(`Signer is not trusted for "${principal}".`);
-  writeSigners(kept);
+  const path = allowedSignersPath();
+  if (!existsSync(dirname(path))) throw new Error(`Signer is not trusted for "${principal}".`);
+  withSignerCommitFence(path, (registry, mode) => {
+    const signers = readSignersFrom(registry);
+    const kept = signers.filter((s) => !(s.principal === principal && s.key === key));
+    if (kept.length === signers.length) throw new Error(`Signer is not trusted for "${principal}".`);
+    writeSigners(registry, mode, kept);
+  });
 }
 
 function fingerprint(key: string): string {

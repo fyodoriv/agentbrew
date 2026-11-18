@@ -10,6 +10,7 @@ import { emitClaudeNative, policyFragment } from "./claude-native.js";
 import { pluginRulesFor } from "./contributions.js";
 import { auditRepo, LeakPatternError } from "./leak-audit.js";
 import { repoIdOf } from "./scope.js";
+import { SignerCommitBusyError } from "./signer-commit-fence.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { applyAdd, listPlugins, planAdd, removePlugin, rollbackPlugin } from "./store.js";
 import { applyUpdate, planUpdate } from "./update.js";
@@ -17,7 +18,7 @@ import { pluginSkillShadows, pluginUpdateChoices } from "./update-guidance.js";
 
 function fail(error: unknown): void {
   console.error(chalk.red(`✗ ${redactUrlCredentials(error instanceof Error ? error.message : String(error))}`));
-  process.exitCode = error instanceof CapabilityError ? error.exitCode : 1;
+  process.exitCode = error instanceof CapabilityError || error instanceof SignerCommitBusyError ? error.exitCode : 1;
 }
 
 /** Registers `agentbrew plugin add|list|remove` (v2 company plugins, #208). */

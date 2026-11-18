@@ -31,3 +31,14 @@ Preserve the original result and its denied-action count. This stage
 qualifies early refusal through instrumented entry points. Valid selected
 publication, shared workspace behavior and real scratch paths need their
 own registration before a complete sync-selection fix can be claimed.
+
+## Keep rejected inputs out of diagnostics
+
+Review found that quoting parts of an invalid argument can expose input
+fragments when punctuation splits it. Predict the invalid canary appears
+in the initial error and zero times after the diagnostic uses fixed text.
+It must still exit 1 and list the supported modules. The entire standard
+Agentfile, pull and build-health test files must also stay green. Use
+production module names with fake handlers in the Agentfile fixture.
+Pivot on any input disclosure, dropped hint or valid-path regression.
+The red and green tests use a synthetic canary.

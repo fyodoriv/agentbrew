@@ -538,3 +538,10 @@ selected plan restores the recorded path, digest and mode.
   outside the recorded inventory blocks warm use.
 - **Anchor**: The independently derived full receipt and the signed
   warm fixture path ownership checks.
+
+Hosted run 44249742643 reproduced all three refusals as missing.
+Run 44250523487 passed 32 focused controls, all 96 native
+compatibility tests, and type checking. A warm repair kept the
+receipt and restored the recorded bytes and mode. A missing
+receipt, a changed source digest, and an edited unselected file
+each stopped the repair before any writes.

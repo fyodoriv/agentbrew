@@ -329,3 +329,28 @@ atomic replace. Existing tools, symlink or inode changes, external
 editors and a missing platform lock utility remain outside this
 accepted experiment. Certify a source only after the integrated
 publisher and both signer writers pass the ordering controls.
+
+## Agentbrew signer writer admission
+
+Use the same `<registry>.agentbrew-signer-v1.lock` file as Dotfiles.
+Only signer writes enter this short boundary in this phase. Holding
+an interrupted publisher owner record alone must leave trust and
+revocation available.
+
+- **Hypothesis**: The Node signer writer refuses both mutations during
+  the short commit lock, preserves unrelated keys, and can still
+  revoke under an abandoned long publisher record.
+- **Measurement**: Hold the signer lock through the already qualified
+  descriptor command. Invoke the real trust and revoke functions.
+  Compare registry bytes, then release and retry both operations.
+  Place a separate synthetic interrupted publisher record and
+  prove revocation succeeds without changing that record.
+- **Success**: Two short-lock refusals and zero registry changes
+  during contention. Both mutations succeed after release. A signer
+  can be revoked with the long record present. Retain the earlier
+  native and lifecycle compatibility checks.
+- **Pivot**: A competing write, a lost key, a stale blocker on signer
+  revocation, or a mismatch with the Dotfiles lock path blocks
+  integration.
+- **Anchor**: The portable descriptor test, the Dotfiles shared signer
+  plan, and `src/plugins/signers.ts`.

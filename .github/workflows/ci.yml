@@ -26,4 +26,4 @@ jobs:
         run: npx vitest run src/update.test.ts -t 'rejects invalid pull selection' --maxWorkers=1 --retry=0
       - name: Rejected argument and valid Agentfile compatibility
         if: always()
-        run: npx vitest run src/cli.test.ts src/cli-sync-agentfile.test.ts src/cli-sync-pull.test.ts src/cli-sync-build-health.test.ts --maxWorkers=1 --retry=0
+        run: npx vitest run src/cli.test.ts src/cli-helpers.test.ts src/update.test.ts src/cli-sync-agentfile.test.ts src/cli-sync-pull.test.ts src/cli-sync-build-health.test.ts --maxWorkers=1 --retry=0

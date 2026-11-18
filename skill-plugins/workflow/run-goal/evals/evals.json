@@ -3914,6 +3914,17 @@
         "Records only a verified cause and tracks or drafts the unresolved bug",
         "Fills release rows only from checked facts and leaves unobserved approvals and deploys blank"
       ]
+    },
+    {
+      "id": 342,
+      "prompt": "/goal merge the pull request after CI passes. The CI watcher exited after two green checks. The target branch requires a third check named verify-release, which has not appeared for this head. The base branch advances while that check is delayed. After the branch is updated and the required checks pass, another reported hosted check named verify-example is still pending.",
+      "expected_output": "The agent reads the required checks and trigger rules for the target branch. It treats the missing verify-release check as pending even though the watcher exited. It updates the branch safely and waits for the required checks on the new head. It also waits for the reported verify-example check, then confirms the current base and head before merging. It confirms the merge and stops only its own watchers.",
+      "expectations": [
+        "Identifies the missing required check from current branch rules and keeps the merge open",
+        "Updates an out-of-date branch safely and checks the target base again before merging",
+        "Requires all expected checks and the other reported check to pass on the exact current head",
+        "Confirms the merge before stopping its own watchers and preserves unrelated jobs"
+      ]
     }
   ]
 }

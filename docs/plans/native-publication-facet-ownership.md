@@ -1054,3 +1054,11 @@ under both 022 and 077. Preserve this as a measured platform difference.
   forecast on that platform. The final full receipt check remains in place.
 - **Anchor**: The pinned recursive copy controls and unsigned output
   exclusion in the existing full-certification contract.
+
+The [Linux regression](https://github.com/fyodoriv/agentbrew/actions/runs/44311312195)
+reproduced an unnecessary refusal on the first draft. Its signed
+publisher exited 1 where the registered control required exit 0.
+After applying the mask forecast only on the Mac, the
+[hosted Linux run](https://github.com/fyodoriv/agentbrew/actions/runs/44311661340)
+kept the mode-0644 guard under 077 and passed both native suites.
+The local Mac passed all five mode and interruption cases.

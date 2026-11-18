@@ -12,6 +12,33 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
+const packageFixture = { name: "fixture", version: "1.0.0", dependencies: { dep: "1.0.0" } };
+const depFixture = { name: "dep", version: "1.0.0", dependencies: { leaf: "^1.0.0" } };
+const leafFixture = { name: "leaf", version: "1.0.1" };
+
+function lockBytes(marker: string): string {
+  return JSON.stringify({
+    name: packageFixture.name,
+    version: packageFixture.version,
+    lockfileVersion: 3,
+    requires: true,
+    fixtureMarker: JSON.parse(marker),
+    packages: {
+      "": packageFixture,
+      "node_modules/dep": { version: depFixture.version, dependencies: depFixture.dependencies },
+      "node_modules/leaf": { version: leafFixture.version },
+    },
+  });
+}
+
+function installFixture(root: string) {
+  for (const manifest of [depFixture, leafFixture]) {
+    const dir = join(root, "node_modules", manifest.name);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "package.json"), JSON.stringify(manifest));
+  }
+}
+
 /** A main checkout with node_modules, a worktree, and an npm stub that logs its args. */
 function setup(opts: { worktreeLock: string; mainModules?: boolean; env?: Record<string, string> }) {
   const root = mkdtempSync(join(tmpdir(), "worktree-deps-"));
@@ -20,21 +47,31 @@ function setup(opts: { worktreeLock: string; mainModules?: boolean; env?: Record
   const wt = join(root, "wt");
   mkdirSync(main);
   mkdirSync(wt);
-  writeFileSync(join(main, "package-lock.json"), '{"lock":1}\n');
-  writeFileSync(join(wt, "package-lock.json"), opts.worktreeLock);
+  for (const checkout of [main, wt]) writeFileSync(join(checkout, "package.json"), JSON.stringify(packageFixture));
+  writeFileSync(join(main, "package-lock.json"), lockBytes('{"lock":1}'));
+  writeFileSync(join(wt, "package-lock.json"), lockBytes(opts.worktreeLock));
   if (opts.mainModules !== false) {
-    mkdirSync(join(main, "node_modules", "dep"), { recursive: true });
+    installFixture(main);
     writeFileSync(join(main, "node_modules", "dep", "index.js"), "module.exports = 1;\n");
   }
   const log = join(root, "npm.log");
   const npm = join(root, "npm-stub");
-  writeFileSync(npm, `#!/bin/sh\necho "$@" >> "${log}"\nmkdir -p node_modules && touch node_modules/from-npm-ci\n`);
+  writeFileSync(
+    npm,
+    `#!/bin/sh
+echo "$@" >> "${log}"
+mkdir -p node_modules/dep node_modules/leaf
+printf '%s\\n' '${JSON.stringify(depFixture)}' > node_modules/dep/package.json
+printf '%s\\n' '${JSON.stringify(leafFixture)}' > node_modules/leaf/package.json
+touch node_modules/from-npm-ci
+`,
+  );
   chmodSync(npm, 0o755);
-  const runIn = (cwd: string) =>
+  const runIn = (cwd: string, extra: Record<string, string> = {}) =>
     spawnSync("bash", [SCRIPT, main], {
       cwd,
       encoding: "utf8",
-      env: { ...process.env, WORKTREE_DEPS_NPM: npm, ...opts.env },
+      env: { ...process.env, WORKTREE_DEPS_NPM: npm, ...opts.env, ...extra },
     });
   const run = () => runIn(wt);
   const npmCalls = () => (existsSync(log) ? readFileSync(log, "utf8") : "");
@@ -87,8 +124,8 @@ describe("worktree-deps.sh", () => {
     expect(run().status).toBe(0);
     const marker = join(wt, "node_modules", "stale.txt");
     writeFileSync(marker, "stale\n");
-    writeFileSync(join(main, "package-lock.json"), '{"lock":3}\n');
-    writeFileSync(join(wt, "package-lock.json"), '{"lock":3}\n');
+    writeFileSync(join(main, "package-lock.json"), lockBytes('{"lock":3}'));
+    writeFileSync(join(wt, "package-lock.json"), lockBytes('{"lock":3}'));
     const result = run();
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("cloned node_modules");
@@ -118,7 +155,7 @@ describe("worktree-deps.sh", () => {
   it("runs npm ci again when the lockfile changed since the last npm ci", () => {
     const { wt, run, npmCalls } = setup({ worktreeLock: '{"lock":2}\n' });
     expect(run().status).toBe(0);
-    writeFileSync(join(wt, "package-lock.json"), '{"lock":4}\n');
+    writeFileSync(join(wt, "package-lock.json"), lockBytes('{"lock":4}'));
     const result = run();
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("running npm ci");
@@ -140,6 +177,46 @@ describe("worktree-deps.sh", () => {
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("main checkout has no node_modules");
     expect(npmCalls().trim()).toBe("ci --prefer-offline --no-audit --no-fund");
+  });
+});
+
+describe("qualified worktree dependency reuse", () => {
+  it("refuses a stale donor and installs the correct target versions", () => {
+    const { main, wt, runIn, npmCalls } = setup({ worktreeLock: '{"lock":1}' });
+    const donor = join(main, "node_modules", "leaf", "package.json");
+    writeFileSync(donor, JSON.stringify({ ...leafFixture, version: "1.0.0" }));
+    const clone = join(wt, "fixture-clone-called");
+    const fakePython = join(wt, "fixture-clone");
+    writeFileSync(
+      fakePython,
+      `#!/bin/sh
+touch "${clone}"
+cp -R -- "$4" "$5"
+`,
+      { mode: 0o700 },
+    );
+    const result = runIn(wt, { WORKTREE_DEPS_PYTHON: fakePython });
+    expect(result.status, result.stderr).toBe(0);
+    expect(existsSync(clone)).toBe(false);
+    expect(npmCalls().trim()).toBe("ci --prefer-offline --no-audit --no-fund");
+    expect(JSON.parse(readFileSync(join(wt, "node_modules", "leaf", "package.json"), "utf8")).version).toBe("1.0.1");
+    expect(JSON.parse(readFileSync(donor, "utf8")).version).toBe("1.0.0");
+    expect(readFileSync(join(wt, "node_modules", ".worktree-deps-lock.json"), "utf8")).toBe(
+      readFileSync(join(wt, "package-lock.json"), "utf8"),
+    );
+  });
+
+  it("refuses a stale target even when its stamp still matches", () => {
+    const { wt, run, npmCalls } = setup({ worktreeLock: '{"lock":2}' });
+    expect(run().status).toBe(0);
+    const leaf = join(wt, "node_modules", "leaf", "package.json");
+    const stale = JSON.stringify({ ...leafFixture, version: "1.0.0" });
+    writeFileSync(leaf, stale);
+    const result = run();
+    expect(result.status).toBe(1);
+    expect(result.stdout).not.toContain("already matches");
+    expect(readFileSync(leaf, "utf8")).toBe(stale);
+    expect(npmCalls().trim().split("\n")).toHaveLength(1);
   });
 });
 

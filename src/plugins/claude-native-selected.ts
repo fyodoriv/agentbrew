@@ -621,7 +621,8 @@ function fullNativeHooks(plugin: ActivePlugin) {
 
 /** Reject an incompatible legacy copy mode before starting certified publication. */
 export function assertFullNativeHookCopyModes(plugins: readonly ActivePlugin[]): void {
-  const mask = process.umask();
+  // Recursive copy applies the process mask on macOS and preserves the source mode on Linux.
+  const mask = process.platform === "darwin" ? process.umask() : 0;
   for (const installed of plugins) {
     const plugin = withPinnedManifest(installed);
     const source = plugin.manifest.contributes?.hooks;

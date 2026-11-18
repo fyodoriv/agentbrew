@@ -361,6 +361,10 @@ forms. Unknown flags, shell expansions, compound commands, missing Python,
 or an unresolved target produce a warning without a guessed status query.
 Comment-looking words and expansion-looking text are also conservative
 warning cases, including ambiguous quoted forms.
+A standalone literal echo, fixed-format print, commit message, or quoted
+text heredoc leaves the prior target in place. The whole command must match.
+An executable suffix, uncertain syntax, or expandable heredoc still follows
+the conservative path.
 The selected target exists only for that hook invocation. Merged or closed
 PRs pass the readiness check. This is a best-effort status guard, not proof
 that a goal's delivery criteria are met.

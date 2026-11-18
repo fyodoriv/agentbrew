@@ -221,3 +221,22 @@ passed all fourteen scoped cases, compatibility tests and type checking.
   refuse without altering destination data.
 - **Anchor**: Signed hook subtree layout and the independently
   observed gap in the destination plan.
+
+## Shared publisher admission
+
+- **Hypothesis**: Full and selected artifact publication use one
+  process-owned exclusive file in the physical home directory. A held
+  record causes both writers to refuse before touching any output.
+- **Measurement**: Place a synthetic held record in a scratch home and
+  call both publisher modes separately. Compare the record and all
+  output paths. Ordinary cases must release their owned record, including
+  a selected planning failure. Follow with two-process orchestration
+  before any live route can rely on the lock.
+- **Success**: Two modes refuse without any output changes, the held
+  record stays identical and normal runs leave zero ownership files.
+- **Pivot**: A lost held file, shared admission, unsafe cleanup or an
+  output write on refusal blocks the proposed boundary. The warm
+  receipt, recovery and lifecycle integration still need their own
+  controls.
+- **Anchor**: Exclusive file creation, both calls to the common
+  publisher, and the registered interrupted-publication matrix.

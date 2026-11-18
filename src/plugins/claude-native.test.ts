@@ -3,7 +3,7 @@
  * plugin per company plugin, enabled in user settings, side by side with
  * file rendering. Plus `agentbrew plugin policy`.
  */
-import { appendFileSync, existsSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -165,6 +165,53 @@ describe("scoped native facet publication", () => {
 
     expect(() => emitClaudeNative({ modules: ["mcp"] })).toThrow(/native output paths overlap/u);
     expect(observeNativeFiles(Object.values(nativeFacetPaths()))).toEqual(before);
+  });
+
+  it("refuses duplicate marketplace identities without changing existing files", () => {
+    installFacetFixture();
+    emitClaudeNative();
+    const paths = nativeFacetPaths();
+    const registry = JSON.parse(readFileSync(paths.index, "utf8"));
+    registry.plugins.push(registry.plugins[0]);
+    writeFileSync(paths.index, JSON.stringify(registry));
+    const before = observeNativeFiles(Object.values(paths));
+
+    expect(() => emitClaudeNative({ modules: ["mcp"] })).toThrow(/marketplace identities overlap/u);
+    expect(observeNativeFiles(Object.values(paths))).toEqual(before);
+  });
+
+  it.each([true, false])("preserves a retained launcher reference (overlap: %s)", (overlap) => {
+    installFacetFixture();
+    emitClaudeNative();
+    const paths = nativeFacetPaths();
+    const retainedRoot = join(marketplaceDir(), "plugins", "fixture-retained");
+    const retainedConfig = join(retainedRoot, ".mcp.json");
+    const otherCommand = launcherPath("fixture-retained", "other");
+    const command = overlap ? paths.launcher : otherCommand;
+    mkdirSync(retainedRoot, { recursive: true });
+    writeFileSync(retainedConfig, JSON.stringify({ mcpServers: { retained: { command, args: [] } } }));
+    if (!overlap) writeFileSync(otherCommand, "Synthetic retained output.\n");
+    const registry = JSON.parse(readFileSync(paths.index, "utf8"));
+    registry.plugins.push({
+      name: "fixture-retained",
+      source: "./plugins/fixture-retained",
+      version: "1.0.0+abcd1234",
+      description: "Synthetic retained plugin",
+    });
+    writeFileSync(paths.index, JSON.stringify(registry));
+    rmSync(paths.mcp);
+    const frozen = [paths.index, paths.hooks, paths.script, paths.launcher, paths.settings, retainedConfig];
+    if (!overlap) frozen.push(otherCommand);
+    const before = observeNativeFiles(frozen);
+
+    if (overlap) {
+      expect(() => emitClaudeNative({ modules: ["mcp"] })).toThrow(/native output paths overlap/u);
+      expect(existsSync(paths.mcp)).toBe(false);
+    } else {
+      emitClaudeNative({ modules: ["mcp"] });
+      expect(existsSync(paths.mcp)).toBe(true);
+    }
+    expect(observeNativeFiles(frozen)).toEqual(before);
   });
 
   it("copies signed hook files and skips an ignored local text file", () => {

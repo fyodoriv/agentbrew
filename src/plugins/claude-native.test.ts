@@ -311,6 +311,30 @@ describe("native publication process loss at output checkpoints", () => {
     });
   }
 
+  it("refuses a busy signer before writing certified full output", () => {
+    installFacetFixture();
+    chmodSync(join(pluginDir("fixture-native"), "hooks", "guard.sh"), 0o644);
+    const paths = nativeFacetPaths();
+    const roots = [marketplaceDir(), dirname(paths.launcher), dirname(paths.settings), owner];
+    const before = roots.map(snapshot);
+    try {
+      withSignerCommitFence(allowedSignersPath(), () => {
+        const busy = publishFromChild(true);
+        expect(busy.status).toBe(1);
+        expect(busy.stderr).toMatch(/signer registry is busy/u);
+        expect(roots.map(snapshot)).toEqual(before);
+      });
+      expect(publishFromChild(true)).toMatchObject({ status: 0, stdout: "published", stderr: "" });
+      expect(existsSync(paths.hooks)).toBe(true);
+      expect(existsSync(paths.index)).toBe(true);
+      expect(existsSync(paths.settings)).toBe(true);
+      expect(existsSync(nativeProofPath())).toBe(true);
+      expect(existsSync(owner)).toBe(false);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+
   it.each([
     ["publisher mask", 0o077, 0o644],
     ["installed mode", 0o022, 0o600],
@@ -488,7 +512,9 @@ describe("native signer descriptor checks at publication", () => {
   it.each([
     { name: "first selected", boundary: 1, full: false, payload: false },
     { name: "later selected", boundary: 2, full: false, payload: true },
-    { name: "full certification", boundary: 1, full: true, payload: true },
+    { name: "first full", boundary: 1, full: true, payload: false },
+    { name: "full certification", boundary: 2, full: true, payload: true },
+    { name: "full settings", boundary: 3, full: true, payload: true },
   ])("refuses at the $name boundary when the descriptor is lost", async ({ boundary, full, payload }) => {
     installFacetFixture();
     const files = nativeFacetPaths();
@@ -512,9 +538,9 @@ describe("native signer descriptor checks at publication", () => {
       expect(checked).toBe(boundary);
       expect(existsSync(files.hooks)).toBe(payload);
       expect(existsSync(owner)).toBe(payload);
-      expect(existsSync(files.index)).toBe(full);
+      expect(existsSync(files.index)).toBe(full && payload);
       expect(existsSync(files.settings)).toBe(false);
-      expect(existsSync(nativeProofPath())).toBe(false);
+      expect(existsSync(nativeProofPath())).toBe(full && boundary === 3);
     } finally {
       rmSync(owner, { force: true });
     }

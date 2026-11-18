@@ -21,6 +21,7 @@ import {
   planNativeSettingsCheck,
   publishSelectedNativePlugins,
   verifyFullNativeHookCopyMask,
+  withNativeFullSignerFence,
 } from "./claude-native-selected.js";
 import { type ActivePlugin, activePlugins } from "./contributions.js";
 import { launcherPath, readPluginMcpServers, renderLauncher } from "./mcp-launcher.js";
@@ -131,16 +132,22 @@ export function emitClaudeNative(options?: { modules?: readonly NativeFacet[]; c
     return;
   }
   if (options?.certifyFullOutput) {
-    withNativePublicationLock((beginMutation) => publishNative({ beginMutation }));
+    withNativePublicationLock((beginMutation) => {
+      const plugins = activePlugins();
+      withNativeFullSignerFence(plugins, (assertLock) => publishNative(plugins, { beginMutation, assertLock }));
+    });
     return;
   }
-  publishNative();
+  publishNative(activePlugins());
 }
 
-function publishNative(certification?: { beginMutation: () => void }): void {
-  const plugins = activePlugins();
+function publishNative(
+  plugins: readonly ActivePlugin[],
+  certification?: { beginMutation: () => void; assertLock: () => void },
+): void {
   const checkSettings = certification && planNativeSettingsCheck(claudeSettingsPath());
   const hookCopyMask = certification ? verifyFullNativeHookCopyMask(plugins) : 0;
+  certification?.assertLock();
   certification?.beginMutation();
   const entries = plugins.map(emitPlugin);
   pruneLaunchers(
@@ -164,13 +171,16 @@ function publishNative(certification?: { beginMutation: () => void }): void {
     rmSync(marketplaceDir(), { recursive: true, force: true });
   }
   const names = entries.map((entry) => entry.name);
-  if (checkSettings) {
+  if (checkSettings && certification) {
     certifyFullNativeOutput(
       plugins,
       { marketplace: marketplaceDir(), name: MARKETPLACE_NAME, rulesHook: RULES_HOOK, hookCopyMask },
-      () => {
-        checkSettings();
-        updateSettings(names, true);
+      {
+        assertLock: certification.assertLock,
+        applySettings: () => {
+          checkSettings();
+          updateSettings(names, true);
+        },
       },
     );
     return;

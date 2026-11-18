@@ -1146,3 +1146,13 @@ older receipt shape.
   rejects the change.
 - **Anchor**: The existing selected descriptor gate and full certified
   settings control in this plan.
+
+The real busy-signer test first failed after the native marketplace
+index and payload appeared. The full certified path now takes the
+signer descriptor before planning any native write and checks the
+same descriptor before writing the payload, receipts, and settings.
+The busy child writes none of those files and leaves no owner.
+After release, the next child certifies the signed result. The
+ordinary publisher keeps its existing path. Both affected suites
+passed all 78 tests on macOS, including the three descriptor-loss
+boundaries.

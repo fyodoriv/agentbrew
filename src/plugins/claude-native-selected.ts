@@ -766,6 +766,22 @@ function writeNativeOutput({ path, body, mode }: PlannedWrite): void {
   writeFileSync(path, body, { mode });
 }
 
+/** Hold the signer descriptor from source admission through the last full output write. */
+export function withNativeFullSignerFence(
+  plugins: readonly ActivePlugin[],
+  publish: (assertLock: () => void) => void,
+): void {
+  if (plugins.length === 0 && (readLock().plugins ?? []).length === 0) {
+    publish(() => assertCurrentNativeSources([], true));
+    return;
+  }
+  const entries = plugins.map(({ entry }) => entry);
+  withSignerCommitFence(allowedSignersPath(), (_registry, _mode, assertLock) => {
+    assertCurrentNativeSources(entries, true);
+    publish(assertLock);
+  });
+}
+
 /** Verify full output before applying its settings while holding the signer descriptor. */
 export function certifyFullNativeOutput(
   plugins: readonly ActivePlugin[],
@@ -780,7 +796,7 @@ export function certifyFullNativeOutput(
     rulesHook: unknown;
     hookCopyMask: number;
   },
-  applySettings: () => void,
+  { assertLock, applySettings }: { assertLock: () => void; applySettings: () => void },
 ): void {
   if (plugins.length === 0 && (readLock().plugins ?? []).length === 0) {
     applySettings();
@@ -796,28 +812,26 @@ export function certifyFullNativeOutput(
   };
   const outputs = expected.flatMap(({ files }) => files.map(({ path }) => path));
   const launcherOutputs = outputs.filter((path) => dirname(path) === launcherRoot);
-  withSignerCommitFence(allowedSignersPath(), (_registry, _mode, assertLock) => {
-    assertCurrentNativeSources(
-      plugins.map(({ entry }) => entry),
-      true,
-    );
-    assertNativeTree(launcherRoot, launcherOutputs);
-    assertNativeTree(marketplace, [index.path, ...outputs.filter((path) => !launcherOutputs.includes(path))]);
-    verifyFullFile(index);
-    const receipts = expected.map(({ root, files, sourceDigest }) => ({
-      path: join(root, NATIVE_RECEIPT_FILE),
-      body: jsonBytes({
-        schema: 1,
-        ...(hookCopyMask ? { hookCopyMask } : {}),
-        sourceDigest,
-        files: verifiedReceiptFiles(files),
-      }),
-    }));
-    assertLock();
-    for (const { path, body } of receipts) writeFileSync(path, body, { mode: 0o600 });
-    assertLock();
-    applySettings();
-  });
+  assertCurrentNativeSources(
+    plugins.map(({ entry }) => entry),
+    true,
+  );
+  assertNativeTree(launcherRoot, launcherOutputs);
+  assertNativeTree(marketplace, [index.path, ...outputs.filter((path) => !launcherOutputs.includes(path))]);
+  verifyFullFile(index);
+  const receipts = expected.map(({ root, files, sourceDigest }) => ({
+    path: join(root, NATIVE_RECEIPT_FILE),
+    body: jsonBytes({
+      schema: 1,
+      ...(hookCopyMask ? { hookCopyMask } : {}),
+      sourceDigest,
+      files: verifiedReceiptFiles(files),
+    }),
+  }));
+  assertLock();
+  for (const { path, body } of receipts) writeFileSync(path, body, { mode: 0o600 });
+  assertLock();
+  applySettings();
 }
 
 /** Publish only proven payloads. Activation is outside this writer. */

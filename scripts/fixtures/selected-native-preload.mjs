@@ -1,11 +1,14 @@
 import childProcess from "node:child_process";
-import { appendFileSync, realpathSync } from "node:fs";
+import { appendFileSync, lstatSync, realpathSync } from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
+import { basename, dirname } from "node:path";
 
 const receipts = process.env.NATIVE_FIXTURE_PROCESS_RECEIPT;
 appendFileSync(receipts, "preload\n");
 const gitDirectories = JSON.parse(process.env.NATIVE_FIXTURE_GIT_ROOTS);
 const bashFiles = new Set(JSON.parse(process.env.NATIVE_FIXTURE_BASH_FILES));
+const missingRenderer = process.env.NATIVE_FIXTURE_ABSENT_RENDERER;
+const scratchTemp = realpathSync(process.env.TMPDIR);
 const gitReads = new Map([
   ['["rev-parse","--local-env-vars"]', ["workspace"]],
   ['["rev-parse","HEAD"]', ["plugin", "workspace"]],
@@ -33,6 +36,30 @@ function deny() {
 
 function restrict(call, allowBash = false) {
   return (file, args, options) => {
+    if (allowBash && file === missingRenderer) {
+      let cwd;
+      try {
+        cwd = realpathSync(options?.cwd ?? "");
+      } catch {
+        return deny();
+      }
+      if (
+        JSON.stringify(args) !== '["generate","--agents","claude,amp,firebender"]' ||
+        dirname(cwd) !== scratchTemp ||
+        !/^agentbrew-commands-[A-Za-z0-9]{6}$/u.test(basename(cwd))
+      ) {
+        return deny();
+      }
+      try {
+        lstatSync(missingRenderer);
+      } catch (error) {
+        if (error?.code === "ENOENT") {
+          appendFileSync(receipts, "renderer-absent\n");
+          throw Object.assign(new Error("Synthetic optional renderer is unavailable"), { code: "ENOENT" });
+        }
+      }
+      return deny();
+    }
     if (
       allowBash &&
       file === "bash" &&

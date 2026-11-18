@@ -84,7 +84,10 @@ def known_output(home, identity):
 
 def admitted_path(path):
     exact = {
-        ".", "events.jsonl", "home", "home/.claude", "home/.claude/settings.json",
+        ".", "events.jsonl", "tmp", "home", "home/.claude", "home/.claude/settings.json",
+        "home/.claude/commands", "home/.claude/commands/agentbrew.md",
+        "home/.claude/commands/offline.md", "home/.claude/commands/verify.md",
+        "home/.claude/skills", "home/.agents", "home/.agents/skills",
         "home/.config", "home/.config/agentbrew", "home/.config/agentbrew/last-seen.json",
         "home/.config/agentbrew/AGENTS.md", "home/.config/agentbrew/commands",
         "home/.config/agentbrew/scripts",
@@ -171,6 +174,24 @@ def default_package_context(install, before, after):
     template = (install / "dist" / "templates" / "AGENTS.md").read_text()
     return all(after[path][0] == 0o100644 and (install / path).read_text() == heading + template
                for path, heading in headings.items())
+
+
+def default_fallback_outputs(home, install, tmp, tmp_before):
+    commands = home / ".claude" / "commands"
+    shipped = install / "dist" / "commands"
+    names = {"agentbrew.md", "offline.md", "verify.md"}
+    directories = [home / ".claude" / "skills", home / ".agents" / "skills"]
+    tmp_after = tmp.stat()
+    return (
+        commands.is_dir() and not commands.is_symlink() and
+        {entry.name for entry in commands.iterdir()} == names and
+        all((commands / name).is_file() and not (commands / name).is_symlink() and
+            digest(commands / name) == digest(shipped / name) for name in names) and
+        all(directory.is_dir() and not directory.is_symlink() and not any(directory.iterdir())
+            for directory in directories) and
+        (tmp_after.st_dev, tmp_after.st_ino, tmp_after.st_mode) ==
+        (tmp_before.st_dev, tmp_before.st_ino, tmp_before.st_mode) and not any(tmp.iterdir())
+    )
 
 
 def setup_case(root, fixture, repo, node, loader):
@@ -276,6 +297,11 @@ def main():
         for facet, (work, home, env, identity, checkout, source, observer) in cases.items():
             fixture = root / facet
             env["NATIVE_FIXTURE_BASH_FILES"] = json.dumps(packaged_hooks)
+            tmp_path = Path(env["TMPDIR"])
+            missing_renderer = str(tmp_path / "fixture-missing-ai-rules")
+            env["NATIVE_FIXTURE_ABSENT_RENDERER"] = missing_renderer
+            env["AGENTBREW_AI_RULES_BIN"] = missing_renderer
+            tmp_before = tmp_path.stat()
             if facet == "default":
                 canary = observer / "canary"
                 canary_env = {**env, "NATIVE_FIXTURE_PROCESS_RECEIPT": str(canary)}
@@ -334,6 +360,7 @@ for (const attempt of [
                                             for key in protected)
             processes = (observer / "processes").read_text().splitlines()
             outputs = known_output(home, identity)
+            fallback_qualified = default_fallback_outputs(home, install, tmp_path, tmp_before)
             required = {
                 "hooks": ("declared_hook",),
                 "mcp": ("mcp_config", "mcp_launcher"),
@@ -345,6 +372,7 @@ for (const attempt of [
                 {"plugin-head", "plugin-tree", "plugin-clean"}.issubset(processes) and
                 "local-git-error" not in processes and "packaged-bash-error" not in processes and
                 "denied" not in processes and
+                processes.count("renderer-absent") == 1 and fallback_qualified and
                 identity_before == manifest(checkout) and source_before == manifest(source) and
                 work_before == manifest(work) and all(outputs[field] for field in required) and
                 len(known) == len(changed) and lock_and_signer_unchanged
@@ -357,6 +385,8 @@ for (const attempt of [
                 "bash_syntax_checks": processes.count("packaged-bash-parse"),
                 "denied": processes.count("denied"), "lock_and_signer_unchanged": lock_and_signer_unchanged,
                 "context_documents": context_qualified,
+                "renderer_absent_calls": processes.count("renderer-absent"),
+                "fallback_outputs": fallback_qualified,
             }
             package_delta = {
                 str(key): public_record(package_after[key], install, key)

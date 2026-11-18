@@ -767,3 +767,10 @@ controls, 106 compatibility tests, and type checking.
 
 This step preserves recovery evidence. Reopening an interrupted
 publication needs a separate verified recovery procedure.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44271418146)
+removed the owner record after a partial write. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44271706452)
+kept the same record and refused a retry before another write.
+The run passed 51 focused controls, 107 compatibility tests, the
+ordinary publication control, and type checking.

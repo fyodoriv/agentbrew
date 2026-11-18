@@ -159,11 +159,12 @@ function publishNative(certification?: { beginMutation: () => void }): void {
   } else {
     rmSync(marketplaceDir(), { recursive: true, force: true });
   }
-  if (certification) certifyFullNativeOutput(plugins, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK);
-  updateSettings(
-    entries.map((entry) => entry.name),
-    certification !== undefined,
-  );
+  const names = entries.map((entry) => entry.name);
+  if (certification) {
+    certifyFullNativeOutput(plugins, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK, () => updateSettings(names, true));
+    return;
+  }
+  updateSettings(names);
 }
 
 export interface PolicyFragment {

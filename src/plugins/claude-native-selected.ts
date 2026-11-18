@@ -691,14 +691,18 @@ function writeNativeOutput({ path, body, mode }: PlannedWrite): void {
   writeFileSync(path, body, { mode });
 }
 
-/** Verify a normal full emission from independent pinned inputs before recording any proof. */
+/** Verify full output before applying its settings while holding the signer descriptor. */
 export function certifyFullNativeOutput(
   plugins: readonly ActivePlugin[],
   marketplace: string,
   name: string,
   rulesHook: unknown,
+  applySettings: () => void,
 ): void {
-  if (plugins.length === 0 && (readLock().plugins ?? []).length === 0) return;
+  if (plugins.length === 0 && (readLock().plugins ?? []).length === 0) {
+    applySettings();
+    return;
+  }
   const expected = plugins.map((plugin) => expectedFullOutput(withPinnedManifest(plugin), marketplace, rulesHook));
   const launcherRoot = dirname(launcherPath("x", "y"));
   const index: PlannedWrite = {
@@ -724,6 +728,7 @@ export function certifyFullNativeOutput(
       }),
     }));
     for (const { path, body } of receipts) writeFileSync(path, body, { mode: 0o600 });
+    applySettings();
   });
 }
 

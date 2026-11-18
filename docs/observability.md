@@ -211,7 +211,7 @@ public HEC format, plus one run against a local HTTP server.
 | `error_logs` | `true` or `false` (default). `true` needs `splunk-hec` or `file`. |
 | `url` | `splunk-hec` only, required. `https`, no user info. |
 | `token` | `splunk-hec` only, required. Exactly one of `{"keychain":{"service","account"}}`, `{"file":"~/path"}`, `{"env":"NAME"}`. 1 to 512 characters, no whitespace or control characters. A token file must be a regular file that group and others cannot read. |
-| `path` | `file` only, required. Absolute or `~/`, inside your home, and not a symlink. |
+| `path` | `file` only, required. Absolute or `~/`. The file cannot be a symlink. The nearest existing parent must resolve inside your home. |
 | `index`, `sourcetype`, `source` | Optional, `[A-Za-z0-9_:.-]{1,64}`. Defaults: `agentbrew:telemetry` and `agentbrew`. |
 
 Any other key, a bad value, bad JSON, or a file that group or others can write

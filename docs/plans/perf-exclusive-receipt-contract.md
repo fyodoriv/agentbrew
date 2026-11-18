@@ -52,3 +52,13 @@ installed code, transitive commands, effective options and host identity.
 An equal commit ID or dependency lockfile alone does not establish these
 bytes. Do not add an exception to ordinary `verify` or use a synthetic
 receipt as proof of a production run.
+
+## Observed shared-slot baseline
+
+The [first hosted control](https://github.com/fyodoriv/agentbrew/actions/runs/44279151550)
+ran P03 once with a numeric shared slot and no receipt. The scratch gate
+returned exit 1 and created both the build stamp and the timing sample.
+The test expected exit 2 and neither file. The old route enters the build
+before it checks the slot, then times directly inside that shared slot.
+This result covers P03 on the old route. It neither qualifies receipt
+reuse nor changes the earlier loaded-machine result.

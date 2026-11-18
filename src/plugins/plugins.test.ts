@@ -2,8 +2,17 @@
  * Plugin contract v2, step 3 of #208: manifest schema, lock `plugins:`
  * section, and `plugin add/list/remove` with a tree hash.
  */
-import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import {
+  appendFileSync,
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,7 +32,7 @@ const { home, previousHome } = vi.hoisted(() => {
 import { findLockViolations, readLock, writeLock } from "../lock.js";
 import { fixtureDir } from "../test-utils/plugin-fixture.js";
 import { validateManifest } from "./manifest.js";
-import { allowedSignersPath, revokeSigner, trustSigner } from "./signers.js";
+import { allowedSignersPath, revokeSigner, signersFor, trustSigner } from "./signers.js";
 import {
   addPlugin,
   listPlugins,
@@ -312,5 +321,44 @@ describe("plugin add / list / remove", () => {
     appendFileSync(join(pluginDir("acme"), "agentbrew-plugin.yaml"), "\n# tampered\n");
 
     expect(findLockViolations([]).map((v) => v.source)).toEqual(["plugin acme"]);
+  });
+});
+
+describe("shared signer writer admission", () => {
+  it("keeps registry bytes while the short lock is held and permits changes after release", () => {
+    trustSigner("acme", SIGNER.pub);
+    trustSigner("neighbor", OTHER.pub);
+    const registry = allowedSignersPath();
+    const original = readFileSync(registry);
+    const fd = openSync(`${registry}.agentbrew-signer-v1.lock`, "a+", 0o600);
+    try {
+      const mac = process.platform === "darwin";
+      const command = mac ? "/usr/bin/lockf" : "/usr/bin/flock";
+      const args = mac ? ["-s", "-t", "0", "3"] : ["-n", "-E", "75", "3"];
+      expect(spawnSync(command, args, { stdio: ["ignore", "ignore", "pipe", fd], timeout: 3000 }).status).toBe(0);
+      expect(() => trustSigner("acme", OTHER.pub)).toThrow(/registry is busy/u);
+      expect(() => revokeSigner("acme", SIGNER.pub)).toThrow(/registry is busy/u);
+      expect(readFileSync(registry)).toEqual(original);
+    } finally {
+      closeSync(fd);
+    }
+
+    trustSigner("acme", OTHER.pub);
+    revokeSigner("acme", SIGNER.pub);
+    expect(signersFor("acme")).toEqual([OTHER.pub]);
+    expect(signersFor("neighbor")).toEqual([OTHER.pub]);
+  });
+
+  it("permits revocation while a long publisher record awaits recovery", () => {
+    trustSigner("acme", SIGNER.pub);
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    writeFileSync(owner, "Synthetic interrupted publisher.\n", { mode: 0o600 });
+    try {
+      revokeSigner("acme", SIGNER.pub);
+      expect(signersFor("acme")).toEqual([]);
+      expect(readFileSync(owner, "utf8")).toBe("Synthetic interrupted publisher.\n");
+    } finally {
+      rmSync(owner);
+    }
   });
 });

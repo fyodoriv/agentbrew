@@ -378,7 +378,7 @@ describe("locked-install helper observation calibration", () => {
       });
     }
 
-    function qualifiedNpmCli(root: string): string | null {
+    function qualifiedNpmCli(root: string, env: NodeJS.ProcessEnv): string | null {
       const cli = process.env.LOCKED_INSTALL_OBSERVATION_NPM_CLI ?? process.env.npm_execpath;
       if (!cli || !isAbsolute(cli)) return null;
       try {
@@ -386,6 +386,7 @@ describe("locked-install helper observation calibration", () => {
         if (!lstatSync(cli).isFile() || metadata.name !== "npm" || metadata.version !== "10.9.9") return null;
         const version = spawnSync(process.execPath, [cli, "--offline", "--version"], {
           cwd: root,
+          env,
           encoding: "utf8",
           timeout: 10_000,
         });
@@ -469,7 +470,19 @@ describe("locked-install helper observation calibration", () => {
           ].join(":"),
         },
       });
-      const npmCli = qualifiedNpmCli(fixture.wt);
+      const npmEnv = {
+        HOME: fixture.wt,
+        PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
+        npm_config_offline: "true",
+        npm_config_ignore_scripts: "true",
+        npm_config_update_notifier: "false",
+        npm_config_cache: join(fixture.wt, ".observation-npm-cache"),
+        npm_config_userconfig: join(fixture.wt, "observation-user.npmrc"),
+        npm_config_globalconfig: join(fixture.wt, "observation-global.npmrc"),
+      };
+      writeFileSync(npmEnv.npm_config_userconfig, "");
+      writeFileSync(npmEnv.npm_config_globalconfig, "");
+      const npmCli = qualifiedNpmCli(fixture.wt, npmEnv);
       if (!npmCli) {
         console.info(
           `LOCKED_INSTALL_OBSERVATION ${JSON.stringify({
@@ -503,7 +516,7 @@ const comparisons=[
 ];
 if(args[0]==="--prefix" && roots.includes(args[1]) && args[2]==="--offline" &&
  comparisons.some((expected)=>JSON.stringify(expected)===JSON.stringify(args.slice(3)))){
- const result=require("node:child_process").spawnSync(process.execPath,[${JSON.stringify(npmCli)},...args],{stdio:"inherit",timeout:10000});
+ const result=require("node:child_process").spawnSync(process.execPath,[${JSON.stringify(npmCli)},...args],{env:${JSON.stringify(npmEnv)},stdio:"inherit",timeout:10000});
  process.exit(result.status??2);
 }
 if(process.cwd()!==${JSON.stringify(realpathSync(fixture.wt))}||JSON.stringify(args)!==JSON.stringify(['ci','--prefer-offline','--no-audit','--no-fund']))process.exit(2);

@@ -24,3 +24,6 @@ jobs:
       - name: Explicit invalid selections before state
         if: always()
         run: npx vitest run src/update.test.ts -t 'rejects invalid pull selection' --maxWorkers=1 --retry=0
+      - name: Ordinary CLI and update compatibility
+        if: always()
+        run: npx vitest run src/cli.test.ts src/cli-helpers.test.ts src/update.test.ts --maxWorkers=1 --retry=0

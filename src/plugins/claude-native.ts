@@ -110,6 +110,21 @@ export function emitClaudeNative(options?: { modules?: readonly NativeFacet[] })
   withNativePublicationLock(() => publishNative(options?.modules));
 }
 
+/** Admit a plugin mutation and its marketplace release under one process owner. */
+export function applyPluginAndPublish<T>(apply: () => T, discardUnadmitted?: () => void): T {
+  let admitted = false;
+  try {
+    return withNativePublicationLock(() => {
+      admitted = true;
+      const result = apply();
+      publishNative(undefined);
+      return result;
+    });
+  } finally {
+    if (!admitted) discardUnadmitted?.();
+  }
+}
+
 function publishNative(modules: readonly NativeFacet[] | undefined): void {
   const plugins = activePlugins();
   if (modules) {

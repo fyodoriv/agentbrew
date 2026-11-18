@@ -6,7 +6,7 @@ import { redactUrlCredentials } from "../core/redact-url.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { migrateOverlay, scaffoldPlugin, testPlugin } from "./authoring.js";
 import { CapabilityError } from "./capabilities.js";
-import { emitClaudeNative, policyFragment } from "./claude-native.js";
+import { applyPluginAndPublish, policyFragment } from "./claude-native.js";
 import { pluginRulesFor } from "./contributions.js";
 import { auditRepo, LeakPatternError } from "./leak-audit.js";
 import { repoIdOf } from "./scope.js";
@@ -43,8 +43,7 @@ export function registerPluginCommands(program: Command): void {
             throw e;
           }
         }
-        const entry = applyAdd(plan, { yes });
-        emitClaudeNative();
+        const entry = applyPluginAndPublish(() => applyAdd(plan, { yes }), plan.discard);
         console.log(
           `${ICON_SUCCESS} Plugin ${entry.name} pinned at ${entry.commit.slice(0, 8)} (tree ${entry.tree.slice(0, 8)})`,
         );
@@ -143,8 +142,7 @@ export function registerPluginCommands(program: Command): void {
         if (yes && plan.capabilitiesChanged && tty) {
           capabilityApproved = await confirm({ message: "The capabilities changed. Approve them?", default: false });
         }
-        const entry = applyUpdate(plan, { yes, capabilityApproved });
-        emitClaudeNative();
+        const entry = applyPluginAndPublish(() => applyUpdate(plan, { yes, capabilityApproved }), plan.discard);
         console.log(`${ICON_SUCCESS} Plugin ${name} updated to ${entry.ref} (${entry.commit.slice(0, 8)})`);
         try {
           const { getSkillSources } = await import("../sync/skills-sync.js");
@@ -236,8 +234,7 @@ export function registerPluginCommands(program: Command): void {
     .description("Re-pin the previous locked version of a plugin")
     .action((name: string) => {
       try {
-        const entry = rollbackPlugin(name);
-        emitClaudeNative();
+        const entry = applyPluginAndPublish(() => rollbackPlugin(name));
         console.log(`${ICON_SUCCESS} Plugin ${name} rolled back to ${entry.ref} (${entry.commit.slice(0, 8)})`);
       } catch (e) {
         fail(e);
@@ -249,8 +246,7 @@ export function registerPluginCommands(program: Command): void {
     .description("Delete a plugin and everything it emitted")
     .action((name: string) => {
       try {
-        removePlugin(name);
-        emitClaudeNative();
+        applyPluginAndPublish(() => removePlugin(name));
         console.log(`${ICON_SUCCESS} Plugin ${name} removed`);
       } catch (e) {
         fail(e);

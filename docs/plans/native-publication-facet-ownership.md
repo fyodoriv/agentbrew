@@ -912,3 +912,11 @@ refused the link cases before writing and retained the exact late edit.
 The interrupted case retained its owner record. The candidate passed 57
 focused controls, 113 compatibility tests, ordinary publication, and
 type checking.
+
+After aligning the draft with its parent, the
+[platform control](https://github.com/fyodoriv/agentbrew/actions/runs/44287957155)
+passed ordinary publication and formatting on Ubuntu and Windows. The
+Ubuntu job also passed the 57 focused and 113 compatibility tests and type
+checking. The first Windows run stopped at formatting because checkout
+converted the line endings. The scratch workflow retained the committed
+line endings for the passing run.

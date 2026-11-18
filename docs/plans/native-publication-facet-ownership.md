@@ -1091,3 +1091,27 @@ passed three active-owner refusals and three known-state retries after
 normal release. The refused CLI calls made no native or installed-pin
 change. Each test reaped its own holder. Add, update, rollback and live
 activation remain separate controls.
+
+## Qualify native receipts under a group-and-other restriction
+
+Keep the previous mode-refusal controls as the baseline. This test
+registers a distinct policy for the native prototype. A process may
+apply the specified group or other restriction while preserving the
+signed owner permission bits. The actual effective mode must enter
+the verified receipt and stay exact for later repairs.
+
+- **Hypothesis**: On the Mac, an installed signed 0644 hook can
+  certify as 0600 under mask 077 and repair as 0600 under 022.
+  The same normal source still certifies at 0644 under 022.
+- **Measurement**: Run the real full writer and selected repair in
+  separate processes with the two masks. Check the exact file and
+  full receipt mode, unchanged index and settings, a rejected owner
+  permission change, and a legacy receipt with no mode policy field.
+- **Success**: One strict full receipt and one exact warm repair,
+  with zero permission broadening and no legacy or Linux regression.
+  The unknown or changed source mode still refuses before writes.
+- **Pivot**: An unexpected mode, unacceptable mask, late mutation
+  or warm permission broadening prevents promotion. The default
+  ordinary publisher remains outside this prototype.
+- **Anchor**: The cross-platform recursive-copy evidence and
+  the complete native receipt and owner-file checks.

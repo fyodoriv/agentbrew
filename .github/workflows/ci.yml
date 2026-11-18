@@ -4,7 +4,7 @@ permissions:
   contents: read
 jobs:
   fixture:
-    runs-on: ubuntu-24.04
+    runs-on: macos-latest
     timeout-minutes: 10
     env:
       DO_NOT_TRACK: "1"

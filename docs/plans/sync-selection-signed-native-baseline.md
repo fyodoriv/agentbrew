@@ -82,3 +82,23 @@ scratch refuses the measurement. Verify the signed source, checkout,
 workspace, lock and signer allowlist remain byte- and metadata-identical.
 The output oracle checks exact native plugin mappings, script bytes,
 launcher mode, workspace contents and the synthetic redaction receipt.
+
+## Bounded report follow-up
+
+Run 44230819586 verified the package and the three denial canaries.
+The hooks arm ran, but its output crossed the 100-entry reporter cap.
+That run has no complete target receipt. Preserve it as incomplete.
+
+- **Hypothesis**: The real packaged hooks create more approved entries
+  than the first reporter admitted. A separate bounded evidence file
+  preserves all known deltas without printing them inline.
+- **Measurement**: Keep source, cases, process and output oracles fixed.
+  Allow up to 1,024 approved entries per arm and 1 MiB of approved
+  manifest receipts per arm. Send the safe summary to the job log and
+  retain only approved relative records in the workflow artifact.
+- **Success**: Four complete arms, zero unknown entries or denied calls,
+  and one exact manifest record per arm. Preserve prior incomplete
+  output as a distinct measurement.
+- **Pivot**: Exceeding either new bound, an outside link, a failed fixture
+  receipt or an unknown entry leaves the cohort incomplete.
+- **Anchor**: Hosted run 44230819586 and its exact reporter-bound refusal.

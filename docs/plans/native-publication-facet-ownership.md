@@ -1115,3 +1115,11 @@ the verified receipt and stay exact for later repairs.
   ordinary publisher remains outside this prototype.
 - **Anchor**: The cross-platform recursive-copy evidence and
   the complete native receipt and owner-file checks.
+
+On the baseline, both Mac private-mode tests exited 1 rather than
+certifying. The candidate bound the effective hook mask to both
+receipt forms. A strict full or partial receipt stored mode 0600,
+and a later repair under mask 022 restored 0600. A receipt asking
+to remove signed owner permissions refused. The ordinary mask
+kept the legacy receipt shape. Both local native suites passed
+all 75 tests.

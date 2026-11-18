@@ -24,3 +24,14 @@ adopt this lock through this change.
   rejects the candidate.
 - **Anchor**: Dotfiles #754 and the cross-tool scratch descriptor proof
   from Agentbrew run 44245169949.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44253279319)
+reproduced a successful write under contention and loss of
+unrelated policy text. The Windows compatibility case passed.
+The [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44253525489)
+passed the focused Linux and Windows jobs, the Linux lifecycle
+compatibility tests, and type checking. The macOS control also
+has a required qualification job. The
+[real cross-tool run](https://github.com/fyodoriv/agentbrew/actions/runs/44253654456)
+used merged Dotfiles #754 and passed the lock, release, row and
+inode checks.

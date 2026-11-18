@@ -59,6 +59,7 @@ def fixture_env(fixture, observer):
         "XDG_DATA_HOME": str(home / ".local" / "share"),
         "TMPDIR": str(fixture / "tmp"),
         "NO_COLOR": "1",
+        "TSX_DISABLE_CACHE": "1",
         "DO_NOT_TRACK": "1",
         "AGENTBREW_TELEMETRY": "0",
         "AGENTBREW_POSTHOG_KEY": "",
@@ -110,6 +111,22 @@ def main():
         loader = repo / "node_modules" / "tsx" / "dist" / "loader.mjs"
         update_child = repo / "scripts" / "fixtures" / "sync-update-child.mts"
         require(loader.is_file() and update_child.is_file(), "Direct update runtime missing")
+        control = root / "loader-control"
+        observer = root / "loader-observer"
+        work, env = fixture_env(control, observer)
+        before = manifest(control)
+        result = execute(node, preload, observer, work, env, [
+            "--import", str(loader), str(update_child), "loader-control",
+        ])
+        require(
+            result.returncode == 0
+            and result.stdout == b"fixture-loader-ready"
+            and manifest(control) == before
+            and not (observer / "attempt").exists(),
+            "TypeScript loader control did not qualify",
+        )
+        print("TypeScript loader control: exit 0, changed entries 0, subprocess attempted False", flush=True)
+
         marker = b"synthetic-invalid-input-canary"
         for label, args in [
             ("empty pull", [str(bundle), "sync", "--pull", "--only", ""]),

@@ -325,9 +325,8 @@ describe("native signer descriptor checks at publication", () => {
     installFacetFixture();
     const files = nativeFacetPaths();
     const owner = join(home, ".agentbrew-native-publication.lock");
-    const { withSignerCommitFence: acquire } = await vi.importActual<typeof import("./signer-commit-fence.js")>(
-      "./signer-commit-fence.js",
-    );
+    const { withSignerCommitFence: acquire } =
+      await vi.importActual<typeof import("./signer-commit-fence.js")>("./signer-commit-fence.js");
     let checked = 0;
     vi.mocked(withSignerCommitFence).mockImplementationOnce((registry, action) =>
       acquire(registry, (path, mode, assertLock) =>

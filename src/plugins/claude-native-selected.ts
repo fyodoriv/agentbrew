@@ -673,7 +673,7 @@ function verifiedReceiptFiles(files: readonly PlannedWrite[]) {
     .sort((left, right) => (left.path < right.path ? -1 : Number(left.path > right.path)));
 }
 
-function certifySelectedNativeOutput(plans: readonly SelectedNativeReceiptPlan[]): void {
+function certifySelectedNativeOutput(plans: readonly SelectedNativeReceiptPlan[], assertLock: () => void): void {
   const receipts = plans.map(({ entry, root, facets, files, before }) => {
     const path = join(root, NATIVE_RECEIPT_FILE);
     const localFiles = files.map(({ path }) => path).filter((path) => path.startsWith(`${root}${sep}`));
@@ -689,6 +689,7 @@ function certifySelectedNativeOutput(plans: readonly SelectedNativeReceiptPlan[]
       }),
     };
   });
+  assertLock();
   for (const { path, body } of receipts) writeFileSync(path, body, { mode: 0o600 });
 }
 
@@ -717,7 +718,7 @@ export function certifyFullNativeOutput(
   };
   const outputs = expected.flatMap(({ files }) => files.map(({ path }) => path));
   const launcherOutputs = outputs.filter((path) => dirname(path) === launcherRoot);
-  withSignerCommitFence(allowedSignersPath(), () => {
+  withSignerCommitFence(allowedSignersPath(), (_registry, _mode, assertLock) => {
     assertCurrentNativeSources(
       plugins.map(({ entry }) => entry),
       true,
@@ -733,7 +734,9 @@ export function certifyFullNativeOutput(
         files: verifiedReceiptFiles(files),
       }),
     }));
+    assertLock();
     for (const { path, body } of receipts) writeFileSync(path, body, { mode: 0o600 });
+    assertLock();
     applySettings();
   });
 }
@@ -786,12 +789,16 @@ export function publishSelectedNativePlugins(
   if (writes.length === 0) return;
   const index = receipts.some((receipt) => !receipt.before) ? { path, body: jsonBytes(registry), before } : undefined;
   const receiptTargets = receipts.map(({ root, before }) => ({ path: join(root, NATIVE_RECEIPT_FILE), before }));
-  withSignerCommitFence(allowedSignersPath(), () => {
+  withSignerCommitFence(allowedSignersPath(), (_registry, _mode, assertLock) => {
     assertCurrentNativeSources(planned);
     assertNativeTargetsUnchanged([...writes, ...receiptTargets, ...observations]);
+    assertLock();
     beginMutation();
     for (const write of writes) writeNativeOutput(write);
-    certifySelectedNativeOutput(receipts);
-    if (index) writeNativeOutput(index);
+    certifySelectedNativeOutput(receipts, assertLock);
+    if (index) {
+      assertLock();
+      writeNativeOutput(index);
+    }
   });
 }

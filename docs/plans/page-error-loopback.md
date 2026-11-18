@@ -158,3 +158,17 @@ and the trace misses a failure, keep production closure unverified and
 reject that trace configuration as the event source.
 Anchor: [Chrome Tracing completion](https://chromedevtools.github.io/devtools-protocol/tot/Tracing/#event-tracingComplete),
 issue #563, and Basili, Caldiera and Rombach (1994).
+
+Chromium 149.0.7827.55 reported trace completion with no reported trace
+loss or fixture overflow. The trace matched the failing resource by its
+request ID and HTTP 503 status. It contained neither of the two synthetic
+error markers. The direct Runtime and Network controls observed all three
+failures on the same page. The allowed server saw one request for the
+resource. The denied server saw zero requests, and the browser reported
+access denied. The fixture closed the context and browser.
+
+The trace used `devtools.timeline`, `disabled-by-default-devtools.timeline`,
+`blink.console` and `v8`. This result rejects that configuration as an
+event source for the complete gate. The trace completion flag covers the
+trace buffer. Production capture still needs a verified cutoff for each
+owned Runtime and Network session.

@@ -76,3 +76,9 @@ existing pull path.
 - **Pivot**: If either path loses a required field or changes its
   earlier rule or skill exclusion, keep this draft out of delivery.
 - **Anchor**: `applyAgentfileBeforePull` and the independent scope review.
+
+The [mixed pull baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44242631661)
+reached the update boundary with the hook declaration missing.
+The [corrected candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44242776313)
+treated ordinary apply and pull separately. All ten focused cases
+and 207 compatibility tests passed, along with type checking.

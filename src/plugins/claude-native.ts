@@ -14,8 +14,16 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
+import {
+  certifyFullNativeOutput,
+  type NativeFacet,
+  nativePluginEntry,
+  planNativeSettingsCheck,
+  publishSelectedNativePlugins,
+} from "./claude-native-selected.js";
 import { type ActivePlugin, activePlugins } from "./contributions.js";
 import { launcherPath, readPluginMcpServers, renderLauncher } from "./mcp-launcher.js";
+import { withNativePublicationLock } from "./native-publication-lock.js";
 
 export const MARKETPLACE_NAME = "agentbrew-plugins";
 
@@ -67,15 +75,14 @@ function pruneLaunchers(keep: Set<string>): void {
 }
 
 function emitPlugin(plugin: ActivePlugin): { name: string; source: string; version: string; description: string } {
-  const { name } = plugin.entry;
-  const root = join(marketplaceDir(), "plugins", name);
+  const entry = nativePluginEntry(plugin);
+  const { source, ...envelope } = entry;
+  const root = join(marketplaceDir(), source);
   rmSync(root, { recursive: true, force: true });
-  const version = `${plugin.manifest.version}+${plugin.entry.commit.slice(0, 8)}`;
-  const description = `Company plugin ${name}, managed by agentbrew`;
-  writeJson(join(root, ".claude-plugin", "plugin.json"), { name, version, description });
+  writeJson(join(root, ".claude-plugin", "plugin.json"), envelope);
   emitHooks(plugin, root);
   emitMcp(plugin, root);
-  return { name, source: `./plugins/${name}`, version, description };
+  return entry;
 }
 
 function readSettings(): Record<string, unknown> | undefined {
@@ -85,17 +92,21 @@ function readSettings(): Record<string, unknown> | undefined {
 }
 
 /** Set our marketplace and enabled plugins; drop stale entries we own. Other keys stay. */
-function updateSettings(names: string[]): void {
+function updateSettings(names: string[], preserveDisabled = false): void {
   const current = readSettings();
   if (!current && names.length === 0) return;
   const settings = current ?? {};
   const markets = { ...((settings.extraKnownMarketplaces as Record<string, unknown>) ?? {}) };
-  const enabled = { ...((settings.enabledPlugins as Record<string, boolean>) ?? {}) };
+  const previous = (settings.enabledPlugins as Record<string, boolean>) ?? {};
+  const enabled = { ...previous };
   for (const key of Object.keys(enabled)) if (key.endsWith(`@${MARKETPLACE_NAME}`)) delete enabled[key];
   delete markets[MARKETPLACE_NAME];
   if (names.length > 0) {
     markets[MARKETPLACE_NAME] = { source: { source: "directory", path: marketplaceDir() } };
-    for (const name of names) enabled[`${name}@${MARKETPLACE_NAME}`] = true;
+    for (const name of names) {
+      const key = `${name}@${MARKETPLACE_NAME}`;
+      enabled[key] = !preserveDisabled || previous[key] !== false;
+    }
   }
   settings.extraKnownMarketplaces = markets;
   settings.enabledPlugins = enabled;
@@ -105,8 +116,30 @@ function updateSettings(names: string[]): void {
 }
 
 /** Regenerate the local marketplace and settings from the active plugins. */
-export function emitClaudeNative(): void {
+export function emitClaudeNative(options?: { modules?: readonly NativeFacet[]; certifyFullOutput?: boolean }): void {
+  const modules = options?.modules;
+  if (modules) {
+    withNativePublicationLock((beginMutation) => {
+      publishSelectedNativePlugins(activePlugins(), modules, {
+        marketplace: marketplaceDir(),
+        name: MARKETPLACE_NAME,
+        rulesHook: RULES_HOOK,
+        beginMutation,
+      });
+    });
+    return;
+  }
+  if (options?.certifyFullOutput) {
+    withNativePublicationLock((beginMutation) => publishNative({ beginMutation }));
+    return;
+  }
+  publishNative();
+}
+
+function publishNative(certification?: { beginMutation: () => void }): void {
   const plugins = activePlugins();
+  const checkSettings = certification && planNativeSettingsCheck(claudeSettingsPath());
+  certification?.beginMutation();
   const entries = plugins.map(emitPlugin);
   pruneLaunchers(
     new Set(
@@ -128,7 +161,15 @@ export function emitClaudeNative(): void {
   } else {
     rmSync(marketplaceDir(), { recursive: true, force: true });
   }
-  updateSettings(entries.map((e) => e.name));
+  const names = entries.map((entry) => entry.name);
+  if (checkSettings) {
+    certifyFullNativeOutput(plugins, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK, () => {
+      checkSettings();
+      updateSettings(names, true);
+    });
+    return;
+  }
+  updateSettings(names);
 }
 
 export interface PolicyFragment {

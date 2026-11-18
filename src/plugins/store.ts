@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -44,6 +45,70 @@ function git(cwd: string, ...args: string[]): string {
     stdio: "pipe",
     timeout: 120_000,
   }).trim();
+}
+
+export interface PinnedPluginFile {
+  path: string;
+  mode: number;
+  body: Buffer;
+}
+
+function readPinnedBlob(cwd: string, oid: string): Buffer {
+  const body = execFileSync("git", ["--no-replace-objects", "cat-file", "blob", oid], {
+    cwd,
+    env: cacheGitEnv(),
+    stdio: "pipe",
+    timeout: 10_000,
+  });
+  const digest = createHash(oid.length === 40 ? "sha1" : "sha256")
+    .update(`blob ${body.length}\0`)
+    .update(body)
+    .digest("hex");
+  if (digest !== oid) throw new Error("The signed plugin blob identity changed.");
+  return body;
+}
+
+/** Read regular files from the pinned tree, without consulting the working copy. */
+export function readPinnedPluginFiles(entry: PluginLockEntry, path: string): PinnedPluginFile[] {
+  const objectId = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
+  const cwd = pluginDir(entry.name);
+  if (
+    !objectId.test(entry.commit) ||
+    !objectId.test(entry.tree) ||
+    git(cwd, "--no-replace-objects", "rev-parse", "--verify", `${entry.commit}^{tree}`) !== entry.tree
+  ) {
+    throw new Error("The signed plugin tree identity changed.");
+  }
+  const rows = git(
+    cwd,
+    "--no-replace-objects",
+    "--literal-pathspecs",
+    "ls-tree",
+    "-r",
+    "-z",
+    "--full-tree",
+    entry.commit,
+    "--",
+    path,
+  )
+    .split("\0")
+    .filter(Boolean);
+  return rows.map((row) => {
+    const match = /^(100644|100755) blob ([0-9a-f]+)\t(.+)$/u.exec(row);
+    const [, mode, oid, file] = match ?? [];
+    if (
+      !mode ||
+      !oid ||
+      !objectId.test(oid) ||
+      !file ||
+      Array.from(file).some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127) ||
+      file.includes("\ufffd") ||
+      (file !== path && !file.startsWith(`${path}/`))
+    ) {
+      throw new Error("The signed plugin output contains an unsupported tree entry.");
+    }
+    return { path: file, mode: mode === "100755" ? 0o755 : 0o644, body: readPinnedBlob(cwd, oid) };
+  });
 }
 
 export interface AddPluginOptions {

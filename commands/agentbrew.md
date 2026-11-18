@@ -11,7 +11,6 @@ Then, answer first:
 2. Each `Next:` and `Then:` item: say in plain words what the command does and what changes for the user. Run it only after the user says yes:
    - `agentbrew init`: first setup. It detects agents, installs the recommended set (downloads), and schedules drift repair.
    - `agentbrew install --recommended`: installs the recommended skills and MCP servers (downloads).
-   - `agentbrew install modern-web-guidance`: adds Chrome guidance for browser features and extensions.
    - `agentbrew sync`: deploys skills, MCP servers, rules, and commands to every agent and repairs drift. Show `agentbrew sync --dry-run` before you ask.
    - `agentbrew auto-sync install`: starts the background drift-repair job. If the user does not want it, run `agentbrew config set autoRepair off`, and nothing proposes it again.
    - `agentbrew status --fix`: repairs drift and reinstalls the drift-repair job when it points at an old path.
@@ -22,6 +21,8 @@ Then, answer first:
    - Any other fix (for drift that sync cannot repair): it is the fix `agentbrew status --ci` names for that drift. Explain it the same way.
 
 To change a setting the user asks for, run `agentbrew config` (each setting, its value, its source, and the allowed values). Then run `agentbrew config set <key> <value>`: it checks the value and saves it. Never hand-edit `~/.config/agentbrew/state.yaml` or generated agent config under `~/.claude/`. If the user does not want this command, run `agentbrew config set builtinCommands off`.
+
+When the user asks to add Chrome's Modern Web Guidance, use `agentbrew install modern-web-guidance` for browser features and Chrome extensions.
 
 Every other action: run `agentbrew actions --json`. It lists every command (generated from the CLI), its arguments, and three notes:
 

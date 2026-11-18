@@ -20,6 +20,11 @@ describe("Modern Web Guidance catalog routing", () => {
     expect(catalog.repo_sources?.some((entry) => entry.source.toLowerCase().includes(name)) ?? false).toBe(false);
     expect(catalog.claude_plugins?.some((entry) => entry.repo.toLowerCase().includes(name)) ?? false).toBe(false);
     expect(findSkillDirInCache(root, name)).toBe(join(root, "skills", name));
+    for (const path of ["src/sources.yaml", "skill-plugins/workflow/ui-ux-rankings/SKILL.md"]) {
+      expect(readFileSync(join(root, path), "utf8")).not.toContain("web-design-guidelines");
+    }
+    const command = readFileSync(join(root, "commands/agentbrew.md"), "utf8");
+    expect(command).toMatch(/^When the user asks .*agentbrew install modern-web-guidance/mu);
     for (const path of ["commands/agentbrew.md", "skill-plugins/dev/agentbrew-status/SKILL.md"]) {
       expect(readFileSync(join(root, path), "utf8")).toContain(`agentbrew install ${name}`);
     }

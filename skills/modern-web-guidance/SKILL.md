@@ -23,7 +23,8 @@ npx --yes modern-web-guidance@1.0.1 search "responsive data table"
 npx --yes modern-web-guidance@1.0.1 retrieve "<guide-id>"
 ```
 
-Read the best match and the discipline guide when it adds constraints.
+Read the best match and the discipline guide when it adds constraints. If
+retrieval returns a guide file, read that file in full.
 Rephrase once if the query misses. Use `list` for a broad inventory. Check
 the selected patterns and required fallbacks in the implementation. Reuse
 the project's framework conventions without changing its browser target.
@@ -32,8 +33,10 @@ Use the configured Chrome DevTools or test tools to verify runtime behavior.
 ## Modernize an existing site
 
 For a broad modernization request, run the scanner on the owned project
-tree. Check each match against its guide and preserve working fallbacks.
-A request to fix one feature uses search and retrieval for that feature.
+tree. Check each match against its `keepWhen` and `dropWhen` criteria. Retrieve
+the applicable guides and keep valid fallbacks. If the user asked for changes,
+apply the verified replacements and rescan the same scope. A request to fix
+one feature uses search and retrieval for that feature.
 
 ```sh
 npx --yes modern-web-guidance@1.0.1 legacy-scan <project-path> --json

@@ -30,7 +30,7 @@
   recommended: true
 
 - name: vercel-labs/agent-skills
-  description: "Vercel Engineering — react-best-practices, web-design-guidelines, composition-patterns, react-native"
+  description: "Vercel Engineering — react-best-practices, composition-patterns, react-native"
   provides: [skills]
   category: official
   recommended: true

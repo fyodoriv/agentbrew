@@ -271,6 +271,28 @@ describe("selected native destination commit observation", () => {
   });
 });
 
+describe("warm retained native commit observation", () => {
+  it.each(["mcp", "index"] as const)("refuses when retained $target changes before writes", async (target) => {
+    installFacetFixture();
+    emitClaudeNative({ certifyFullOutput: true });
+    const files = nativeFacetPaths();
+    rmSync(files.script);
+    const frozen = [files.envelope, files.hooks, files.launcher, files.settings, nativeProofPath()];
+    const previous = observeNativeFiles(frozen);
+    const actual = await vi.importActual<typeof import("./signer-commit-fence.js")>("./signer-commit-fence.js");
+    const changed = "Synthetic retained file changed after planning.\n";
+    vi.mocked(withSignerCommitFence).mockImplementationOnce((registry, commit) => {
+      writeFileSync(files[target], changed);
+      return actual.withSignerCommitFence(registry, commit);
+    });
+
+    expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/destination changed/u);
+    expect(readFileSync(files[target], "utf8")).toBe(changed);
+    expect(existsSync(files.script)).toBe(false);
+    expect(observeNativeFiles(frozen)).toEqual(previous);
+  });
+});
+
 describe("full native output proof", () => {
   const digest = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
 

@@ -42,3 +42,25 @@ The programmatic update and valid selected native facets remain separate.
   missing diagnostic or subprocess attempt leaves the result incomplete.
 - **Anchor**: The original emptyAPI observation and the passing
   built CLI scratch run 44226441932.
+
+### Loader cache control
+
+The first direct update child exited 1 with the expected hint and zero
+subprocess attempts, but changed 122 scratch entries. That did not
+qualify. The pinned TypeScript loader has a transform cache under the
+invocation's temporary directory. The earlier two built CLI cases still
+passed. See hosted run 44227921686.
+
+- **Hypothesis**: Disable the loader's transform cache and verify that
+  importing a TypeScript-only no-op writes zero scratch entries. Then
+  the direct update should leave the entire tree unchanged.
+- **Measurement**: Set the pinned loader's supported TSX_DISABLE_CACHE
+  switch in the clean synthetic environment. Before the direct update,
+  run a TypeScript syntax control in its own home through that same
+  runtime. Require an exact success marker, 0 changed entries and 0
+  subprocess attempts. Keep all original file and output assertions.
+- **Success**: The loader control and all three real input fixtures
+  leave zero scratch changes. All original command results hold.
+- **Pivot**: A loader control that does not execute or writes any entry
+  does not admit the direct update proof.
+- **Anchor**: The pinned loader source and physical run 44227921686.

@@ -20,6 +20,10 @@ from urllib.request import ProxyHandler, Request, build_opener
 binary = Path(sys.argv[1]).resolve(strict=True)
 identifier = "agentbrew.loader-control"
 tool_name = "agentbrew_fixture"
+case = sys.argv[2]
+if case not in ("approve", "amend", "deny"):
+    raise SystemExit("unknown registered fixture case")
+denial_marker = b"agentbrew synthetic refusal"
 plugin = """import { appendFileSync } from "node:fs";
 import { ClaudeHooks } from "./v1-bridge.js";
 export default {
@@ -50,14 +54,19 @@ const input = JSON.parse(readFileSync(0, "utf8"));
 const expected = input.hook_event_name === "PreToolUse" && input.tool_name === "agentbrew_fixture"
   && input.tool_input?.value === "original";
 appendFileSync(process.env.AGENTBREW_OC_HOOK_LOG, (expected ? "original" : "unexpected") + "\\n");
-if (expected) {
+if (expected && process.env.AGENTBREW_OC_DECISION === "amend") {
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { updatedInput: { value: "amended" } } }));
+}
+if (expected && process.env.AGENTBREW_OC_DECISION === "deny") {
+  process.stderr.write("agentbrew synthetic refusal");
+  process.exitCode = 2;
 }
 """
 
 class FixtureProvider(BaseHTTPRequestHandler):
     outcomes = []
     offer = "unseen"
+    reported_denial = False
 
     def log_message(self, *_):
         pass
@@ -91,8 +100,10 @@ class FixtureProvider(BaseHTTPRequestHandler):
                 reason = "tool_calls"
                 self.outcomes.append("tool-call")
             elif self.outcomes == ["tool-call"]:
-                if not any(message.get("role") == "tool" for message in query.get("messages", [])):
+                tool_results = [message.get("content") for message in query.get("messages", []) if message.get("role") == "tool"]
+                if not tool_results:
                     raise ValueError
+                type(self).reported_denial = denial_marker in json.dumps(tool_results).encode()
                 delta = {"role": "assistant", "content": "fixture session complete"}
                 reason = "stop"
                 self.outcomes.append("finish")
@@ -138,6 +149,7 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
         "XDG_STATE_HOME": str(home / ".local/state"), "XDG_CACHE_HOME": str(home / ".cache"),
         "AGENTBREW_OC_LOADER_MARKER": str(marker), "AGENTBREW_OC_HOOK_LOG": str(hook_log),
         "AGENTBREW_OC_TOOL_LOG": str(tool_log), "CLAUDE_HOOKS_SETTINGS": str(hook_settings),
+        "AGENTBREW_OC_DECISION": case,
         "DO_NOT_TRACK": "1", "CI": "1", "OPENCODE_PASSWORD": password, "OPENCODE_DISABLE_MODELS_FETCH": "1",
     }
     common = {"cwd": workspace, "env": environment, "stdin": subprocess.DEVNULL}
@@ -152,6 +164,7 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
     open_local = build_opener(ProxyHandler({}))
     health = "unavailable"
     output = False
+    cli_denial = False
     run_exit = "unavailable"
     with ThreadingHTTPServer(("127.0.0.1", 0), FixtureProvider) as provider:
         fixture = Thread(target=provider.serve_forever, kwargs={"poll_interval": 0.1}, daemon=True)
@@ -194,6 +207,7 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
                         result = subprocess.run([str(binary), *args], **common, capture_output=True, timeout=35)
                         run_exit = result.returncode
                         output = b"fixture session complete" in result.stdout
+                        cli_denial = denial_marker in result.stdout + result.stderr
                     except subprocess.TimeoutExpired:
                         run_exit = "deadline"
             finally:
@@ -211,14 +225,18 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
         return path.read_text().splitlines() if path.is_file() else []
     setup, hook, tool = rows(marker), rows(hook_log), rows(tool_log)
     print(
-        f"version=2.3.0 health={health} exit={run_exit} done={int(output)} setup={setup.count('setup')} "
+        f"case={case} version=2.3.0 health={health} exit={run_exit} done={int(output)} setup={setup.count('setup')} "
         f"requests={len(FixtureProvider.outcomes)} model-path={','.join(FixtureProvider.outcomes) or 'none'} offered={FixtureProvider.offer} "
         f"hook-original={hook.count('original')} tool-amended={tool.count('amended')} "
-        f"tool-original={tool.count('original')} reaped=1 fixture-stopped={int(not fixture.is_alive())}"
+        f"tool-original={tool.count('original')} denied={int(cli_denial or FixtureProvider.reported_denial)} "
+        f"reaped=1 fixture-stopped={int(not fixture.is_alive())}"
     )
-    if (
-        health != 200 or run_exit != 0 or not output or setup != ["setup"]
-        or FixtureProvider.outcomes != ["tool-call", "finish"] or hook != ["original"]
-        or tool != ["amended"] or fixture.is_alive()
-    ):
+    complete = run_exit == 0 and output and FixtureProvider.outcomes == ["tool-call", "finish"]
+    if case == "deny":
+        stopped_at_denial = run_exit == 1 and cli_denial and FixtureProvider.outcomes == ["tool-call"]
+        valid = not tool and (complete or stopped_at_denial) and (cli_denial or FixtureProvider.reported_denial)
+    else:
+        expected = "amended" if case == "amend" else "original"
+        valid = complete and tool == [expected] and not (cli_denial or FixtureProvider.reported_denial)
+    if health != 200 or setup != ["setup"] or hook != ["original"] or not valid or fixture.is_alive():
         raise SystemExit("the native V2 before-tool control was not verified")

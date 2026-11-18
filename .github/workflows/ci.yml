@@ -5,6 +5,12 @@ permissions:
   contents: read
 jobs:
   opencode-loader:
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [approve, amend, deny]
+    env:
+      AGENTBREW_OC_CASE: ${{ matrix.case }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -20,4 +26,4 @@ jobs:
         run: |
           sudo ip netns add agentbrew-loader
           sudo ip -n agentbrew-loader link set lo up
-          sudo ip netns exec agentbrew-loader runuser -u "$USER" -- env "PATH=$PATH" python3 scripts/probe-opencode-v2-loader.py "$RUNNER_TEMP/opencode-cli/node_modules/.bin/opencode"
+          sudo ip netns exec agentbrew-loader runuser -u "$USER" -- env "PATH=$PATH" python3 scripts/probe-opencode-v2-loader.py "$RUNNER_TEMP/opencode-cli/node_modules/.bin/opencode" "$AGENTBREW_OC_CASE"

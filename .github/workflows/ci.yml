@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           for mode in 0 1; do
-            export AGENTBREW_PLUGIN_LIFECYCLE_OBSERVE="$mode"
+            export PLUGIN_LIFECYCLE_FIXTURE_OUTPUT="$mode"
             npx vitest run src/plugins/cli-plugin.test.ts -t '^plugin lifecycle observation output$' --maxWorkers=1 --retry=0 --reporter=default --silent=false >"/tmp/lifecycle-stage-$mode.log" 2>&1
             python3 - "$mode" <<'PYCONTROL'
           import json, math, pathlib, sys

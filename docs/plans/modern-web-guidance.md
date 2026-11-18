@@ -55,3 +55,8 @@ access after download.
   rejects the change.
 - **Anchor**: The `preserveExisting` catalog flag and its existing deployment
   checks in `src/sync/skills-sync.ts`.
+
+The four existing-copy controls failed on the previous code. Regular
+directories were replaced and dangling links raised a copy error. All six
+cases passed after the guard, including fresh installs in each scope. The
+combined catalog, Agentfile, and deployment tests passed 268 checks.

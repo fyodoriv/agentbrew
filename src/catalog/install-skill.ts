@@ -1,4 +1,4 @@
-import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
 import { registerSkillSourceDir } from "../add-source.js";
@@ -8,6 +8,7 @@ import { redactUrlCredentials } from "../core/redact-url.js";
 import { detectSourceType } from "../git-source-url.js";
 import { lockSource } from "../lock.js";
 import { INSTALLED_SKILLS_DIR, INSTALLED_SKILLS_LABEL } from "../paths.js";
+import { copySkillDirectory } from "../skills/copy-skill-directory.js";
 import { recordSourceSha } from "../skills/skill-versions.js";
 import { loadState, saveState } from "../state.js";
 import type { AgentBrewState, Source } from "../types.js";
@@ -50,13 +51,7 @@ export function copySkillFromCache(cachePath: string, skillName: string): string
 
   const destination = join(installedSkillsPath, skillName);
 
-  // Remove stale copy before refresh so we don't accumulate old files
-  if (existsSync(destination)) {
-    rmSync(destination, { recursive: true, force: true });
-  }
-
-  mkdirSync(destination, { recursive: true });
-  cpSync(skillDir, destination, { recursive: true });
+  copySkillDirectory(skillDir, destination);
   return destination;
 }
 
@@ -208,11 +203,6 @@ function resolveSkillSource(
   return { source, cachePath };
 }
 
-/** Finds the skill directory in the cache, including nested plugin layouts. */
-function findSkillInCache(cachePath: string, skillName: string): string | undefined {
-  return findSkillDirInCache(cachePath, skillName);
-}
-
 /**
  * In-process set of source URLs for which the full "Registered source" banner
  * has been printed in this session. Subsequent calls for the same source (e.g.
@@ -320,21 +310,21 @@ export async function installSkill(
   const resolved = resolveSkillSource(skill, installSummary);
   if (!resolved) return;
 
-  // For local installs, copy to project directory instead of global staging
-  if (localDir) {
-    const skillDir = findSkillInCache(resolved.cachePath, skill.name);
-    if (!skillDir) {
-      cliNotFound(skill.name, `in ${skill.source}`, "Run `agentbrew sync --pull` to refresh the source index.");
-      return;
-    }
-    installSkillToProject(localDir, skill.name, skillDir);
+  const skillDir = findSkillDirInCache(resolved.cachePath, skill.name);
+  if (!skillDir) {
+    if (!localDir && trySourceFallback(resolved.cachePath, skill.source, skill.name)) return;
+    cliNotFound(skill.name, `in ${skill.source}`, "Run `agentbrew sync --pull` to refresh the source index.");
     return;
   }
 
-  const destination = copySkillFromCache(resolved.cachePath, skill.name);
-  if (!destination) {
-    if (trySourceFallback(resolved.cachePath, skill.source, skill.name)) return;
-    cliNotFound(skill.name, `in ${skill.source}`, "Run `agentbrew sync --pull` to refresh the source index.");
+  if (localDir) {
+    installSkillToProject(localDir, skill.name, skillDir, skill.preserveExisting);
+    return;
+  }
+
+  const destination = join(installedSkillsPath, skill.name);
+  if (!copySkillDirectory(skillDir, destination, skill.preserveExisting)) {
+    console.log(`  Kept existing skill '${skill.name}' in catalog staging.`);
     return;
   }
 

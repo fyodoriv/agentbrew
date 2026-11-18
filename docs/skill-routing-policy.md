@@ -217,8 +217,9 @@ Chrome's pinned release and the project's browser support policy.
 The frontend-kit includes one implementation guide and one broad quality
 review. It pairs Playwright tests with the existing Chrome DevTools MCP
 for live browser diagnostics. Modern Web Guidance replaces the older
-web-design-guidelines checklist in the catalog. Existing copies remain
-under their owner's control.
+web-design-guidelines checklist in the catalog. A named install leaves an existing same-name
+copy in catalog staging or project storage untouched, including links.
+Agent deployment also preserves copies from other sources.
 
 ## When you DO need to extend shared-rules.md
 

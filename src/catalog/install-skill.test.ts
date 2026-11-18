@@ -1,16 +1,43 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { getStateSources } from "../agentfile.js";
 import { INSTALLED_SKILLS_DIR } from "../paths.js";
+import { loadState, saveState } from "../state.js";
 import { expandHome } from "../utils.js";
-import { findSkillDirInCache } from "./index-source.js";
+import { findSkillDirInCache, getSourceCachePath } from "./index-source.js";
 import {
   copySkillFromCache,
+  installSkill,
   isAlreadyInstalled,
   isInstalledSkillCurrent,
   resetSourceFallbackAnnounced,
 } from "./install-skill.js";
+
+import type { CatalogSkill } from "./types.js";
+
+vi.mock("./index-source.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./index-source.js")>()),
+  getSourceCachePath: vi.fn(),
+}));
+
+vi.mock("../state.js", () => ({
+  loadState: vi.fn(),
+  saveState: vi.fn(),
+}));
+
+vi.mock("../lock.js", () => ({ lockSource: vi.fn() }));
+vi.mock("../skills/skill-versions.js", () => ({ recordSourceSha: vi.fn() }));
 
 // install-skill.ts resolves the installed-skills dir at import time, so the
 // tmpdir home path must be set before vi.mock runs (AGENTS.md rule #15). Without it,
@@ -127,5 +154,81 @@ describe("isAlreadyInstalled", () => {
 describe("resetSourceFallbackAnnounced", () => {
   it("does not throw", () => {
     expect(() => resetSourceFallbackAnnounced()).not.toThrow();
+  });
+});
+
+describe("owner-preserving named catalog installs", () => {
+  const skill: CatalogSkill = {
+    name: "protected-web-guide",
+    description: "Test catalog guide",
+    source: "public/example",
+    category: "development",
+    recommended: false,
+    preserveExisting: true,
+  };
+  let fixture: string;
+  let staged: string;
+  let project: string;
+  let local: string;
+
+  beforeEach(() => {
+    fixture = mkdtempSync(join(tmpdir(), "agentbrew-protected-install-"));
+    const cached = join(fixture, "cache", "skills", skill.name);
+    mkdirSync(cached, { recursive: true });
+    writeFileSync(join(cached, "SKILL.md"), "# Catalog guide");
+    staged = join(expandHome(INSTALLED_SKILLS_DIR), skill.name);
+    project = join(fixture, "project");
+    local = join(project, ".agentbrew", "skills", skill.name);
+    vi.mocked(getSourceCachePath).mockReturnValue(join(fixture, "cache"));
+    vi.mocked(loadState).mockReturnValue({ agents: [], mcpServers: [], catalogVersion: "0.1.0" });
+  });
+
+  afterEach(() => {
+    rmSync(fixture, { recursive: true, force: true });
+    rmSync(staged, { recursive: true, force: true });
+    vi.clearAllMocks();
+  });
+
+  function installAt(scope: string) {
+    return installSkill(
+      skill,
+      { alreadyInstalled: [], failedSourceSkips: new Map() },
+      scope === "project" ? project : undefined,
+    );
+  }
+
+  it.each(["staging", "project"])("keeps an existing %s skill and its registration untouched", async (scope) => {
+    const dest = scope === "staging" ? staged : local;
+    mkdirSync(dest, { recursive: true });
+    writeFileSync(join(dest, "SKILL.md"), "# Owner guide");
+    await installAt(scope);
+    expect(readFileSync(join(dest, "SKILL.md"), "utf-8")).toBe("# Owner guide");
+    expect(saveState).not.toHaveBeenCalled();
+    expect(existsSync(join(project, "Agentfile.yaml"))).toBe(false);
+  });
+
+  it.each(["staging", "project"])("keeps a dangling %s skill link at its original target", async (scope) => {
+    const dest = scope === "staging" ? staged : local;
+    const absent = join(fixture, "absent");
+    mkdirSync(join(dest, ".."), { recursive: true });
+    symlinkSync(absent, dest, "dir");
+    await installAt(scope);
+    expect(readlinkSync(dest)).toBe(absent);
+    expect(existsSync(absent)).toBe(false);
+    expect(saveState).not.toHaveBeenCalled();
+    expect(existsSync(join(project, "Agentfile.yaml"))).toBe(false);
+  });
+
+  it.each(["staging", "project"])("installs and registers a fresh %s skill", async (scope) => {
+    const dest = scope === "staging" ? staged : local;
+    await installAt(scope);
+    expect(readFileSync(join(dest, "SKILL.md"), "utf-8")).toBe("# Catalog guide");
+    if (scope === "staging") {
+      expect(getStateSources(vi.mocked(loadState).mock.results[0].value)[0]?.skillsInstalled).toEqual([skill.name]);
+      expect(saveState).toHaveBeenCalledOnce();
+    } else {
+      expect(readFileSync(join(project, "Agentfile.yaml"), "utf-8")).toContain(skill.name);
+      expect(saveState).not.toHaveBeenCalled();
+    }
   });
 });

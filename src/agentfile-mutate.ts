@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
 import yaml from "js-yaml";
@@ -6,6 +6,7 @@ import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { AGENTFILE_NAMES, loadAgentfile } from "./agentfile.js";
 import { loadCatalog } from "./catalog/types.js";
 import { logSkipped } from "./core/logger.js";
+import { copySkillDirectory } from "./skills/copy-skill-directory.js";
 import type { McpServer } from "./types.js";
 import { ICON_SUCCESS } from "./ui/output.js";
 import { expandHome } from "./utils.js";
@@ -170,19 +171,20 @@ export function installToProject(directory: string, server: McpServer): void {
  * Install a skill to the project directory (local scope).
  * Copies skill files to `.agentbrew/skills/<name>/` and adds to Agentfile `skills:`.
  */
-export function installSkillToProject(directory: string, skillName: string, sourcePath: string): void {
-  const projectSkillsDir = join(directory, ".agentbrew", "skills", skillName);
-
-  // Remove stale copy before refresh
-  if (existsSync(projectSkillsDir)) {
-    rmSync(projectSkillsDir, { recursive: true, force: true });
+export function installSkillToProject(
+  directory: string,
+  skillName: string,
+  sourcePath: string,
+  preserveExisting?: boolean,
+): void {
+  const relativePath = join(".agentbrew", "skills", skillName);
+  if (!copySkillDirectory(sourcePath, join(directory, relativePath), preserveExisting)) {
+    console.log(`  Kept existing skill '${skillName}' at ${relativePath}.`);
+    return;
   }
 
-  mkdirSync(projectSkillsDir, { recursive: true });
-  cpSync(sourcePath, projectSkillsDir, { recursive: true });
-
   addSkillToAgentfile(directory, skillName);
-  console.log(`  ${ICON_SUCCESS} Skill '${skillName}' installed to ${join(".agentbrew", "skills", skillName)}`);
+  console.log(`  ${ICON_SUCCESS} Skill '${skillName}' installed to ${relativePath}`);
   console.log(`  ${ICON_SUCCESS} Added '${skillName}' to Agentfile skills`);
   console.log(chalk.dim("  Run `agentbrew sync` to deploy to per-project agent configs.\n"));
 }

@@ -952,3 +952,142 @@ without writing a receipt or index. Full certification kept its owner
 without writing settings or a receipt. The candidate passed 60 focused
 controls, 117 compatibility tests, ordinary publication, and type
 checking.
+
+## Test process loss at three output checkpoints
+
+- **Hypothesis**: If the opt-in native publisher loses its process
+  before payload, marketplace index or activation settings, a separate
+  replacement process refuses entry and preserves every new byte.
+- **Measurement**: Install a signed synthetic plugin in a new scratch
+  home for each checkpoint. Run the real selected or certified full
+  writer in a child. Stop that child at the exact next atomic write,
+  before it mutates that path. Use a separate child to retry the same
+  route. Record file count, type, mode and digest below the scratch
+  output roots and the process owner byte identity.
+- **Success**: Three identified checkpoint exits, three retained
+  owner records, three refused replacement processes, no new writes
+  after refusal, and the target checkpoint path remains untouched.
+- **Pivot**: A wrong checkpoint, changed post-loss output, an unsafe
+  takeover, or a missing control prevents use of the interruption
+  evidence. No live activation or automated recovery follows.
+- **Anchor**: The interrupted-publication matrix, and the earlier
+  real single-writer and in-process partial-write controls.
+
+The first local settings case stopped before the injected checkpoint.
+The scratch clone and legacy copy produced a mode-0600 guard where the
+signed tree requires 0644. The shared test queue sets umask 077. Keep
+that exact conservative refusal as a separate unresolved configuration.
+Run the three checkpoint controls with a registered umask 022 so that
+they exercise the intended settings boundary.
+
+The mode-022 Mac control reached all three points in separate child
+processes. Each exited 77 at its registered write. All three
+replacement processes exited 75 without touching the retained bytes,
+file types or modes. The expected incremental progress before each
+boundary still needs corroboration in the hosted run.
+
+The checkpoint fixture pins its synthetic installed guard to the
+0644 mode registered in the signed tree. A single-file copy kept that
+mode under either mask. The first test of this setup still failed
+before the settings checkpoint. See the recursive copy control below.
+
+The installed fixture mode alone did not reach settings under 077.
+A recursive copy reproduced the distinction. It copied a 0644 source
+as 0600 under 077 and as 0644 under 022. The checkpoint child uses the
+registered 022 even when its parent queue keeps 077. This isolates the
+three interruption controls without changing real user permissions.
+
+
+The final control passed all three checkpoints in the default queue
+with its parent mask unchanged. The child returned 77 before each
+target write. Each replacement returned 75 and preserved the complete
+observed output snapshot. This includes the completed earlier files
+and receipts at the marketplace and settings boundaries.
+
+## Refuse an incompatible copy mode before certification writes
+
+- **Hypothesis**: Certified full publication can identify a mode it
+  cannot reproduce before creating payload, index, or settings.
+  The guarded write still accepts the verified 022 control.
+- **Measurement**: Use the signed checkpoint fixture and a real child
+  process. Compare strict 077 against 022 with an installed 0644 guard.
+  For the strict case snapshot all output roots and the owner record.
+  Separately change only the installed synthetic guard to 0600 while
+  the publishing child stays at 022, then repeat the strict snapshot.
+- **Success**: Each incompatible input stops before its first output
+  write and leaves no new process owner. The normal full writer still
+  certifies the original signed modes and passes all prior controls.
+- **Pivot**: An output change, a retained owner before mutation, an
+  ordinary default regression, or a masked source that looks
+  certified stops the candidate. Preserve strict-mask refusal while
+  a compatible ownership contract is evaluated.
+- **Anchor**: The verified mode-mismatch result, recursive Node copy
+  behavior, and the certified writer's receipt of exact file modes.
+
+Both original refusal cases ran and exited nonzero, but the
+marketplace and launcher paths appeared and the process owner
+remained. The candidate moved mode validation before the first
+mutation. Both inputs then refused with their complete prior
+snapshots intact. All three separate-process interruption controls
+still passed. This qualifies an early refusal, not support for
+publishing under the incompatible mask.
+
+## Keep Linux certification under a stricter mask
+
+The [first hosted copy control](https://github.com/fyodoriv/agentbrew/actions/runs/44310371269)
+disagreed with the Mac result. Linux kept a mode-0644 file at 0644
+under both 022 and 077. Preserve this as a measured platform difference.
+
+- **Hypothesis**: Apply the ambient copy-mask forecast only on the Mac.
+  Linux continues to certify the known signed mode under 077. The installed
+  mode check still rejects a changed source file on either platform.
+- **Measurement**: Run the exact recursive-copy fixture with both masks
+  on hosted Linux. Run the signed full publisher with an installed 0644
+  guard under 077. Observe callback, native mode and owner retirement.
+  Keep the Mac 077 refusal, changed-source refusal and three process
+  interruption cases.
+- **Success**: Linux publishes mode 0644 and retires its owner,
+  the Mac preserves all prior output under 077, both platforms reject
+  the altered installed guard, and all ordinary controls pass.
+- **Pivot**: A Linux refusal for this known valid input, a Mac partial
+  write, permission broadening, or a wrong signed mode blocks the
+  forecast on that platform. The final full receipt check remains in place.
+- **Anchor**: The pinned recursive copy controls and unsigned output
+  exclusion in the existing full-certification contract.
+
+The [Linux regression](https://github.com/fyodoriv/agentbrew/actions/runs/44311312195)
+reproduced an unnecessary refusal on the first draft. Its signed
+publisher exited 1 where the registered control required exit 0.
+After applying the mask forecast only on the Mac, the
+[hosted Linux run](https://github.com/fyodoriv/agentbrew/actions/runs/44311661340)
+kept the mode-0644 guard under 077 and passed both native suites.
+The local Mac passed all five mode and interruption cases.
+
+## Signed CLI selection and privacy order results
+
+The [packaged scratch build](https://github.com/fyodoriv/agentbrew/actions/runs/44311066942)
+passed the hooks, MCP, rules and default controls. Each selected run
+published its expected facet and made no native activation change.
+Default published all facets. Every run kept its signed source and
+signer registry. The three selected runs held the signer descriptor
+once and released their process owners. There were no denied calls or
+unclassified paths.
+
+The [physical commit observer](https://github.com/fyodoriv/agentbrew/actions/runs/44311831668)
+confirmed one index commit followed by one redaction commit in all
+four cases. The build routed selected sync to the prototype only in
+the scratch branch. The live writer and lifecycle coordination remain
+outside that result.
+
+## Shared owner across three built CLI entry points
+
+The [contention baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44312510630)
+held a real synthetic owner. Selected hooks refused. Default sync and
+plugin removal still changed their respective scratch outputs. All three
+kept the distinct owner's record.
+
+The [coordinated scratch build](https://github.com/fyodoriv/agentbrew/actions/runs/44313135866)
+passed three active-owner refusals and three known-state retries after
+normal release. The refused CLI calls made no native or installed-pin
+change. Each test reaped its own holder. Add, update, rollback and live
+activation remain separate controls.

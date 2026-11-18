@@ -219,3 +219,10 @@ Real hook effects and owner-safe deployment remain separate.
   effects still open.
 - **Anchor**: The pinned [session endpoints](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/protocol/src/groups/session.ts)
   and [event schema](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/schema/src/session-event.ts).
+
+The [session event run](https://github.com/fyodoriv/agentbrew/actions/runs/44295270441)
+registered one V2 plugin and one setup marker. The authenticated native
+routes produced one creation and one deletion event, both with the
+fixture session ID in `event.data.sessionID`. There were zero other
+records. The server was reaped. This establishes session identity in the
+V2 event stream. It leaves the existing Claude hook adapter unported.

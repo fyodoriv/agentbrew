@@ -262,6 +262,33 @@ describe("selected native publication interruption", () => {
   });
 });
 
+describe("certified full native publication interruption", () => {
+  it("preserves the owner and envelope after the first full write fails", async () => {
+    installFacetFixture();
+    const files = nativeFacetPaths();
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    const atomic = await vi.importActual<typeof import("write-file-atomic")>("write-file-atomic");
+    vi.mocked(atomicWrite).mockImplementationOnce((...args) => {
+      atomic.sync(...args);
+      throw new Error("Synthetic full publication failure.");
+    });
+    const publish = () => emitClaudeNative({ certifyFullOutput: true });
+    try {
+      expect(publish).toThrow(/Synthetic full publication failure/u);
+      expect(existsSync(files.envelope)).toBe(true);
+      expect(existsSync(owner)).toBe(true);
+      const previous = observeNativeFiles([files.envelope, owner]);
+      expect(publish).toThrow(/native publication is busy/u);
+      expect(observeNativeFiles([files.envelope, owner])).toEqual(previous);
+      expect(existsSync(files.hooks)).toBe(false);
+      expect(existsSync(files.settings)).toBe(false);
+      expect(existsSync(nativeProofPath())).toBe(false);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+});
+
 describe("selected native signer commit fence", () => {
   it("refuses selected publication while another signer write holds the fence", () => {
     installFacetFixture();

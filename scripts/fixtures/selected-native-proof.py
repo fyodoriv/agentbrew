@@ -338,66 +338,60 @@ def main():
             if path.is_file() and path.resolve() == path
         ]
         require(packaged_hooks, "The npm package contained no regular hook sources")
-        package_before = manifest(install)
-        for arm in ("selected", "default", "remove"):
+        for arm in ("cold", "warm-enabled", "warm-disabled", "unknown"):
             fixture = root / arm
             work, home, env, identity, checkout, source, observer = setup_case(root, fixture, repo, node, loader)
             env["NATIVE_FIXTURE_BASH_FILES"] = json.dumps(packaged_hooks)
             env["NATIVE_FIXTURE_ABSENT_RENDERER"] = str(Path(env["TMPDIR"]) / "fixture-missing-ai-rules")
             env["AGENTBREW_AI_RULES_BIN"] = env["NATIVE_FIXTURE_ABSENT_RENDERER"]
             owner = home / ".agentbrew-native-publication.lock"
-            installed_pin = home / ".config/agentbrew/agentbrew.lock"
-            signer_registry = home / ".config/agent-plugins/allowed_signers"
-            pin_before, signer_before = installed_pin.read_bytes(), signer_registry.read_bytes()
-            source_before = manifest(source)
-            package_checkpoint = manifest(install)
+            settings = home / ".claude/settings.json"
             market = home / ".local/share/agentbrew/claude-marketplace"
-            args = [node, "--import", str(preload), str(installed_bundle)]
-            if arm == "remove":
-                args += ["plugin", "remove", identity["name"]]
-            else:
-                args += ["sync", "--no-recommended", "--workspaces", str(work)]
-                if arm == "selected":
-                    args += ["--only", "hooks"]
-            with hold_native_owner(node, repo, loader, work, env, observer) as holder:
-                before = owner_receipt(owner)
-                refused = run(args, work, env)
-                retained = holder.poll() is None and before == owner_receipt(owner)
-                busy_paths_safe = (not market.exists() and not known_output(home, identity)["enabled"] and
-                                   installed_pin.read_bytes() == pin_before and checkout.is_dir() and
-                                   signer_registry.read_bytes() == signer_before and manifest(source) == source_before)
-                busy_denied = (observer / "processes").read_text().splitlines().count("denied")
-                busy = refused.returncode == 1 and b"publication is busy" in refused.stderr
-            released = not owner.exists()
-            retry_env = {**env, "NATIVE_FIXTURE_PROCESS_RECEIPT": str(observer / "retry-processes")}
-            retry = run(args, work, retry_env)
+            plugin_path = market / "plugins" / identity["name"]
+            target = plugin_path / "hooks/read-only.sh"
+            receipt = plugin_path / ".agentbrew-native-receipt.json"
+            activation_key = identity["name"] + "@agentbrew-plugins"
+            ordinary = [node, "--import", str(preload), str(installed_bundle), "sync",
+                        "--no-recommended", "--workspaces", str(work)]
+            warm = arm.startswith("warm-")
+            if arm in ("warm-disabled", "unknown"):
+                settings.parent.mkdir(exist_ok=True)
+                initial = False if arm == "warm-disabled" else {"mode": "fixture-unknown"}
+                settings.write_text(json.dumps({"enabledPlugins": {activation_key: initial}, "fixtureOwner": "preserve"}))
+                settings.chmod(0o600)
+            if warm:
+                warm_env = {**env, "NATIVE_FIXTURE_PROCESS_RECEIPT": str(observer / "prime-processes")}
+                primed = run(ordinary, work, warm_env)
+                require(primed.returncode == 0 and target.is_file() and receipt.is_file(),
+                        "The warm certified fixture did not qualify")
+                expected = arm == "warm-enabled"
+                require(json.loads(settings.read_text())["enabledPlugins"].get(activation_key) is expected,
+                        "The expected initial warm activation state did not qualify")
+                target.unlink()
+            current = owner_receipt(settings) if settings.is_file() else None
+            paths_before = manifest(market) if market.is_dir() else {}
+            owner_before = manifest(checkout), manifest(source), manifest(install)
+            result = run(ordinary + ["--only", "hooks"], work, env)
+            paths_after = manifest(market) if market.is_dir() else {}
+            processes = (observer / "processes").read_text().splitlines()
+            unchanged_settings = current == (owner_receipt(settings) if settings.is_file() else None)
             outputs = known_output(home, identity)
-            emitted = outputs["plugin_envelope"] and outputs["marketplace_index"]
-            pin_kept = installed_pin.read_bytes() == pin_before and checkout.is_dir()
-            pin_removed = not checkout.exists() and identity["name"].encode() not in installed_pin.read_bytes()
-            retry_case = {
-                "selected": emitted and outputs["declared_hook"] and pin_kept and not outputs["enabled"]
-                            and not outputs["mcp_config"] and not outputs["rule_hook"],
-                "default": emitted and pin_kept and all(outputs[key] for key in
-                           ("declared_hook", "mcp_config", "rule_hook", "enabled")),
-                "remove": pin_removed and not market.exists(),
-            }[arm]
-            denied = busy_denied + (observer / "retry-processes").read_text().splitlines().count("denied")
+            expected_target = Path("plugins") / identity["name"] / "hooks/read-only.sh"
+            warm_scope = (paths_before == {key: record for key, record in paths_after.items() if key != expected_target})
+            enabled = json.loads(settings.read_text())["enabledPlugins"].get(activation_key) if settings.is_file() else None
+            expected = {"cold": None, "warm-enabled": True, "warm-disabled": False, "unknown": {"mode": "fixture-unknown"}}[arm]
+            owners_kept = owner_before == (manifest(checkout), manifest(source), manifest(install))
+            complete = (result.returncode == 0 and unchanged_settings and enabled == expected and outputs["declared_hook"]
+                        and not owner.exists() and owners_kept and
+                        (warm_scope if warm else not outputs["mcp_config"] and not outputs["rule_hook"]))
             summary = {
-                "arm": arm, "busy_exit": refused.returncode, "busy": busy, "busy_paths_safe": busy_paths_safe,
-                "owner_retained": retained, "released": released, "retry_exit": retry.returncode,
-                "native_emitted": emitted, "pin_kept": pin_kept, "pin_removed": pin_removed,
-                "denied": denied, "signer_preserved": signer_registry.read_bytes() == signer_before,
-                "source_preserved": manifest(source) == source_before,
-                "complete": busy and retained and busy_paths_safe and released and retry.returncode == 0 and
-                            retry_case and not owner.exists(),
+                "arm": arm, "exit": result.returncode, "settings_kept": unchanged_settings,
+                "expected_activation_kept": enabled == expected, "signed_hook": outputs["declared_hook"],
+                "warm_scope_kept": warm_scope if warm else None, "owner_released": not owner.exists(),
+                "denied": processes.count("denied"), "complete": complete,
             }
-            allowed_package = (default_package_context(install, package_before, manifest(install)) if arm == "default"
-                               else manifest(install) == package_checkpoint)
             print(json.dumps(summary, sort_keys=True), flush=True)
-            require(summary["complete"] and summary["denied"] == 0 and summary["signer_preserved"]
-                    and summary["source_preserved"] and allowed_package,
-                    "A registered coordinated writer control did not qualify")
+            require(complete and summary["denied"] == 0, "A registered activation preservation control did not qualify")
             with evidence.open("a", encoding="utf-8") as output:
                 output.write(json.dumps(summary, sort_keys=True) + "\n")
     require(digest(bundle) == bundle_digest, "The selected native baseline changed its bundle")

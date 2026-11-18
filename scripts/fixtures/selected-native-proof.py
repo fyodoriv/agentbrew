@@ -86,6 +86,13 @@ def admitted_path(path):
     exact = {
         ".", "events.jsonl", "home", "home/.claude", "home/.claude/settings.json",
         "home/.config", "home/.config/agentbrew", "home/.config/agentbrew/last-seen.json",
+        "home/.config/agentbrew/AGENTS.md", "home/.config/agentbrew/commands",
+        "home/.config/agentbrew/scripts",
+        "home/.config/agentbrew/scripts/agent-perf.mjs",
+        "home/.config/agentbrew/scripts/check-pr-vision-trace.mjs",
+        "home/.config/agentbrew/scripts/competitor-spot-check.sh",
+        "home/.config/agentbrew/scripts/load-project-context.sh",
+        "home/.config/agentbrew/scripts/verify-vision-trace.sh",
         "home/.config/agentbrew/manifest.json", "home/.config/agentbrew/state.yaml",
         "home/.config/agentbrew/state.yaml.bak", "home/.config/agentbrew/sync-errors.json",
         "home/.config/agentbrew/generated", "home/.config/agentbrew/generated/workspace-Agentfile.yaml",
@@ -133,6 +140,37 @@ def package_mutation(before, after):
             for p in sorted(altered, key=str)
         },
     }
+
+
+def default_package_context(install, before, after):
+    context = Path("dist/context")
+    headings = {
+        context / "chatgpt.md": (
+            "# Custom Instructions for ChatGPT\n\n"
+            "> Auto-generated from AGENTS.md template. Do not edit directly.\n"
+            "> Paste this into ChatGPT → Settings → Personalization → Custom Instructions\n\n"
+        ),
+        context / "claude-desktop.md": (
+            "# Project Instructions for Claude\n\n"
+            "> Auto-generated from AGENTS.md template. Do not edit directly.\n"
+            "> Paste this into a Claude Project → Project Instructions\n\n"
+        ),
+    }
+    new_paths = {context, *headings}
+    if after.keys() - before.keys() != new_paths or before.keys() - after.keys():
+        return False
+    folder = Path("dist")
+    if any(value != after[key] for key, value in before.items() if key != folder):
+        return False
+    original_mode, _, original_data = before[folder]
+    current_mode, _, current_data = after[folder]
+    if (original_mode, original_data) != (current_mode, current_data):
+        return False
+    if after[context][0] != 0o40755:
+        return False
+    template = (install / "dist" / "templates" / "AGENTS.md").read_text()
+    return all(after[path][0] == 0o100644 and (install / path).read_text() == heading + template
+               for path, heading in headings.items())
 
 
 def setup_case(root, fixture, repo, node, loader):
@@ -227,10 +265,7 @@ def main():
         require(packaged_hooks, "The npm package contained no regular hook sources")
         install_before = manifest(install)
         all_complete = True
-        cases = {
-            facet: setup_case(root, root / facet, repo, node, loader)
-            for facet in ("hooks", "mcp", "rules", "default")
-        }
+        cases = {"default": setup_case(root, root / "default", repo, node, loader)}
         case_paths = {facet: (root / facet, case[-1]) for facet, case in cases.items()}
         snapshots = {
             facet: tuple(manifest(path) for path in paths)
@@ -241,7 +276,7 @@ def main():
         for facet, (work, home, env, identity, checkout, source, observer) in cases.items():
             fixture = root / facet
             env["NATIVE_FIXTURE_BASH_FILES"] = json.dumps(packaged_hooks)
-            if facet == "hooks":
+            if facet == "default":
                 canary = observer / "canary"
                 canary_env = {**env, "NATIVE_FIXTURE_PROCESS_RECEIPT": str(canary)}
                 denied = run([
@@ -270,7 +305,8 @@ for (const attempt of [
                 args += ["--only", facet]
             result = run(args, work, env)
             package_after = manifest(install)
-            if package_after != install_before:
+            context_qualified = default_package_context(install, install_before, package_after)
+            if not context_qualified:
                 print(json.dumps({
                     "facet": facet, "exit": result.returncode, "complete": False,
                     "package_mutation": package_mutation(install_before, package_after),
@@ -320,8 +356,15 @@ for (const attempt of [
                 "git_reads": processes.count("local-git-success"), "git_errors": processes.count("local-git-error"),
                 "bash_syntax_checks": processes.count("packaged-bash-parse"),
                 "denied": processes.count("denied"), "lock_and_signer_unchanged": lock_and_signer_unchanged,
+                "context_documents": context_qualified,
             }
-            record = json.dumps({**summary, "signed_fixture": identity, "changes": delta}, sort_keys=True)
+            package_delta = {
+                str(key): public_record(package_after[key], install, key)
+                for key in package_after.keys() - install_before.keys()
+            }
+            record = json.dumps({
+                **summary, "signed_fixture": identity, "changes": delta, "package_outputs": package_delta,
+            }, sort_keys=True)
             require(len(record.encode()) <= 1024 * 1024, "Native fixture report exceeds the byte bound")
             with evidence.open("a", encoding="utf-8") as output:
                 output.write(record + "\n")

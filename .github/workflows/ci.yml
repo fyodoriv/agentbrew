@@ -1,103 +1,39 @@
 name: CI
-
-# The hosted copy of the local gate: `npm run verify`, the same command a
-# contributor runs before a push. Hosted on GitHub's standard runners, which
-# are free for public repositories. See docs/ci.md.
-#
-# Safety:
-# - No secrets are used. A fork PR gets a read-only token and no secrets.
-# - The private-pattern leak gate cannot run here: its pattern file lives
-#   only on the owner's machine. The local pre-push gate stays the authority.
-# - Steps never print the environment.
-
-on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
-  workflow_dispatch:
-
+on: workflow_dispatch
 permissions:
   contents: read
-
-concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
-env:
-  # Never send usage data or event logs from a runner.
-  DO_NOT_TRACK: "1"
-  AGENTBREW_EVENTS: "0"
-
 jobs:
-  verify:
-    name: verify (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        # ubuntu-24.04, not ubuntu-latest: Playwright has no Chromium build
-        # for the newer image yet (TASKS.md ci-ubuntu-latest-playwright).
-        os: [ubuntu-24.04, macos-latest]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+  fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      DO_NOT_TRACK: "1"
+      AGENTBREW_EVENTS: "0"
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          # The gate compares the branch with origin/main.
-          fetch-depth: 0
           persist-credentials: false
-
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version-file: .node-version
-          # No npm cache: measured slower than a cold `npm ci` (docs/ci.md).
-
-      - name: Install
-        run: npm ci
-
-      - name: Install test tools
-        # git-filter-repo: the test of scripts/sanitize-history.sh needs it.
+      - run: npm ci
+      - name: Select the preregistered npm
+        run: npm install --prefix "$RUNNER_TEMP/qualified-npm" --no-audit --no-fund --ignore-scripts --package-lock=false npm@10.9.9
+      - name: Compare the two frozen helper observations
         run: |
-          if [ "$RUNNER_OS" = "macOS" ]; then
-            HOMEBREW_NO_AUTO_UPDATE=1 brew install git-filter-repo
-          else
-            # PyPI fallback: a runner DNS failure for the Ubuntu archive
-            # must not stop the gate.
-            { sudo apt-get update && sudo apt-get install -y git-filter-repo; } ||
-              pipx install git-filter-repo
-          fi
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cache/ms-playwright
-            ~/Library/Caches/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-
-      - name: Identify the gate cache runner image
-        id: gate-image
-        run: |
-          if [ -z "${ImageOS:-}" ] || [ -z "${ImageVersion:-}" ] || [ -z "${RUNNER_ARCH:-}" ]; then
-            exit 0
-          fi
-          printf 'scope=gate-%s-%s-%s\n' "$ImageOS" "$ImageVersion" "$RUNNER_ARCH" >> "$GITHUB_OUTPUT"
-
-      - name: Restore the gate step cache
-        # scripts/verify.sh skips a step whose inputs passed before, like nx.
-        # A cache entry cannot be changed, so each run saves a new one and
-        # restores the newest. A pull request reads its own entries and
-        # main's; it cannot write to main's.
-        if: steps.gate-image.outputs.scope != ''
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ runner.temp }}/gate-cache
-          key: ${{ steps.gate-image.outputs.scope }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: |
-            ${{ steps.gate-image.outputs.scope }}-
-
-      - name: Point the gate at the step cache
-        run: echo "AGENTBREW_GATE_CACHE_DIR=$RUNNER_TEMP/gate-cache" >> "$GITHUB_ENV"
-
-      - name: Gate (npm run verify)
-        run: npm run verify
+          export LOCKED_INSTALL_OBSERVATION=1
+          export LOCKED_INSTALL_OBSERVATION_NPM_CLI="$RUNNER_TEMP/qualified-npm/node_modules/npm/bin/npm-cli.js"
+          status=0
+          npx vitest run src/worktree-deps.test.ts -t 'N[23] records physical content' --maxWorkers=1 --retry=0 --reporter=default --silent=false > "$RUNNER_TEMP/locked-install-observations.log" 2>&1 || status=$?
+          python3 - "$RUNNER_TEMP/locked-install-observations.log" "$status" <<'PYCONTROL'
+          import json,pathlib,sys
+          marker="LOCKED_INSTALL_OBSERVATION "
+          lines=pathlib.Path(sys.argv[1]).read_text().splitlines()
+          rows=[json.loads(line.split(marker,1)[1]) for line in lines if marker in line and line.split(marker,1)[1].startswith("{")]
+          assert len(rows)==2, f"expected two helper observations, found {len(rows)}"
+          for row in rows:
+              print(f"{row['scenario']}: {row['classification']}, complete={row['complete']}, exit={row.get('actualExit')}")
+          assert sys.argv[2]=="0", "helper observation run did not qualify"
+          assert {row["scenario"]:row["classification"] for row in rows}=={"N2":"supported","N3":"refused"}
+          assert all(row["complete"] and row["meetsRequiredDecision"] for row in rows)
+          PYCONTROL

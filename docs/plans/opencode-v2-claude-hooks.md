@@ -59,3 +59,8 @@ The [registered cold and warm comparison](https://github.com/fyodoriv/agentbrew/
 held the runtime, artifact and fixture tool constant. Both cases approved
 once. The case that waited for plugin inventory ran one start callback.
 The case that waited only for authenticated health ran none.
+
+The pinned V2 event subscription has type, abort and activity options.
+It provides no creation-event replay cursor. The cold lifecycle task now
+tracks the need for an activation boundary with a verifiable session owner.
+The demonstrated guard and warm session paths stay available.

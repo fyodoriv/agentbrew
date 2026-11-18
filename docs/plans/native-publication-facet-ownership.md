@@ -979,3 +979,9 @@ signed tree requires 0644. The shared test queue sets umask 077. Keep
 that exact conservative refusal as a separate unresolved configuration.
 Run the three checkpoint controls with a registered umask 022 so that
 they exercise the intended settings boundary.
+
+The mode-022 Mac control reached all three points in separate child
+processes. Each exited 77 at its registered write. All three
+replacement processes exited 75 without touching the retained bytes,
+file types or modes. The expected incremental progress before each
+boundary still needs corroboration in the hosted run.

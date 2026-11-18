@@ -10,9 +10,11 @@ import {
   chmodSync,
   existsSync,
   linkSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   renameSync,
   rmSync,
   statSync,
@@ -257,6 +259,73 @@ describe("selected native publication interruption", () => {
       expect(existsSync(files.script)).toBe(false);
       expect(existsSync(files.index)).toBe(false);
       expect(existsSync(files.settings)).toBe(false);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+});
+
+describe("native publication process loss at output checkpoints", () => {
+  const owner = join(home, ".agentbrew-native-publication.lock");
+
+  function snapshot(path: string): unknown {
+    const info = lstatSync(path, { throwIfNoEntry: false });
+    if (!info) return null;
+    if (info.isDirectory()) {
+      return [
+        info.mode,
+        readdirSync(path)
+          .sort()
+          .map((name) => [name, snapshot(join(path, name))]),
+      ];
+    }
+    if (info.isSymbolicLink()) return [info.mode, readlinkSync(path)];
+    return [info.mode, createHash("sha256").update(readFileSync(path)).digest("hex")];
+  }
+
+  function publishFromChild(full: boolean, checkpoint?: string) {
+    const moduleUrl = new URL("./claude-native.ts", import.meta.url).href;
+    const source = `
+      import { createRequire } from "node:module";
+      const atomic = createRequire(import.meta.url)("write-file-atomic");
+      const write = atomic.sync;
+      const checkpoint = ${JSON.stringify(checkpoint ?? null)};
+      atomic.sync = (path, ...args) => {
+        if (path === checkpoint) process.exit(77);
+        return write(path, ...args);
+      };
+      const { emitClaudeNative } = await import(${JSON.stringify(moduleUrl)});
+      try {
+        emitClaudeNative(${JSON.stringify(full ? { certifyFullOutput: true } : { modules: ["hooks"] })});
+        process.stdout.write("published");
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.includes("publication is busy")) throw error;
+        process.exitCode = 75;
+      }
+    `;
+    return spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e", source], {
+      encoding: "utf8",
+      timeout: 15_000,
+      env: { ...process.env, HOME: home, TSX_DISABLE_CACHE: "1" },
+    });
+  }
+
+  it.each([
+    ["payload", "hooks", false],
+    ["marketplace index", "index", false],
+    ["activation settings", "settings", true],
+  ] as const)("preserves the partial output before %s across a process restart", (_name, key, full) => {
+    installFacetFixture();
+    const paths = nativeFacetPaths();
+    const target = paths[key];
+    try {
+      expect(publishFromChild(full, target)).toMatchObject({ status: 77, stdout: "", stderr: "" });
+      expect(existsSync(target)).toBe(false);
+      expect(statSync(owner).mode & 0o777).toBe(0o600);
+      const roots = [marketplaceDir(), dirname(paths.launcher), dirname(paths.settings), owner];
+      const before = roots.map(snapshot);
+      expect(publishFromChild(full)).toMatchObject({ status: 75, stdout: "", stderr: "" });
+      expect(roots.map(snapshot)).toEqual(before);
     } finally {
       rmSync(owner, { force: true });
     }

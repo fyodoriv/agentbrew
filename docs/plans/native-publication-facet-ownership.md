@@ -749,3 +749,21 @@ The [hosted control](https://github.com/fyodoriv/agentbrew/actions/runs/44269622
 confirmed Git mode 100755 and native mode 0755 before and after
 repair. The receipt stayed unchanged. The run passed 50 focused
 controls, 106 compatibility tests, and type checking.
+
+## Retain ownership when a selected write fails
+
+- **Hypothesis**: After the first selected write begins, a reported
+  error keeps its process owner record for verified recovery.
+- **Measurement**: Complete one synthetic native file write and
+  fail the writer at that boundary. Retry publication in the same
+  scratch home. Observe the owner record, payload and settings.
+- **Success**: The first failure keeps its exact owner record. The
+  retry refuses before any further file changes. Existing planning
+  refusals and successful publications release their owned record.
+- **Pivot**: An automatic retry after partial output, an unrelated
+  state change or a retained pre-write planning failure rejects it.
+- **Anchor**: The process owner record and independent selected
+  output interruption controls.
+
+This step preserves recovery evidence. Reopening an interrupted
+publication needs a separate verified recovery procedure.

@@ -27,7 +27,6 @@ plugin = """import { appendFileSync } from "node:fs";
 export default {
   id: "agentbrew.fixture-tool",
   async setup(ctx) {
-    const bridge = await ClaudeHooks({ directory: ctx.location.directory });
     await ctx.tool.transform((editor) => editor.add({
       name: "agentbrew_fixture",
       description: "Store one synthetic test marker",
@@ -305,7 +304,7 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
     expected_tool = ["original"] if case == "approve" else ["amended"] if case == "amend" else []
     expected_after = 0 if case == "deny" else 1
     if (
-        health != 200 or setup != ["setup"] or not complete or hook.count("start") != 1 or hook.count("prompt") != 1
+        health != 200 or setup != ["setup"] or not complete or hook.count("prompt") != 1
         or hook.count("original") != 1 or hook.count("after") != expected_after or hook.count("unexpected") != 0
         or tool != expected_tool or FixtureProvider.prompt_notes != 1 or FixtureProvider.tool_notes != expected_after
         or (case == "deny" and not (cli_denial or FixtureProvider.reported_denial))

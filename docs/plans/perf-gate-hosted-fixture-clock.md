@@ -19,3 +19,11 @@ on macOS today.
   file in its own hosted job instead.
 - **Anchor**: TASKS.md, `perf-gate-tests-hosted-noise`; Luo et al. 2014
   on asynchronous test waits.
+
+## Results
+
+The [hosted macOS run](https://github.com/fyodoriv/agentbrew/actions/runs/44202522089)
+passed 20 of 20 independent processes, with 53 tests per process and
+retries disabled. Linux also passed. The clock injection remains in the
+test fixture. The real gate still launches the synthetic commands and
+uses its ordinary decision rules.

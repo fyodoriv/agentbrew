@@ -28,3 +28,14 @@ why the successful child missed the deadline.
 
 Keep all model transport fake. The registered model decision protocols,
 production evaluation, and real receipts do not change.
+
+## Hosted result
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44207442869)
+reproduced statuses 1 and null with a forced 4.5 second delay. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44207865828)
+passed the same delay, all 20 ordinary runs, 16 receipt controls and ten
+schema controls. The second child must now report the exclusive open
+conflict on the exact scratch receipt while the first is paused. Only
+the first may finalize it. The original uncontrolled runner delay
+remains unexplained.

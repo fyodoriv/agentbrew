@@ -64,6 +64,8 @@ interface ApplyAgentfileOptions {
   includeSkillInstallReport?: boolean;
   /** Selected sync invocation: defer excluded live rule writes and owned skill cleanup. */
   syncModules?: readonly string[];
+  /** Apply the matching content fields during ordinary selected sync. */
+  scopeAgentfileContent?: boolean;
   /** Stable logical owner for a generated Agentfile read from a temporary file. */
   agentfileBaseDir?: string;
   dryRun?: boolean;
@@ -548,9 +550,10 @@ function mergeAgentfileMemory(
   agentfile: { memory?: { enabled?: boolean }; memoryPacks?: string[] },
   state: AgentBrewState,
   baseDir: string,
+  registerMcp: boolean,
 ): boolean {
   let changed = false;
-  if (agentfile.memory?.enabled === true) {
+  if (registerMcp && agentfile.memory?.enabled === true) {
     const wasEnabled = state.memory?.enabled === true;
     state.memory = { ...state.memory, enabled: true };
     const registrationChanged = ensureMemoryMcpServer(state);
@@ -714,6 +717,53 @@ function selectedSyncModule(options: ApplyAgentfileOptions | undefined, name: st
   return options?.syncModules?.includes(name) ?? true;
 }
 
+function preparesAgentfileContent(options: ApplyAgentfileOptions | undefined, name: string): boolean {
+  return options?.scopeAgentfileContent ? selectedSyncModule(options, name) : true;
+}
+
+function prepareSelectedAgentfileState(
+  agentfile: Agentfile,
+  state: AgentBrewState,
+  options: ApplyAgentfileOptions | undefined,
+) {
+  const quiet = options?.quiet ?? false;
+  const mcpSelected = preparesAgentfileContent(options, "mcp");
+  if (mcpSelected && !quiet) {
+    for (const warning of validateAgentfileMcp(agentfile)) {
+      console.warn(chalk.yellow(`  ⚠ ${warning.message}`));
+    }
+  }
+  const mcp = mcpSelected
+    ? mergeAgentfileMcp(agentfile, state, options?.authoritative ?? false)
+    : { added: [], updated: [], removed: [], adopted: [], declined: [] };
+  if (!quiet) printDeclinedMcp(mcp.declined);
+  return {
+    mcp,
+    hooksUpdated: preparesAgentfileContent(options, "hooks") && mergeAgentfileHooks(agentfile, state),
+    defaultModelUpdated: preparesAgentfileContent(options, "models") && mergeAgentfileDefaultModel(agentfile, state),
+  };
+}
+
+function prepareSelectedAgentfileDirectories(
+  agentfile: Agentfile,
+  state: AgentBrewState,
+  baseDir: string,
+  prune: boolean,
+  options: ApplyAgentfileOptions | undefined,
+) {
+  const skillsSelected = preparesAgentfileContent(options, "skills");
+  return {
+    skillDirsChanged: skillsSelected && mergeStateSkillDirectories(agentfile.skillDirectories, state, baseDir, prune),
+    commandDirs: preparesAgentfileContent(options, "commands")
+      ? mergeAgentfileCommandDirs(agentfile, state, baseDir, prune)
+      : { added: [], changed: false },
+    agentDirs: preparesAgentfileContent(options, "agents")
+      ? mergeAgentfileAgentDirs(agentfile, state, baseDir, prune)
+      : { added: [], changed: false },
+    skillsToInstall: skillsSelected ? collectAgentfileSkills(agentfile, options?.quiet ?? false) : [],
+  };
+}
+
 function pruneAgentfileSkills(
   agentfile: Agentfile,
   state: AgentBrewState,
@@ -749,32 +799,24 @@ export function applyAgentfile(
   const { agentfile, baseDir } = loaded;
   const state = options?.stateOverride ?? (dryRun ? cloneStateForDryRun(loaded.state) : loaded.state);
 
-  // Validate before applying — warn about misconfigurations early
-  if (!quiet) {
-    const validationWarnings = validateAgentfileMcp(agentfile);
-    for (const w of validationWarnings) {
-      console.warn(chalk.yellow(`  ⚠ ${w.message}`));
-    }
-  }
-
-  const mcp = mergeAgentfileMcp(agentfile, state, authoritative);
-  if (!quiet) printDeclinedMcp(mcp.declined);
-  const sourcesAdded = mergeAgentfileSources(agentfile, state, authoritative, baseDir);
-  const skillDirsChanged = mergeStateSkillDirectories(agentfile.skillDirectories, state, baseDir, pruneOwnedDirs);
-  const commandDirs = mergeAgentfileCommandDirs(agentfile, state, baseDir, pruneOwnedDirs);
-  const agentDirs = mergeAgentfileAgentDirs(agentfile, state, baseDir, pruneOwnedDirs);
-  const commandDirsAdded = commandDirs.added;
-  const agentDirsAdded = agentDirs.added;
-  const skillsToInstall = collectAgentfileSkills(agentfile, quiet);
+  const { mcp, hooksUpdated, defaultModelUpdated } = prepareSelectedAgentfileState(agentfile, state, options);
+  const sourcesAdded = preparesAgentfileContent(options, "skills")
+    ? mergeAgentfileSources(agentfile, state, authoritative, baseDir)
+    : [];
+  const { skillDirsChanged, commandDirs, agentDirs, skillsToInstall } = prepareSelectedAgentfileDirectories(
+    agentfile,
+    state,
+    baseDir,
+    pruneOwnedDirs,
+    options,
+  );
   const previousRuleOwners = JSON.stringify([state.agentfileRuleOwners, state.agentfileRuleHashes]);
   const rulesUpdated = rulesSelected && mergeAgentfileRules(agentfile, baseDir, dryRun, state);
   const ruleOwnersChanged =
     previousRuleOwners !== JSON.stringify([state.agentfileRuleOwners, state.agentfileRuleHashes]);
-  const hooksUpdated = mergeAgentfileHooks(agentfile, state);
   const excludedAgents = mergeAgentfileExcludeAgents(agentfile, state);
-  const workStepsChanged = dropLegacyWorkSteps(state);
-  const defaultModelUpdated = mergeAgentfileDefaultModel(agentfile, state);
-  const memoryUpdated = mergeAgentfileMemory(agentfile, state, baseDir);
+  const workStepsChanged = !options?.scopeAgentfileContent && dropLegacyWorkSteps(state);
+  const memoryUpdated = mergeAgentfileMemory(agentfile, state, baseDir, preparesAgentfileContent(options, "mcp"));
   const agentfileSkillsChanged = pruneAgentfileSkills(agentfile, state, dryRun, quiet, options);
 
   const result: ApplyAgentfileResult = {
@@ -782,8 +824,8 @@ export function applyAgentfile(
     serversUpdated: mcp.updated,
     serversRemoved: mcp.removed,
     sourcesAdded,
-    commandDirsAdded,
-    agentDirsAdded,
+    commandDirsAdded: commandDirs.added,
+    agentDirsAdded: agentDirs.added,
     skillsToInstall,
     rulesUpdated,
     hooksUpdated,

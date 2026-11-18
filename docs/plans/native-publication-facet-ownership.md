@@ -1031,3 +1031,23 @@ mutation. Both inputs then refused with their complete prior
 snapshots intact. All three separate-process interruption controls
 still passed. This qualifies an early refusal, not support for
 publishing under the incompatible mask.
+
+## Test selected payload through a built scratch CLI
+
+- **Hypothesis**: The prepared selector can publish only the requested
+  signed native facet through the real CLI. A default invocation still
+  produces every expected artifact.
+- **Measurement**: Reuse the signed baseline fixtures and run the
+  packaged CLI in fresh loopback-only homes for hooks, MCP, rules, and
+  default. Route the three selected cases to the opt-in publisher only
+  in this scratch build. Count emitted facets, checked settings,
+  marketplace and redaction artifacts, and protected file differences.
+- **Success**: Each selected case gets its one facet, no other facet,
+  and no activation setting. Default gets all three expected facets.
+  Every case keeps its signed source and signer registry intact.
+  Zero unknown changed paths or denied subprocess calls.
+- **Pivot**: A missing selected facet, changed unselected content,
+  default regression, unknown subprocess or activation setting leaves
+  the CLI route unqualified. This does not enable the publisher.
+- **Anchor**: The signed selected and default baselines and the
+  retained interruption controls.

@@ -4,6 +4,7 @@ import { arch, cpus, platform, totalmem } from "node:os";
 import chalk from "chalk";
 import { runLaunchctl } from "../core/launchctl.js";
 import { logSkipped } from "../core/logger.js";
+import { readOpencodeMajor } from "../core/opencode-version.js";
 import { buildLaunchAgentPath, LAUNCHAGENT_LANG } from "../sync/scheduler-paths.js";
 import { expandHome } from "../utils.js";
 import { readMcpJson, writeMcpJson } from "./mcp.js";
@@ -430,18 +431,11 @@ type V2OllamaProvider = {
   models?: Record<string, V2OllamaModel>;
 };
 
-/** Read the major version from V1 (`1.19.5`) and V2 (`opencode v2.2.6`) output. */
-export function opencodeMajorFromVersion(version: string): 1 | 2 {
-  const match = version.match(/(?:^|\s)v?(\d+)\./);
-  if (!match) throw new Error("Unrecognized OpenCode version output");
-  const major = Number(match[1]);
-  if (major !== 1 && major !== 2) throw new Error(`Unsupported OpenCode major version: ${major}`);
-  return major;
-}
+export { opencodeMajorFromVersion } from "../core/opencode-version.js";
 
 function detectOpencodeMajor(): 1 | 2 {
   if (!isInstalled("opencode")) return 2;
-  return opencodeMajorFromVersion(execFileSync("opencode", ["--version"], { encoding: "utf8", timeout: 10_000 }));
+  return readOpencodeMajor(10_000);
 }
 
 /** Write provider + model config to opencode.json, preserving existing keys.

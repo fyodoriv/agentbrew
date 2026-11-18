@@ -1,7 +1,8 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { pathToFileURL } from "node:url";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // @ts-expect-error plain ESM template without types
 import { ClaudeHooks } from "../../templates/opencode/claude-hooks.js";
 
@@ -147,5 +148,51 @@ describe("claude-hooks OpenCode adapter", () => {
   it("the plugin module exports only the plugin function", async () => {
     const mod = await import(resolve("templates/opencode/claude-hooks.js"));
     expect(Object.keys(mod)).toEqual(["ClaudeHooks"]);
+  });
+});
+
+describe("deployed OpenCode 2 bridge", () => {
+  it("claims one local lifecycle and ignores duplicate and foreign events", async () => {
+    const template = (name: string) => readFileSync(resolve("templates/opencode", name), "utf8");
+    const file = join(dir, "native-bridge.mjs");
+    writeFileSync(file, [template("claude-hooks.js"), template("claude-hooks-v2.js")].join("\n"));
+    const url = pathToFileURL(file).href;
+    const { default: native } = await import(/* @vite-ignore */ url);
+    const created = (sessionID: string, directory: string) => ({
+      type: "session.created",
+      data: { sessionID, location: { directory } },
+    });
+    const deleted = (sessionID: string) => ({ type: "session.deleted", data: { sessionID } });
+    let consumed: () => void;
+    const finished = new Promise<void>((resolve) => {
+      consumed = resolve;
+    });
+    const subscribe = vi.fn(async function* () {
+      yield created("outside", "/elsewhere");
+      yield deleted("outside");
+      yield created("fixture", dir);
+      yield created("fixture", dir);
+      yield deleted("fixture");
+      yield deleted("fixture");
+      consumed();
+    });
+    const cleanup = await native.setup({
+      location: { directory: dir },
+      tool: { hook: vi.fn() },
+      session: { hook: vi.fn() },
+      event: { subscribe },
+    });
+
+    try {
+      await finished;
+      expect((await read()).trim().split("\n")).toEqual(["SessionStart  {}", "SessionEnd  {}"]);
+      expect(subscribe).toHaveBeenCalledWith({
+        types: ["session.created", "session.deleted"],
+        signal: expect.any(AbortSignal),
+      });
+    } finally {
+      cleanup();
+    }
+    expect(subscribe.mock.calls).toHaveLength(1);
   });
 });

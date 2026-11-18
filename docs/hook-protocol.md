@@ -400,11 +400,23 @@ hook settings; do not trust it only to remove a review warning.
 
 ## OpenCode hooks
 
-OpenCode has no hooks file. `agentbrew sync` deploys the `claude-hooks`
-plugin (`templates/opencode/claude-hooks.js`) to
-`~/.config/opencode/plugin/` when `~/.config/opencode` exists. The plugin runs
-the Claude Code hooks from `settings.json` with the same stdin JSON and verdict
-rules. The event map and limits are in
+OpenCode has no hooks file. When `~/.config/opencode` exists, `agentbrew sync`
+asks the `opencode` command on PATH for its version. It installs the matching
+V1 or V2 bridge at `~/.config/opencode/plugin/claude-hooks.js`. Sync keeps
+existing bytes when the version is unavailable or unsupported. It also keeps
+unowned files and user edits. The plugin runs the Claude Code hooks from
+`settings.json` with the same stdin JSON and verdict rules. The event map and
+limits are in
 [support-matrix.md](support-matrix.md#opencode-boundaries). A hook can check
 `CLAUDE_HOOKS_HOST=opencode` when it needs to act differently there. Tests:
 `src/opencode-hooks/claude-hooks.test.ts`.
+
+
+Keep the V1 template usable on its own. Sync appends the V2 adapter to it.
+Test the installed CLI in a scratch home. A V2 server can return 503
+before authenticated health, then admit sessions before the plugin appears
+in its inventory. Wait for the plugin ID before testing SessionStart.
+
+`opencode.json` rejects unknown keys. The bootstrap fixture at
+`src/mcp/fixtures/opencode-config-schema.trimmed.json` pins its shape.
+Refresh it from the [OpenCode schema](https://opencode.ai/config.json).

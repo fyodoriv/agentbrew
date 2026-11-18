@@ -1,4 +1,3 @@
-import json
 import os
 from pathlib import Path
 import re
@@ -10,16 +9,14 @@ import tempfile
 import time
 
 binary = Path(sys.argv[1]).resolve(strict=True)
-sdk_modules = Path(sys.argv[2]).resolve(strict=True)
 identifier = "agentbrew.loader-control"
 plugin = """import { appendFileSync } from "node:fs";
-import { Plugin } from "@opencode/plugin";
-export default Plugin.define({
+export default {
   id: "agentbrew.loader-control",
   setup() {
     appendFileSync(process.env.AGENTBREW_OC_LOADER_MARKER, "setup\\n");
   },
-});
+};
 """
 
 with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directory:
@@ -28,12 +25,9 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
     workspace.mkdir()
     marker = root / "setup.marker"
     config = home / ".config/opencode"
-    plugins = config / "loader-fixture"
+    plugins = config / "plugin"
     plugins.mkdir(parents=True)
-    (config / "opencode.json").write_text(json.dumps({"plugins": ["./loader-fixture"]}))
-    (plugins / "package.json").write_text(json.dumps({"name": "agentbrew-loader-control", "type": "module"}))
-    (plugins / "index.ts").write_text(plugin)
-    (plugins / "node_modules").symlink_to(sdk_modules, target_is_directory=True)
+    (plugins / "agentbrew-loader-control.js").write_text(plugin)
     environment = {
         "PATH": os.environ["PATH"], "HOME": str(home), "TMPDIR": str(root),
         "XDG_CONFIG_HOME": str(home / ".config"), "XDG_DATA_HOME": str(home / ".local/share"),

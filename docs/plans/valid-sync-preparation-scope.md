@@ -47,3 +47,25 @@ existing registration contract is preserved. Pack lists and shared
 source changes need separate qualification before a selected apply
 writes them. Preserve explicit pull's current scoped rules and
 skill-prune behavior until it has a separate exact comparison.
+
+### First delivery boundary
+
+Start by connecting the existing rule and skill-prune guard to every
+ordinary Agentfile apply. This is the first step toward the full
+ownership matrix. It does not alter the guard's existing rule or skill
+semantics, the pull caller, or the publisher.
+
+- **Hypothesis**: The explicit apply wrapper, global apply, project apply
+  and dry-run explicit apply will all receive the normalized requested
+  list. The current ordinary caller omits that list.
+- **Measurement**: Select the new `selected Agentfile gate` cases in
+  `src/cli-sync-agentfile.test.ts`, `src/commands/cli-install.test.ts`
+  and `src/sync-runner.test.ts`. In the same hosted workflow run the
+  unaffected suites after the focused regression is green.
+- **Success**: All focused call boundaries are red before the change
+  and green afterward. Unselected live rules and owned skill pruning
+  use the established guard. Default and pull compatibility stay green.
+- **Pivot**: A wrong list, changed apply order, broken dry run, altered
+  default rule, or an existing pull regression rejects the wiring.
+- **Anchor**: `selectedSyncModule` in the existing apply path, the
+  hosted signed selected result, and the P1 task's explicit-pull cases.

@@ -279,3 +279,11 @@ opens the socket before readiness and returns 503 during startup.
   lifecycle and bridge measurements all pass without deadline changes.
 - **Pivot**: Any other health response, expired readiness, missing hook
   or extra call leaves the fixture unqualified.
+
+The [ready server run](https://github.com/fyodoriv/agentbrew/actions/runs/44296480113)
+observed authenticated startup move from 503 to 200. It then recorded
+one correct Claude start hook and one correct end hook for the same
+empty V2 session. There were zero other hook calls and no retained
+scratch session ID. The server was reaped. The result covers one
+plugin instance and its own observed session. Restart continuity,
+tool effects, prompt effects and deployment remain open.

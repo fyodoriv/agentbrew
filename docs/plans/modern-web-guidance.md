@@ -41,3 +41,17 @@ the light-dismiss dialog guide, retrieval returned the guide, and
 the scanner found the seeded textarea pattern. The extension side
 panel reference was present. All three commands ran without network
 access after download.
+
+## Keep existing copies during named installs
+
+- **Hypothesis**: Named catalog installs can honor the existing
+  `preserveExisting` policy before deployment in both install scopes.
+- **Measurement**: Run the catalog and Agentfile tests with existing
+  directories and dangling links. Verify file contents, link targets,
+  Agentfile, and catalog state. Also install a fresh copy in each scope.
+- **Success**: Zero changed or registered existing copies. Both fresh
+  installs succeed. The existing replacement test for a standard skill passes.
+- **Pivot**: One overwritten or registered copy, or one failed fresh install,
+  rejects the change.
+- **Anchor**: The `preserveExisting` catalog flag and its existing deployment
+  checks in `src/sync/skills-sync.ts`.

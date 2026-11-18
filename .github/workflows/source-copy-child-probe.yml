@@ -1,0 +1,55 @@
+name: Synthetic source copy child diagnosis
+on:
+  push:
+    branches: [probe/source-copy-child-linux]
+permissions:
+  contents: read
+env:
+  DO_NOT_TRACK: "1"
+  AGENTBREW_EVENTS: "0"
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: .node-version
+      - run: npm ci
+      - name: Observe a bounded synthetic reproduction cohort
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if npm exec -- vitest run src/sync/pull-source-caches.test.ts -t "keeps copied bytes bound" > "$RUNNER_TEMP/source-copy-$attempt.log" 2>&1; then
+              printf 'synthetic attempt %s: pass\n' "$attempt"
+              continue
+            fi
+            ATTEMPT="$attempt" python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          attempt = os.environ["ATTEMPT"]
+          log = (Path(os.environ["RUNNER_TEMP"]) / f"source-copy-{attempt}.log").read_text()
+          fixtures = re.findall(r"Fixture child log retained in (/tmp/agentbrew-pull-780-[A-Za-z0-9]+)", log)
+          known_kinds = {"other", "lease-refusal"}
+          known_codes = {"OTHER", "ENOENT", "EACCES", "EPERM", "EEXIST"}
+          summary = []
+          for fixture in set(fixtures):
+              for path in Path(fixture).glob("fixture-child-*.log"):
+                  lines = path.read_text(errors="replace").splitlines()
+                  for line in lines:
+                      if not line.startswith("FIXTURE_B_FAILURE="):
+                          continue
+                      record = json.loads(line.partition("=")[2])
+                      kind, code = record.get("kind"), record.get("errno")
+                      if kind in known_kinds and code in known_codes:
+                          summary.append({"kind": kind, "errno": code})
+          print(json.dumps({"attempt": int(attempt), "missingOutcome": "fixture outcome absent" in log,
+                            "knownChildFailures": summary}))
+          PY
+            exit 1
+          done

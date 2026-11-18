@@ -394,6 +394,27 @@ function checkedReceiptFile(raw: unknown): NativeReceiptFile {
   return { path: file.path, mode: file.mode, digest: file.digest };
 }
 
+function assertReceiptDigest(file: NativeReceiptFile, planned: PlannedWrite, reason: string): void {
+  if (digest(planned.body) !== file.digest || (planned.mode !== undefined && planned.mode !== file.mode)) {
+    refuse(reason);
+  }
+}
+
+function checkWarmReceiptFile(file: NativeReceiptFile, path: string, write?: PlannedWrite): boolean {
+  const content = readOutput(path);
+  if (content) {
+    const stat = lstatSync(path);
+    if (stat.nlink !== 1 || (stat.mode & 0o777) !== file.mode) refuse("native receipt file identity differs");
+  }
+  if (write) {
+    assertReceiptDigest(file, write, "native receipt does not match the planned change");
+    write.mode = file.mode;
+  } else if (!content || digest(content) !== file.digest) {
+    refuse("native receipt does not match a retained file");
+  }
+  return content !== undefined;
+}
+
 function assertWarmNativeReceipt(
   root: string,
   entry: PluginLockEntry,
@@ -408,39 +429,22 @@ function assertWarmNativeReceipt(
   for (const raw of readWarmReceipt(receiptPath, entry)) {
     const file = checkedReceiptFile(raw);
     const path = join(homedir(), file.path);
-    const insidePlugin = path.startsWith(`${root}${sep}`) && path !== receiptPath;
     const signed = signedFiles.get(path);
     const key = physicalSpelling(path);
     if (!signed || paths.has(key)) refuse("native receipt has an invalid file path");
-    if (digest(signed.body) !== file.digest || (signed.mode !== undefined && signed.mode !== file.mode)) {
-      refuse("native receipt does not match the signed inventory");
-    }
+    assertReceiptDigest(file, signed, "native receipt does not match the signed inventory");
     paths.add(key);
 
-    const content = readOutput(path);
-    if (content) {
-      const stat = lstatSync(path);
-      if (stat.nlink !== 1 || (stat.mode & 0o777) !== file.mode) refuse("native receipt file identity differs");
-      if (insidePlugin) present.push(path);
-    }
-    const write = pendingWrites.get(path);
-    if (write) {
-      if (digest(write.body) !== file.digest || (write.mode !== undefined && write.mode !== file.mode)) {
-        refuse("native receipt does not match the planned change");
-      }
-      write.mode = file.mode;
-      pendingWrites.delete(path);
-    } else if (!content || digest(content) !== file.digest) {
-      refuse("native receipt does not match a retained file");
-    }
+    const exists = checkWarmReceiptFile(file, path, pendingWrites.get(path));
+    if (exists && path.startsWith(`${root}${sep}`)) present.push(path);
+    pendingWrites.delete(path);
   }
   if (paths.size !== signedFiles.size) refuse("native receipt does not cover the signed inventory");
   if (pendingWrites.size > 0) refuse("native receipt does not cover the planned change");
   assertNativeTree(root, present);
 }
 
-function expectedFullOutput(active: ActivePlugin, marketplace: string, rulesHook: unknown) {
-  const plugin = withPinnedManifest(active);
+function expectedFullOutput(plugin: ActivePlugin, marketplace: string, rulesHook: unknown) {
   const entry = nativePluginEntry(plugin);
   const root = join(marketplace, entry.source);
   const { source: _source, ...envelope } = entry;
@@ -500,7 +504,7 @@ export function certifyFullNativeOutput(
   rulesHook: unknown,
 ): void {
   if (plugins.length === 0 && (readLock().plugins ?? []).length === 0) return;
-  const expected = plugins.map((plugin) => expectedFullOutput(plugin, marketplace, rulesHook));
+  const expected = plugins.map((plugin) => expectedFullOutput(withPinnedManifest(plugin), marketplace, rulesHook));
   const launcherRoot = dirname(launcherPath("x", "y"));
   const index: PlannedWrite = {
     path: join(marketplace, ".claude-plugin", "marketplace.json"),

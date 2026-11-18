@@ -7,7 +7,6 @@ vi.mock("./cli-helpers.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./cli-helpers.js")>();
   return {
     ...actual,
-    filterSyncModules: vi.fn((modules: unknown) => modules),
     shouldInstallAgentfileItems: vi.fn(actual.shouldInstallAgentfileItems),
   };
 });
@@ -29,12 +28,15 @@ vi.mock("./commands/cli-mcp.js", () => ({ registerMcpCommands: vi.fn() }));
 vi.mock("./commands/cli-ops.js", () => ({ registerOpsCommands: vi.fn() }));
 vi.mock("./commands/cli-sync-subcommands.js", () => ({ registerSyncSubcommands: vi.fn() }));
 vi.mock("./motd.js", () => ({ printMotd: vi.fn() }));
-vi.mock("./sync-runner.js", () => ({
-  autoSync: vi.fn(),
-  buildSyncModules: vi.fn(() => [{ name: "mcp", fn: vi.fn() }]),
-  runSyncParallel: vi.fn(),
-  runSyncWithErrorCollection: vi.fn(),
-}));
+vi.mock("./sync-runner.js", async (original) => {
+  const actual = await original<typeof import("./sync-runner.js")>();
+  return {
+    autoSync: vi.fn(),
+    buildSyncModules: vi.fn(() => actual.buildSyncModules({}).map(({ name }) => ({ name, fn: vi.fn() }))),
+    runSyncParallel: vi.fn(),
+    runSyncWithErrorCollection: vi.fn(),
+  };
+});
 vi.mock("./update.js", () => ({ update: vi.fn() }));
 vi.mock("./agentfile.js", async (original) => ({
   ...(await original<typeof import("./agentfile.js")>()),
@@ -45,7 +47,7 @@ vi.mock("./catalog/install.js", () => ({ install: vi.fn() }));
 import { applyAgentfile } from "./agentfile.js";
 import { install } from "./catalog/install.js";
 import { buildProgram } from "./cli.js";
-import { filterSyncModules, shouldInstallAgentfileItems } from "./cli-helpers.js";
+import { shouldInstallAgentfileItems } from "./cli-helpers.js";
 import { applyAgentfileAndInstall } from "./commands/cli-install.js";
 import { runSyncParallel } from "./sync-runner.js";
 import { update } from "./update.js";
@@ -165,17 +167,11 @@ describe("sync --pull requested owner policy", () => {
   });
 
   it("rejects an invalid pull selection before applying or installing the Agentfile", async () => {
-    vi.mocked(filterSyncModules).mockReturnValueOnce(undefined);
-    await buildSilentProgram().parseAsync([
-      "node",
-      "test",
-      "sync",
-      "--pull",
-      "--only",
-      "unknown",
-      "--agentfile",
-      "./Agentfile.yaml",
-    ]);
+    await expect(
+      buildSilentProgram()
+        .exitOverride()
+        .parseAsync(["node", "test", "sync", "--pull", "--only", "unknown", "--agentfile", "./Agentfile.yaml"]),
+    ).rejects.toMatchObject({ exitCode: 1 });
     expect(applyAgentfile).not.toHaveBeenCalled();
     expect(install).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();

@@ -243,12 +243,13 @@ describe("update", () => {
     }
   });
 
-  it("rejects unknown pull modules before refreshing or deploying", async () => {
+  it.each(["skills,unknown", ""])("rejects invalid pull selection before effects: %j", async (only) => {
     mockLoadState.mockReturnValue(makeState());
     const previousExitCode = process.exitCode;
     try {
-      await update({ only: "skills,unknown" });
+      await update({ only });
       expect(process.exitCode).toBe(1);
+      expect(mockLoadState).not.toHaveBeenCalled();
       expect(mockExecFileSync).not.toHaveBeenCalled();
       expect(mockIndexAllSources).not.toHaveBeenCalled();
       expect(mockSaveState).not.toHaveBeenCalled();

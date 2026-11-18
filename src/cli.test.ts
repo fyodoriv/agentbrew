@@ -174,6 +174,14 @@ describe("cli entry point", () => {
     expect(stdout).toContain("--no-recommended");
   });
 
+  it("does not echo an invalid sync argument", async () => {
+    const input = "synthetic-invalid-input-canary";
+    const { stderr, exitCode } = await cli("sync", "--only", input);
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Valid modules:");
+    expect(stderr).not.toContain(input);
+  });
+
   it("install --help lists all install options", async () => {
     const { stdout, exitCode } = await cli("install", "--help");
     expect(exitCode).toBe(0);

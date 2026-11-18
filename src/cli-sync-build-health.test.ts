@@ -249,11 +249,15 @@ describe("initialized sync root-hook ordering", () => {
       expect(syncEvent()).toMatchObject({ ok: true, agents: 2, secondsSaved: 6 });
     });
 
-    it("a pull with an unknown --only name deploys nothing and records no agents", async () => {
-      await buildProgram().parseAsync(["node", "test", "sync", "--pull", "--only", "not-a-module"]);
+    it("an unknown pull selection stops before startup and event recording", async () => {
+      await expect(
+        buildProgram().exitOverride().parseAsync(["node", "test", "sync", "--pull", "--only", "not-a-module"]),
+      ).rejects.toMatchObject({ exitCode: 1 });
+      expect(health).not.toHaveBeenCalled();
+      expect(touchLastSeen).not.toHaveBeenCalled();
+      expect(prepareWorkspaceAgentfile).not.toHaveBeenCalled();
       expect(update).not.toHaveBeenCalled();
-      expect(syncEvent()).toMatchObject({ agents: 0, secondsSaved: 0 });
-      process.exitCode = undefined;
+      expect(recordEvent).not.toHaveBeenCalled();
     });
   });
 

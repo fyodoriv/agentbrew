@@ -38,6 +38,7 @@ import { defaultState, saveState } from "../state.js";
 import { fixtureGit, fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { marketplaceDir } from "./claude-native.js";
 import { registerPluginCommands } from "./cli-plugin.js";
+import { lifecycleObservation } from "./lifecycle-observation.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, applyAdd, planAdd, pluginDir, pluginsRoot } from "./store.js";
 
@@ -184,6 +185,23 @@ describe("planAdd and applyAdd", () => {
     expect(staging()).toEqual([`.staging-${process.pid}-1`]);
     rmSync(join(pluginsRoot(), `.staging-${process.pid}-1`), { recursive: true });
   });
+});
+
+function marketplaceObservation() {
+  return lifecycleObservation("marketplace-copy", () => {});
+}
+
+it("plugin lifecycle observation output", async () => {
+  const observe = marketplaceObservation();
+  await expect(observe("add", () => true)).resolves.toBe(true);
+  void observe("release", () => new Promise<never>(() => {}));
+  const canary = new Error("OBSERVATION_PAYLOAD_CANARY");
+  await expect(
+    observe("remove", () => {
+      throw canary;
+    }),
+  ).rejects.toBe(canary);
+  expect(observe.health()).toBe("pending");
 });
 
 describe("plugin commands re-emit the Claude Code plugin copy (#447)", () => {

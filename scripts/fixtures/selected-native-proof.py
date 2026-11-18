@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import datetime
 import json
 import os
@@ -7,6 +8,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 
 from sync_child_proof import digest, fixture_env, manifest, require
 
@@ -254,6 +256,48 @@ def setup_case(root, fixture, repo, node, loader):
     return work, home, env, identity, checkout, source, outside_observer
 
 
+@contextmanager
+def hold_native_owner(node, repo, loader, work, env, observer):
+    holder_env = {
+        **env,
+        "NATIVE_FIXTURE_HOLDER_READY": str(observer / "holder-ready"),
+        "NATIVE_FIXTURE_LOCK_MODULE": str(repo / "src/plugins/native-publication-lock.ts"),
+    }
+    source = """
+import { writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+const { withNativePublicationLock } = await import(pathToFileURL(process.env.NATIVE_FIXTURE_LOCK_MODULE).href);
+withNativePublicationLock(() => {
+  writeFileSync(process.env.NATIVE_FIXTURE_HOLDER_READY, "ready", { mode: 0o600 });
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20_000);
+});
+"""
+    holder = subprocess.Popen([node, "--import", str(loader), "--input-type=module", "-e", source],
+                              cwd=work, env=holder_env, stdin=subprocess.DEVNULL,
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        ready = observer / "holder-ready"
+        deadline = time.monotonic() + 8
+        while holder.poll() is None and not ready.is_file() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        require(holder.poll() is None and ready.is_file() and ready.read_text() == "ready",
+                "The synthetic owner did not reach its barrier")
+        yield holder
+    finally:
+        if holder.poll() is None:
+            holder.terminate()
+        try:
+            holder.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            holder.kill()
+            holder.wait(timeout=3)
+
+
+def owner_receipt(path):
+    info = path.lstat()
+    return info.st_dev, info.st_ino, info.st_mode, info.st_mtime_ns, path.read_bytes()
+
+
 def main():
     node, repo_path, outside_net, runner_uid, revision, candidate, scratch = sys.argv[1:]
     require(os.getuid() == int(runner_uid) and os.getuid() != 0, "Wrong native fixture user")
@@ -288,139 +332,59 @@ def main():
             if path.is_file() and path.resolve() == path
         ]
         require(packaged_hooks, "The npm package contained no regular hook sources")
-        install_before = manifest(install)
-        all_complete = True
-        cases = {facet: setup_case(root, root / facet, repo, node, loader)
-                 for facet in ("hooks", "mcp", "rules", "default")}
-        case_paths = {facet: (root / facet, case[-1]) for facet, case in cases.items()}
-        snapshots = {
-            facet: tuple(manifest(path) for path in paths)
-            for facet, paths in case_paths.items()
-        }
-        for facet, (_work, _home, _env, identity, _checkout, _source, _observer) in cases.items():
-            print(json.dumps({"facet": facet, "signed_fixture": identity}, sort_keys=True), flush=True)
-        for facet, (work, home, env, identity, checkout, source, observer) in cases.items():
-            fixture = root / facet
+        package_before = manifest(install)
+        for arm in ("selected", "default", "remove"):
+            fixture = root / arm
+            work, home, env, identity, checkout, source, observer = setup_case(root, fixture, repo, node, loader)
             env["NATIVE_FIXTURE_BASH_FILES"] = json.dumps(packaged_hooks)
-            tmp_path = Path(env["TMPDIR"])
-            missing_renderer = str(tmp_path / "fixture-missing-ai-rules")
-            env["NATIVE_FIXTURE_ABSENT_RENDERER"] = missing_renderer
-            env["AGENTBREW_AI_RULES_BIN"] = missing_renderer
-            tmp_before = tmp_path.stat()
-            if facet == "default":
-                canary = observer / "canary"
-                canary_env = {**env, "NATIVE_FIXTURE_PROCESS_RECEIPT": str(canary)}
-                denied = run([
-                    node, "--import", str(preload), "--input-type=module", "-e",
-                    """import { spawnSync, execFileSync } from 'node:child_process';
-for (const attempt of [
-  () => spawnSync('/bin/true'),
-  () => execFileSync('git', ['rev-parse', 'HEAD'], {cwd:process.env.TMPDIR}),
-  () => execFileSync('git', ['--version']),
-]) {
-  try { attempt(); process.exit(9); } catch {}
-}""",
-                ], work, canary_env)
-                require(denied.returncode == 0 and canary.read_text().splitlines() == ["preload", *(["denied"] * 3)],
-                        "The native fixture denied-process control did not qualify")
-                print("Native fixture canaries: three denied attempts", flush=True)
-            identity_before = manifest(checkout)
+            env["NATIVE_FIXTURE_ABSENT_RENDERER"] = str(Path(env["TMPDIR"]) / "fixture-missing-ai-rules")
+            env["AGENTBREW_AI_RULES_BIN"] = env["NATIVE_FIXTURE_ABSENT_RENDERER"]
+            owner = home / ".agentbrew-native-publication.lock"
+            installed_pin = home / ".config/agentbrew/agentbrew.lock"
+            signer_registry = home / ".config/agent-plugins/allowed_signers"
+            pin_before, signer_before = installed_pin.read_bytes(), signer_registry.read_bytes()
             source_before = manifest(source)
-            work_before = manifest(work)
-            before = manifest(fixture)
-            args = [
-                node, "--import", str(preload), str(installed_bundle), "sync",
-                "--no-recommended", "--workspaces", str(work),
-            ]
-            if facet != "default":
-                args += ["--only", facet]
-            result = run(args, work, env)
-            package_after = manifest(install)
-            context_qualified = (default_package_context(install, install_before, package_after)
-                                 if facet == "default" else package_after == install_before)
-            if not context_qualified:
-                print(json.dumps({
-                    "facet": facet, "exit": result.returncode, "complete": False,
-                    "package_mutation": package_mutation(install_before, package_after),
-                }, sort_keys=True), flush=True)
-                raise SystemExit("A native sync arm changed the shared npm package")
-            after = manifest(fixture)
-            require(
-                all(tuple(manifest(path) for path in paths) == snapshots[sibling]
-                    for sibling, paths in case_paths.items() if sibling != facet),
-                "A native sync arm changed a sibling fixture",
-            )
-            snapshots[facet] = (after, manifest(observer))
-            changed = sorted((k for k in before.keys() | after.keys() if before.get(k) != after.get(k)), key=str)
-            known = [k for k in changed if admitted_path(str(k))]
-            require(len(known) <= 1_024, "Native fixture report exceeds the entry bound")
-            delta = {
-                str(key): [public_record(before.get(key), fixture, key), public_record(after.get(key), fixture, key)]
-                for key in known
-            }
-            protected = [
-                Path("home/.config/agentbrew/agentbrew.lock"),
-                Path("home/.config/agent-plugins/allowed_signers"),
-            ]
-            lock_and_signer_unchanged = all(before.get(key) is not None and before.get(key) == after.get(key)
-                                            for key in protected)
-            processes = (observer / "processes").read_text().splitlines()
-            commits = [entry for entry in processes if entry.startswith("commit-")]
-            outputs = known_output(home, identity)
-            fallback_qualified = default_fallback_outputs(home, install, tmp_path, tmp_before)
-            required = {
-                "hooks": ("declared_hook",),
-                "mcp": ("mcp_config", "mcp_launcher"),
-                "rules": ("rule_hook",),
-                "default": tuple(key for key in outputs if key != "workspace"),
-            }[facet]
-            native_facets = {"declared_hook", "rule_hook", "mcp_config", "mcp_launcher"}
-            unwanted = (native_facets - set(required)) | {"enabled"} if facet != "default" else set()
-            required = (*required, "plugin_envelope", "marketplace_index", "redaction")
-            settings_path = Path("home/.claude/settings.json")
-            settings_preserved = facet == "default" or before.get(settings_path) == after.get(settings_path)
-            lock_attempts = processes.count("signer-descriptor")
-            publication_owner_missing = not (home / ".agentbrew-native-publication.lock").exists()
-            complete = (
-                result.returncode == 0 and processes.count("preload") == 1 and
-                {"plugin-head", "plugin-tree", "plugin-clean"}.issubset(processes) and
-                "local-git-error" not in processes and "packaged-bash-error" not in processes and
-                "denied" not in processes and
-                (processes.count("renderer-absent") == 1 and fallback_qualified if facet == "default" else
-                 processes.count("renderer-absent") == 0) and
-                lock_attempts == (0 if facet == "default" else 1) and
-                settings_preserved and publication_owner_missing and
-                commits == ["commit-index", "commit-redaction"] and
-                all(not outputs[field] for field in unwanted) and
-                identity_before == manifest(checkout) and source_before == manifest(source) and
-                work_before == manifest(work) and all(outputs[field] for field in required) and
-                len(known) == len(changed) and lock_and_signer_unchanged
-            )
-            all_complete = all_complete and complete
-            summary = {
-                "facet": facet, "exit": result.returncode, "complete": complete, "outputs": outputs,
-                "changed_entries": len(changed), "unclassified_entries": len(changed) - len(known),
-                "git_reads": processes.count("local-git-success"), "git_errors": processes.count("local-git-error"),
-                "bash_syntax_checks": processes.count("packaged-bash-parse"),
-                "denied": processes.count("denied"), "lock_and_signer_unchanged": lock_and_signer_unchanged,
-                "context_documents": context_qualified,
-                "renderer_absent_calls": processes.count("renderer-absent"),
-                "fallback_outputs": fallback_qualified, "selected_settings_preserved": settings_preserved,
-                "signer_descriptor_calls": lock_attempts, "owner_released": publication_owner_missing,
-                "publication_order": commits,
-            }
-            package_delta = {
-                str(key): public_record(package_after[key], install, key)
-                for key in package_after.keys() - install_before.keys()
-            }
-            record = json.dumps({
-                **summary, "signed_fixture": identity, "changes": delta, "package_outputs": package_delta,
-            }, sort_keys=True)
-            require(len(record.encode()) <= 1024 * 1024, "Native fixture report exceeds the byte bound")
-            with evidence.open("a", encoding="utf-8") as output:
-                output.write(record + "\n")
-            print(json.dumps(summary, sort_keys=True), flush=True)
-        require(all_complete, "The selected native baseline contains incomplete cases")
+            package_checkpoint = manifest(install)
+            market = home / ".local/share/agentbrew/claude-marketplace"
+            args = [node, "--import", str(preload), str(installed_bundle)]
+            if arm == "remove":
+                args += ["plugin", "remove", identity["name"]]
+            else:
+                args += ["sync", "--no-recommended", "--workspaces", str(work)]
+                if arm == "selected":
+                    args += ["--only", "hooks"]
+            with hold_native_owner(node, repo, loader, work, env, observer) as holder:
+                before = owner_receipt(owner)
+                result = run(args, work, env)
+                retained = holder.poll() is None and before == owner_receipt(owner)
+                outputs = known_output(home, identity)
+                processes = (observer / "processes").read_text().splitlines()
+                emitted = outputs["plugin_envelope"] and outputs["marketplace_index"]
+                pin_kept = installed_pin.read_bytes() == pin_before and checkout.is_dir()
+                pin_removed = not checkout.exists() and identity["name"].encode() not in installed_pin.read_bytes()
+                expected_case = {
+                    "selected": result.returncode == 1 and b"publication is busy" in result.stderr
+                                and not market.exists() and pin_kept,
+                    "default": result.returncode == 0 and emitted and pin_kept and
+                               all(outputs[key] for key in ("declared_hook", "mcp_config", "rule_hook", "enabled")),
+                    "remove": result.returncode == 0 and pin_removed and not market.exists(),
+                }[arm]
+                summary = {
+                    "arm": arm, "exit": result.returncode, "owner_retained": retained,
+                    "native_emitted": emitted, "pin_kept": pin_kept, "pin_removed": pin_removed,
+                    "denied": processes.count("denied"),
+                    "signer_preserved": signer_registry.read_bytes() == signer_before,
+                    "source_preserved": manifest(source) == source_before,
+                    "complete": expected_case and retained,
+                }
+                allowed_package = (default_package_context(install, package_before, manifest(install)) if arm == "default"
+                                   else manifest(install) == package_checkpoint)
+                print(json.dumps(summary, sort_keys=True), flush=True)
+                require(summary["complete"] and summary["denied"] == 0 and summary["signer_preserved"]
+                        and summary["source_preserved"] and allowed_package,
+                        "A registered writer contention control did not qualify")
+                with evidence.open("a", encoding="utf-8") as output:
+                    output.write(json.dumps(summary, sort_keys=True) + "\n")
     require(digest(bundle) == bundle_digest, "The selected native baseline changed its bundle")
 
 

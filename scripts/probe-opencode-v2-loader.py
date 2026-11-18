@@ -6,7 +6,6 @@ from pathlib import Path
 import re
 from secrets import token_hex
 import shlex
-import shutil
 import signal
 import socket
 import subprocess
@@ -25,7 +24,6 @@ if case not in ("approve", "amend", "deny"):
     raise SystemExit("unknown registered fixture case")
 denial_marker = b"agentbrew synthetic refusal"
 plugin = """import { appendFileSync } from "node:fs";
-import { ClaudeHooks } from "./v1-bridge.js";
 export default {
   id: "agentbrew.loader-control",
   async setup(ctx) {
@@ -158,10 +156,10 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
     workspace.mkdir()
     marker, hook_log, tool_log = (root / name for name in ("setup.marker", "hook.marker", "tool.marker"))
     config = home / ".config/opencode"
-    plugins = config / "loader-fixture"
+    plugins = config / "plugin"
     plugins.mkdir(parents=True)
-    (plugins / "index.js").write_text(plugin)
-    shutil.copyfile(Path("templates/opencode/claude-hooks.js"), plugins / "v1-bridge.js")
+    legacy = Path("templates/opencode/claude-hooks.js").read_text()
+    (plugins / "claude-hooks.js").write_text(legacy + "\n" + plugin)
     hook_script = root / "hook.mjs"
     hook_script.write_text(hook_source)
     hook_settings = root / "hooks.json"
@@ -200,7 +198,6 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
         fixture.start()
         port_model = provider.server_port
         (config / "opencode.json").write_text(json.dumps({
-            "plugins": ["./loader-fixture"],
             "model": "fixture/probe",
             "providers": {"fixture": {
                 "name": "Synthetic local fixture", "package": "@opencode/ai/providers/openai-compatible",

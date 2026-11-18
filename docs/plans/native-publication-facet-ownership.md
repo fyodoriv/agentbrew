@@ -882,3 +882,25 @@ The [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44283769969)
 refused it with exit 75, then allowed the lock after publication
 returned. It passed 54 focused controls, 110 compatibility tests,
 ordinary publication, and type checking.
+
+## Verify settings ownership before native certification writes
+
+- **Hypothesis**: An opted-in full publication refuses an aliased settings
+  file before its first payload write. It also retains an owner's edit
+  made after planning and before the settings commit.
+- **Measurement**: In the existing scratch fixtures, point settings at a
+  synthetic owner file using a symbolic link, then test a separate hard
+  link. In a third fixture, edit a regular settings file after the first
+  real native write and before the settings commit.
+- **Success**: Both aliased paths leave every file and their targets
+  unchanged and release ownership before any native write. The late edit
+  survives exactly, no activation setting changes, and the admitted
+  partial publication retains its owner record. Valid owned and ordinary
+  paths still pass.
+- **Pivot**: A touched link target, ignored late edit, or ordinary behavior
+  change rejects the settings path check.
+- **Anchor**: The existing native path and retained-destination checks
+  and the signer descriptor proof above.
+
+This control bounds the last observed settings identity. It covers
+cooperating publication and signer operations plus the planted edits.

@@ -177,6 +177,22 @@ describe("org log sink", () => {
       expect(status().reason).toBe("sink policy invalid: path-symlink");
     });
 
+    it("refuses a symlinked parent outside home even when the sink directory is absent", async () => {
+      mkdirSync(join(dir, "outside"));
+      symlinkSync(join(dir, "outside"), join(homedir(), "d"));
+      policy({ version: 1, kind: "file", path: "~/d/new/events.jsonl" });
+      expect(readSinkPolicy()).toEqual({ status: "invalid", reason: "path-outside-home" });
+      await send("1.2.3", { fetchImpl: ok(), now: NOW });
+      expect(existsSync(join(dir, "outside", "new"))).toBe(false);
+    });
+
+    it("accepts a symlinked parent whose destination is inside home", () => {
+      mkdirSync(join(homedir(), ".local"), { recursive: true });
+      symlinkSync(join(homedir(), ".local"), join(homedir(), "d"));
+      policy({ version: 1, kind: "file", path: "~/d/new/events.jsonl" });
+      expect(readSinkPolicy().status).toBe("ok");
+    });
+
     it("the reason never shows file content", () => {
       policy(`{"version":1,"kind":"splunk-hec","token":"${TOKEN}", oops`);
       expect(JSON.stringify(status())).not.toContain(TOKEN);

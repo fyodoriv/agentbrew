@@ -8,6 +8,7 @@ import {
   openSync,
   readFileSync,
   readSync,
+  realpathSync,
   renameSync,
   statSync,
 } from "node:fs";
@@ -132,7 +133,7 @@ function parseKeychainToken(raw: unknown): TokenRef | string {
   return service && account ? { source: "keychain", service, account } : "bad-token";
 }
 
-/** The file path inside the user's home, or a reason code. The file itself must not be a symlink. */
+/** The file path inside the user's home, or a reason code. */
 function parsePath(raw: unknown): string | { reason: string } {
   const text = str(raw);
   if (!text || !(text.startsWith("/") || text.startsWith("~/"))) return { reason: "bad-path" };
@@ -140,9 +141,14 @@ function parsePath(raw: unknown): string | { reason: string } {
   const full = resolve(expandHome(text));
   if (!full.startsWith(home + sep)) return { reason: "path-outside-home" };
   try {
-    if (lstatSync(full).isSymbolicLink()) return { reason: "path-symlink" };
+    if (lstatSync(full, { throwIfNoEntry: false })?.isSymbolicLink()) return { reason: "path-symlink" };
+    let parent = dirname(full);
+    while (parent !== home && !lstatSync(parent, { throwIfNoEntry: false })) parent = dirname(parent);
+    const realHome = realpathSync(home);
+    const realParent = realpathSync(parent);
+    if (realParent !== realHome && !realParent.startsWith(realHome + sep)) return { reason: "path-outside-home" };
   } catch {
-    // A file that does not exist yet is fine.
+    return { reason: "path-unreadable" };
   }
   return full;
 }
@@ -385,6 +391,8 @@ export function dryRunBody(policy: SinkPolicy, objects: Record<string, unknown>[
 }
 
 function appendJsonLines(path: string, objects: Record<string, unknown>[], now: number): void {
+  const checked = parsePath(path);
+  if (typeof checked !== "string") throw new Error(checked.reason);
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   if (existsSync(path)) {
     const st = lstatSync(path);

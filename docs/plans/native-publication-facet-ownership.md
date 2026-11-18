@@ -848,3 +848,30 @@ and type checking.
 
 This control covers relative write order. Artifact certification and
 settings activation still need a shared verified trust boundary.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44282857061)
+rewrote the settings before refusing the extra payload. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44283116421)
+left those exact bytes untouched and kept the owner record. The clean
+fixture retained its default enabled setting. The candidate passed the
+53 focused controls, 109 compatibility tests, ordinary publication,
+and type checking.
+
+## Hold the signer descriptor through a certified settings write
+
+- **Hypothesis**: An opted-in full publication with signed input holds
+  the same signer descriptor from final verification to the settings write.
+- **Measurement**: During the actual scratch settings write, open a
+  second descriptor and attempt the same non-blocking signer lock. Record
+  its exit code. Attempt the lock again after publication returns.
+- **Success**: One completed settings write sees exactly one contention
+  result with exit 75. The same attempt succeeds after publication ends.
+  The certificate and prior settings tests stay green.
+- **Pivot**: An available descriptor during the write, retained lock
+  after return, or changed ordinary publication behavior rejects it.
+- **Anchor**: The shared signer registry contract and the certified write
+  order check above.
+
+This proof covers the signed nonempty publication path and cooperating
+writers. Settings path ownership, empty cleanup and live installation
+remain separate.

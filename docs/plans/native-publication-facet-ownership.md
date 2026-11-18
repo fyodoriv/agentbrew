@@ -279,3 +279,37 @@ two ordinary files. Retrying after an interrupted owner preserved its
 record and refused. This proves process admission and known-owner
 release. It does not recover partial payload files, serialize plugin
 lifecycle changes or establish durable source ownership.
+
+## Crash-released commit fence
+
+Use an independently qualified short lock for final publication and
+signer revocation. It must release when the holder exits. The longer
+publisher owner record remains useful for detecting interrupted work.
+Ordinary signer revocation must remain available when that owner record
+is left behind. The final publisher revalidates signer trust under the
+same short lock it holds through publication and receipt commit.
+
+Evaluate the host's existing lock command on a descriptor inherited
+from Node. macOS provides `/usr/bin/lockf` and the Ubuntu runner
+provides `/usr/bin/flock`. Run from a synthetic directory with a
+single mode-0600 file. The lock command must exit while the same open
+descriptor remains locked in the parent. Use a separate process to
+observe contention and release. Test an abrupt holder exit and
+compare the lock file inode across every attempt.
+
+- **Hypothesis**: The inherited descriptor continues holding the
+  short lock after its acquisition subprocess exits. Other processes
+  get one immediate refusal until that descriptor closes or its
+  holder exits.
+- **Measurement**: Run the same synthetic descriptor test on macOS
+  and Ubuntu. Require deterministic holder-ready markers, fixed
+  wait limits, and zero access to an installed plugin or signer data.
+- **Success**: On each host, pass all four decisions: hold after helper
+  exit, refusal from a distinct process, acquire after normal close,
+  and acquire after forced holder exit. Keep the same lock inode.
+- **Pivot**: A missing helper, lost descriptor ownership, unexpected
+  callback, wrong status or stale OS lock rejects this portable
+  method. This measurement covers kernel admission, not signer
+  revalidation or settings publication.
+- **Anchor**: macOS `lockf(1)` descriptor mode, Linux util-linux
+  `flock(1)` descriptor mode, and the native lifecycle review.

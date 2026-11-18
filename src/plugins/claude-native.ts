@@ -18,6 +18,7 @@ import {
   certifyFullNativeOutput,
   type NativeFacet,
   nativePluginEntry,
+  planNativeSettingsCheck,
   publishSelectedNativePlugins,
 } from "./claude-native-selected.js";
 import { type ActivePlugin, activePlugins } from "./contributions.js";
@@ -137,6 +138,7 @@ export function emitClaudeNative(options?: { modules?: readonly NativeFacet[]; c
 
 function publishNative(certification?: { beginMutation: () => void }): void {
   const plugins = activePlugins();
+  const checkSettings = certification && planNativeSettingsCheck(claudeSettingsPath());
   certification?.beginMutation();
   const entries = plugins.map(emitPlugin);
   pruneLaunchers(
@@ -160,8 +162,11 @@ function publishNative(certification?: { beginMutation: () => void }): void {
     rmSync(marketplaceDir(), { recursive: true, force: true });
   }
   const names = entries.map((entry) => entry.name);
-  if (certification) {
-    certifyFullNativeOutput(plugins, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK, () => updateSettings(names, true));
+  if (checkSettings) {
+    certifyFullNativeOutput(plugins, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK, () => {
+      checkSettings();
+      updateSettings(names, true);
+    });
     return;
   }
   updateSettings(names);

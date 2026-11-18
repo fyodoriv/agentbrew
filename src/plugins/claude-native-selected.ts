@@ -106,6 +106,12 @@ function assertNativeTargetsUnchanged(writes: readonly NativeTargetObservation[]
   }
 }
 
+/** Verify the settings file before a certified publication and again before its write. */
+export function planNativeSettingsCheck(path: string): () => void {
+  const targets = [{ path, before: observeNativeTarget(path) }];
+  return () => assertNativeTargetsUnchanged(targets);
+}
+
 function planMissingFile(writes: PlannedWrite[], path: string, body: Buffer, mode?: number): void {
   const current = readOutput(path);
   if (!current) {

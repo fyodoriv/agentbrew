@@ -88,6 +88,24 @@ function withRulesHook(hooks: Hooks, rulesHook: unknown): Hooks {
   return { ...hooks, SessionStart: [...(hooks.SessionStart ?? []), rulesHook] };
 }
 
+function assertHookDestinationPaths(scripts: ReadonlyArray<{ path: string }>): void {
+  const claims = new Map([["hooks.json", { path: "hooks.json", directory: false }]]);
+  for (const script of scripts) {
+    if (!/^[ -~]+$/u.test(script.path)) refuse("native hook output path identity is unknown");
+    const parts = script.path.split("/");
+    for (let length = 1; length <= parts.length; length += 1) {
+      const path = parts.slice(0, length).join("/");
+      const directory = length < parts.length;
+      const key = path.toLowerCase();
+      const earlier = claims.get(key);
+      if (earlier && (!directory || !earlier.directory || earlier.path !== path)) {
+        refuse("native hook output paths overlap");
+      }
+      claims.set(key, { path, directory });
+    }
+  }
+}
+
 function readSignedHooks(plugin: ActivePlugin, includeFiles: boolean) {
   const source = plugin.manifest.contributes?.hooks;
   if (typeof source !== "string") return { declared: {}, scripts: [] };
@@ -96,7 +114,12 @@ function readSignedHooks(plugin: ActivePlugin, includeFiles: boolean) {
   const files = readPinnedPluginFiles(plugin.entry, includeFiles ? sourceDir : source);
   const declaredFile = files.find((file) => file.path === source);
   if (!declaredFile) refuse("the declared hook file is absent from the signed tree");
-  const scripts = includeFiles ? files.map((file) => ({ ...file, path: posix.relative(sourceDir, file.path) })) : [];
+  const scripts = includeFiles
+    ? files
+        .filter((file) => file !== declaredFile)
+        .map((file) => ({ ...file, path: posix.relative(sourceDir, file.path) }))
+    : [];
+  assertHookDestinationPaths(scripts);
   return { declared: readHooks(declaredFile.body), scripts };
 }
 
@@ -127,8 +150,7 @@ function planHooks(
   const desired = includeRules ? withRulesHook(retained, rulesHook) : retained;
   if (!isDeepStrictEqual(current, desired)) writes.push({ path, body: jsonBytes({ hooks: desired }) });
   for (const script of scripts) {
-    const target = join(dirname(path), script.path);
-    if (target !== path) planMissingFile(writes, target, script.body, script.mode);
+    planMissingFile(writes, join(dirname(path), script.path), script.body, script.mode);
   }
 }
 

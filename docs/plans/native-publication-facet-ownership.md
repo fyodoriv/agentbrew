@@ -515,3 +515,26 @@ for a pinned source. It does not certify activation or host readiness.
   certification. Activation and restart recovery stay open.
 - **Anchor**: The full legacy emitter, verified Git object reader
   and independent artifact ownership review.
+
+## Require the full receipt before a warm selected repair
+
+Allow a warm repair only when the current source matches the full
+receipt and the repair restores recorded bytes. The selected plan
+already checks shared hook groups before a rewrite. Recheck all
+received file evidence and allow missing files only when the
+selected plan restores the recorded path, digest and mode.
+
+- **Hypothesis**: A selected warm repair can restore missing
+  payloads from a certified source. Missing or mismatched identity
+  and changed unselected bytes cause refusal before a repair.
+- **Measurement**: Prime the existing warm fixtures with the signed
+  full proof. Independently remove the proof, change its digest and
+  edit a different facet's output. Observe receipt, native tree,
+  settings and the missing selected asset.
+- **Success**: All three negative controls refuse with zero output
+  changes. The supported warm repairs restore only their selected
+  payload and keep the existing receipt valid. No live activation.
+- **Pivot**: A stale proof, unsafe adoption, lost neighbor or repair
+  outside the recorded inventory blocks warm use.
+- **Anchor**: The independently derived full receipt and the signed
+  warm fixture path ownership checks.

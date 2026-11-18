@@ -23,6 +23,7 @@ import {
   formatHiddenCommands,
   formatUnlistedCommands,
   getHelpExamples,
+  matchSyncModules,
   shouldInstallAgentfileItems,
 } from "./cli-helpers.js";
 import { registerActionsCommand } from "./commands/cli-actions.js";
@@ -265,7 +266,6 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
   const early = await handleSyncEarlyExits(options);
   if (early) return early === "deployed";
   if (await refuseSyncOnLockDrift()) return false;
-  if (!options.dryRun) await emitNativePluginOutput();
 
   const syncOpts = {
     dryRun: options.dryRun,
@@ -275,8 +275,6 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
     compact: !options.verbose,
   };
 
-  await handleSyncFirstRun(options);
-
   let modules = buildSyncModules(syncOpts);
   if (options.only) {
     const filtered = filterSyncModules(modules, options.only);
@@ -284,8 +282,12 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
     modules = filtered;
   }
 
+  const syncModules = options.only === undefined ? undefined : modules.map(({ name }) => name);
+  if (!options.dryRun) await emitNativePluginOutput(syncModules);
+  await handleSyncFirstRun(options);
+
   const installAgentfileItems = shouldInstallAgentfileItems(options.only);
-  await handleSyncAgentfile(options, installAgentfileItems);
+  await handleSyncAgentfile(options, installAgentfileItems, syncModules);
   await handleSyncRecommended(options);
 
   const runnerOpts = {
@@ -295,6 +297,7 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
     dryRun: options.dryRun,
     agentfilePath: options.agentfile,
     authoritative: options.prune !== false,
+    ...(syncModules && { syncModules }),
   };
 
   if (options.sequential) {
@@ -383,11 +386,13 @@ async function refuseSyncOnLockDrift(): Promise<boolean> {
   return refuseLockDrift(getStateSources(state));
 }
 
-/** Native Claude Code plugin output for v2 plugins, side by side with file rendering (#208 step 8). */
-async function emitNativePluginOutput(): Promise<void> {
+/** Publish the native marketplace when needed. Keep redaction current for every live sync. */
+async function emitNativePluginOutput(syncModules?: readonly string[]): Promise<void> {
   try {
-    const { emitClaudeNative } = await import("./plugins/claude-native.js");
-    emitClaudeNative();
+    if (!syncModules || syncModules.some((name) => name === "hooks" || name === "mcp" || name === "rules")) {
+      const { emitClaudeNative } = await import("./plugins/claude-native.js");
+      emitClaudeNative();
+    }
     const { writeRedactPatterns } = await import("./plugins/leak-audit.js");
     writeRedactPatterns();
   } catch (e) {
@@ -406,13 +411,18 @@ async function handleSyncFirstRun(options: SyncCommandOptions): Promise<void> {
   }
 }
 
-async function handleSyncAgentfile(options: SyncCommandOptions, installAgentfileItems: boolean): Promise<void> {
+async function handleSyncAgentfile(
+  options: SyncCommandOptions,
+  installAgentfileItems: boolean,
+  syncModules?: readonly string[],
+): Promise<void> {
   if (!options.agentfile) return;
   await applyAgentfileAndInstall(options.agentfile, {
     installRequestedItems: installAgentfileItems,
     dryRun: options.dryRun,
     // `--no-prune` must also stop the Agentfile apply from pruning state-backed lists.
     authoritative: options.prune !== false,
+    ...(syncModules && { syncModules }),
   });
 }
 
@@ -578,6 +588,19 @@ export function recordCommandEventAtExit(code: number): void {
   closeCommandEvent(code === 0);
 }
 
+/** Refuse invalid sync input before startup or command event handling. */
+function refuseInvalidSyncSelection(program: Command, action: Command): void {
+  const only = action.opts<SyncCommandOptions>().only;
+  if (only === undefined) return;
+  const result = matchSyncModules(buildSyncModules({}), only);
+  if ("error" in result) {
+    program.error(`${result.error}\n${result.hint}`, {
+      code: "commander.invalidArgument",
+      exitCode: 1,
+    });
+  }
+}
+
 /**
  * One content-free `command` event per command run: the top-level command
  * name (never an argument), ok, and wall time. Every command passes through here.
@@ -587,6 +610,7 @@ function recordCommandEvents(program: Command): void {
     let top = action;
     while (top.parent && top.parent !== program) top = top.parent;
     if (top.name() === "sync") {
+      refuseInvalidSyncSelection(program, action);
       for (const item of checkCliBuildDrift()) console.warn(`⚠ ${item.detail}`);
       if (!process.argv.includes("--json")) printMotd("sync");
     }

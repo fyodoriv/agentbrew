@@ -717,6 +717,22 @@ describe("registerInstallCommand", () => {
 });
 
 describe("applyAgentfileAndInstall", () => {
+  it("selected Agentfile gate reaches the real application boundary", async () => {
+    mockApplyAgentfile.mockReturnValue({
+      skillsToInstall: [],
+      recommendedRequested: false,
+    } as unknown as ReturnType<typeof applyAgentfile>);
+    await applyAgentfileAndInstall("/path/to/Agentfile.yaml", {
+      installRequestedItems: false,
+      syncModules: ["hooks"],
+    });
+    expect(mockApplyAgentfile).toHaveBeenCalledWith(
+      expect.stringContaining("Agentfile.yaml"),
+      expect.objectContaining({ syncModules: ["hooks"], authoritative: true }),
+    );
+    expect(mockInstall).not.toHaveBeenCalled();
+  });
+
   it("sets exitCode=1 when agentfile is not found", async () => {
     mockApplyAgentfile.mockReturnValue(undefined as unknown as ReturnType<typeof applyAgentfile>);
     await applyAgentfileAndInstall("/nonexistent/Agentfile.yaml");

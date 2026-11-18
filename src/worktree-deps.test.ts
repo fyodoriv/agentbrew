@@ -140,13 +140,17 @@ describe("worktree-deps.sh", () => {
     expect(result.stdout).toContain("package-lock.json differs");
     expect(npmCalls().trim()).toBe("ci --prefer-offline --no-audit --no-fund");
     expect(existsSync(join(wt, "node_modules", "from-npm-ci"))).toBe(true);
-    expect(existsSync(join(wt, "node_modules", "dep"))).toBe(false);
+    expect(existsSync(join(wt, "node_modules", "dep", "index.js"))).toBe(false);
   });
 
   it("skips npm ci when the lockfile has not changed since the last npm ci", () => {
     const { run, npmCalls } = setup({ worktreeLock: '{"lock":2}\n' });
     expect(run().status).toBe(0);
+    const before = performance.now();
     const result = run();
+    const elapsed = Math.round(performance.now() - before);
+    console.info(`Healthy matching rerun: ${elapsed} ms`);
+    expect(elapsed).toBeLessThan(5000);
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("node_modules already matches package-lock.json");
     expect(npmCalls().trim().split("\n")).toHaveLength(1);

@@ -11,7 +11,7 @@ import { launcherContent, launcherPath, parsePluginMcpServers, validateMcpServer
 import { withSignerCommitFence } from "./signer-commit-fence.js";
 import { allowedSignersPath, readSigners } from "./signers.js";
 import { pluginSourceIdentity } from "./source-identity.js";
-import { readPinnedPluginFiles } from "./store.js";
+import { type PinnedPluginFile, readPinnedPluginFiles } from "./store.js";
 
 export type NativeFacet = "hooks" | "mcp" | "rules";
 type Hooks = Record<string, unknown[]>;
@@ -124,7 +124,10 @@ function assertHookDestinationPaths(scripts: ReadonlyArray<{ path: string }>): v
   }
 }
 
-function readSignedHooks(plugin: ActivePlugin, includeFiles: boolean) {
+function readSignedHooks(
+  plugin: ActivePlugin,
+  includeFiles: boolean,
+): { declared: Hooks; scripts: PinnedPluginFile[]; declaration?: PinnedPluginFile } {
   const source = plugin.manifest.contributes?.hooks;
   if (typeof source !== "string") return { declared: {}, scripts: [], declaration: undefined };
   const sourceDir = posix.dirname(source);

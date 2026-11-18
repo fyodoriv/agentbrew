@@ -13,7 +13,21 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const network = vi.hoisted(() => ({ cache: "" }));
+const network = vi.hoisted(() => ({ cache: "", remoteLookups: 0 }));
+vi.mock("node:child_process", async (original) => {
+  const child = await original<typeof import("node:child_process")>();
+  return {
+    ...child,
+    execFileSync: (...args: unknown[]) => {
+      const [file, command] = args;
+      if (file === "git" && Array.isArray(command) && command[0] === "ls-remote") {
+        network.remoteLookups++;
+        throw new Error("Synthetic fixture denied a remote version lookup.");
+      }
+      return Reflect.apply(child.execFileSync, undefined, args);
+    },
+  };
+});
 vi.mock("../catalog/index-source.js", async (original) => ({
   ...(await original<typeof import("../catalog/index-source.js")>()),
   getSourceCachePath: vi.fn(() => network.cache),
@@ -90,11 +104,15 @@ async function installPlanned(): Promise<void> {
   await installSkill(planned, { alreadyInstalled: [], failedSourceSkips: new Map() });
 }
 beforeEach(() => {
+  network.remoteLookups = 0;
   seed();
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  expect(network.remoteLookups).toBe(0);
+});
 
 describe("optional skill creator catalog selection", () => {
   it("pins the optional public provider and resolves its Agentfile name without a warning", () => {

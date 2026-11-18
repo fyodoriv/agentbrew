@@ -44,3 +44,14 @@ checking. The fixture reloads saved state before checking each family.
   compatibility regression rejects the change.
 - **Anchor**: Existing per-Agentfile ownership for command, agent and
   local skill directory registrations.
+
+The [directory baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44242037555)
+failed all three selected directory controls. The matching
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44242245370)
+passed the complete nine-case matrix and 154 compatibility tests.
+The workspace case selected both rules and skills, reused one owner
+and kept the ordinary and pull tests green.
+
+This phase scopes six content families. Source-list changes, managed
+memory registration and shared initialization need separate ownership
+decisions and evidence.

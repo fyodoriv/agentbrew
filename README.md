@@ -502,6 +502,8 @@ Every sync creates a timestamped snapshot. Pruning only touches entries agentbre
 
 During a selected sync, Agentfiles defer live rule writes until you select
 `rules`, and defer pruning dropped Agentfile skills until you select `skills`.
+Select a module to apply its Agentfile MCP servers, hooks, models, or source
+directories for commands, agents and skills.
 The native Claude marketplace refresh runs when a sync includes hooks, MCP,
 or rules. Live sync also refreshes the privacy redaction patterns.
 

@@ -992,3 +992,9 @@ the same when the queue applies 077 to its child environment. This
 does not qualify a private-mask production clone. An isolated copy
 retained the source mode with either mask, so the clone boundary
 remains the mode-refusal source.
+
+The installed fixture mode alone did not reach settings under 077.
+A recursive copy reproduced the distinction. It copied a 0644 source
+as 0600 under 077 and as 0644 under 022. The checkpoint child uses the
+registered 022 even when its parent queue keeps 077. This isolates the
+three interruption controls without changing real user permissions.

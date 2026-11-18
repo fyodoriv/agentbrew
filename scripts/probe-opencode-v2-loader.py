@@ -19,7 +19,10 @@ from urllib.request import ProxyHandler, Request, build_opener
 binary = Path(sys.argv[1]).resolve(strict=True)
 identifier = "agentbrew.loader-control"
 tool_name = "agentbrew_fixture"
-case = sys.argv[2]
+case = "approve"
+readiness = sys.argv[2]
+if readiness not in ("cold", "warm"):
+    raise SystemExit("unknown registered readiness case")
 if case not in ("approve", "amend", "deny", "lifecycle"):
     raise SystemExit("unknown registered fixture case")
 denial_marker = b"agentbrew synthetic refusal"
@@ -266,6 +269,17 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
                             removed = response.status == 204
                         end = wait_for_hook(["start:" + session, "end:" + session])
                 elif health == 200:
+                    if readiness == "warm":
+                        deadline = time.monotonic() + 8
+                        while time.monotonic() < deadline:
+                            inventory = subprocess.run([str(binary), "--server", endpoint, "plugin", "list"],
+                                                       **common, capture_output=True, timeout=3)
+                            if (inventory.returncode == 0 and inventory.stdout.count(b"agentbrew.claude-hooks") == 1
+                                and inventory.stdout.count(b"agentbrew.fixture-tool") == 1):
+                                break
+                            time.sleep(0.2)
+                        else:
+                            raise SystemExit("warm app did not admit both native sources by its deadline")
                     args = ["--server", endpoint, "run", "--model", "fixture/probe", "--archived", "--title", "Synthetic tool control", "Run the synthetic fixture tool."]
                     try:
                         result = subprocess.run([str(binary), *args], **common, capture_output=True, timeout=35)
@@ -297,7 +311,7 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
         raise SystemExit(0)
 
     print(
-        f"case={case} version=2.3.0 health={health} exit={run_exit} done={int(output)} setup={setup.count('setup')} "
+        f"readiness={readiness} case={case} version=2.3.0 health={health} exit={run_exit} done={int(output)} setup={setup.count('setup')} "
         f"requests={len(FixtureProvider.outcomes)} model-path={','.join(FixtureProvider.outcomes) or 'none'} offered={FixtureProvider.offer} "
         f"hook-original={hook.count('original')} tool-amended={tool.count('amended')} "
         f"tool-original={tool.count('original')} denied={int(cli_denial or FixtureProvider.reported_denial)} "
@@ -314,6 +328,6 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
         or hook.count("original") != 1 or hook.count("after") != expected_after or hook.count("unexpected") != 0
         or tool != expected_tool or FixtureProvider.prompt_notes != 1 or FixtureProvider.tool_notes != expected_after
         or (case == "deny" and not (cli_denial or FixtureProvider.reported_denial))
-        or fixture.is_alive()
+        or hook.count("start") != int(readiness == "warm") or fixture.is_alive()
     ):
         raise SystemExit("the native V2 prompt and tool feedback controls were not verified")

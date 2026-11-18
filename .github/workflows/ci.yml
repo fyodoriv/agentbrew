@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        case: [lifecycle]
+        case: [warm, cold]
     env:
       AGENTBREW_OC_CASE: ${{ matrix.case }}
     runs-on: ubuntu-latest

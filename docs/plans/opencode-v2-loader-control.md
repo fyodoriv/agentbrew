@@ -150,3 +150,23 @@ response from the CLI's global option parser and connection policy.
   no loader admission evidence.
 - **Anchor**: The pinned global option and connection resolver code,
   and the prior socket and exit-code receipt.
+
+The [health diagnostic](https://github.com/fyodoriv/agentbrew/actions/runs/44293589745)
+reported HTTP 401. Both option placements returned the authentication
+failure class. The pinned [server process](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/cli/src/server-process.ts)
+requires a password, even on loopback. It uses the value supplied in the
+server environment or generates one.
+
+- **Hypothesis**: The same owned server accepts an authenticated health
+  request and returns the expected configuration document.
+- **Measurement**: Give just the scratch server and its clients the
+  same ephemeral fixture password. Compare anonymous and authenticated
+  health status. Read and parse configuration through the CLI, then
+  attempt one plugin inventory read through the same endpoint. Print
+  statuses and fixed classifications only.
+- **Success**: Anonymous health 401, authenticated health 200, config
+  and inventory exits zero, one matching document and package target,
+  and the server reaped.
+- **Pivot**: Any failed authenticated read leaves the loader unqualified.
+  Preserve all previous results and keep the host outside the live path.
+- **Anchor**: The observed 401 and the exact server and client source.

@@ -161,7 +161,7 @@ function withPinnedManifest(plugin: ActivePlugin): ActivePlugin {
   if (
     manifest.name !== plugin.entry.name ||
     manifest.version !== plugin.entry.version ||
-    capabilitiesHash(manifest) !== plugin.entry.capabilitiesHash
+    capabilitiesHash(manifest.capabilities) !== plugin.entry.capabilitiesHash
   ) {
     refuse("the signed manifest does not match the plugin lock");
   }

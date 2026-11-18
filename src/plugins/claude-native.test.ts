@@ -9,6 +9,7 @@ import {
   appendFileSync,
   chmodSync,
   existsSync,
+  linkSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -455,6 +456,51 @@ describe("full native output proof", () => {
       expect(() => emitClaudeNative({ certifyFullOutput: true })).toThrow(/full native output inventory differs/u);
       expect(readFileSync(SETTINGS(), "utf8")).toBe(previousSettings);
       expect(existsSync(nativeProofPath())).toBe(false);
+      expect(existsSync(owner)).toBe(true);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+});
+
+describe("certified native settings ownership", () => {
+  const owner = join(home, ".agentbrew-native-publication.lock");
+
+  it.each([
+    ["symbolic", symlinkSync],
+    ["hard", linkSync],
+  ] as const)("refuses a %s link before touching native output", (_, link) => {
+    installFacetFixture();
+    const target = join(home, "owner-settings.json");
+    mkdirSync(dirname(SETTINGS()), { recursive: true });
+    writeFileSync(target, '{ "ownerSetting": ["keep"] }\n');
+    link(target, SETTINGS());
+    const original = observeNativeFiles([target, SETTINGS()]);
+    try {
+      expect(() => emitClaudeNative({ certifyFullOutput: true })).toThrow(/destination ownership or file type/u);
+      expect(observeNativeFiles([target, SETTINGS()])).toEqual(original);
+      expect(existsSync(owner)).toBe(false);
+      expect(existsSync(marketplaceDir())).toBe(false);
+    } finally {
+      rmSync(target);
+    }
+  });
+
+  it("keeps a later owner edit during the certified native write", async () => {
+    installFacetFixture();
+    mkdirSync(dirname(SETTINGS()), { recursive: true });
+    writeFileSync(SETTINGS(), '{ "ownerSetting": ["before"] }\n');
+    const edited = '{ "ownerSetting": ["after"] }\n';
+    const atomic = await vi.importActual<typeof import("write-file-atomic")>("write-file-atomic");
+    vi.mocked(atomicWrite).mockImplementationOnce((...args) => {
+      atomic.sync(...args);
+      writeFileSync(SETTINGS(), edited);
+    });
+
+    try {
+      expect(() => emitClaudeNative({ certifyFullOutput: true })).toThrow(/native destination changed/u);
+      expect(readFileSync(SETTINGS(), "utf8")).toBe(edited);
+      expect(existsSync(nativeFacetPaths().envelope)).toBe(true);
       expect(existsSync(owner)).toBe(true);
     } finally {
       rmSync(owner, { force: true });

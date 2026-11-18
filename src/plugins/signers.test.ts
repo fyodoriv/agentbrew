@@ -37,6 +37,18 @@ it("trusts and revokes one signer while keeping the other signer available", () 
   expect(signersFor("neighbor")).toEqual([NEXT_KEY]);
 });
 
+it("matches a signer with mixed whitespace while preserving all other registry bytes", () => {
+  const mixed = `fixture\tnamespaces="git"\tssh-ed25519  ${ORIGINAL_KEY.split(" ")[1]}\r\n`;
+  const original = REGISTRY_COMMENT + mixed + OTHER_ROW;
+  writeFileSync(registry, original);
+
+  trustSigner("fixture", ORIGINAL_KEY);
+  expect(readFileSync(registry, "utf8")).toBe(original);
+  expect(signersFor("fixture")).toEqual([ORIGINAL_KEY]);
+  revokeSigner("fixture", ORIGINAL_KEY);
+  expect(readFileSync(registry, "utf8")).toBe(REGISTRY_COMMENT + OTHER_ROW);
+});
+
 describe.skipIf(!SUPPORTED)("shared signer CLI writer", () => {
   const holder = `
     use Fcntl qw(:DEFAULT :flock);

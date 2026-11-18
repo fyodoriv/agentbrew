@@ -77,6 +77,22 @@ function installFacetFixture(duplicateServer = false): void {
   addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub });
 }
 
+function installCustomHooks(auxiliaryPath: string): void {
+  const f = pluginFixture({
+    schema: 1,
+    name: "fixture-native",
+    version: "1.0.0",
+    capabilities: { agents: ["claude"], hooks: ["PreToolUse:Bash"] },
+    contributes: { hooks: "hooks/definition.json" },
+  });
+  f.release("v1", {
+    "hooks/definition.json": HOOKS,
+    "hooks/guard.sh": "#!/bin/sh\nexit 0\n",
+    [auxiliaryPath]: "Synthetic helper note.\n",
+  });
+  addPlugin(`${f.dir}@v1`, { yes: true, signer: KEY.pub });
+}
+
 function nativeFacetPaths() {
   const root = join(marketplaceDir(), "plugins", "fixture-native");
   return {
@@ -221,6 +237,24 @@ describe("scoped native facet publication", () => {
       expect(existsSync(paths.mcp)).toBe(true);
     }
     expect(observeNativeFiles(frozen)).toEqual(before);
+  });
+
+  it.each(["hooks/Hooks.json", "hooks/HOOKS.JSON/note.md"])("refuses a hook alias at %s", (source) => {
+    installCustomHooks(source);
+
+    expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/native hook output paths overlap/u);
+    expect(existsSync(marketplaceDir())).toBe(false);
+    expect(existsSync(SETTINGS())).toBe(false);
+  });
+
+  it("publishes a valid nested file under the signed hook directory", () => {
+    installCustomHooks("hooks/helper/note.md");
+
+    emitClaudeNative({ modules: ["hooks"] });
+
+    const { hooks } = nativeFacetPaths();
+    expect(readFileSync(join(hooks, "../helper/note.md"), "utf8")).toBe("Synthetic helper note.\n");
+    expect(JSON.parse(readFileSync(hooks, "utf8")).hooks.PreToolUse).toBeDefined();
   });
 
   it("copies signed hook files and skips an ignored local text file", () => {

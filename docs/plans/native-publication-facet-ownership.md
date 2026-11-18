@@ -127,3 +127,54 @@ activation, cover collisions against retained marketplace references and
 hook paths that alias by case, normalization or file type. A full-source
 receipt must describe verified output even when a legacy publisher used
 working-copy files. An existing eight-digit display version is insufficient.
+
+## Full identity and interrupted publication
+
+The selected and full native publishers need the same exclusive
+publication boundary. Hold the boundary across a plugin lifecycle
+change that affects native output, source loading, planning, writes,
+settings and the exact output receipt. The named owner is the invoking
+process. An ownership record must include more than its process ID.
+Leave uncertain ownership in place. The boundary coordinates Agentbrew
+processes. Claude and manual edits can continue, so the write path also
+needs fresh checks against its expected destination state.
+
+A receipt binds the full pinned commit and tree, source and signer
+identity, capability hash, and each generated path, type, mode and
+digest. For legacy output with no qualifying receipt, a selected
+warm operation refuses without modifying the tree or settings. A
+successful full publication through the protected path establishes the
+first receipt. It must verify what it emitted against the pinned
+source. A matching older display version cannot establish ownership.
+
+Record a private pending intent before changing output. Each recorded
+step must have a known previous state and verified expected bytes
+afterward. On restart, recover only a proven partial operation or
+refuse while preserving what is present. Do not infer safe takeover
+from time elapsed. Treat a changed setting, link, owner, or pre-existing
+destination as an independent ownership conflict.
+
+The payload draft remains out of the live CLI until the following cases
+qualify independently.
+
+- **Hypothesis**: The cooperating publisher refuses concurrent and
+  ambiguous writers before changes, and interrupted writes can resume
+  without altering paths outside the selected or verified shared output.
+- **Measurement**: Use two separate processes in a scratch home to
+  contend across selected, full, and lifecycle entry points. Inject an
+  interruption before payload, index, and settings commits. Vary legacy,
+  exact receipt, mismatched receipt, disablement and concurrent local
+  edits. Compare complete file, type, mode and digest receipts and
+  observe redaction order through the real isolated CLI.
+- **Success**: One owner in every contention case. All three interruption
+  checkpoints either recover to the exact expected output or explicitly
+  refuse with zero additional changes. All three legacy, identity
+  mismatch and edit conflicts preserve bytes and settings. No explicit
+  disabled value changes. All existing cold, warm and default controls
+  pass, with zero unexpected writes.
+- **Pivot**: An untracked writer, ambiguous destination, unsafe cleanup,
+  order violation, fail-open recovery or unexpected write blocks use at
+  the live CLI boundary.
+- **Anchor**: The signed selected and default receipts, native publisher
+  and plugin lifecycle entry points, and the independent source and
+  destination review.

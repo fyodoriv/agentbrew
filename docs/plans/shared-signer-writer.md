@@ -87,3 +87,20 @@ overwrote a newer synthetic observation. The
 passed the Linux staging and lock tests and the Windows signer tests.
 The [final cross-tool run](https://github.com/fyodoriv/agentbrew/actions/runs/44255581643)
 passed against the merged Dotfiles command.
+
+## Keep the registry's existing group
+
+The earlier atomic writer copied the original file's user and group
+when the host allowed it. Preserve the registry group along with
+its mode when staging on macOS and Linux.
+
+- **Hypothesis**: Changing a signer preserves an existing file
+  group that differs from a newly staged file's group.
+- **Measurement**: Use a real group the hosted fixture owner
+  belongs to and check the registry group after the write.
+- **Success**: At least one hosted POSIX control runs with distinct
+  groups. The original group and mode are preserved.
+- **Pivot**: If group preservation fails or lacks a qualifying
+  fixture, keep this candidate out of delivery.
+- **Anchor**: The repository's earlier atomic writer and the
+  exact metadata review for Agentbrew #1081.

@@ -1128,3 +1128,21 @@ The [hosted Linux check](https://github.com/fyodoriv/agentbrew/actions/runs/4431
 passed both native suites. The platform-specific Mac controls ran
 locally. The Linux publisher still kept normal signed modes and the
 older receipt shape.
+
+## Refuse a busy signer before full native payload writes
+
+- **Hypothesis**: Certified full publication admits the signer once
+  before its first native write and retains the descriptor through
+  certification and settings. A held registry refuses with no output.
+- **Measurement**: Hold the real signer descriptor in a scratch parent.
+  Invoke one native full writer child. Compare payload, launcher,
+  marketplace, settings, and publication owner. Release the signer,
+  retry, and verify the signed output under one descriptor.
+- **Success**: One exact busy refusal with zero native changes and
+  no retained process owner. One exact certified retry. The selected
+  and ordinary controls still pass.
+- **Pivot**: A payload or configuration write while the signer is busy,
+  a nested descriptor attempt, a wrong pin or an ordinary regression
+  rejects the change.
+- **Anchor**: The existing selected descriptor gate and full certified
+  settings control in this plan.

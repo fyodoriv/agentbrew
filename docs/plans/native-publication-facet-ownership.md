@@ -197,3 +197,27 @@ qualify independently.
   stops the candidate. No live CLI activation in this phase.
 - **Anchor**: The marketplace index and launcher reference written in
   `src/plugins/claude-native.ts`, plus the independent claim review.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44238556692)
+failed the duplicate-registry and retained-launcher collision controls.
+It passed the unrelated-command control and all eleven earlier cases.
+The [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44238718335)
+passed all fourteen scoped cases, compatibility tests and type checking.
+
+## Hook destination aliases
+
+- **Hypothesis**: Canonical claim checking refuses case aliases and
+  file-to-directory conflicts before any selected native payload writes.
+- **Measurement**: Use the signed fixture with a custom hook
+  declaration filename. Add either a harmless similarly named file or
+  a harmless file inside a similarly named directory. Both would
+  alias the generated hooks JSON on a case-insensitive output volume.
+  Include a separate valid nested text file as a positive control.
+- **Success**: Two exact refusals with zero native output created, one
+  valid nested file published, and all fourteen earlier scoped cases
+  pass. Run normal native compatibility and type checking.
+- **Pivot**: An ambiguous write or misplaced declaration rejects the
+  candidate. If the filename's alias behavior cannot be established,
+  refuse without altering destination data.
+- **Anchor**: Signed hook subtree layout and the independently
+  observed gap in the destination plan.

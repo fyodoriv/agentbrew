@@ -19,6 +19,9 @@ jobs:
         with:
           node-version-file: .node-version
       - run: npm ci
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
       - name: Install the pinned fixture dependency
         run: |
           python3 -m venv "$RUNNER_TEMP/mcpm-fixture-venv"

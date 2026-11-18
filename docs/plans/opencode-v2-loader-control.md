@@ -321,3 +321,30 @@ same two-response oracle and no change to time limits. Record only
 whether the request offers the exact tool, a namespaced variant, a
 code-mode tool, another tool, or no tools. If the first request still
 does not offer the exact tool, stop before exercising any callback.
+
+The [named-session candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44297772216)
+offered the exact tool. It received the two expected provider requests,
+called the existing before-tool handler once, and wrote one amended
+marker with zero original writes. The session and both processes ended.
+The title removed the unqualified first request in this fixture.
+
+## Distinguish approval, amendment and denial on the V2 path
+
+- **Hypothesis**: The real before-tool handler gives the fixture tool
+  the original value on approval, the changed value on amendment, and
+  no execution on denial.
+- **Measurement**: Use three separate fresh, named scratch sessions and
+  the exact local protocol fixture. The approval hook exits zero.
+  The amendment hook returns the tested updated input. The denial hook
+  returns exit 2 with a fixed synthetic reason. Capture only exact
+  marker counts and whether the runtime surfaces that denial reason.
+- **Success**: Approval writes one original marker, amendment writes
+  one amended marker, and denial writes zero markers. Each hook sees
+  one original value. In the denial case the known reason reaches
+  either the local model's tool-result message or the CLI. All owned
+  processes stop.
+- **Pivot**: A word missing from the actual tool output, a second hook
+  invocation, a denial without its exact reason or a denied execution
+  leaves that behavior unqualified.
+- **Anchor**: The real V2 amended-input proof and the existing bridge's
+  exit, denial and update contracts.

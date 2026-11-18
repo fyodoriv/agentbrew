@@ -129,6 +129,33 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+describe("exclusive performance receipt", () => {
+  it("P03 refuses a missing receipt in a shared slot before build or timing", () => {
+    writeFileSync(join(fix, "build.sh"), "#!/bin/sh\ntouch built.stamp\n");
+    budget(
+      "tool\t2000\tsh tool.sh",
+      "PERF_GATE_BUILD=sh build.sh",
+      "PERF_GATE_BUILD_OUTPUT=built.stamp",
+      "PERF_GATE_BUILD_INPUT=tool.sh",
+    );
+    commit("configure a tracked scratch build");
+    git("branch", "-q", "-f", "main", "work");
+    tool("0.12");
+    commit("synthetic slowdown");
+    const samples = join(dir, "samples.jsonl");
+    const result = gate(["--json"], {
+      HEAVY_RUN_SLOT: "1",
+      PERF_GATE_HEAVY_RUN: undefined,
+      PERF_GATE_SAMPLES: samples,
+    });
+    expect({
+      status: result.status,
+      built: existsSync(join(fix, "built.stamp")),
+      timed: existsSync(samples),
+    }).toEqual({ status: 2, built: false, timed: false });
+  });
+});
+
 describe("perf gate verdicts", () => {
   it("fails on a seeded 20% slowdown and names the command and the fixes", TIMING, () => {
     tool("0.12");

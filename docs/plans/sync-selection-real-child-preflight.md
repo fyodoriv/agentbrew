@@ -26,3 +26,19 @@ agent session or use local machine files.
   and the imported-boundary regression under PR #1075.
 
 The programmatic update and valid selected native facets remain separate.
+
+## Direct update child
+
+- **Hypothesis**: A fresh Node child that calls the real update API with an
+  explicit empty selection returns 1 before it touches any fixture file.
+- **Measurement**: Use the same isolated physical command. Run the real
+  update source through the lockfile-pinned TypeScript loader in a third
+  synthetic home. Start every case with an explicit empty telemetry key.
+  Include the actual marketplace directory and read all receipts.
+- **Success**: The direct update child returns 1, shows the valid-module
+  hint, and reports zero changed entries or subprocess attempts. Both
+  CLI controls and the blocked canary repeat their existing outcomes.
+- **Pivot**: A wrong runtime, changed scratch entry, missing receipt,
+  missing diagnostic or subprocess attempt leaves the result incomplete.
+- **Anchor**: The original emptyAPI observation and the passing
+  built CLI scratch run 44226441932.

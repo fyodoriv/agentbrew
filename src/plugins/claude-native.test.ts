@@ -241,6 +241,106 @@ describe("native publisher admission", () => {
   });
 });
 
+describe("composed native and Dotfiles signer order", () => {
+  const key = KEY.pub.trim().split(/\s+/u).slice(0, 2).join(" ");
+
+  function dotfilesTrust(registry: string, plugin: string, action: "--yes" | "--revoke"): number | null {
+    const checkout = process.env.DOTFILES_SIGNER_FIXTURE;
+    if (!checkout) throw new Error("Missing the exact hosted Dotfiles fixture checkout.");
+    const result = spawnSync(
+      "/bin/bash",
+      [join(checkout, "bin/dotfiles-plugin"), "trust", plugin, "--signer", key, action],
+      {
+        env: {
+          PATH: process.env.PATH,
+          HOME: home,
+          XDG_CONFIG_HOME: join(home, ".config"),
+          XDG_DATA_HOME: join(home, ".local", "share"),
+          AGENT_PLUGINS_ALLOWED_SIGNERS: registry,
+          GIT_CONFIG_GLOBAL: "/dev/null",
+          GIT_CONFIG_NOSYSTEM: "1",
+          DO_NOT_TRACK: "1",
+        },
+        stdio: "pipe",
+        timeout: 8_000,
+      },
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.signal).toBeNull();
+    return result.status;
+  }
+
+  function lockIdentity(registry: string): number[] {
+    const { dev, ino, uid, mode } = statSync(`${registry}.agentbrew-signer-v1.lock`);
+    return [dev, ino, uid, mode];
+  }
+
+  it("serializes real Dotfiles writers during the selected native output", async () => {
+    const registry = allowedSignersPath();
+    expect(registry.startsWith(`${home}/`)).toBe(true);
+    installFacetFixture();
+    const files = nativeFacetPaths();
+    const beforeRegistry = readFileSync(registry);
+    const beforeLock = lockIdentity(registry);
+    const atomic = await vi.importActual<typeof import("write-file-atomic")>("write-file-atomic");
+    vi.mocked(atomicWrite).mockImplementationOnce((...args) => {
+      expect(args[0]).toBe(files.hooks);
+      atomic.sync(...args);
+      expect(dotfilesTrust(registry, "fixture-neighbor", "--yes")).toBe(75);
+      expect(readFileSync(registry)).toEqual(beforeRegistry);
+      expect(dotfilesTrust(registry, "fixture-native", "--revoke")).toBe(75);
+      expect(readFileSync(registry)).toEqual(beforeRegistry);
+      expect(lockIdentity(registry)).toEqual(beforeLock);
+    });
+
+    emitClaudeNative({ modules: ["hooks"] });
+
+    expect(existsSync(nativeProofPath())).toBe(true);
+    expect(existsSync(files.settings)).toBe(false);
+    expect(dotfilesTrust(registry, "fixture-neighbor", "--yes")).toBe(0);
+    expect(dotfilesTrust(registry, "fixture-native", "--revoke")).toBe(0);
+    expect(signersFor("fixture-neighbor")).toEqual([key]);
+    expect(signersFor("fixture-native")).toEqual([]);
+    expect(lockIdentity(registry)).toEqual(beforeLock);
+  }, 20_000);
+
+  it("allows an actual Dotfiles revoke with an interrupted publication owner", async () => {
+    const registry = allowedSignersPath();
+    expect(registry.startsWith(`${home}/`)).toBe(true);
+    installFacetFixture();
+    expect(dotfilesTrust(registry, "fixture-neighbor", "--yes")).toBe(0);
+    const files = nativeFacetPaths();
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    const beforeLock = lockIdentity(registry);
+    const atomic = await vi.importActual<typeof import("write-file-atomic")>("write-file-atomic");
+    vi.mocked(atomicWrite).mockImplementationOnce((...args) => {
+      expect(args[0]).toBe(files.hooks);
+      atomic.sync(...args);
+      throw new Error("Synthetic publication interruption.");
+    });
+    const publish = () => emitClaudeNative({ modules: ["hooks"] });
+
+    try {
+      expect(publish).toThrow(/Synthetic publication interruption/u);
+      expect(statSync(owner).mode & 0o777).toBe(0o600);
+      const beforeRevoke = observeNativeFiles([owner, files.hooks]);
+      expect(dotfilesTrust(registry, "fixture-native", "--revoke")).toBe(0);
+      expect(signersFor("fixture-neighbor")).toEqual([key]);
+      expect(signersFor("fixture-native")).toEqual([]);
+      expect(lockIdentity(registry)).toEqual(beforeLock);
+      expect(observeNativeFiles([owner, files.hooks])).toEqual(beforeRevoke);
+      vi.mocked(atomicWrite).mockClear();
+      expect(publish).toThrow(/native publication is busy/u);
+      expect(atomicWrite).not.toHaveBeenCalled();
+      expect(observeNativeFiles([owner, files.hooks])).toEqual(beforeRevoke);
+      expect(existsSync(files.index)).toBe(false);
+      expect(existsSync(files.settings)).toBe(false);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  }, 20_000);
+});
+
 describe("selected native publication write intent", () => {
   it.each(["cold", "warm"] as const)("records the complete %s file plan before writing", async (state) => {
     installFacetFixture();

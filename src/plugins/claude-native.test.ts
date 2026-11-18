@@ -21,6 +21,7 @@ import {
 } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { sync as atomicWrite } from "write-file-atomic";
 
 const { home, previousHome } = vi.hoisted(() => {
   const { mkdtempSync: mk } = require("node:fs") as typeof import("node:fs");
@@ -42,6 +43,11 @@ vi.mock("./store.js", async (original) => {
 vi.mock("./signer-commit-fence.js", async (original) => {
   const signers = await original<typeof import("./signer-commit-fence.js")>();
   return { ...signers, withSignerCommitFence: vi.fn(signers.withSignerCommitFence) };
+});
+
+vi.mock("write-file-atomic", async (original) => {
+  const atomic = await original<typeof import("write-file-atomic")>();
+  return { ...atomic, sync: vi.fn(atomic.sync) };
 });
 
 import { readLock } from "../lock.js";
@@ -229,6 +235,30 @@ describe("native publisher admission", () => {
     writeFileSync(hooks, JSON.stringify({ hooks: {}, ownerNote: "Synthetic note." }));
     expect(() => emitClaudeNative({ modules: ["rules"] })).toThrow(/unknown hook metadata/u);
     expect(existsSync(owner)).toBe(false);
+  });
+});
+
+describe("selected native publication interruption", () => {
+  it("preserves the owner record when an error follows a real write", async () => {
+    installFacetFixture();
+    const files = nativeFacetPaths();
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    const atomic = await vi.importActual<typeof import("write-file-atomic")>("write-file-atomic");
+    vi.mocked(atomicWrite).mockImplementationOnce((...args) => {
+      atomic.sync(...args);
+      throw new Error("Synthetic partial publication failure.");
+    });
+    try {
+      expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/Synthetic partial publication failure/u);
+      const previous = observeNativeFiles([files.hooks, owner]);
+      expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/native publication is busy/u);
+      expect(observeNativeFiles([files.hooks, owner])).toEqual(previous);
+      expect(existsSync(files.script)).toBe(false);
+      expect(existsSync(files.index)).toBe(false);
+      expect(existsSync(files.settings)).toBe(false);
+    } finally {
+      rmSync(owner, { force: true });
+    }
   });
 });
 

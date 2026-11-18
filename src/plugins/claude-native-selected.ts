@@ -30,11 +30,12 @@ interface PlannedWrite {
   before?: NativeFileObservation;
 }
 
-interface ColdNativeReceiptPlan {
+interface SelectedNativeReceiptPlan {
   entry: PluginLockEntry;
   root: string;
   facets: NativeFacet[];
   files: PlannedWrite[];
+  before?: NativeFileObservation;
 }
 
 export function nativePluginEntry(plugin: ActivePlugin) {
@@ -96,7 +97,7 @@ function observeNativeTarget(path: string): NativeFileObservation | undefined {
   return { body, device: stat.dev, inode: stat.ino, mode: stat.mode };
 }
 
-function assertNativeTargetsUnchanged(writes: readonly PlannedWrite[]): void {
+function assertNativeTargetsUnchanged(writes: readonly Pick<PlannedWrite, "path" | "before">[]): void {
   if (writes.some(({ path, before }) => !isDeepStrictEqual(observeNativeTarget(path), before))) {
     refuse("a planned native destination changed after review");
   }
@@ -312,17 +313,21 @@ function withPinnedManifest(plugin: ActivePlugin): ActivePlugin {
   return { ...plugin, manifest };
 }
 
+function declaredNativeFacets(plugin: ActivePlugin, asked: Iterable<NativeFacet>): NativeFacet[] {
+  const declarations = plugin.manifest.contributes;
+  const facets = { hooks: declarations?.hooks, mcp: declarations?.mcp_servers, rules: declarations?.rules };
+  return [...asked].filter((facet) => typeof facets[facet] === "string");
+}
+
 function planPlugin(
   writes: PlannedWrite[],
   launcherClaims: Map<string, string>,
   active: ActivePlugin,
   registry: Marketplace,
   options: { marketplace: string; selected: ReadonlySet<NativeFacet>; rulesHook: unknown },
-): ColdNativeReceiptPlan | undefined {
+): SelectedNativeReceiptPlan | undefined {
   const plugin = withPinnedManifest(active);
-  const declarations = plugin.manifest.contributes;
-  const facets = { hooks: declarations?.hooks, mcp: declarations?.mcp_servers, rules: declarations?.rules };
-  const selected = new Set([...options.selected].filter((facet) => typeof facets[facet] === "string"));
+  const selected = new Set(declaredNativeFacets(plugin, options.selected));
   if (selected.size === 0) return undefined;
 
   const entry = nativePluginEntry(plugin);
@@ -346,8 +351,13 @@ function planPlugin(
   if (selected.has("mcp")) planMcp(writes, launcherClaims, plugin, root);
   if (priorWrites === writes.length) return undefined;
   if (existing) {
+    const receipt = readWarmReceipt(join(root, NATIVE_RECEIPT_FILE), plugin.entry);
+    const changes = writes.slice(priorWrites);
+    if (receipt.facets) {
+      return planPartialExtension(plugin, root, receipt, changes, { selected, rulesHook: options.rulesHook });
+    }
     const expected = expectedFullOutput(plugin, options.marketplace, options.rulesHook);
-    assertWarmNativeReceipt(root, plugin.entry, writes.slice(priorWrites), expected.files);
+    assertWarmNativeReceipt(root, receipt.files, changes, expected.files);
     return undefined;
   }
 
@@ -387,25 +397,37 @@ interface NativeReceiptFile {
   digest: string;
 }
 
-function readWarmReceipt(path: string, entry: PluginLockEntry): unknown[] {
-  const content = readOutput(path);
-  if (!content) refuse("native receipt is missing");
-  const stat = lstatSync(path);
-  if (stat.nlink !== 1 || (stat.mode & 0o777) !== 0o600) refuse("native receipt ownership differs");
-  let receipt: { schema?: unknown; sourceDigest?: unknown; files?: unknown } | null;
+interface ObservedNativeReceipt {
+  before: NativeFileObservation;
+  files: unknown[];
+  facets?: NativeFacet[];
+}
+
+function readWarmReceipt(path: string, entry: PluginLockEntry): ObservedNativeReceipt {
+  const before = observeNativeTarget(path);
+  if (!before) refuse("native receipt is missing");
+  if ((before.mode & 0o777) !== 0o600) refuse("native receipt ownership differs");
+  let receipt: { schema?: unknown; sourceDigest?: unknown; files?: unknown; facets?: unknown } | null;
   try {
-    receipt = JSON.parse(content.toString("utf8"));
+    receipt = JSON.parse(before.body.toString("utf8"));
   } catch {
     return refuse("native receipt cannot be read");
   }
-  if (
-    receipt?.schema !== 1 ||
-    receipt.sourceDigest !== digest(JSON.stringify(pluginSourceIdentity(entry))) ||
-    !Array.isArray(receipt.files)
-  ) {
+  if (receipt?.sourceDigest !== digest(JSON.stringify(pluginSourceIdentity(entry))) || !Array.isArray(receipt.files)) {
     refuse("native receipt does not match the source pin");
   }
-  return receipt.files;
+  if (receipt.schema === 1) return { before, files: receipt.files };
+  const facets = receipt.facets;
+  if (
+    receipt.schema !== 2 ||
+    !Array.isArray(facets) ||
+    facets.length === 0 ||
+    facets.some((facet) => facet !== "hooks" && facet !== "mcp" && facet !== "rules") ||
+    !isDeepStrictEqual(facets, [...new Set(facets)].sort())
+  ) {
+    refuse("native receipt has unknown coverage");
+  }
+  return { before, files: receipt.files, facets };
 }
 
 function checkedReceiptFile(raw: unknown): NativeReceiptFile {
@@ -449,7 +471,7 @@ function checkWarmReceiptFile(file: NativeReceiptFile, path: string, write?: Pla
 
 function assertWarmNativeReceipt(
   root: string,
-  entry: PluginLockEntry,
+  recorded: readonly unknown[],
   writes: readonly PlannedWrite[],
   expected: readonly PlannedWrite[],
 ): void {
@@ -458,7 +480,7 @@ function assertWarmNativeReceipt(
   const pendingWrites = new Map(writes.map((write) => [write.path, write]));
   const paths = new Set<string>();
   const present = [receiptPath];
-  for (const raw of readWarmReceipt(receiptPath, entry)) {
+  for (const raw of recorded) {
     const file = checkedReceiptFile(raw);
     const path = join(homedir(), file.path);
     const signed = signedFiles.get(path);
@@ -474,6 +496,78 @@ function assertWarmNativeReceipt(
   if (paths.size !== signedFiles.size) refuse("native receipt does not cover the signed inventory");
   if (pendingWrites.size > 0) refuse("native receipt does not cover the planned change");
   assertNativeTree(root, present);
+}
+
+function expectedPartialHooks(
+  plugin: ActivePlugin,
+  root: string,
+  covered: ReadonlySet<NativeFacet>,
+  rulesHook: unknown,
+): PlannedWrite[] {
+  const includeHooks = covered.has("hooks");
+  const includeRules = covered.has("rules");
+  if (!includeHooks && !includeRules) return [];
+  const { declared, scripts } = readSignedHooks(plugin, includeHooks);
+  const hooks = includeHooks ? declared : {};
+  const output = includeRules ? withRulesHook(hooks, rulesHook) : hooks;
+  const hooksRoot = join(root, "hooks");
+  const files: PlannedWrite[] = scripts.map((file) => ({ ...file, path: join(hooksRoot, file.path) }));
+  if (Object.keys(output).length > 0) {
+    files.push({ path: join(hooksRoot, "hooks.json"), body: jsonBytes({ hooks: output }) });
+  }
+  return files;
+}
+
+function expectedPartialOutput(
+  plugin: ActivePlugin,
+  root: string,
+  facets: readonly NativeFacet[],
+  rulesHook: unknown,
+): PlannedWrite[] {
+  const covered = new Set(facets);
+  const { source: _source, ...envelope } = nativePluginEntry(plugin);
+  return [
+    { path: join(root, ".claude-plugin", "plugin.json"), body: jsonBytes(envelope) },
+    ...expectedPartialHooks(plugin, root, covered, rulesHook),
+    ...(covered.has("mcp") ? nativeMcpFiles(plugin, root) : []),
+  ];
+}
+
+function assertPartialExtension(
+  prior: readonly PlannedWrite[],
+  desired: readonly PlannedWrite[],
+  writes: readonly PlannedWrite[],
+): void {
+  const owned = new Map(prior.map((file) => [file.path, file]));
+  const planned = new Map(writes.map((file) => [file.path, file]));
+  const changed = desired.filter(({ path, body }) => !owned.get(path)?.body.equals(body));
+  if (
+    changed.length !== writes.length ||
+    changed.some(({ path, body, mode }) => {
+      const write = planned.get(path);
+      return !write?.body.equals(body) || write.mode !== mode;
+    })
+  ) {
+    refuse("native receipt does not match the selected extension");
+  }
+}
+
+function planPartialExtension(
+  plugin: ActivePlugin,
+  root: string,
+  receipt: ObservedNativeReceipt,
+  writes: readonly PlannedWrite[],
+  { selected, rulesHook }: { selected: ReadonlySet<NativeFacet>; rulesHook: unknown },
+): SelectedNativeReceiptPlan {
+  const earlier = receipt.facets ?? [];
+  if (declaredNativeFacets(plugin, earlier).length !== earlier.length)
+    refuse("native receipt coverage does not match the signed manifest");
+  const previous = expectedPartialOutput(plugin, root, earlier, rulesHook);
+  assertWarmNativeReceipt(root, receipt.files, [], previous);
+  const facets = [...new Set([...earlier, ...selected])].sort();
+  const files = expectedPartialOutput(plugin, root, facets, rulesHook);
+  assertPartialExtension(previous, files, writes);
+  return { root, facets, files, entry: plugin.entry, before: receipt.before };
 }
 
 function expectedFullOutput(plugin: ActivePlugin, marketplace: string, rulesHook: unknown) {
@@ -534,14 +628,14 @@ function verifiedReceiptFiles(files: readonly PlannedWrite[]) {
     .sort((left, right) => (left.path < right.path ? -1 : Number(left.path > right.path)));
 }
 
-function certifyColdNativeOutput(plans: readonly ColdNativeReceiptPlan[]): void {
-  const receipts = plans.map(({ entry, root, facets, files }) => {
-    assertNativeTree(
-      root,
-      files.map(({ path }) => path).filter((path) => path.startsWith(`${root}${sep}`)),
-    );
+function certifySelectedNativeOutput(plans: readonly SelectedNativeReceiptPlan[]): void {
+  const receipts = plans.map(({ entry, root, facets, files, before }) => {
+    const path = join(root, NATIVE_RECEIPT_FILE);
+    const localFiles = files.map(({ path }) => path).filter((path) => path.startsWith(`${root}${sep}`));
+    if (before) localFiles.push(path);
+    assertNativeTree(root, localFiles);
     return {
-      path: join(root, NATIVE_RECEIPT_FILE),
+      path,
       body: jsonBytes({
         schema: 2,
         facets,
@@ -615,23 +709,24 @@ export function publishSelectedNativePlugins(
   const writes: PlannedWrite[] = [];
   const planned: PluginLockEntry[] = [];
   const launcherClaims = new Map<string, string>();
-  const cold: ColdNativeReceiptPlan[] = [];
+  const receipts: SelectedNativeReceiptPlan[] = [];
   for (const plugin of plugins) {
     const before = writes.length;
     const receipt = planPlugin(writes, launcherClaims, plugin, registry, { marketplace, selected, rulesHook });
-    if (receipt) cold.push(receipt);
+    if (receipt) receipts.push(receipt);
     if (writes.length > before) planned.push(plugin.entry);
   }
   assertRetainedLauncherClaims(marketplace, registry, launcherClaims);
   if (new Set(writes.map((write) => write.path)).size !== writes.length) refuse("native output paths overlap");
 
   if (writes.length === 0) return;
-  const index = cold.length > 0 ? { path, body: jsonBytes(registry), before } : undefined;
+  const index = receipts.some((receipt) => !receipt.before) ? { path, body: jsonBytes(registry), before } : undefined;
+  const receiptTargets = receipts.map(({ root, before }) => ({ path: join(root, NATIVE_RECEIPT_FILE), before }));
   withSignerCommitFence(allowedSignersPath(), () => {
     assertCurrentNativeSources(planned);
-    assertNativeTargetsUnchanged(index ? [...writes, index] : writes);
+    assertNativeTargetsUnchanged([...writes, ...receiptTargets, ...(index ? [index] : [])]);
     for (const write of writes) writeNativeOutput(write);
-    certifyColdNativeOutput(cold);
+    certifySelectedNativeOutput(receipts);
     if (index) writeNativeOutput(index);
   });
 }

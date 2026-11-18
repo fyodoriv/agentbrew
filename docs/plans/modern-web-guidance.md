@@ -60,3 +60,17 @@ The four existing-copy controls failed on the previous code. Regular
 directories were replaced and dangling links raised a copy error. All six
 cases passed after the guard, including fresh installs in each scope. The
 combined catalog, Agentfile, and deployment tests passed 268 checks.
+
+### Failed registration and offline retry
+
+- **Hypothesis**: The install checks ownership before reading the source,
+  and a new copy is safe to retry if its registration fails.
+- **Measurement**: Run four existing-copy controls with an unavailable or
+  missing source. Fail the first registration in both install scopes and
+  then run the same install again.
+- **Success**: Zero source lookups for four existing copies. Each failed
+  new copy leaves zero installed files. Two retries register one copy each.
+- **Pivot**: Any source lookup for an existing copy, or any failed retry.
+- **Anchor**: Catalog copy and registration order in
+  `src/catalog/install-skill.ts` and project registration in
+  `src/agentfile-mutate.ts`.

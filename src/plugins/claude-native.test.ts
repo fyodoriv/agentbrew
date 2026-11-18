@@ -121,6 +121,10 @@ function nativeFacetPaths() {
   };
 }
 
+function nativeProofPath(): string {
+  return join(marketplaceDir(), "plugins", "fixture-native", ".agentbrew-native-receipt.json");
+}
+
 function observeNativeFiles(paths: readonly string[]) {
   return paths.map((path) => {
     const info = statSync(path);
@@ -243,7 +247,6 @@ describe("selected native signer commit fence", () => {
 });
 
 describe("full native output proof", () => {
-  const proof = () => join(marketplaceDir(), "plugins", "fixture-native", ".agentbrew-native-receipt.json");
   const digest = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
 
   it("records the pinned identity and five independently verified output files", () => {
@@ -253,7 +256,7 @@ describe("full native output proof", () => {
 
     emitClaudeNative({ certifyFullOutput: true });
 
-    const receipt = JSON.parse(readFileSync(proof(), "utf8"));
+    const receipt = JSON.parse(readFileSync(nativeProofPath(), "utf8"));
     const { envelope, hooks, script, mcp, launcher } = nativeFacetPaths();
     const targets = [envelope, hooks, script, mcp, launcher].sort();
     expect(receipt).toEqual({
@@ -265,7 +268,7 @@ describe("full native output proof", () => {
         digest: digest(readFileSync(path)),
       })),
     });
-    expect(statSync(proof()).mode & 0o777).toBe(0o600);
+    expect(statSync(nativeProofPath()).mode & 0o777).toBe(0o600);
   });
 
   it("leaves the ordinary full writer on its current output path", () => {
@@ -274,7 +277,7 @@ describe("full native output proof", () => {
     emitClaudeNative();
 
     expect(existsSync(nativeFacetPaths().hooks)).toBe(true);
-    expect(existsSync(proof())).toBe(false);
+    expect(existsSync(nativeProofPath())).toBe(false);
   });
 
   it("refuses to certify an extra native file from the working copy", () => {
@@ -284,7 +287,7 @@ describe("full native output proof", () => {
     writeFileSync(join(source, "hooks", "certification-note.txt"), "Synthetic local note.\n");
 
     expect(() => emitClaudeNative({ certifyFullOutput: true })).toThrow(/full native output inventory differs/u);
-    expect(existsSync(proof())).toBe(false);
+    expect(existsSync(nativeProofPath())).toBe(false);
   });
 });
 
@@ -309,7 +312,7 @@ describe("scoped native facet publication", () => {
 
   it.each(facets)("repairs the requested warm %s facet and preserves its neighbors", (facet) => {
     installFacetFixture();
-    emitClaudeNative();
+    emitClaudeNative({ certifyFullOutput: true });
     const paths = nativeFacetPaths();
     const hooksBefore = JSON.parse(readFileSync(paths.hooks, "utf8")).hooks;
     const frozen = [paths.envelope, paths.index, paths.settings];
@@ -355,7 +358,7 @@ describe("scoped native facet publication", () => {
 
   it("refuses duplicate marketplace identities without changing existing files", () => {
     installFacetFixture();
-    emitClaudeNative();
+    emitClaudeNative({ certifyFullOutput: true });
     const paths = nativeFacetPaths();
     const registry = JSON.parse(readFileSync(paths.index, "utf8"));
     registry.plugins.push(registry.plugins[0]);
@@ -369,7 +372,7 @@ describe("scoped native facet publication", () => {
   it.each(["direct", "physical-alias", "unrelated"] as const)("preserves a retained launcher reference: %s", (kind) => {
     const overlap = kind !== "unrelated";
     installFacetFixture();
-    emitClaudeNative();
+    emitClaudeNative({ certifyFullOutput: true });
     const paths = nativeFacetPaths();
     const retainedRoot = join(marketplaceDir(), "plugins", "fixture-retained");
     const retainedConfig = join(retainedRoot, ".mcp.json");
@@ -439,7 +442,7 @@ describe("scoped native facet publication", () => {
 
   it("leaves a differently spelled warm hook file unchanged", () => {
     installFacetFixture();
-    emitClaudeNative();
+    emitClaudeNative({ certifyFullOutput: true });
     const paths = nativeFacetPaths();
     const folder = dirname(paths.hooks);
     const intermediate = join(folder, "fixture-intermediate.json");
@@ -455,7 +458,7 @@ describe("scoped native facet publication", () => {
 
   it("preserves unknown warm hook metadata on refusal", () => {
     installFacetFixture();
-    emitClaudeNative();
+    emitClaudeNative({ certifyFullOutput: true });
     const paths = nativeFacetPaths();
     const { PreToolUse } = JSON.parse(readFileSync(paths.hooks, "utf8")).hooks;
     writeFileSync(paths.hooks, JSON.stringify({ hooks: { PreToolUse }, ownerNote: "Synthetic owner note." }));
@@ -463,6 +466,39 @@ describe("scoped native facet publication", () => {
 
     expect(() => emitClaudeNative({ modules: ["rules"] })).toThrow(/unknown hook metadata/u);
     expect(observeNativeFiles(Object.values(paths))).toEqual(before);
+  });
+});
+
+describe("warm native receipt admission", () => {
+  it.each(["missing", "wrong-source", "edited-unselected"] as const)("refuses a %s receipt condition", (condition) => {
+    installFacetFixture();
+    emitClaudeNative({ certifyFullOutput: true });
+    const files = nativeFacetPaths();
+    const receipt = nativeProofPath();
+    rmSync(files.script);
+    if (condition === "missing") {
+      rmSync(receipt);
+    } else if (condition === "wrong-source") {
+      const body = JSON.parse(readFileSync(receipt, "utf8"));
+      body.sourceDigest = "0".repeat(64);
+      writeFileSync(receipt, JSON.stringify(body), { mode: 0o600 });
+    } else {
+      writeFileSync(files.mcp, "Synthetic changed unselected bytes.\n");
+    }
+    const frozen = [
+      files.hooks,
+      files.envelope,
+      files.mcp,
+      files.launcher,
+      files.index,
+      files.settings,
+      receipt,
+    ].filter(existsSync);
+    const before = observeNativeFiles(frozen);
+
+    expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/native receipt/u);
+    expect(existsSync(files.script)).toBe(false);
+    expect(observeNativeFiles(frozen)).toEqual(before);
   });
 });
 

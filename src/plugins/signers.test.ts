@@ -56,9 +56,23 @@ describe.skipIf(!SUPPORTED)("shared signer CLI writer", () => {
       registerPluginCommands(program);
       await program.parseAsync(process.argv.slice(1), {from: "user"});
     `;
-    const args = ["--import", "tsx", "--input-type=module", "-e", source, "--", "plugin", "trust", "fixture",
-      "--signer", key, "--yes", ...(options.revoke ? ["--revoke"] : [])];
-    const argv = options.held ? ["perl", "-e", holder, `${registry}.agentbrew-signer-v1.lock`, process.execPath, ...args]
+    const args = [
+      "--import",
+      "tsx",
+      "--input-type=module",
+      "-e",
+      source,
+      "--",
+      "plugin",
+      "trust",
+      "fixture",
+      "--signer",
+      key,
+      "--yes",
+      ...(options.revoke ? ["--revoke"] : []),
+    ];
+    const argv = options.held
+      ? ["perl", "-e", holder, `${registry}.agentbrew-signer-v1.lock`, process.execPath, ...args]
       : [process.execPath, ...args];
     return spawnSync(argv[0], argv.slice(1), { encoding: "utf8", timeout: 10_000 });
   }
@@ -74,7 +88,9 @@ describe.skipIf(!SUPPORTED)("shared signer CLI writer", () => {
 
     expect(runTrust(NEXT_KEY).status).toBe(0);
     expect(runTrust(ORIGINAL_KEY, { revoke: true }).status).toBe(0);
-    expect(readFileSync(registry, "utf8")).toBe(REGISTRY_COMMENT + OTHER_ROW + `fixture namespaces="git" ${NEXT_KEY}\n`);
+    expect(readFileSync(registry, "utf8")).toBe(
+      `${REGISTRY_COMMENT}${OTHER_ROW}fixture namespaces="git" ${NEXT_KEY}\n`,
+    );
     expect(statSync(registry).mode & 0o777).toBe(0o640);
     expect(statSync(lock)).toMatchObject({ dev: identity.dev, ino: identity.ino, mode: identity.mode });
   }, 25_000);

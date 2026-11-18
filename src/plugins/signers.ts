@@ -16,6 +16,7 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
 import { cacheGitEnv } from "../mcp/git-ref.js";
+import { withSignerCommitFence } from "./signer-commit-fence.js";
 
 export interface AllowedSigner {
   principal: string;
@@ -38,23 +39,39 @@ export function normalizeKey(raw: string): string {
   return `${parts[0]} ${parts[1]}`;
 }
 
-export function readSigners(): AllowedSigner[] {
-  const path = allowedSignersPath();
-  if (!existsSync(path)) return [];
-  const signers: AllowedSigner[] = [];
-  for (const line of readFileSync(path, "utf-8").split("\n")) {
-    const m = line.trim().match(/^(\S+)\s+(?:namespaces="[^"]*"\s+)?(\S+\s+\S+)/);
-    if (!m || line.trim().startsWith("#")) continue;
-    signers.push({ principal: m[1] as string, key: m[2] as string });
+function readSignerBody(path: string): string {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return "";
+    throw error;
   }
-  return signers;
 }
 
-function writeSigners(signers: AllowedSigner[]): void {
-  const path = allowedSignersPath();
-  mkdirSync(dirname(path), { recursive: true });
-  const body = signers.map((s) => `${s.principal} namespaces="git" ${s.key}`).join("\n");
-  writeFileSync(path, signers.length ? `${body}\n` : "", { mode: 0o644 });
+function parseSigner(line: string): AllowedSigner | undefined {
+  const text = line.trim();
+  if (text.startsWith("#")) return undefined;
+  const match = /^(\S+)\s+(?:namespaces="[^"]*"\s+)?(\S+\s+\S+)/u.exec(text);
+  if (!match) return undefined;
+  return { principal: match[1] as string, key: match[2] as string };
+}
+
+export function readSigners(): AllowedSigner[] {
+  return readSignerBody(allowedSignersPath())
+    .split("\n")
+    .flatMap((line) => parseSigner(line) ?? []);
+}
+
+function editSigners(path: string, edit: (body: string) => string | undefined): void {
+  const publish = (registry: string, mode: number) => {
+    const body = edit(readSignerBody(registry));
+    if (body !== undefined) writeFileSync(registry, body, { mode });
+  };
+  if (process.platform === "darwin" || process.platform === "linux") {
+    withSignerCommitFence(path, publish);
+  } else {
+    publish(path, 0o644);
+  }
 }
 
 export function signersFor(principal: string): string[] {
@@ -63,21 +80,35 @@ export function signersFor(principal: string): string[] {
     .map((s) => s.key);
 }
 
+function signerMatches(line: string, principal: string, key: string): boolean {
+  const signer = parseSigner(line);
+  return signer?.principal === principal && signer.key === key;
+}
+
 /** Trust `key` for plugin `principal`. Idempotent. */
 export function trustSigner(principal: string, rawKey: string): void {
   const key = normalizeKey(rawKey);
-  const signers = readSigners();
-  if (signers.some((s) => s.principal === principal && s.key === key)) return;
-  writeSigners([...signers, { principal, key }]);
+  const path = allowedSignersPath();
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  editSigners(path, (body) => {
+    if (body.split("\n").some((line) => signerMatches(line, principal, key))) return undefined;
+    const separator = body && !body.endsWith("\n") ? "\n" : "";
+    return `${body}${separator}${principal} namespaces="git" ${key}\n`;
+  });
 }
 
 /** Stop trusting `key` for plugin `principal`. */
 export function revokeSigner(principal: string, rawKey: string): void {
   const key = normalizeKey(rawKey);
-  const signers = readSigners();
-  const kept = signers.filter((s) => !(s.principal === principal && s.key === key));
-  if (kept.length === signers.length) throw new Error(`Signer is not trusted for "${principal}".`);
-  writeSigners(kept);
+  const path = allowedSignersPath();
+  const missing = () => new Error(`Signer is not trusted for "${principal}".`);
+  if (!existsSync(dirname(path))) throw missing();
+  editSigners(path, (body) => {
+    const lines = body.match(/[^\n]*\n|[^\n]+$/gu) ?? [];
+    const retained = lines.filter((line) => !signerMatches(line, principal, key));
+    if (retained.length === lines.length) throw missing();
+    return retained.join("");
+  });
 }
 
 function fingerprint(key: string): string {

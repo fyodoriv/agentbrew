@@ -91,17 +91,21 @@ function readSettings(): Record<string, unknown> | undefined {
 }
 
 /** Set our marketplace and enabled plugins; drop stale entries we own. Other keys stay. */
-function updateSettings(names: string[]): void {
+function updateSettings(names: string[], preserveDisabled = false): void {
   const current = readSettings();
   if (!current && names.length === 0) return;
   const settings = current ?? {};
   const markets = { ...((settings.extraKnownMarketplaces as Record<string, unknown>) ?? {}) };
-  const enabled = { ...((settings.enabledPlugins as Record<string, boolean>) ?? {}) };
+  const previous = (settings.enabledPlugins as Record<string, boolean>) ?? {};
+  const enabled = { ...previous };
   for (const key of Object.keys(enabled)) if (key.endsWith(`@${MARKETPLACE_NAME}`)) delete enabled[key];
   delete markets[MARKETPLACE_NAME];
   if (names.length > 0) {
     markets[MARKETPLACE_NAME] = { source: { source: "directory", path: marketplaceDir() } };
-    for (const name of names) enabled[`${name}@${MARKETPLACE_NAME}`] = true;
+    for (const name of names) {
+      const key = `${name}@${MARKETPLACE_NAME}`;
+      enabled[key] = !preserveDisabled || previous[key] !== false;
+    }
   }
   settings.extraKnownMarketplaces = markets;
   settings.enabledPlugins = enabled;
@@ -155,7 +159,10 @@ function publishNative(certification?: { beginMutation: () => void }): void {
   } else {
     rmSync(marketplaceDir(), { recursive: true, force: true });
   }
-  updateSettings(entries.map((e) => e.name));
+  updateSettings(
+    entries.map((entry) => entry.name),
+    certification !== undefined,
+  );
   if (certification) certifyFullNativeOutput(plugins, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK);
 }
 

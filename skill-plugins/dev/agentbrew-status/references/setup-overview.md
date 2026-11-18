@@ -61,3 +61,6 @@ A detected agent directory does not prove the app runs. Check the runtime
 line for a missing command; use `status --verbose` for version and Codex
 sign-in details. Unmanaged skill folders need a source decision. Check the
 shared `~/.agents/skills` folder before saying a skill is unavailable in Codex.
+
+For browser compatibility or Chrome extension guidance, use
+`agentbrew install modern-web-guidance`.

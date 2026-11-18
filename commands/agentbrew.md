@@ -22,6 +22,8 @@ Then, answer first:
 
 To change a setting the user asks for, run `agentbrew config` (each setting, its value, its source, and the allowed values). Then run `agentbrew config set <key> <value>`: it checks the value and saves it. Never hand-edit `~/.config/agentbrew/state.yaml` or generated agent config under `~/.claude/`. If the user does not want this command, run `agentbrew config set builtinCommands off`.
 
+When the user asks to add Chrome's Modern Web Guidance, use `agentbrew install modern-web-guidance` for browser features and Chrome extensions.
+
 Every other action: run `agentbrew actions --json`. It lists every command (generated from the CLI), its arguments, and three notes:
 
 - `terminal_only`: only the user can run it. Give them the exact command for their own terminal.

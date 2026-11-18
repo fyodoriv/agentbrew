@@ -498,7 +498,8 @@ function assertWarmNativeReceipt(
   }
   if (paths.size !== signedFiles.size) refuse("native receipt does not cover the signed inventory");
   if (pendingWrites.size > 0) refuse("native receipt does not cover the planned change");
-  assertNativeTree(root, present);
+  const repairs = writes.map(({ path }) => path).filter((path) => path.startsWith(`${root}${sep}`));
+  assertNativeTree(root, present, repairs);
 }
 
 function expectedPartialHooks(
@@ -605,15 +606,18 @@ function listNativeTree(root: string): string[] {
   });
 }
 
-function assertNativeTree(root: string, files: readonly string[]): void {
+function addNativeAncestors(root: string, file: string, expected: Set<string>, existingOnly = false): void {
+  for (let folder = dirname(file); folder !== root; folder = dirname(folder)) {
+    if (!folder.startsWith(`${root}${sep}`)) refuse("full native output inventory differs");
+    if (!existingOnly || existingOwnedPath(folder, "directory")) expected.add(folder);
+  }
+}
+
+function assertNativeTree(root: string, files: readonly string[], repairs: readonly string[] = []): void {
   const expected = new Set(files);
   if (expected.size !== files.length) refuse("full native output paths overlap");
-  for (const file of files) {
-    for (let folder = dirname(file); folder !== root; folder = dirname(folder)) {
-      if (!folder.startsWith(`${root}${sep}`)) refuse("full native output inventory differs");
-      expected.add(folder);
-    }
-  }
+  for (const file of files) addNativeAncestors(root, file, expected);
+  for (const repair of repairs) addNativeAncestors(root, repair, expected, true);
   if (!isDeepStrictEqual(listNativeTree(root).sort(), [...expected].sort())) {
     refuse("full native output inventory differs");
   }

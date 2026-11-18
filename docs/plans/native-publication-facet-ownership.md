@@ -1068,3 +1068,24 @@ publishing under the incompatible mask.
   or a changed fixture result blocks the order claim.
 - **Anchor**: The recorded built CLI matrix and the real atomic writes
   in native publication and privacy redaction.
+
+## Observe an active owner across CLI writer entry points
+
+- **Hypothesis**: An active process owner currently blocks the opted-in
+  selected route. Ordinary full sync and plugin removal still enter
+  their legacy paths while that owner exists.
+- **Measurement**: Use three independently installed signed scratch
+  plugins and the built CLI in a loopback-only namespace. Give each
+  case a separate, synchronized child holding the real process owner.
+  Run selected hooks, default sync, and removal of the scratch plugin.
+  Check exact owner bytes, known output, and the installed source pin.
+  Bound and stop only the disposable holder processes.
+- **Success**: Selected exits nonzero with no native payload. Default
+  emits its native artifacts while the other owner remains. Removal
+  removes only its admitted scratch pin while the other owner remains.
+  All three preserve the original owner and deny unknown subprocesses.
+- **Pivot**: A missed owner boundary, altered owner, unexpected calls,
+  or any shared work folder keeps the concurrency baseline unqualified.
+  This comparison does not enable any writer.
+- **Anchor**: The signed CLI and atomic order receipts, and the current
+  separate lifecycle and native publication functions.

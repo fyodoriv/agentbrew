@@ -708,7 +708,12 @@ describe("exact build guard comparison", () => {
       failed: "exit 5\n",
       missing: "exit 0\n",
       malformed: "echo not-json\n",
-      partial: `printf '%s\\n' '[{"name":"fixture-root","version":"1.0.0","location":""}]'\n`,
+      partial: `if [[ "$*" == *" ls "* ]]; then
+  printf '%s\\n' '{"name":"fixture-root","version":"1.0.0"}'
+else
+  printf '%s\\n' '[{"name":"fixture-root","version":"1.0.0","location":""}]'
+fi
+`,
     }[variant];
     writeFileSync(npm, `#!/bin/bash\n${response}`, { mode: 0o700 });
     const result = runGuard("--deps-only", { PATH: `${bin}:${process.env.PATH}` });

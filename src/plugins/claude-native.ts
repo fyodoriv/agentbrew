@@ -14,7 +14,12 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
-import { type NativeFacet, nativePluginEntry, publishSelectedNativePlugins } from "./claude-native-selected.js";
+import {
+  certifyFullNativeOutput,
+  type NativeFacet,
+  nativePluginEntry,
+  publishSelectedNativePlugins,
+} from "./claude-native-selected.js";
 import { type ActivePlugin, activePlugins } from "./contributions.js";
 import { launcherPath, readPluginMcpServers, renderLauncher } from "./mcp-launcher.js";
 import { withNativePublicationLock } from "./native-publication-lock.js";
@@ -106,8 +111,8 @@ function updateSettings(names: string[]): void {
 }
 
 /** Regenerate the local marketplace and settings from the active plugins. */
-export function emitClaudeNative(options?: { modules?: readonly NativeFacet[] }): void {
-  withNativePublicationLock(() => publishNative(options?.modules));
+export function emitClaudeNative(options?: { modules?: readonly NativeFacet[]; certifyFullOutput?: boolean }): void {
+  withNativePublicationLock(() => publishNative(options?.modules, options?.certifyFullOutput));
 }
 
 /** Admit a plugin mutation and its marketplace release under one process owner. */
@@ -125,7 +130,7 @@ export function applyPluginAndPublish<T>(apply: () => T, discardUnadmitted?: () 
   }
 }
 
-function publishNative(modules: readonly NativeFacet[] | undefined): void {
+function publishNative(modules: readonly NativeFacet[] | undefined, certify = false): void {
   const plugins = activePlugins();
   if (modules) {
     publishSelectedNativePlugins(plugins, modules, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK);
@@ -153,6 +158,7 @@ function publishNative(modules: readonly NativeFacet[] | undefined): void {
     rmSync(marketplaceDir(), { recursive: true, force: true });
   }
   updateSettings(entries.map((e) => e.name));
+  if (certify) certifyFullNativeOutput(plugins, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK);
 }
 
 export interface PolicyFragment {

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, normalize, posix, relative, sep } from "node:path";
@@ -125,7 +126,7 @@ function assertHookDestinationPaths(scripts: ReadonlyArray<{ path: string }>): v
 
 function readSignedHooks(plugin: ActivePlugin, includeFiles: boolean) {
   const source = plugin.manifest.contributes?.hooks;
-  if (typeof source !== "string") return { declared: {}, scripts: [] };
+  if (typeof source !== "string") return { declared: {}, scripts: [], declaration: undefined };
   const sourceDir = posix.dirname(source);
   if (includeFiles && sourceDir === ".") refuse("the signed hook files have no dedicated directory");
   const files = readPinnedPluginFiles(plugin.entry, includeFiles ? sourceDir : source);
@@ -137,7 +138,8 @@ function readSignedHooks(plugin: ActivePlugin, includeFiles: boolean) {
         .map((file) => ({ ...file, path: posix.relative(sourceDir, file.path) }))
     : [];
   assertHookDestinationPaths(scripts);
-  return { declared: readHooks(declaredFile.body), scripts };
+  const declaration = { ...declaredFile, path: posix.relative(sourceDir, declaredFile.path) };
+  return { declared: readHooks(declaredFile.body), scripts, declaration };
 }
 
 function planHooks(
@@ -171,24 +173,37 @@ function planHooks(
   }
 }
 
-function planMcp(writes: PlannedWrite[], claims: Map<string, string>, plugin: ActivePlugin, root: string): void {
+function nativeMcpFiles(plugin: ActivePlugin, root: string): PlannedWrite[] {
   const rel = plugin.manifest.contributes?.mcp_servers;
-  if (typeof rel !== "string") return;
+  if (typeof rel !== "string") return [];
   const [declaration, ...others] = readPinnedPluginFiles(plugin.entry, rel);
   if (declaration?.path !== rel || others.length > 0) refuse("the MCP declaration is absent from the signed tree");
   const servers = parsePluginMcpServers(declaration.body.toString("utf8"));
   if (validateMcpServers(servers).length > 0) refuse("the signed MCP declaration is invalid");
-  if (servers.length === 0) return;
+  if (servers.length === 0) return [];
+  const launchers: PlannedWrite[] = [];
   const entries = servers.map((server) => {
     const command = launcherPath(plugin.entry.name, server.name);
-    const home = homedir();
-    const claim = physicalSpelling(join(realpathSync.native(home), relative(home, command)));
-    if (claims.has(claim)) refuse("native output paths overlap");
-    claims.set(claim, plugin.entry.name);
-    planMissingFile(writes, command, Buffer.from(launcherContent(server)), 0o755);
+    launchers.push({ path: command, body: Buffer.from(launcherContent(server)), mode: 0o755 });
     return [server.name, { command, args: [] }] as const;
   });
-  planMissingFile(writes, join(root, ".mcp.json"), jsonBytes({ mcpServers: Object.fromEntries(entries) }));
+  return [
+    ...launchers,
+    { path: join(root, ".mcp.json"), body: jsonBytes({ mcpServers: Object.fromEntries(entries) }) },
+  ];
+}
+
+function planMcp(writes: PlannedWrite[], claims: Map<string, string>, plugin: ActivePlugin, root: string): void {
+  const home = homedir();
+  const physicalHome = realpathSync.native(home);
+  for (const { path, body, mode } of nativeMcpFiles(plugin, root)) {
+    if (mode === 0o755) {
+      const claim = physicalSpelling(join(physicalHome, relative(home, path)));
+      if (claims.has(claim)) refuse("native output paths overlap");
+      claims.set(claim, plugin.entry.name);
+    }
+    planMissingFile(writes, path, body, mode);
+  }
 }
 
 interface Marketplace {
@@ -301,8 +316,10 @@ function planPlugin(
   return true;
 }
 
-function assertCurrentNativeSources(planned: readonly PluginLockEntry[]): void {
+function assertCurrentNativeSources(planned: readonly PluginLockEntry[], complete = false): void {
   const current = readLock().plugins ?? [];
+  if (complete && current.length !== planned.length)
+    refuse("the full native output does not cover every installed pin");
   const signers = readSigners();
   for (const entry of planned) {
     const matches = current.filter(({ name }) => name === entry.name);
@@ -316,6 +333,103 @@ function assertCurrentNativeSources(planned: readonly PluginLockEntry[]): void {
       refuse("the planned plugin signer trust changed");
     }
   }
+}
+
+const NATIVE_RECEIPT_FILE = ".agentbrew-native-receipt.json";
+
+function digest(body: Buffer | string): string {
+  return createHash("sha256").update(body).digest("hex");
+}
+
+function expectedFullOutput(active: ActivePlugin, marketplace: string, rulesHook: unknown) {
+  const plugin = withPinnedManifest(active);
+  const entry = nativePluginEntry(plugin);
+  const root = join(marketplace, entry.source);
+  const { source: _source, ...envelope } = entry;
+  const hooksRoot = join(root, "hooks");
+  const { declared, scripts, declaration } = readSignedHooks(plugin, true);
+  const auxiliary = declaration && declaration.path !== "hooks.json" ? [...scripts, declaration] : scripts;
+  assertHookDestinationPaths(auxiliary);
+  const mcp = nativeMcpFiles(plugin, root);
+  const files: PlannedWrite[] = [
+    { path: join(root, ".claude-plugin", "plugin.json"), body: jsonBytes(envelope) },
+    { path: join(hooksRoot, "hooks.json"), body: jsonBytes({ hooks: withRulesHook(declared, rulesHook) }) },
+    ...auxiliary.map((file) => ({ ...file, path: join(hooksRoot, file.path) })),
+    ...mcp,
+  ];
+  return { entry, root, files, sourceDigest: digest(JSON.stringify(pluginSourceIdentity(plugin.entry))) };
+}
+
+function listNativeTree(root: string): string[] {
+  if (!existingOwnedPath(root, "directory")) return [];
+  return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) return [path, ...listNativeTree(path)];
+    if (entry.isFile()) return [path];
+    return refuse("full native output inventory differs");
+  });
+}
+
+function assertNativeTree(root: string, files: readonly string[]): void {
+  const expected = new Set(files);
+  if (expected.size !== files.length) refuse("full native output paths overlap");
+  for (const file of files) {
+    for (let folder = dirname(file); folder !== root; folder = dirname(folder)) {
+      if (!folder.startsWith(`${root}${sep}`)) refuse("full native output inventory differs");
+      expected.add(folder);
+    }
+  }
+  if (!isDeepStrictEqual(listNativeTree(root).sort(), [...expected].sort())) {
+    refuse("full native output inventory differs");
+  }
+}
+
+function verifyFullFile({ path, body, mode }: PlannedWrite) {
+  const content = readOutput(path);
+  if (!content?.equals(body)) refuse("full native output bytes differ");
+  const stat = lstatSync(path);
+  const actualMode = stat.mode & 0o777;
+  if (stat.nlink !== 1 || (mode !== undefined && actualMode !== mode))
+    refuse("full native output file identity differs");
+  return { path: relative(homedir(), path), mode: actualMode, digest: digest(content) };
+}
+
+/** Verify a normal full emission from independent pinned inputs before recording any proof. */
+export function certifyFullNativeOutput(
+  plugins: readonly ActivePlugin[],
+  marketplace: string,
+  name: string,
+  rulesHook: unknown,
+): void {
+  if (plugins.length === 0 && (readLock().plugins ?? []).length === 0) return;
+  const expected = plugins.map((plugin) => expectedFullOutput(plugin, marketplace, rulesHook));
+  const launcherRoot = dirname(launcherPath("x", "y"));
+  const index: PlannedWrite = {
+    path: join(marketplace, ".claude-plugin", "marketplace.json"),
+    body: jsonBytes({ name, owner: { name: "agentbrew" }, plugins: expected.map(({ entry }) => entry) }),
+  };
+  const outputs = expected.flatMap(({ files }) => files.map(({ path }) => path));
+  const launcherOutputs = outputs.filter((path) => dirname(path) === launcherRoot);
+  withSignerCommitFence(allowedSignersPath(), () => {
+    assertCurrentNativeSources(
+      plugins.map(({ entry }) => entry),
+      true,
+    );
+    assertNativeTree(launcherRoot, launcherOutputs);
+    assertNativeTree(marketplace, [index.path, ...outputs.filter((path) => !launcherOutputs.includes(path))]);
+    verifyFullFile(index);
+    const receipts = expected.map(({ root, files, sourceDigest }) => ({
+      path: join(root, NATIVE_RECEIPT_FILE),
+      body: jsonBytes({
+        schema: 1,
+        sourceDigest,
+        files: files
+          .map(verifyFullFile)
+          .sort((left, right) => (left.path < right.path ? -1 : Number(left.path > right.path))),
+      }),
+    }));
+    for (const { path, body } of receipts) writeFileSync(path, body, { mode: 0o600 });
+  });
 }
 
 /** Publish only proven payloads. Activation is outside this writer. */

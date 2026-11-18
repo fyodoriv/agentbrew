@@ -35,3 +35,20 @@ has a required qualification job. The
 [real cross-tool run](https://github.com/fyodoriv/agentbrew/actions/runs/44253654456)
 used merged Dotfiles #754 and passed the lock, release, row and
 inode checks.
+
+## Match valid rows with mixed whitespace
+
+Independent review found that the registry parser preserves the
+space between a key type and its value when returning a signer.
+Trust and revoke compare that result to a canonical one-space key.
+
+- **Hypothesis**: A row with tabs and multiple spaces names the
+  same signer as a one-space CLI argument.
+- **Measurement**: Run trust, list and revoke against a mixed-space
+  row. Compare file bytes after an idempotent trust and after revoke.
+- **Success**: Trust leaves every byte unchanged, list reports one
+  canonical key and revoke removes just that row.
+- **Pivot**: A duplicate row, a false refusal, or changed unrelated
+  bytes rejects the parser.
+- **Anchor**: Dotfiles' field-based registry parser and the
+  independent review of Agentbrew's key normalization.

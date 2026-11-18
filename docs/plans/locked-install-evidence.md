@@ -313,3 +313,19 @@ new guard finishes with a lock-only query that returns a package array.
   exact comparison command contract.
 
 The original fixture inputs and the classifier calibration stay fixed.
+
+### Hosted ordered observation result
+
+The [macOS cohort](https://github.com/fyodoriv/agentbrew/actions/runs/44226870475)
+passed all 89 checks across the three fixture files. It emitted eleven
+complete receipts across the five negative families and four positive
+controls. N2 used a verified reinstall after rejecting the stale donor.
+N1, N3, N4 and every N5 variant refused. All four positive controls were
+supported, including the real APFS clone. There were zero unsafe
+decisions. The initial run still records the old last-response parser's
+three false classifications.
+
+The [Ubuntu observer](https://github.com/fyodoriv/agentbrew/actions/runs/44227010789)
+independently verified both reuse cases and all seven guard receipts.
+These runs qualify the frozen controls. Complete publication and the full
+gate on the merged parent remain separate.

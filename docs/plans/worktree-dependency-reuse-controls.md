@@ -40,3 +40,6 @@ version evidence.
 - **Pivot**: Any changed external file, unsafe stamp, extra install, or
   healthy regression rejects the publication method.
 - **Anchor**: Review of N2/N3 readiness publication in this plan.
+
+The hosted pre-fix fixture returned status 0 in both new controls, which
+expected status 1. See [publication baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44206413141).

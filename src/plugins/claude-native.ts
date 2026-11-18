@@ -14,6 +14,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
+import { type NativeFacet, nativePluginEntry, publishSelectedNativePlugins } from "./claude-native-selected.js";
 import { type ActivePlugin, activePlugins } from "./contributions.js";
 import { launcherPath, readPluginMcpServers, renderLauncher } from "./mcp-launcher.js";
 
@@ -67,15 +68,14 @@ function pruneLaunchers(keep: Set<string>): void {
 }
 
 function emitPlugin(plugin: ActivePlugin): { name: string; source: string; version: string; description: string } {
-  const { name } = plugin.entry;
-  const root = join(marketplaceDir(), "plugins", name);
+  const entry = nativePluginEntry(plugin);
+  const { source, ...envelope } = entry;
+  const root = join(marketplaceDir(), source);
   rmSync(root, { recursive: true, force: true });
-  const version = `${plugin.manifest.version}+${plugin.entry.commit.slice(0, 8)}`;
-  const description = `Company plugin ${name}, managed by agentbrew`;
-  writeJson(join(root, ".claude-plugin", "plugin.json"), { name, version, description });
+  writeJson(join(root, ".claude-plugin", "plugin.json"), envelope);
   emitHooks(plugin, root);
   emitMcp(plugin, root);
-  return { name, source: `./plugins/${name}`, version, description };
+  return entry;
 }
 
 function readSettings(): Record<string, unknown> | undefined {
@@ -105,8 +105,12 @@ function updateSettings(names: string[]): void {
 }
 
 /** Regenerate the local marketplace and settings from the active plugins. */
-export function emitClaudeNative(): void {
+export function emitClaudeNative(options?: { modules?: readonly NativeFacet[] }): void {
   const plugins = activePlugins();
+  if (options?.modules) {
+    publishSelectedNativePlugins(plugins, options.modules, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK);
+    return;
+  }
   const entries = plugins.map(emitPlugin);
   pruneLaunchers(
     new Set(

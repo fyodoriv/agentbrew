@@ -1114,3 +1114,25 @@ sync and plugin removal still made their registered changes.
   ordinary behavior regression blocks promotion.
 - **Anchor**: The real writer baseline and exact publisher receipts.
   Add, update, rollback and production policy remain separate.
+
+## Measure activation preservation during a scoped CLI run
+
+- **Hypothesis**: Selective payload publication keeps the installed
+  activation state exact. A previously certified warm plugin can
+  repair one selected file without activating a disabled or unknown
+  entry. This measures preservation only.
+- **Measurement**: Use four fresh signed homes in the built CLI.
+  Run cold selected hooks. Separately certify full output and remove
+  one signed hook file for enabled and disabled repairs. For the
+  fourth case give the cold home an unrecognized activation value.
+  Compare the complete settings identity before and after. Check
+  receipt and signed bytes, the written target, and excluded files.
+- **Success**: Four exact settings snapshots, including no cold
+  activation and an exact disabled value. Both warm repairs restore
+  the signed asset and keep the prior full receipt and other native
+  payload. The unknown value is preserved. Zero denied child calls.
+- **Pivot**: Any activation edit, unexpected warm output, loss of a
+  disabled knob or changed user setting blocks this preservation claim.
+  No production activation follows from a positive result.
+- **Anchor**: The earlier settings ownership tests, signed CLI case
+  receipts and original cold/warm acceptance boundary.

@@ -13,7 +13,9 @@ import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { sync as writeFileAtomic } from "write-file-atomic";
 import { getStateSources } from "../agentfile.js";
+import { lockSource } from "../lock.js";
 import { INSTALLED_SKILLS_DIR } from "../paths.js";
+import { recordSourceSha } from "../skills/skill-versions.js";
 import { loadState, saveState } from "../state.js";
 import { expandHome } from "../utils.js";
 import { findSkillDirInCache, getSourceCachePath } from "./index-source.js";
@@ -261,5 +263,30 @@ describe("owner-preserving named catalog installs", () => {
     await installAt("project");
     expect(readFileSync(join(local, "SKILL.md"), "utf-8")).toBe("# Catalog guide");
     expect(readFileSync(join(project, "Agentfile.yaml"), "utf-8")).toContain(skill.name);
+  });
+  it("locks the same updated source that was committed to state", async () => {
+    const previous = "a".repeat(40);
+    const next = "b".repeat(40);
+    const state = loadState()!;
+    state.sources = [
+      {
+        url: skill.source,
+        type: "github",
+        addedAt: "2026-01-01T00:00:00Z",
+        skillsInstalled: ["another-skill"],
+        availableItems: [],
+        commitSha: previous,
+      },
+    ];
+    vi.mocked(recordSourceSha).mockImplementationOnce((source) => {
+      source.commitSha = next;
+    });
+
+    await installAt("staging");
+
+    expect(state.sources[0].commitSha).toBe(previous);
+    const written = vi.mocked(saveState).mock.calls[0][0].sources?.[0];
+    expect(written?.commitSha).toBe(next);
+    expect(lockSource).toHaveBeenCalledWith(written, [skill.name]);
   });
 });

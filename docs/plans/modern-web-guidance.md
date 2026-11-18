@@ -77,6 +77,8 @@ combined catalog, Agentfile, and deployment tests passed 268 checks.
 
 The first candidate failed all six controls. It contacted the source for
 an existing copy, and a registration error left a protected directory
-behind. The final local check passed all 457 tests in ten suites.
+behind. The final local check passed all 458 tests in ten suites.
 A same-name copy now skips source lookup. A failed registration removes
 the copy created by that install, so a later retry can register it.
+The lock uses the same source commit as the saved catalog state. A
+fixture with an older recorded commit checked this after refresh.

@@ -148,12 +148,12 @@ export async function installFromSource(
 }
 
 /** Register a copied catalog skill and report persistence failure for protected copies. */
-function registerInstalledSkill(source: Source, skill: CatalogSkill): void {
+function registerInstalledSkill(source: Source, skill: CatalogSkill): Source {
   const current = loadState();
   const registrationError = `Could not register catalog skill '${skill.name}'. Retry the install after fixing agentbrew state.`;
   if (!current) {
     if (skill.preserveExisting) throw new Error(registrationError);
-    return;
+    return source;
   }
 
   const state = skill.preserveExisting
@@ -178,6 +178,7 @@ function registerInstalledSkill(source: Source, skill: CatalogSkill): void {
   }
   const persisted = saveState(state);
   if (skill.preserveExisting && persisted === false) throw new Error(registrationError);
+  return tracked ?? source;
 }
 
 /** Resolves the source object and cache path for a catalog skill. Returns undefined if resolution fails. */
@@ -342,15 +343,16 @@ export async function installSkill(
     return;
   }
 
+  let installedSource = resolved.source;
   const copied = copySkillDirectory(skillDir, destination, skill.preserveExisting, () => {
-    registerInstalledSkill(resolved.source, skill);
+    installedSource = registerInstalledSkill(resolved.source, skill);
   });
   if (!copied) {
     console.log(keptMessage);
     return;
   }
 
-  const lockEntry = lockSource(resolved.source, [skill.name]);
+  const lockEntry = lockSource(installedSource, [skill.name]);
   if (lockEntry) {
     console.log(chalk.dim(`  Locked ${skill.source} @${lockEntry.sha.slice(0, 8)}`));
   }

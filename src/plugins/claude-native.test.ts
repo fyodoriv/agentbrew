@@ -3,6 +3,7 @@
  * plugin per company plugin, enabled in user settings, side by side with
  * file rendering. Plus `agentbrew plugin policy`.
  */
+import { spawnSync } from "node:child_process";
 import {
   appendFileSync,
   existsSync,
@@ -31,6 +32,7 @@ const { home, previousHome } = vi.hoisted(() => {
 import { fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { emitClaudeNative, MARKETPLACE_NAME, marketplaceDir, policyFragment } from "./claude-native.js";
 import { launcherPath } from "./mcp-launcher.js";
+import { withNativePublicationLock } from "./native-publication-lock.js";
 import { addPlugin, pluginDir, removePlugin } from "./store.js";
 
 const KEY = fixtureKey();
@@ -141,6 +143,49 @@ describe("native publisher admission", () => {
       expect(observeNativeFiles([owner])).toEqual(before);
       expect(existsSync(marketplaceDir())).toBe(false);
       expect(existsSync(SETTINGS())).toBe(false);
+    } finally {
+      rmSync(owner);
+    }
+  });
+
+  function attemptPublication(interrupt = false) {
+    const moduleUrl = new URL("./native-publication-lock.ts", import.meta.url).href;
+    const source = `
+      import { withNativePublicationLock } from ${JSON.stringify(moduleUrl)};
+      try {
+        withNativePublicationLock(() => {
+          if (${interrupt}) process.exit(77);
+          process.stdout.write("published");
+        });
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.includes("publication is busy")) throw error;
+        process.exitCode = 75;
+      }
+    `;
+    return spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e", source], {
+      encoding: "utf8",
+      timeout: 10_000,
+      env: { ...process.env, HOME: home, TSX_DISABLE_CACHE: "1" },
+    });
+  }
+
+  it("refuses a separate process during ownership and admits it after release", () => {
+    withNativePublicationLock(() => {
+      const before = observeNativeFiles([owner]);
+      expect(attemptPublication()).toMatchObject({ status: 75, stdout: "", stderr: "" });
+      expect(observeNativeFiles([owner])).toEqual(before);
+    });
+
+    expect(attemptPublication()).toMatchObject({ status: 0, stdout: "published", stderr: "" });
+    expect(existsSync(owner)).toBe(false);
+  });
+
+  it("retains an interrupted process's record and refuses entry", () => {
+    expect(attemptPublication(true)).toMatchObject({ status: 77, stdout: "", stderr: "" });
+    try {
+      const before = observeNativeFiles([owner]);
+      expect(attemptPublication()).toMatchObject({ status: 75, stdout: "", stderr: "" });
+      expect(observeNativeFiles([owner])).toEqual(before);
     } finally {
       rmSync(owner);
     }

@@ -47,9 +47,12 @@ import { checkCliBuildDrift } from "./cli-build-health.js";
 import { recordEvent } from "./core/events.js";
 import { prepareWorkspaceAgentfile } from "./core/workspaces.js";
 import { rollbackAgentConfigs } from "./ops.js";
+import { emitClaudeNative } from "./plugins/claude-native.js";
+import { writeRedactPatterns } from "./plugins/leak-audit.js";
 import { clearRepairLog, touchLastSeen } from "./repair-log.js";
 import { loadState } from "./state.js";
-import { runSyncParallel } from "./sync-runner.js";
+import { buildSyncModules, runSyncParallel } from "./sync-runner.js";
+import { AGENT_DEFINITIONS } from "./types.js";
 import { update } from "./update.js";
 
 const health = vi.mocked(checkCliBuildDrift);
@@ -63,6 +66,49 @@ beforeEach(() => {
 afterEach(() => {
   process.exitCode = undefined;
   vi.restoreAllMocks();
+});
+
+describe("native selection publication gate", () => {
+  const moduleNames = ["mcp", "rules", "commands", "agents", "skills", "hooks", "models", "instructions"];
+  const cases = [
+    { only: "commands", modules: ["commands"], publish: false },
+    { only: "agents", modules: ["agents"], publish: false },
+    { only: "skills", modules: ["skills"], publish: false },
+    { only: "models", modules: ["models"], publish: false },
+    { only: "instructions", modules: ["instructions"], publish: false },
+    { only: "hooks", modules: ["hooks"], publish: true },
+    { only: "mcp", modules: ["mcp"], publish: true },
+    { only: "rules", modules: ["rules"], publish: true },
+    { only: " Commands , MCP ", modules: ["mcp", "commands"], publish: true },
+    { only: undefined, modules: moduleNames, publish: true },
+    { only: "mcp", modules: ["mcp"], publish: false, dryRun: true },
+  ];
+
+  it.each(cases)("publishes only for a relevant live mode: $only, $dryRun", async ({
+    only,
+    modules,
+    publish,
+    dryRun,
+  }) => {
+    health.mockReturnValue([]);
+    vi.mocked(loadState).mockReturnValue({
+      agents: [{ ...AGENT_DEFINITIONS[0], detected: false }],
+      catalogVersion: "synthetic",
+    });
+    const args = ["node", "test", "sync", "--no-recommended"];
+    if (only !== undefined) args.push("--only", only);
+    if (dryRun) args.push("--dry-run");
+    await vi.mocked(buildSyncModules).withImplementation(
+      () => moduleNames.map((name) => ({ name, fn: vi.fn() })),
+      async () => {
+        await buildProgram().parseAsync(args);
+      },
+    );
+
+    expect(vi.mocked(runSyncParallel).mock.calls[0]?.[0].map(({ name }) => name)).toEqual(modules);
+    expect(writeRedactPatterns).toHaveBeenCalledTimes(dryRun ? 0 : 1);
+    expect(emitClaudeNative).toHaveBeenCalledTimes(publish ? 1 : 0);
+  });
 });
 
 describe("sync build health", () => {

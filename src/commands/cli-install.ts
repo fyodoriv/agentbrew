@@ -13,7 +13,12 @@ import { parseKeyValuePairs } from "../utils.js";
 /** Apply an Agentfile and install any declared skills or recommended items. */
 export async function applyAgentfileAndInstall(
   agentfilePath: string,
-  options?: { installRequestedItems?: boolean; dryRun?: boolean; authoritative?: boolean },
+  options?: {
+    installRequestedItems?: boolean;
+    dryRun?: boolean;
+    authoritative?: boolean;
+    syncModules?: readonly string[];
+  },
 ): Promise<void> {
   const { resolve } = await import("node:path");
   const { applyAgentfile } = await import("../agentfile.js");
@@ -24,6 +29,7 @@ export async function applyAgentfileAndInstall(
     authoritative: options?.authoritative ?? true,
     includeSkillInstallReport: installRequestedItems,
     dryRun,
+    ...(options?.syncModules && { syncModules: options.syncModules }),
   });
   if (!result) {
     console.error(chalk.yellow(`  Agentfile not found: ${resolved}`));

@@ -341,6 +341,46 @@ describe("selected native publication interruption", () => {
     }
   });
 
+  it.each(["script", "envelope"] as const)("refuses a later %s edit after the first native write", async (kind) => {
+    installFacetFixture();
+    const files = nativeFacetPaths();
+    const target = files[kind];
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    const edit = "Synthetic owner edit.\n";
+    const atomic = await vi.importActual<typeof import("write-file-atomic")>("write-file-atomic");
+    vi.mocked(atomicWrite).mockClear();
+    vi.mocked(atomicWrite).mockImplementationOnce((...args) => {
+      expect(args[0]).toBe(files.hooks);
+      atomic.sync(...args);
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, edit);
+    });
+    const publish = () => emitClaudeNative({ modules: ["hooks"] });
+    try {
+      expect(publish).toThrow(/a planned native destination changed after review/u);
+      expect(readFileSync(target, "utf8")).toBe(edit);
+      expect(statSync(owner).mode & 0o777).toBe(0o600);
+      const record = JSON.parse(readFileSync(owner, "utf8"));
+      expect(record.intent).toHaveLength(5);
+      expect(record.intent).toContainEqual({
+        path: relative(home, target),
+        before: null,
+        after: { digest: expect.any(String), mode: expect.any(Number) },
+      });
+      expect(existsSync(nativeProofPath())).toBe(false);
+      expect(existsSync(files.index)).toBe(false);
+      expect(atomicWrite).toHaveBeenCalledTimes(kind === "script" ? 1 : 2);
+      const beforeRetry = observeNativeFiles([owner, target, files.hooks]);
+      vi.mocked(atomicWrite).mockClear();
+      expect(publish).toThrow(/native publication is busy/u);
+      expect(atomicWrite).not.toHaveBeenCalled();
+      expect(observeNativeFiles([owner, target, files.hooks])).toEqual(beforeRetry);
+      expect(existsSync(files.index)).toBe(false);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+
   it("keeps the intent when the last native file no longer matches it", async () => {
     installFacetFixture();
     const files = nativeFacetPaths();

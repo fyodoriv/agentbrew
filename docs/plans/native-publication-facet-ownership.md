@@ -1188,3 +1188,10 @@ boundaries.
   comparison cannot qualify external writers for live activation.
 - **Anchor**: The existing selected publisher's destination observations,
   private write intent, and independent review of the selected intent draft.
+
+The baseline completed both writes when it should have refused. The
+candidate rechecks each planned destination before its write. Both edits
+survived with a mode-0600 intent and no receipt or index. A retry refused
+before making a write. The two focused cases and all 85 native tests
+passed on Mac, and TypeScript passed. Independent review verified the
+guard and the fixture.

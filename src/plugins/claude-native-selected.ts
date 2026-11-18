@@ -794,7 +794,9 @@ function recordSelectedWrites(writes: readonly (PlannedWrite & { mode: number })
   });
 }
 
-function writeNativeOutput({ path, body, mode }: PlannedWrite): void {
+function writeNativeOutput(write: PlannedWrite): void {
+  const { path, body, mode } = write;
+  assertNativeTargetsUnchanged([write]);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, body, { mode });
 }
@@ -944,7 +946,6 @@ export function publishSelectedNativePlugins(
     for (const { write } of receiptPlans) writeNativeOutput(write);
     if (manifest) {
       assertLock();
-      assertNativeTargetsUnchanged([manifest]);
       writeNativeOutput(manifest);
     }
     for (const write of allWrites) verifyFullFile(write);

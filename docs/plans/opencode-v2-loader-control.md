@@ -226,3 +226,20 @@ routes produced one creation and one deletion event, both with the
 fixture session ID in `event.data.sessionID`. There were zero other
 records. The server was reaped. This establishes session identity in the
 V2 event stream. It leaves the existing Claude hook adapter unported.
+
+## Exercise the existing Claude lifecycle handlers on V2 events
+
+- **Hypothesis**: A native V2 event adapter can hand the verified
+  session identity and directory to the existing Claude handlers.
+- **Measurement**: Install the existing bridge source as a private
+  supporting file for the same scratch plugin. Adapt the two known
+  V2 events to the existing lifecycle handler. Only dispatch events
+  that name this plugin's scratch directory. A synthetic command hook
+  validates the session ID, workspace, event name and lifecycle field.
+- **Success**: One matching start and one matching end through the real
+  bridge, zero unexpected command calls, one active plugin and a
+  reaped server. The probe sends no model request.
+- **Pivot**: A missing or ambiguous scope or payload refuses dispatch
+  and leaves that event mapping unqualified.
+- **Anchor**: The current `claude-hooks.js` lifecycle handlers and the
+  verified V2 identity control above.

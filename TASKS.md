@@ -270,6 +270,7 @@
   - **Tags**: security, stability, dependencies
   - **Mode**: AFK
   - **Details**: The build preflight can report a lockfile match with a stale transitive package. The worktree helper can clone an unqualified donor and issue a fresh lock stamp, while the full-gate cache excludes installed dependencies from its identity. Follow [the registered preparation](docs/plans/locked-install-evidence.md). Reuse supported dependency tooling before adding an adapter. Land instrumentation first; keep existing optional-peer failures explicit and preserve canonical dependencies during qualification.
+  - **Progress**: [Build guard comparison](docs/plans/locked-build-guard-comparison.md) covers N1 and N5. N4 was repaired in #765. The stale donor and stamped target controls N2 and N3 remain.
   - **Files**: `scripts/build-pipeline-guard.sh`, `scripts/worktree-deps.sh`, `scripts/verify.sh`, their existing tests, dependency setup guidance
   - **Output**: code
   - **Acceptance**: stale transitive packages, unqualified donors and installation changes cannot produce a false lock-exact receipt or reuse an unrelated successful gate. Supported optional and local-file dependencies remain supported; errors and unavailable evidence fail closed without changing the declared dependency contract.

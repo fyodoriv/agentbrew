@@ -63,7 +63,7 @@ echo "$@" >> "${log}"
 mkdir -p node_modules/dep node_modules/leaf
 printf '%s\\n' '${JSON.stringify(depFixture)}' > node_modules/dep/package.json
 printf '%s\\n' '${JSON.stringify(leafFixture)}' > node_modules/leaf/package.json
-touch node_modules/from-npm-ci
+touch node_modules/.from-npm-ci
 `,
   );
   chmodSync(npm, 0o755);
@@ -109,7 +109,7 @@ describe("worktree-deps.sh", () => {
     () => {
       const { wt, run, npmCalls } = setup({ worktreeLock: '{"lock":1}\n' });
       expect(run().status).toBe(0);
-      const marker = join(wt, "node_modules", "kept.txt");
+      const marker = join(wt, "node_modules", ".kept.txt");
       writeFileSync(marker, "still here\n");
       const result = run();
       expect(result.status, result.stderr).toBe(0);
@@ -122,7 +122,7 @@ describe("worktree-deps.sh", () => {
   it.runIf(process.platform === "darwin")("clones again when the lockfile changed since the last clone", () => {
     const { main, wt, run } = setup({ worktreeLock: '{"lock":1}\n' });
     expect(run().status).toBe(0);
-    const marker = join(wt, "node_modules", "stale.txt");
+    const marker = join(wt, "node_modules", ".stale.txt");
     writeFileSync(marker, "stale\n");
     writeFileSync(join(main, "package-lock.json"), lockBytes('{"lock":3}'));
     writeFileSync(join(wt, "package-lock.json"), lockBytes('{"lock":3}'));
@@ -139,7 +139,7 @@ describe("worktree-deps.sh", () => {
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("package-lock.json differs");
     expect(npmCalls().trim()).toBe("ci --prefer-offline --no-audit --no-fund");
-    expect(existsSync(join(wt, "node_modules", "from-npm-ci"))).toBe(true);
+    expect(existsSync(join(wt, "node_modules", ".from-npm-ci"))).toBe(true);
     expect(existsSync(join(wt, "node_modules", "dep", "index.js"))).toBe(false);
   });
 

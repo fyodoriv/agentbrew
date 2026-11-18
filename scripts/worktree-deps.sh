@@ -102,6 +102,11 @@ else
     exit 0
   fi
 fi
+# A cloned donor stamp never qualifies this target.
+copied_stamp="$tmp/.worktree-deps-lock.json"
+if [[ -e "$copied_stamp" || -L "$copied_stamp" ]]; then
+  rm "$copied_stamp"
+fi
 mv "$tmp" "$target/node_modules"
 publish_verified_stamp
 echo "worktree-deps: cloned node_modules with $how from $main (lockfiles match)"

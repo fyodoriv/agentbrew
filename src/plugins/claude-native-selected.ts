@@ -30,6 +30,13 @@ interface PlannedWrite {
   before?: NativeFileObservation;
 }
 
+interface ColdNativeReceiptPlan {
+  entry: PluginLockEntry;
+  root: string;
+  facets: NativeFacet[];
+  files: PlannedWrite[];
+}
+
 export function nativePluginEntry(plugin: ActivePlugin) {
   const { name, commit } = plugin.entry;
   return {
@@ -311,12 +318,12 @@ function planPlugin(
   active: ActivePlugin,
   registry: Marketplace,
   options: { marketplace: string; selected: ReadonlySet<NativeFacet>; rulesHook: unknown },
-): boolean {
+): ColdNativeReceiptPlan | undefined {
   const plugin = withPinnedManifest(active);
   const declarations = plugin.manifest.contributes;
   const facets = { hooks: declarations?.hooks, mcp: declarations?.mcp_servers, rules: declarations?.rules };
   const selected = new Set([...options.selected].filter((facet) => typeof facets[facet] === "string"));
-  if (selected.size === 0) return false;
+  if (selected.size === 0) return undefined;
 
   const entry = nativePluginEntry(plugin);
   const root = join(options.marketplace, entry.source);
@@ -337,16 +344,16 @@ function planPlugin(
     planHooks(writes, plugin, root, selected, options.rulesHook);
   }
   if (selected.has("mcp")) planMcp(writes, launcherClaims, plugin, root);
-  if (priorWrites === writes.length) return false;
+  if (priorWrites === writes.length) return undefined;
   if (existing) {
     const expected = expectedFullOutput(plugin, options.marketplace, options.rulesHook);
     assertWarmNativeReceipt(root, plugin.entry, writes.slice(priorWrites), expected.files);
-    return false;
+    return undefined;
   }
 
   writes.push({ path: envelopePath, body: jsonBytes(envelope) });
   registry.plugins.push(entry);
-  return true;
+  return { entry: plugin.entry, root, facets: [...selected].sort(), files: writes.slice(priorWrites) };
 }
 
 function assertCurrentNativeSources(planned: readonly PluginLockEntry[], complete = false): void {
@@ -521,6 +528,36 @@ function verifyFullFile({ path, body, mode }: PlannedWrite) {
   return { path: relative(homedir(), path), mode: actualMode, digest: digest(content) };
 }
 
+function verifiedReceiptFiles(files: readonly PlannedWrite[]) {
+  return files
+    .map(verifyFullFile)
+    .sort((left, right) => (left.path < right.path ? -1 : Number(left.path > right.path)));
+}
+
+function certifyColdNativeOutput(plans: readonly ColdNativeReceiptPlan[]): void {
+  const receipts = plans.map(({ entry, root, facets, files }) => {
+    assertNativeTree(
+      root,
+      files.map(({ path }) => path).filter((path) => path.startsWith(`${root}${sep}`)),
+    );
+    return {
+      path: join(root, NATIVE_RECEIPT_FILE),
+      body: jsonBytes({
+        schema: 2,
+        facets,
+        sourceDigest: digest(JSON.stringify(pluginSourceIdentity(entry))),
+        files: verifiedReceiptFiles(files),
+      }),
+    };
+  });
+  for (const { path, body } of receipts) writeFileSync(path, body, { mode: 0o600 });
+}
+
+function writeNativeOutput({ path, body, mode }: PlannedWrite): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, body, { mode });
+}
+
 /** Verify a normal full emission from independent pinned inputs before recording any proof. */
 export function certifyFullNativeOutput(
   plugins: readonly ActivePlugin[],
@@ -550,9 +587,7 @@ export function certifyFullNativeOutput(
       body: jsonBytes({
         schema: 1,
         sourceDigest,
-        files: files
-          .map(verifyFullFile)
-          .sort((left, right) => (left.path < right.path ? -1 : Number(left.path > right.path))),
+        files: verifiedReceiptFiles(files),
       }),
     }));
     for (const { path, body } of receipts) writeFileSync(path, body, { mode: 0o600 });
@@ -580,24 +615,23 @@ export function publishSelectedNativePlugins(
   const writes: PlannedWrite[] = [];
   const planned: PluginLockEntry[] = [];
   const launcherClaims = new Map<string, string>();
-  let changedEntries = false;
+  const cold: ColdNativeReceiptPlan[] = [];
   for (const plugin of plugins) {
     const before = writes.length;
-    if (planPlugin(writes, launcherClaims, plugin, registry, { marketplace, selected, rulesHook }))
-      changedEntries = true;
+    const receipt = planPlugin(writes, launcherClaims, plugin, registry, { marketplace, selected, rulesHook });
+    if (receipt) cold.push(receipt);
     if (writes.length > before) planned.push(plugin.entry);
   }
   assertRetainedLauncherClaims(marketplace, registry, launcherClaims);
-  if (changedEntries) writes.push({ path, body: jsonBytes(registry), before });
   if (new Set(writes.map((write) => write.path)).size !== writes.length) refuse("native output paths overlap");
 
   if (writes.length === 0) return;
+  const index = cold.length > 0 ? { path, body: jsonBytes(registry), before } : undefined;
   withSignerCommitFence(allowedSignersPath(), () => {
     assertCurrentNativeSources(planned);
-    assertNativeTargetsUnchanged(writes);
-    for (const { path: destination, body, mode } of writes) {
-      mkdirSync(dirname(destination), { recursive: true });
-      writeFileSync(destination, body, { mode });
-    }
+    assertNativeTargetsUnchanged(index ? [...writes, index] : writes);
+    for (const write of writes) writeNativeOutput(write);
+    certifyColdNativeOutput(cold);
+    if (index) writeNativeOutput(index);
   });
 }

@@ -106,6 +106,7 @@ describe("sync --dry-run --agentfile", () => {
       installRequestedItems: false,
       dryRun: true,
       authoritative: true,
+      syncModules: ["mcp"],
     });
     expect(mockRunSyncParallel).toHaveBeenCalledWith(
       expect.any(Array),
@@ -125,7 +126,7 @@ it.each([false, true])("selected Agentfile gate uses the explicit module list, d
 
   expect(mockApplyAgentfileAndInstall).toHaveBeenCalledWith(
     "./Agentfile.yaml",
-    expect.objectContaining({ syncModules: ["hooks"], dryRun }),
+    expect.objectContaining({ syncModules: ["hooks"], ...(dryRun && { dryRun: true }) }),
   );
   expect(mockRunSyncParallel).toHaveBeenCalledWith(
     [expect.objectContaining({ name: "hooks" })],

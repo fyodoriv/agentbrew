@@ -285,8 +285,9 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
     modules = filtered;
   }
 
+  const syncModules = options.only === undefined ? undefined : modules.map(({ name }) => name);
   const installAgentfileItems = shouldInstallAgentfileItems(options.only);
-  await handleSyncAgentfile(options, installAgentfileItems);
+  await handleSyncAgentfile(options, installAgentfileItems, syncModules);
   await handleSyncRecommended(options);
 
   const runnerOpts = {
@@ -296,6 +297,7 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
     dryRun: options.dryRun,
     agentfilePath: options.agentfile,
     authoritative: options.prune !== false,
+    ...(syncModules && { syncModules }),
   };
 
   if (options.sequential) {
@@ -407,13 +409,18 @@ async function handleSyncFirstRun(options: SyncCommandOptions): Promise<void> {
   }
 }
 
-async function handleSyncAgentfile(options: SyncCommandOptions, installAgentfileItems: boolean): Promise<void> {
+async function handleSyncAgentfile(
+  options: SyncCommandOptions,
+  installAgentfileItems: boolean,
+  syncModules?: readonly string[],
+): Promise<void> {
   if (!options.agentfile) return;
   await applyAgentfileAndInstall(options.agentfile, {
     installRequestedItems: installAgentfileItems,
     dryRun: options.dryRun,
     // `--no-prune` must also stop the Agentfile apply from pruning state-backed lists.
     authoritative: options.prune !== false,
+    ...(syncModules && { syncModules }),
   });
 }
 

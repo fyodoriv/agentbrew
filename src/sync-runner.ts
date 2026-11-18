@@ -37,6 +37,7 @@ interface SyncRunnerOptions {
   agentfilePath?: string;
   /** False when `--no-prune` is set: the explicit Agentfile preview must not prune state. */
   authoritative?: boolean;
+  syncModules?: readonly string[];
 }
 
 interface PreparedSync {
@@ -125,6 +126,7 @@ function applyProjectAgentfile(
       includeSkillInstallReport: installAgentfileItems,
       dryRun,
       stateOverride: virtualState,
+      ...(options?.syncModules && { syncModules: options.syncModules }),
     });
   } catch (e) {
     logSkipped("sync-runner/applyAgentfile", e);
@@ -138,6 +140,7 @@ async function prepareSync(options?: SyncRunnerOptions): Promise<PreparedSync> {
   const installAgentfileItems = options?.installAgentfileItems ?? true;
   const dryRun = options?.dryRun ?? false;
   const virtualState = dryRun ? cloneStateForDryRun(loadState()) : undefined;
+  const selection = options?.syncModules && { syncModules: options.syncModules };
   // Apply global Agentfile (~/.config/agentbrew/Agentfile) — authoritative
   // Skipped when --agentfile was used (the explicit path already applied as the source of truth)
   const globalDir = expandHome("~/.config/agentbrew");
@@ -150,6 +153,7 @@ async function prepareSync(options?: SyncRunnerOptions): Promise<PreparedSync> {
         includeSkillInstallReport: installAgentfileItems,
         dryRun,
         stateOverride: virtualState,
+        ...selection,
       });
     } catch (e) {
       logSkipped("sync-runner/applyAgentfile", e);
@@ -163,6 +167,7 @@ async function prepareSync(options?: SyncRunnerOptions): Promise<PreparedSync> {
         includeSkillInstallReport: installAgentfileItems,
         dryRun,
         stateOverride: virtualState,
+        ...selection,
       });
     } catch (e) {
       logSkipped("sync-runner/applyAgentfile", e);

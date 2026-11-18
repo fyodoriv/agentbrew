@@ -1129,6 +1129,20 @@ passed both native suites. The platform-specific Mac controls ran
 locally. The Linux publisher still kept normal signed modes and the
 older receipt shape.
 
+## Remaining entry-point and settings controls
+
+The [signed add, update and rollback controls](https://github.com/fyodoriv/agentbrew/actions/runs/44315064215)
+held the same kind of active process owner. All three refused before
+changing installed state. After normal release, each installed the
+exact signed pin and one matching index entry. No staging directory,
+unclassified child or holder remained.
+
+The [activation preservation control](https://github.com/fyodoriv/agentbrew/actions/runs/44316263800)
+kept cold, warm enabled, warm disabled and unknown settings byte-for-byte.
+Both warm repairs restored only the signed file. Its containing folder's
+timestamp changed as expected. These are scratch routes, independent
+from enabling a new publisher in the live CLI.
+
 ## Refuse a busy signer before full native payload writes
 
 - **Hypothesis**: Certified full publication admits the signer once

@@ -626,3 +626,24 @@ recorded all four inventories, source digests, coverage lists and
 modes exactly. It passed 39 focused controls, 95 compatibility tests,
 the ordinary publication control, and type checking. A subsequent
 selection still needs a qualified transition from partial coverage.
+
+## Extend a verified partial receipt with a later facet
+
+- **Hypothesis**: A second selected publish can extend a matching
+  partial receipt and retain exactly the artifacts from the first
+  selection that it does not own.
+- **Measurement**: Run hooks then MCP, MCP then hooks, and hooks
+  then rules with the same source pin. Compare each old payload,
+  the index and the receipt coverage. Plant a changed retained
+  script before a second selection and check that every path stays.
+- **Success**: All three supported transitions keep their prior
+  files and record the exact coverage union. A changed retained
+  file refuses with zero additional writes. Settings remain absent.
+- **Pivot**: An adopted unknown file, misidentified covered facet,
+  changed unrelated path or unsuccessful supported transition
+  rejects this phase.
+- **Anchor**: The signed cold receipt, native hook grouping, and
+  independent inventory validation.
+
+This phase covers repeated selected output on the same installed
+pin. Interrupted publication and activation need separate evidence.

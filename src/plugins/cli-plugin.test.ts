@@ -188,7 +188,7 @@ describe("planAdd and applyAdd", () => {
 });
 
 function marketplaceObservation() {
-  const enabled = process.env.AGENTBREW_PLUGIN_LIFECYCLE_OBSERVE === "1";
+  const enabled = process.env.PLUGIN_LIFECYCLE_FIXTURE_OUTPUT === "1";
   return lifecycleObservation(
     "marketplace-copy",
     (record) => {

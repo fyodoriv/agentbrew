@@ -26,7 +26,13 @@ process-group runner separate.
   [original observation plan](plugin-lifecycle-timeout-observation.md),
   the existing pure recorder and its nine health controls.
 
-Only the synthetic selector may opt in during qualification. The standard
+Only the synthetic selector may set `PLUGIN_LIFECYCLE_FIXTURE_OUTPUT=1`
+during qualification. The standard
 gate can run the real lifecycle case with ordinary output. Keep the
 real diagnostic out of this preparation until the code lands and its
 one-run admission is confirmed. Do not rerun any closed physical probe.
+
+The [first worker candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44209458388)
+produced zero opt-in records. Vitest's isolated-home setup removes
+`AGENTBREW_*` settings before test discovery. Use a test-only variable
+so the normal isolation remains in place.

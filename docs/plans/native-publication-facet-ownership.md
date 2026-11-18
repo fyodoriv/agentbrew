@@ -354,3 +354,30 @@ revocation available.
   integration.
 - **Anchor**: The portable descriptor test, the Dotfiles shared signer
   plan, and `src/plugins/signers.ts`.
+
+The [Node baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44244184598)
+allowed a signer write under another owner. The
+[Node candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44244639346)
+passed both focused controls and 80 existing native and lifecycle cases.
+It refused short-lock contention and kept revocation available under
+an interrupted long publisher record.
+
+## Cross-tool writer admission
+
+- **Hypothesis**: A real Agentbrew process holding the shared signer
+  fence prevents the Dotfiles trust CLI from mutating the registry.
+  On release, both direct writers preserve each other's keys and
+  use the same adjacent lock inode.
+- **Measurement**: Use staged public source revisions for both
+  repositories and a custom synthetic signer registry. Hold the lock
+  in an Agentbrew process. Run the Dotfiles trust and revoke paths
+  during the hold, then retry after release. Finish with an Agentbrew
+  change and compare the complete synthetic registry and lock identity.
+- **Success**: Two Dotfiles exit-75 refusals with zero byte changes,
+  two successful retries, one final Agentbrew update, and one
+  unchanged inode and owner throughout.
+- **Pivot**: A different lock address, unauthorized write, missing
+  retry, lost signer or changed lock identity rejects this integration
+  stage. Native publication remains separately unwired.
+- **Anchor**: The exact Node and Dotfiles focused receipts and the
+  `AGENT_PLUGINS_ALLOWED_SIGNERS` contract.

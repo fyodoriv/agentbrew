@@ -887,6 +887,11 @@ agentbrew plugin rollback acme                                         # re-pin 
 agentbrew plugin remove acme
 ```
 
+Signer changes use a short lock beside the shared signer registry. Exit
+75 means another process is using that lock. Run the same trust or
+revoke command again when that process finishes.
+
+
 `agentbrew plugin update` without a name or tag lists installed names and
 installed refs, then makes a bounded, non-interactive lookup for each highest
 version-sorted remote tag. Those tags are unverified hints; install still

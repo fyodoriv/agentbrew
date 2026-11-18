@@ -2,14 +2,15 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
+import signal
+import socket
 import subprocess
 import sys
 import tempfile
+import time
 
 binary = Path(sys.argv[1]).resolve(strict=True)
 sdk_modules = Path(sys.argv[2]).resolve(strict=True)
-legacy = Path("templates/opencode/claude-hooks.js").resolve(strict=True)
 identifier = "agentbrew.loader-control"
 plugin = """import { appendFileSync } from "node:fs";
 import { Plugin } from "@opencode/plugin";
@@ -20,68 +21,79 @@ export default Plugin.define({
   },
 });
 """
+
 with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directory:
-    parent = Path(directory)
-    for control in ("v2",):
-        root = parent / control
-        home, workspace = root / "home", root / "workspace"
-        workspace.mkdir(parents=True)
-        home.mkdir()
-        marker = root / "setup.marker"
-        config = home / ".config/opencode"
-        if control == "legacy":
-            plugins = config / "plugin"
-            plugins.mkdir(parents=True)
-            shutil.copyfile(legacy, plugins / "claude-hooks.js")
-        else:
-            plugins = config / "loader-fixture"
-            plugins.mkdir(parents=True)
-            (config / "opencode.json").write_text(json.dumps({"plugins": ["./loader-fixture"]}))
-            (plugins / "package.json").write_text(json.dumps({"name": "agentbrew-loader-control", "type": "module"}))
-            (plugins / "index.ts").write_text(plugin)
-            (plugins / "node_modules").symlink_to(sdk_modules, target_is_directory=True)
-        environment = {
-            "PATH": os.environ["PATH"], "HOME": str(home), "TMPDIR": str(root),
-            "XDG_CONFIG_HOME": str(home / ".config"), "XDG_DATA_HOME": str(home / ".local/share"),
-            "XDG_STATE_HOME": str(home / ".local/state"), "XDG_CACHE_HOME": str(home / ".cache"),
-            "AGENTBREW_OC_LOADER_MARKER": str(marker), "DO_NOT_TRACK": "1", "CI": "1",
-        }
-        def cli(*args):
-            try:
-                return subprocess.run(
-                    [str(binary), *args], cwd=workspace, env=environment,
-                    stdin=subprocess.DEVNULL, capture_output=True, timeout=60,
-                )
-            except subprocess.TimeoutExpired:
-                raise SystemExit(f"{control}: standalone command exceeded 60 seconds") from None
-        version = cli("--version")
-        parsed = re.fullmatch(r"(?:opencode v)?(\d+\.\d+\.\d+)", version.stdout.decode(errors="replace").strip())
-        value = parsed.group(1) if parsed else "unrecognized"
-        print(f"{control}: version-exit={version.returncode} version={value}")
-        if version.returncode or value != "2.3.0":
-            raise SystemExit("OpenCode 2.3.0 not verified")
-        result = cli("plugin", "list", "--standalone")
-        stdout = result.stdout.decode(errors="replace")
-        diagnostics = [result.stderr.decode(errors="replace")]
-        for file in (home / ".local/share/opencode/log").glob("*.log"):
-            diagnostics.append(file.read_text(errors="replace"))
-        rejected = any(
-            "claude-hooks" in line and re.search(r"reject|unsupported|invalid|default export|setup|v1|load failed", line, re.I)
-            for line in "\n".join(diagnostics).splitlines()
+    root = Path(directory)
+    home, workspace = root / "home", root / "workspace"
+    workspace.mkdir()
+    marker = root / "setup.marker"
+    config = home / ".config/opencode"
+    plugins = config / "loader-fixture"
+    plugins.mkdir(parents=True)
+    (config / "opencode.json").write_text(json.dumps({"plugins": ["./loader-fixture"]}))
+    (plugins / "package.json").write_text(json.dumps({"name": "agentbrew-loader-control", "type": "module"}))
+    (plugins / "index.ts").write_text(plugin)
+    (plugins / "node_modules").symlink_to(sdk_modules, target_is_directory=True)
+    environment = {
+        "PATH": os.environ["PATH"], "HOME": str(home), "TMPDIR": str(root),
+        "XDG_CONFIG_HOME": str(home / ".config"), "XDG_DATA_HOME": str(home / ".local/share"),
+        "XDG_STATE_HOME": str(home / ".local/state"), "XDG_CACHE_HOME": str(home / ".cache"),
+        "AGENTBREW_OC_LOADER_MARKER": str(marker), "DO_NOT_TRACK": "1", "CI": "1",
+    }
+    common = {"cwd": workspace, "env": environment, "stdin": subprocess.DEVNULL}
+
+    version = subprocess.run([str(binary), "--version"], **common, capture_output=True, timeout=10)
+    parsed = re.fullmatch(r"(?:opencode v)?(\d+\.\d+\.\d+)", version.stdout.decode(errors="replace").strip())
+    if version.returncode or not parsed or parsed.group(1) != "2.3.0":
+        raise SystemExit("OpenCode 2.3.0 not verified")
+
+    with socket.socket() as allocation:
+        allocation.bind(("127.0.0.1", 0))
+        port = allocation.getsockname()[1]
+    endpoint = f"http://127.0.0.1:{port}"
+    listed = False
+    observed = []
+    queries = 0
+    with (root / "server.log").open("w+b") as log:
+        process = subprocess.Popen(
+            [str(binary), "serve", "--hostname", "127.0.0.1", "--port", str(port)],
+            **common, stdout=log, stderr=log, start_new_session=True,
         )
-        observed = marker.read_text().splitlines() if marker.is_file() else []
-        admitted = identifier in stdout
-        diagnostic_text = "\n".join(diagnostics).lower()
-        diagnostic_classes = {
-            "module": any(piece in diagnostic_text for piece in ("cannot find module", "cannot resolve", "module not found")),
-            "entry": any(piece in diagnostic_text for piece in ("invalid plugin", "default export", "no entrypoint")),
-            "config": any(piece in diagnostic_text for piece in ("invalid configuration", "failed to load config")),
-        }
-        fixed = ",".join(key for key, value in diagnostic_classes.items() if value) or "none"
-        print(f"{control}: version=2.3.0 exit={result.returncode} rejected={int(rejected)} listed={int(admitted)} setup={len(observed)} diagnostics={fixed}")
-        if result.returncode:
-            raise SystemExit(f"{control} plugin list failed")
-        if control == "legacy" and (not rejected or admitted or observed):
-            raise SystemExit("legacy rejection could not be classified")
-        if control == "v2" and (rejected or not admitted or observed != ["setup"]):
-            raise SystemExit("V2 admission or setup count was not verified")
+        started = time.monotonic()
+        deadline = started + 30
+        try:
+            while process.poll() is None and time.monotonic() < deadline:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                queries += 1
+                try:
+                    result = subprocess.run(
+                        [str(binary), "plugin", "list", "--server", endpoint],
+                        **common, capture_output=True, timeout=min(3, remaining),
+                    )
+                    listed = result.returncode == 0 and identifier in result.stdout.decode(errors="replace")
+                except subprocess.TimeoutExpired:
+                    listed = False
+                observed = marker.read_text().splitlines() if marker.is_file() else []
+                if listed and observed == ["setup"]:
+                    break
+                time.sleep(min(0.5, max(0, deadline - time.monotonic())))
+        finally:
+            if process.poll() is None:
+                os.killpg(process.pid, signal.SIGTERM)
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.wait(timeout=3)
+        log.seek(0)
+        details = log.read().decode(errors="replace").lower()
+    diagnostic = "none"
+    if "failed to load plugin" in details or "invalid plugin" in details:
+        diagnostic = "admission"
+    if "cannot find module" in details or "cannot resolve" in details:
+        diagnostic = "module"
+    print(f"version=2.3.0 queries={queries} listed={int(listed)} setup={len(observed)} reaped=1 diagnostic={diagnostic}")
+    if not listed or observed != ["setup"]:
+        raise SystemExit("persistent server did not verify V2 activation")

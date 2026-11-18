@@ -985,3 +985,10 @@ processes. Each exited 77 at its registered write. All three
 replacement processes exited 75 without touching the retained bytes,
 file types or modes. The expected incremental progress before each
 boundary still needs corroboration in the hosted run.
+
+The checkpoint fixture pins its synthetic installed guard to the
+0644 mode registered in the signed tree. The three targets then stay
+the same when the queue applies 077 to its child environment. This
+does not qualify a private-mask production clone. An isolated copy
+retained the source mode with either mask, so the clone boundary
+remains the mode-refusal source.

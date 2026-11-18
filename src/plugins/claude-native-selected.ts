@@ -612,14 +612,36 @@ function planPartialExtension(
   return { root, facets, files, entry: plugin.entry, before: receipt.before };
 }
 
+function fullNativeHooks(plugin: ActivePlugin) {
+  const { declared, scripts, declaration } = readSignedHooks(plugin, true);
+  const auxiliary = declaration && declaration.path !== "hooks.json" ? [...scripts, declaration] : scripts;
+  assertHookDestinationPaths(auxiliary);
+  return { declared, auxiliary };
+}
+
+/** Reject an incompatible legacy copy mode before starting certified publication. */
+export function assertFullNativeHookCopyModes(plugins: readonly ActivePlugin[]): void {
+  const mask = process.umask();
+  for (const installed of plugins) {
+    const plugin = withPinnedManifest(installed);
+    const source = plugin.manifest.contributes?.hooks;
+    if (typeof source !== "string") continue;
+    const sourceDir = join(plugin.dir, posix.dirname(source));
+    for (const file of fullNativeHooks(plugin).auxiliary) {
+      const stat = lstatSync(join(sourceDir, file.path), { throwIfNoEntry: false });
+      if (!stat?.isFile() || (stat.mode & 0o777 & ~mask) !== file.mode) {
+        refuse("signed hook copy mode cannot be reproduced");
+      }
+    }
+  }
+}
+
 function expectedFullOutput(plugin: ActivePlugin, marketplace: string, rulesHook: unknown) {
   const entry = nativePluginEntry(plugin);
   const root = join(marketplace, entry.source);
   const { source: _source, ...envelope } = entry;
   const hooksRoot = join(root, "hooks");
-  const { declared, scripts, declaration } = readSignedHooks(plugin, true);
-  const auxiliary = declaration && declaration.path !== "hooks.json" ? [...scripts, declaration] : scripts;
-  assertHookDestinationPaths(auxiliary);
+  const { declared, auxiliary } = fullNativeHooks(plugin);
   const mcp = nativeMcpFiles(plugin, root);
   const files: PlannedWrite[] = [
     { path: join(root, ".claude-plugin", "plugin.json"), body: jsonBytes(envelope) },

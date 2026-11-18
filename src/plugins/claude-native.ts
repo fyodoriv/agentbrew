@@ -15,6 +15,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
 import {
+  assertFullNativeHookCopyModes,
   certifyFullNativeOutput,
   type NativeFacet,
   nativePluginEntry,
@@ -139,7 +140,10 @@ export function emitClaudeNative(options?: { modules?: readonly NativeFacet[]; c
 function publishNative(certification?: { beginMutation: () => void }): void {
   const plugins = activePlugins();
   const checkSettings = certification && planNativeSettingsCheck(claudeSettingsPath());
-  certification?.beginMutation();
+  if (certification) {
+    assertFullNativeHookCopyModes(plugins);
+    certification.beginMutation();
+  }
   const entries = plugins.map(emitPlugin);
   pruneLaunchers(
     new Set(

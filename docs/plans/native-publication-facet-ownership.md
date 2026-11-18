@@ -1023,3 +1023,11 @@ and receipts at the marketplace and settings boundaries.
   a compatible ownership contract is evaluated.
 - **Anchor**: The verified mode-mismatch result, recursive Node copy
   behavior, and the certified writer's receipt of exact file modes.
+
+Both original refusal cases ran and exited nonzero, but the
+marketplace and launcher paths appeared and the process owner
+remained. The candidate moved mode validation before the first
+mutation. Both inputs then refused with their complete prior
+snapshots intact. All three separate-process interruption controls
+still passed. This qualifies an early refusal, not support for
+publishing under the incompatible mask.

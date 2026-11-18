@@ -283,11 +283,11 @@ describe("native publication process loss at output checkpoints", () => {
     return [info.mode, createHash("sha256").update(readFileSync(path)).digest("hex")];
   }
 
-  function publishFromChild(full: boolean, checkpoint?: string) {
+  function publishFromChild(full: boolean, checkpoint?: string, mask = 0o022) {
     const moduleUrl = new URL("./claude-native.ts", import.meta.url).href;
     const source = `
       import { createRequire } from "node:module";
-      process.umask(0o022);
+      process.umask(${mask});
       const atomic = createRequire(import.meta.url)("write-file-atomic");
       const write = atomic.sync;
       const checkpoint = ${JSON.stringify(checkpoint ?? null)};
@@ -310,6 +310,25 @@ describe("native publication process loss at output checkpoints", () => {
       env: { ...process.env, HOME: home, TSX_DISABLE_CACHE: "1" },
     });
   }
+
+  it.each([
+    ["publisher mask", 0o077, 0o644],
+    ["installed mode", 0o022, 0o600],
+  ] as const)("refuses an incompatible %s before creating native output", (_name, mask, mode) => {
+    installFacetFixture();
+    chmodSync(join(pluginDir("fixture-native"), "hooks", "guard.sh"), mode);
+    const paths = nativeFacetPaths();
+    const roots = [marketplaceDir(), dirname(paths.launcher), dirname(paths.settings), owner];
+    const before = roots.map(snapshot);
+    try {
+      const result = publishFromChild(true, undefined, mask);
+      expect(result.status).toBe(1);
+      expect(roots.map(snapshot)).toEqual(before);
+      expect(result.stderr).toMatch(/signed hook copy mode cannot be reproduced/u);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
 
   it.each([
     ["payload", "hooks", false],

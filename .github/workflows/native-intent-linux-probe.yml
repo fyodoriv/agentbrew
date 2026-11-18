@@ -1,0 +1,24 @@
+name: Native publication intent Linux probe
+on:
+  push:
+    branches: [probe/native-selected-intent-linux]
+permissions:
+  contents: read
+env:
+  DO_NOT_TRACK: "1"
+  AGENTBREW_EVENTS: "0"
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: .node-version
+      - run: npm ci
+      - run: npm exec -- tsc --noEmit
+      - name: Verify the Linux native publication stack
+        run: npm exec -- vitest run src/plugins/claude-native.test.ts src/plugins/claude-native-ordinary.test.ts src/plugins/signers.test.ts

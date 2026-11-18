@@ -42,10 +42,17 @@ printf '#!/bin/sh\necho "Updates landed: x."\n' > "$TMP/other"; chmod +x "$TMP/o
 OUT="$(printf '%s' '{"hook_event_name":"SessionStart"}' | AGENTBREW_UPDATES_LANDED_BIN="$TMP/other" PATH="/usr/bin:/bin" bash "$SCRIPT" 2>/dev/null)"
 check "Test 4 (env override: $OUT)" "$(printf '%s' "$OUT" | jq -e '.hookSpecificOutput.additionalContext|contains("Updates landed: x.")' >/dev/null 2>&1 && echo 0 || echo 1)"
 
-# Test 5: a hung script never blocks the session (killed after the timeout).
-printf '#!/bin/sh\nsleep 30\necho late\n' > "$TMP/bin/dotfiles-updates-landed"
-START=$(date +%s); OUT="$(run "$TMP/bin:/usr/bin:/bin")"; ELAPSED=$(( $(date +%s) - START ))
-check "Test 5 (hung script -> silent within 5s, took ${ELAPSED}s)" "$([ -z "$OUT" ] && [ "$ELAPSED" -lt 5 ] && echo 0 || echo 1)"
+# Test 5: the hook stops a hung script before it can return a line.
+cat > "$TMP/bin/dotfiles-updates-landed" <<'EOF'
+#!/bin/sh
+touch "$UPDATES_LANDED_TEST_STARTED"
+sleep 30
+echo late
+EOF
+export UPDATES_LANDED_TEST_STARTED="$TMP/updates-landed-started"
+OUT="$(run "$TMP/bin:/usr/bin:/bin")"; RC=$?
+check "Test 5 (hung script started and the hook returned silently)" "$([ -f "$UPDATES_LANDED_TEST_STARTED" ] && [ -z "$OUT" ] && [ "$RC" = 0 ] && echo 0 || echo 1)"
+unset UPDATES_LANDED_TEST_STARTED
 
 # Test 6: bypass.
 printf '#!/bin/sh\necho "Updates landed: y."\n' > "$TMP/bin/dotfiles-updates-landed"

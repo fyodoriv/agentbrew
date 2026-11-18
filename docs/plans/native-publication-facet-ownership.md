@@ -1142,3 +1142,31 @@ kept cold, warm enabled, warm disabled and unknown settings byte-for-byte.
 Both warm repairs restored only the signed file. Its containing folder's
 timestamp changed as expected. These are scratch routes, independent
 from enabling a new publisher in the live CLI.
+
+## Refuse a busy signer before full native payload writes
+
+- **Hypothesis**: Certified full publication admits the signer once
+  before its first native write and retains the descriptor through
+  certification and settings. A held registry refuses with no output.
+- **Measurement**: Hold the real signer descriptor in a scratch parent.
+  Invoke one native full writer child. Compare payload, launcher,
+  marketplace, settings, and publication owner. Release the signer,
+  retry, and verify the signed output under one descriptor.
+- **Success**: One exact busy refusal with zero native changes and
+  no retained process owner. One exact certified retry. The selected
+  and ordinary controls still pass.
+- **Pivot**: A payload or configuration write while the signer is busy,
+  a nested descriptor attempt, a wrong pin or an ordinary regression
+  rejects the change.
+- **Anchor**: The existing selected descriptor gate and full certified
+  settings control in this plan.
+
+The real busy-signer test first failed after the native marketplace
+index and payload appeared. The full certified path now takes the
+signer descriptor before planning any native write and checks the
+same descriptor before writing the payload, receipts, and settings.
+The busy child writes none of those files and leaves no owner.
+After release, the next child certifies the signed result. The
+ordinary publisher keeps its existing path. Both affected suites
+passed all 78 tests on macOS, including the three descriptor-loss
+boundaries.

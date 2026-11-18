@@ -458,3 +458,24 @@ if admission refuses. A signer-only revoke remains a short operation.
   blocks release.
 - **Anchor**: Existing plugin command mutation and publisher call
   sites and the independent lifecycle review.
+
+## Keep an approved update tied to its installed pin
+
+A plugin update stages the signed target before the user approves the
+diff. A concurrent operation can change the installed pin or revoke
+the target signer during that interval. Recheck the installed pin and
+target signer under the short commit lock before replacing the checkout.
+
+- **Hypothesis**: Revoking a staged signer's trust or advancing the
+  installed pin prevents a prior approval from committing an update.
+- **Measurement**: In two signed scratch runs, stage an update and
+  either revoke the signer or apply a separately staged newer pin.
+  Try the older approval. Compare the installed pin, checkout commit
+  and temporary checkout directory before and after.
+- **Success**: Both stale approvals refuse, change zero installed
+  state, and discard only their own staged checkout. The first
+  confirmed supported update and the existing lifecycle chain pass.
+- **Pivot**: A stale or revoked update writes any installed content,
+  uses another plan's checkout, or blocks ordinary approved rotation.
+- **Anchor**: The approval and apply phases in `src/plugins/update.ts`
+  and the shared signer commit fence.

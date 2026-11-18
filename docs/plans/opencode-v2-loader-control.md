@@ -348,3 +348,27 @@ The title removed the unqualified first request in this fixture.
   leaves that behavior unqualified.
 - **Anchor**: The real V2 amended-input proof and the existing bridge's
   exit, denial and update contracts.
+
+The [before-tool matrix](https://github.com/fyodoriv/agentbrew/actions/runs/44298180750)
+passed all three V2 cases. Approval wrote one original marker. Amendment
+wrote one amended marker. Denial wrote neither and surfaced the known
+reason. All three local sessions and their owned processes ended.
+
+## Verify prompt and successful tool feedback in V2
+
+- **Hypothesis**: The existing Claude prompt and after-tool handlers
+  can add their fixed feedback to the real V2 pipeline.
+- **Measurement**: Use only the amended-input scratch control. Map the
+  V2 prompt text to the existing prompt handler. Map a completed
+  string tool result to the existing after-tool handler. The local
+  protocol fixture counts the prompt note in its first user message
+  and the tool note in its second request's tool result.
+- **Success**: One prompt-hook invocation with the known text, one
+  after-tool invocation with the amended input and original output,
+  exactly one expected note in each provider message, both prior
+  amended controls preserved, and all owned processes stopped.
+- **Pivot**: A missing note, wrong field, unexpected invocation,
+  changed before-tool result or incomplete session leaves the route
+  unqualified.
+- **Anchor**: The pinned [V2 prompt hook](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/plugin/src/promise/session.ts)
+  and [V2 tool hooks](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/plugin/src/promise/tool.ts).

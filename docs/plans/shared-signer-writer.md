@@ -30,8 +30,8 @@ reproduced a successful write under contention and loss of
 unrelated policy text. The Windows compatibility case passed.
 The [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44253525489)
 passed the focused Linux and Windows jobs, the Linux lifecycle
-compatibility tests, and type checking. The macOS control also
-has a required qualification job. The
+compatibility tests, and type checking. Its Linux and Windows evidence is retained. The latest candidate
+carries the macOS control. The
 [real cross-tool run](https://github.com/fyodoriv/agentbrew/actions/runs/44253654456)
 used merged Dotfiles #754 and passed the lock, release, row and
 inode checks.
@@ -74,6 +74,16 @@ trust entry, or a lost unrelated field.
 - **Anchor**: The no-follow observation and pre-replace check in
   Dotfiles' signer writer.
 
-This check covers detected changes before the final rename. It does
-not establish exclusion against another program that ignores the
-lock during that rename.
+This check lasts through the final pre-rename review. The lock
+coordinates cooperating writers.
+
+The [row baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44254414525)
+wrote a duplicate row for each of two valid formats. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44254590961)
+passed both row controls on Linux and Windows. The
+[staging baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44254806781)
+overwrote a newer synthetic observation. The
+[final hosted candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44255087314)
+passed the Linux staging and lock tests and the Windows signer tests.
+The [final cross-tool run](https://github.com/fyodoriv/agentbrew/actions/runs/44255581643)
+passed against the merged Dotfiles command.

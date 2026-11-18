@@ -29,7 +29,7 @@ jobs:
           SYNC_SELECTION_OBSERVATION_CAPTURE: "1"
         run: |
           status=0
-          npx vitest run --config vitest.sync-selection-observation.config.ts -t 'sealed observation (emptyAPI|emptyPull|unknownPlain|selectedPlain) --maxWorkers=1 --retry=0 --reporter=default --silent=false > "$RUNNER_TEMP/sync-selection-observation.log" 2>&1 || status=$?
+          npx vitest run --config vitest.sync-selection-observation.config.ts -t 'sealed observation (emptyAPI|emptyPull|unknownPlain|selectedPlain)$' --maxWorkers=1 --retry=0 --reporter=default --silent=false > "$RUNNER_TEMP/sync-selection-observation.log" 2>&1 || status=$?
           python3 - "$RUNNER_TEMP/sync-selection-observation.log" "$status" <<'PYCONTROL'
           import collections,json,pathlib,re,sys
           prefix='SYNC_SELECTION_OBSERVATION '
@@ -42,22 +42,6 @@ jobs:
               assert row["outcome"] in {"returned","commander-exit","inconclusive"}
               assert type(row["exit"]) is int and type(row["denied"]) is int
               assert all(label in {"state-save","workspace-prepare","agentfile-apply","install","agentfile-install","native-publish","redaction-write","sync-error-log-clear","sync-error-log-save","startup-repair-log","event-write","manifest-save","mcp","rules","commands","agents","skills","hooks","models","instructions"} for label in row["calls"])
-              print(json.dumps(row,separators=(",",":")))
-          assert sys.argv[2]=="0" and all(row["denied"]==0 for row in rows), "capture incomplete"
-          PYCONTROL
- --maxWorkers=1 --retry=0 --reporter=default --silent=false > "$RUNNER_TEMP/sync-selection-observation.log" 2>&1 || status=$?
-          python3 - "$RUNNER_TEMP/sync-selection-observation.log" "$status" <<'PYCONTROL'
-          import collections,json,pathlib,re,sys
-          prefix='SYNC_SELECTION_OBSERVATION '
-          lines=re.sub(r"\x1b\[[0-9;]*[A-Za-z]","",pathlib.Path(sys.argv[1]).read_text()).splitlines()
-          rows=[json.loads(line.split(prefix,1)[1]) for line in lines if prefix in line and line.split(prefix,1)[1].startswith("{")]
-          cases={"emptyAPI":1,"emptyPull":1,"unknownPlain":1,"selectedPlain":1}
-          assert collections.Counter(row["id"] for row in rows)==cases, f"expected 4 observations, found {len(rows)}"
-          for row in rows:
-              assert set(row)=={"id","outcome","exit","calls","denied"}
-              assert row["outcome"] in {"returned","commander-exit","inconclusive"}
-              assert type(row["exit"]) is int and type(row["denied"]) is int
-              assert all(re.fullmatch(r"[A-Za-z0-9:_-]{1,48}", label) for label in row["calls"])
               print(json.dumps(row,separators=(",",":")))
           assert sys.argv[2]=="0" and all(row["denied"]==0 for row in rows), "capture incomplete"
           PYCONTROL

@@ -377,7 +377,16 @@ def main():
             unchanged_settings = current == (owner_receipt(settings) if settings.is_file() else None)
             outputs = known_output(home, identity)
             expected_target = Path("plugins") / identity["name"] / "hooks/read-only.sh"
-            warm_scope = (paths_before == {key: record for key, record in paths_after.items() if key != expected_target})
+            changed = {key for key in paths_before.keys() | paths_after.keys()
+                       if paths_before.get(key) != paths_after.get(key)}
+            comparable_after = {key: record for key, record in paths_after.items() if key != expected_target}
+            parent_before = paths_before.get(expected_target.parent)
+            parent_after = comparable_after.get(expected_target.parent)
+            parent_timestamp = (parent_before is not None and parent_after is not None and
+                                (parent_before[0], parent_before[2]) == (parent_after[0], parent_after[2]))
+            if parent_timestamp:
+                comparable_after[expected_target.parent] = parent_before
+            warm_scope = paths_before == comparable_after
             enabled = json.loads(settings.read_text())["enabledPlugins"].get(activation_key) if settings.is_file() else None
             expected = {"cold": None, "warm-enabled": True, "warm-disabled": False, "unknown": {"mode": "fixture-unknown"}}[arm]
             owners_kept = owner_before == (manifest(checkout), manifest(source), manifest(install))
@@ -388,6 +397,8 @@ def main():
                 "arm": arm, "exit": result.returncode, "settings_kept": unchanged_settings,
                 "expected_activation_kept": enabled == expected, "signed_hook": outputs["declared_hook"],
                 "warm_scope_kept": warm_scope if warm else None, "owner_released": not owner.exists(),
+                "warm_extra_paths": len(changed - {expected_target, expected_target.parent}) if warm else None,
+                "warm_parent_timestamp_allowed": parent_timestamp if warm else None,
                 "denied": processes.count("denied"), "complete": complete,
             }
             print(json.dumps(summary, sort_keys=True), flush=True)

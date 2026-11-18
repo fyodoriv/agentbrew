@@ -503,7 +503,8 @@ Every sync creates a timestamped snapshot. Pruning only touches entries agentbre
 During a selected sync, Agentfiles defer live rule writes until you select
 `rules`, and defer pruning dropped Agentfile skills until you select `skills`.
 An ordinary selected sync applies the Agentfile MCP servers, hooks, models,
-and source directories for the modules you select.
+and source directories for the modules you select. Select `skills` to update
+tracked skill sources. Select `mcp` to register managed memory.
 The native Claude marketplace refresh runs when a sync includes hooks, MCP,
 or rules. Live sync also refreshes the privacy redaction patterns.
 

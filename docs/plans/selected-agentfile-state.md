@@ -55,3 +55,24 @@ and kept the ordinary and pull tests green.
 This phase scopes six content families. Source-list changes, managed
 memory registration and shared initialization need separate ownership
 decisions and evidence.
+
+## Keep existing pull preparation
+
+The existing selected pull passes a module list for its earlier
+rule and installed-skill guards. Ordinary preparation needs a distinct
+opt-in for the six newly scoped fields so this phase preserves the
+existing pull path.
+
+- **Hypothesis**: A selected ordinary apply still limits all six
+  families. A selected pull still prepares its existing mixed state
+  before update begins.
+- **Measurement**: Run the real Commander pull path in a cold scratch
+  home with MCP, hooks, model and owned command declarations. Capture
+  the saved state at the update boundary. Select MCP and compare the
+  result with the existing pull contract.
+- **Success**: All four mixed pull declarations are present before
+  update. The original nine ordinary controls stay green, and existing
+  rule and installed-skill pull exclusions pass.
+- **Pivot**: If either path loses a required field or changes its
+  earlier rule or skill exclusion, keep this draft out of delivery.
+- **Anchor**: `applyAgentfileBeforePull` and the independent scope review.

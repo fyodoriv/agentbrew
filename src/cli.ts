@@ -329,14 +329,11 @@ async function handleSyncWorkspaces(
   options: SyncCommandOptions,
   outputPath?: () => string,
 ): Promise<string | undefined> {
-  const { prepareWorkspaceAgentfile, workspaceAgentfilePath } = await import("./core/workspaces.js");
-  const merged = prepareWorkspaceAgentfile(options, outputPath);
+  const workspace = await import("./core/workspaces.js");
+  const merged = workspace.prepareWorkspaceAgentfile(options, outputPath);
   if (!merged) return undefined;
   options.agentfile = merged;
-  if (!outputPath) return undefined;
-  const ownerDir = dirname(workspaceAgentfilePath());
-  if (!options.dryRun) mkdirSync(ownerDir, { recursive: true, mode: 0o700 });
-  return ownerDir;
+  return outputPath ? dirname(workspace.workspaceAgentfilePath()) : undefined;
 }
 
 /** "deployed": a pull ran its deploy step. "stopped": the run ended with no deploy (a rollback, an unknown `--only` name). */
@@ -442,6 +439,7 @@ async function handleSyncAgentfile(
   agentfileBaseDir?: string,
 ): Promise<void> {
   if (!options.agentfile) return;
+  if (agentfileBaseDir && !options.dryRun) mkdirSync(agentfileBaseDir, { recursive: true, mode: 0o700 });
   await applyAgentfileAndInstall(options.agentfile, {
     installRequestedItems: installAgentfileItems,
     dryRun: options.dryRun,

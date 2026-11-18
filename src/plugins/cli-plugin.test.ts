@@ -6,7 +6,7 @@
  * Repos, keys, and HOME are scratch. Git reads an empty global config file.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { join, relative } from "node:path";
 import yaml from "js-yaml";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,6 +38,7 @@ import { defaultState, saveState } from "../state.js";
 import { fixtureGit, fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { marketplaceDir } from "./claude-native.js";
 import { registerPluginCommands } from "./cli-plugin.js";
+import { lifecycleObservation } from "./lifecycle-observation.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, applyAdd, planAdd, pluginDir, pluginsRoot } from "./store.js";
 
@@ -186,6 +187,35 @@ describe("planAdd and applyAdd", () => {
   });
 });
 
+function marketplaceObservation() {
+  const enabled = process.env.PLUGIN_LIFECYCLE_FIXTURE_OUTPUT === "1";
+  return lifecycleObservation(
+    "marketplace-copy",
+    (record) => {
+      if (!enabled) return;
+      const line = `lifecycle-stage ${record}\n`;
+      if (writeSync(2, line) !== Buffer.byteLength(line)) throw new Error("Incomplete lifecycle stage record");
+    },
+    undefined,
+    () => {
+      if (enabled) writeSync(1, "lifecycle-stage-recorder-failed\n");
+    },
+  );
+}
+
+it("plugin lifecycle observation output", async () => {
+  const observe = marketplaceObservation();
+  await expect(observe("add", () => true)).resolves.toBe(true);
+  void observe("release", () => new Promise<never>(() => {}));
+  const canary = new Error("OBSERVATION_PAYLOAD_CANARY");
+  await expect(
+    observe("remove", () => {
+      throw canary;
+    }),
+  ).rejects.toBe(canary);
+  expect(observe.health()).toBe("pending");
+});
+
 describe("plugin commands re-emit the Claude Code plugin copy (#447)", () => {
   const run = async (...args: string[]) => {
     const program = new Command().exitOverride();
@@ -198,30 +228,37 @@ describe("plugin commands re-emit the Claude Code plugin copy (#447)", () => {
   });
 
   it("add, update, rollback, and remove keep the marketplace copy current", async () => {
-    await run("add", `${f.dir}@v1.0.0`, "--signer", KEY.pub, "--yes");
-    expect(existsSync(copy())).toBe(true);
+    const observe = marketplaceObservation();
+    await observe("add", () => run("add", `${f.dir}@v1.0.0`, "--signer", KEY.pub, "--yes"));
     const hooks = () => {
       const path = join(copy(), "hooks", "hooks.json");
       return existsSync(path) ? readFileSync(path, "utf-8") : "";
     };
-    expect(hooks()).not.toContain("acme-v2-hook");
+    await observe("initial-copy", () => {
+      expect(existsSync(copy())).toBe(true);
+      expect(hooks()).not.toContain("acme-v2-hook");
+    });
 
     const manifest = {
       ...MANIFEST,
       capabilities: { ...MANIFEST.capabilities, hooks: ["SessionStart"] },
       contributes: { hooks: "hooks/hooks.json" },
     };
-    f.release("v2.0.0", { "agentbrew-plugin.yaml": yaml.dump(manifest), "hooks/hooks.json": hook });
+    await observe("release", () => {
+      f.release("v2.0.0", { "agentbrew-plugin.yaml": yaml.dump(manifest), "hooks/hooks.json": hook });
+    });
     vi.mocked(confirm).mockResolvedValue(true);
-    await run("update", "acme", "v2.0.0");
-    expect(process.exitCode).toBeUndefined();
-    expect(hooks()).toContain("acme-v2-hook");
+    await observe("update", () => run("update", "acme", "v2.0.0"));
+    await observe("updated-copy", () => {
+      expect(process.exitCode).toBeUndefined();
+      expect(hooks()).toContain("acme-v2-hook");
+    });
 
-    await run("rollback", "acme");
-    expect(hooks()).not.toContain("acme-v2-hook");
+    await observe("rollback", () => run("rollback", "acme"));
+    await observe("rolled-back-copy", () => expect(hooks()).not.toContain("acme-v2-hook"));
 
-    await run("remove", "acme");
-    expect(existsSync(copy())).toBe(false);
+    await observe("remove", () => run("remove", "acme"));
+    await observe("final-copy", () => expect(existsSync(copy())).toBe(false));
   });
 });
 

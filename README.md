@@ -449,6 +449,12 @@ Use `agentbrew sync --dry-run` to validate and preview Agentfile changes, includ
 
 One command translates the source of truth into every agent's native format.
 
+When a source refresh finds a recorded skill-to-plugin conversion, it names
+the plugin and links to the upstream setup. Existing copies stay in place.
+For example, Trail of Bits moved `insecure-defaults` to its plugin marketplace.
+Agentbrew withholds the external skills updater when it finds an existing
+copy of a skill with a known conversion. Managed source refreshes still run.
+
 - **MCP servers** → JSON (Claude, Kiro), TOML (Codex), YAML (Goose); exact definitions are reconciled into mcpm so backend changes cannot leave stale same-name servers
 - **MCP permissions** → `permissions.allow` entries for agents that declare `mcpPermissionsConfig` (none in the core list today)
 - **Skills** → symlinks for explicitly installed skills and opt-in source dirs outside tracked sources. When two remote sources ship an installed skill with the same name, the source listed later in `state.yaml` wins (if its cache no longer has the skill, the earlier one does). `sync --pull` refreshes only that copy, and `agentbrew status` shows a `Name clash` line naming the skill, the source it is installed from, and the skipped source. `status --json` lists the same under `skillNameClashes`. A real folder with a `SKILL.md` where a managed symlink belongs is a stale copy: agents load it instead of the source. `agentbrew status` reports it as skills drift, and sync moves it to `~/.config/agentbrew/backups/skill-copies/<time>/<agent>/<name>` and links the source. A folder without `SKILL.md` stays as it is
@@ -502,8 +508,10 @@ Every sync creates a timestamped snapshot. Pruning only touches entries agentbre
 
 During a selected sync, Agentfiles defer live rule writes until you select
 `rules`, and defer pruning dropped Agentfile skills until you select `skills`.
-The native Claude marketplace refresh runs when a sync includes hooks, MCP,
-or rules. Live sync also refreshes the privacy redaction patterns.
+For example, `agentbrew sync --only commands` leaves the native Claude
+marketplace unchanged. A selection that includes hooks, MCP, or rules
+refreshes the complete native marketplace. Every live sync refreshes the
+privacy redaction patterns.
 
 When an Agentfile is in effect (`--agentfile`, the global Agentfile, or a project Agentfile), the Agentfile decides the skill set. A plain `sync` installs the catalog recommended set only on a machine with no Agentfile; an Agentfile asks for it with `recommended: true`. A skill you remove from the Agentfile is pruned from its source on the next sync that includes skills.
 

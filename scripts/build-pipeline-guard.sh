@@ -3,6 +3,7 @@
 set -euo pipefail
 
 repo_root="${AGENTBREW_REPO_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mode="${1:---full}"
 remediation="deps out of sync — run npm ci"
 
@@ -21,12 +22,9 @@ check_deps() {
     fail "$remediation: node_modules is missing"
   fi
 
-  local npm_output
-  if ! npm_output="$(npm --prefix "$repo_root" ls --depth=0 --json --loglevel=error 2>&1)"; then
-    printf '%s\n' "$npm_output" >&2
-    fail "$remediation: npm ls reported package-lock/node_modules drift"
+  if ! node "$script_dir/check-locked-dependencies.mjs" "$repo_root"; then
+    fail "$remediation: installed version comparison did not qualify"
   fi
-
   printf 'Build pipeline guard: npm dependencies match package-lock.json\n'
 }
 

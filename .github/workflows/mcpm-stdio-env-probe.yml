@@ -1,0 +1,73 @@
+name: Disposable MCPM stdio environment control
+on:
+  push:
+    branches: [probe/mcpm-stdio-env-runtime]
+permissions:
+  contents: read
+env:
+  DO_NOT_TRACK: "1"
+  AGENTBREW_EVENTS: "0"
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: .node-version
+      - run: npm ci
+      - name: Install the pinned fixture dependency
+        run: |
+          python3 -m venv "$RUNNER_TEMP/mcpm-fixture-venv"
+          "$RUNNER_TEMP/mcpm-fixture-venv/bin/pip" install 'mcpm==2.15.0'
+      - name: Check the ordinary registry and proxy in a private network namespace
+        run: |
+          test ! -e "$HOME/.config/mcpm/servers.json"
+          cat > "$RUNNER_TEMP/agentbrew-fixture-stdio.cjs" <<'JS'
+          const { createInterface } = require("node:readline");
+          const send = (value) => process.stdout.write(JSON.stringify({ jsonrpc: "2.0", ...value }) + "\n");
+          createInterface({ input: process.stdin }).on("line", (line) => {
+            const frame = JSON.parse(line);
+            if (frame.method === "initialize") {
+              send({ id: frame.id, result: { protocolVersion: frame.params.protocolVersion, capabilities: { tools: {} }, serverInfo: { name: "fixture", version: "1" } } });
+            } else if (frame.method === "tools/list") {
+              const visible = process.env.FIXTURE_ENDPOINT === "fixture-inherited-marker";
+              send({ id: frame.id, result: { tools: visible ? [{ name: "fixture_inherited", inputSchema: { type: "object", properties: {} } }] : [] } });
+            }
+          });
+          JS
+          sudo unshare --net -- runuser -u "$(id -un)" -- env \
+            AGENTBREW_MCPM_BIN="$RUNNER_TEMP/mcpm-fixture-venv/bin/mcpm" \
+            FIXTURE_ENDPOINT=fixture-inherited-marker \
+            FIXTURE_SCRIPT="$RUNNER_TEMP/agentbrew-fixture-stdio.cjs" DO_NOT_TRACK=1 AGENTBREW_EVENTS=0 \
+            "$(command -v node)" --import tsx --input-type=module - <<'JS'
+          import assert from "node:assert/strict";
+          import { execFileSync } from "node:child_process";
+          import { readFileSync } from "node:fs";
+          import { homedir } from "node:os";
+          import { join } from "node:path";
+          import { probeMcpServer } from "./src/mcp/probe.ts";
+          import { delegateMcpNew, readMcpmServer } from "./src/sync/mcp-delegate.ts";
+          const bin = process.env.AGENTBREW_MCPM_BIN;
+          const fixture = process.env.FIXTURE_SCRIPT;
+          const bare = "${FIXTURE_ENDPOINT}";
+          const marker = "fixture-inherited-marker";
+          const oldName = "agentbrew-fixture-raw";
+          const managed = "agentbrew-fixture-managed";
+          const args = [fixture];
+          const command = process.execPath;
+          execFileSync(bin, ["new", oldName, "--force", "--type", "stdio", "--command", command, "--args", fixture, "--env", "FIXTURE_ENDPOINT=" + bare], { stdio: "pipe", timeout: 15000 });
+          assert.equal(readMcpmServer(oldName)?.env.FIXTURE_ENDPOINT, bare);
+          assert.equal(delegateMcpNew({ serverName: managed, command, args, env: { FIXTURE_ENDPOINT: bare } }).ok, true);
+          assert.deepEqual(readMcpmServer(managed)?.env, {});
+          const stored = readFileSync(join(homedir(), ".config", "mcpm", "servers.json"), "utf8");
+          assert.equal(stored.includes(marker), false);
+          for (const [name, expected] of [[oldName, 0], [managed, 1]]) {
+            const result = await probeMcpServer(name, "fixture", { command: bin, args: ["run", name] }, { timeoutMs: 10000 });
+            console.log(JSON.stringify({ case: name, probeStatus: result.status, tools: result.toolsCount }));
+            assert.deepEqual({ status: result.status, tools: result.toolsCount }, { status: "ok", tools: expected });
+          }
+          JS

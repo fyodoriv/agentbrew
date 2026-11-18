@@ -261,18 +261,17 @@ function applyRuleDiffs(
   return { synced, errors, missingFile };
 }
 
-/** When multiple agents symlink to the same physical rules file (e.g. two agents →
- *  ~/.config/agentbrew/AGENTS.md), apply only one write. Delegated
- *  agents (ai-rules content) win over native carve-outs so a later carve-out
- *  pass cannot clobber codex's managed section. Mirrors drift dedup in
- *  `src/drift-checks/rules.ts`. */
-export function dedupeRulesWritesByResolvedPath(
-  diffs: RuleDiff[],
-  targetInputs: DiffTarget[],
-): { diffs: RuleDiff[]; targetInputs: DiffTarget[] } {
-  const byResolved = new Map<string, { diff: RuleDiff; target: DiffTarget }>();
-  for (let i = 0; i < diffs.length; i++) {
-    const target = targetInputs[i];
+/** Select one available writer when multiple agents share a resolved rules path. */
+export function chooseRulesFileWriters<T extends { agentName: string; expandedPath: string }>(
+  targets: T[],
+  delegated: ReadonlyMap<string, string>,
+): T[] {
+  const byResolved = new Map<string, T>();
+  const rank = (target: T): number => {
+    if (delegated.has(target.agentName)) return 2;
+    return CANARY_DELEGATED_AGENTS.has(target.agentName) ? 0 : 1;
+  };
+  for (const target of targets) {
     const expanded = target.expandedPath;
     let resolved = expanded;
     try {
@@ -281,16 +280,9 @@ export function dedupeRulesWritesByResolvedPath(
       logSkipped("sync/rules-sync/dedupeRealpath", e);
     }
     const existing = byResolved.get(resolved);
-    if (!existing) {
-      byResolved.set(resolved, { diff: diffs[i], target });
-      continue;
-    }
-    if (CANARY_DELEGATED_AGENTS.has(target.agentName) && !CANARY_DELEGATED_AGENTS.has(existing.target.agentName)) {
-      byResolved.set(resolved, { diff: diffs[i], target });
-    }
+    if (!existing || rank(target) > rank(existing)) byResolved.set(resolved, target);
   }
-  const entries = [...byResolved.values()];
-  return { diffs: entries.map((e) => e.diff), targetInputs: entries.map((e) => e.target) };
+  return [...byResolved.values()];
 }
 
 /** Carve-out: shared (reads each carve-out's existing file content for the diff;
@@ -385,16 +377,13 @@ export function collectCanaryDelegation(
   return delegateRulesGenerate({ agents: canaryAgents, sharedRules: deployRules });
 }
 
-/** Carve-out: shared (rulesFile targets minus agents the state marks not detected).
- *
- *  Used by `syncRules` only — external callers (initRules, showRules,
- *  drift) iterate rulesFile-only via {@link getRulesTargets}. */
+/** Keep every eligible agent until writer selection checks the shared path. */
 function getAllSyncTargets(skip: ReadonlySet<string>): Array<{ agentName: string; expandedPath: string }> {
-  const fileTargets = getRulesTargets().map((t) => ({
-    agentName: t.agentName,
-    expandedPath: expandHome(t.path),
-  }));
-  return fileTargets.filter((target) => !skip.has(target.agentName));
+  return AGENT_DEFINITIONS.flatMap((agent) =>
+    agent.rulesFile === undefined || skip.has(agent.name)
+      ? []
+      : [{ agentName: agent.name, expandedPath: expandHome(agent.rulesFile) }],
+  );
 }
 
 function maybeDedupeSharedRules(dryRun: boolean, state: AgentBrewState, save: (state: AgentBrewState) => void): void {
@@ -458,19 +447,18 @@ export async function syncRules(options?: SyncOptions, ctx?: Partial<Context>): 
   // Never write rules for an agent the state marks not detected.
   const skip = undetectedAgentNames(state);
   const targets = getAllSyncTargets(skip);
-  const targetInputs = targets.map(buildTargetInput);
   const delegated = collectCanaryDelegation(targets, deployRules);
+  const targetInputs = chooseRulesFileWriters(targets, delegated).map(buildTargetInput);
   // Plugin rules never go into global rules files: they are repo-scoped and
   // served per session by `agentbrew plugin rules` (#208 step 7).
   const diffs = computeRulesDiff(deployRules ?? "", targetInputs, delegated);
-  const deduped = dedupeRulesWritesByResolvedPath(diffs, targetInputs);
 
   if (!quiet) warnWhenDelegationEmpty(delegated, targets, log);
   if (!quiet) logRulesHeader(log, dryRun);
 
   const sharedManifest = ctx?.manifest !== undefined;
   const manifest = ctx?.manifest ?? loadManifest();
-  const diffResult = applyRuleDiffs(deduped.diffs, deduped.targetInputs, manifest, log, { quiet, verbose, dryRun });
+  const diffResult = applyRuleDiffs(diffs, targetInputs, manifest, log, { quiet, verbose, dryRun });
 
   // Refresh catalog-owned per-file rules from repo templates before deploy.
   refreshRulesSafely(manifest, dryRun);

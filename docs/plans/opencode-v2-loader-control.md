@@ -130,3 +130,23 @@ before another loader test.
   as a loader experiment, regardless of the inventory list.
 - **Anchor**: The pinned [debug config handler](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/cli/src/commands/handlers/debug/config.ts)
   and [server connection resolver](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/cli/src/services/server-connection.ts).
+
+The [route control](https://github.com/fyodoriv/agentbrew/actions/runs/44293192479)
+opened a loopback socket, but both CLI reads exited 1. Neither response
+supplied a configuration document. Separate the server's HTTP health
+response from the CLI's global option parser and connection policy.
+
+- **Hypothesis**: Raw health and the two placements of the documented
+  global server option identify why the client returns exit 1.
+- **Measurement**: In one owned fresh server, record only the status of
+  `/api/info`. Run the same config read with the server option before
+  and after the subcommand. Classify only fixed connection, compatibility,
+  authorization or usage messages from the two captured diagnostics.
+- **Success**: One externally observable HTTP status and two fixed
+  client decisions, with no raw request, response, credential or log
+  printed. If either config read succeeds, check the original document
+  and target assertions.
+- **Pivot**: An unclassified result preserves the setup gap. It gives
+  no loader admission evidence.
+- **Anchor**: The pinned global option and connection resolver code,
+  and the prior socket and exit-code receipt.

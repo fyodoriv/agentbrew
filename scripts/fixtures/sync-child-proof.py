@@ -36,7 +36,7 @@ def fixture_env(fixture, observer):
     home = fixture / "home"
     workspace = fixture / "workspace"
     config = home / ".config" / "agentbrew"
-    marketplace = home / ".claude" / "plugins"
+    marketplace = home / ".local" / "share" / "agentbrew" / "claude-marketplace"
     for directory in (
         config, marketplace, workspace, fixture / "tmp",
         home / ".cache", home / ".local" / "share",
@@ -61,6 +61,7 @@ def fixture_env(fixture, observer):
         "NO_COLOR": "1",
         "DO_NOT_TRACK": "1",
         "AGENTBREW_TELEMETRY": "0",
+        "AGENTBREW_POSTHOG_KEY": "",
         "AGENTBREW_EVENTS": "1",
         "AGENTBREW_EVENTS_FILE": str(fixture / "events.jsonl"),
         "SYNC_CHILD_PRELOAD_RECEIPT": str(observer / "preload"),
@@ -106,16 +107,20 @@ def main():
         require(attempt.exists() and attempt.read_bytes() == b"denied\n", "Subprocess canary did not record one denial")
         print("Canary: exit 1, blocked subprocess attempts 1", flush=True)
 
+        loader = repo / "node_modules" / "tsx" / "dist" / "loader.mjs"
+        update_child = repo / "scripts" / "fixtures" / "sync-update-child.mts"
+        require(loader.is_file() and update_child.is_file(), "Direct update runtime missing")
         marker = b"synthetic-invalid-input-canary"
         for label, args in [
-            ("empty pull", ["--pull", "--only", ""]),
-            ("plain unknown", ["--only", marker.decode()]),
+            ("empty pull", [str(bundle), "sync", "--pull", "--only", ""]),
+            ("plain unknown", [str(bundle), "sync", "--only", marker.decode()]),
+            ("direct empty update", ["--import", str(loader), str(update_child)]),
         ]:
             fixture = root / label
             observer = root / f"{label}-observer"
             work, env = fixture_env(fixture, observer)
             before = manifest(fixture)
-            result = execute(node, preload, observer, work, env, [str(bundle), "sync", *args])
+            result = execute(node, preload, observer, work, env, args)
             combined = result.stdout + result.stderr
             after = manifest(fixture)
             changed = sum(before.get(key) != after.get(key) for key in before.keys() | after.keys())

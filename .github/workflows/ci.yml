@@ -20,11 +20,12 @@ jobs:
           node-version-file: .node-version
       - name: Build the candidate
         run: |
-          git diff --exit-code e8f930b22ce618fa103bf7cd7e2a6adeea387db0 HEAD -- . \
+          git diff --exit-code 3655a0bca7d245dabfa50ac6ac05e5ef573b938c HEAD -- . \
             ':(exclude).github/workflows/ci.yml' \
             ':(exclude)docs/plans/sync-selection-real-child-preflight.md' \
             ':(exclude)scripts/fixtures/sync-child-deny.mjs' \
-            ':(exclude)scripts/fixtures/sync-child-proof.py'
+            ':(exclude)scripts/fixtures/sync-child-proof.py' \
+            ':(exclude)scripts/fixtures/sync-update-child.mts'
           npm ci
           npm run build
       - name: Check real CLI behavior in synthetic homes
@@ -37,4 +38,4 @@ jobs:
           sudo unshare --net --setuid "$runner_uid" --setgid "$runner_gid" \
             /usr/bin/env -i PATH=/usr/bin:/bin python3 \
             scripts/fixtures/sync-child-proof.py "$node" "$PWD" "$outside_net" \
-            "$runner_uid" "$(git rev-parse HEAD)" e8f930b22ce618fa103bf7cd7e2a6adeea387db0 "$stage"
+            "$runner_uid" "$(git rev-parse HEAD)" 3655a0bca7d245dabfa50ac6ac05e5ef573b938c "$stage"

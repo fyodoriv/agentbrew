@@ -49,6 +49,18 @@ it("matches a signer with mixed whitespace while preserving all other registry b
   expect(readFileSync(registry, "utf8")).toBe(REGISTRY_COMMENT + OTHER_ROW);
 });
 
+it("keeps a restricted signer row out of unrestricted trust and lets revoke remove it", () => {
+  const restricted = `fixture namespaces="git",valid-before="20300101" ${ORIGINAL_KEY}\n`;
+  const original = REGISTRY_COMMENT + restricted + OTHER_ROW;
+  writeFileSync(registry, original);
+
+  trustSigner("fixture", ORIGINAL_KEY);
+  expect(readFileSync(registry, "utf8")).toBe(original);
+  expect(signersFor("fixture")).toEqual([]);
+  revokeSigner("fixture", ORIGINAL_KEY);
+  expect(readFileSync(registry, "utf8")).toBe(REGISTRY_COMMENT + OTHER_ROW);
+});
+
 describe.skipIf(!SUPPORTED)("shared signer CLI writer", () => {
   const holder = `
     use Fcntl qw(:DEFAULT :flock);

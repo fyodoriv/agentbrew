@@ -118,6 +118,21 @@ describe("sync --dry-run --agentfile", () => {
   });
 });
 
+it.each([false, true])("selected Agentfile gate uses the explicit module list, dry run: %s", async (dryRun) => {
+  const argv = ["node", "test", "sync", "--only", " Hooks ", "--agentfile", "./Agentfile.yaml"];
+  if (dryRun) argv.push("--dry-run");
+  await buildSilentProgram().parseAsync(argv);
+
+  expect(mockApplyAgentfileAndInstall).toHaveBeenCalledWith(
+    "./Agentfile.yaml",
+    expect.objectContaining({ syncModules: ["hooks"], dryRun }),
+  );
+  expect(mockRunSyncParallel).toHaveBeenCalledWith(
+    [expect.objectContaining({ name: "hooks" })],
+    expect.objectContaining({ syncModules: ["hooks"], skipGlobalAgentfile: true }),
+  );
+});
+
 describe("sync --no-prune --agentfile", () => {
   it("applies the explicit Agentfile additively and tells the runner not to prune", async () => {
     const program = buildSilentProgram();

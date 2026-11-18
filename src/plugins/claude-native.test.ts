@@ -3,7 +3,7 @@
  * plugin per company plugin, enabled in user settings, side by side with
  * file rendering. Plus `agentbrew plugin policy`.
  */
-import { existsSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -22,7 +22,7 @@ const { home, previousHome } = vi.hoisted(() => {
 import { fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { emitClaudeNative, MARKETPLACE_NAME, marketplaceDir, policyFragment } from "./claude-native.js";
 import { launcherPath } from "./mcp-launcher.js";
-import { addPlugin, removePlugin } from "./store.js";
+import { addPlugin, pluginDir, removePlugin } from "./store.js";
 
 const KEY = fixtureKey();
 const SETTINGS = () => join(home, ".claude", "settings.json");
@@ -145,6 +145,31 @@ describe("scoped native facet publication", () => {
     expect(JSON.parse(readFileSync(paths.hooks, "utf8")).hooks).toEqual(hooksBefore);
     expect(statSync(paths.launcher).mode & 0o777).toBe(0o755);
     expect(observeNativeFiles(frozen)).toEqual(before);
+  });
+
+  it("copies signed hook files and skips an ignored local text file", () => {
+    installFacetFixture();
+    const source = pluginDir("fixture-native");
+    appendFileSync(join(source, ".git", "info", "exclude"), "\n/hooks/local-notes.txt\n");
+    writeFileSync(join(source, "hooks", "local-notes.txt"), "Synthetic local note.\n");
+
+    emitClaudeNative({ modules: ["hooks"] });
+
+    const paths = nativeFacetPaths();
+    expect(readFileSync(paths.script, "utf8")).toBe("#!/bin/sh\nexit 0\n");
+    expect(existsSync(join(marketplaceDir(), "plugins", "fixture-native", "hooks", "local-notes.txt"))).toBe(false);
+  });
+
+  it("preserves unknown warm hook metadata on refusal", () => {
+    installFacetFixture();
+    emitClaudeNative();
+    const paths = nativeFacetPaths();
+    const { PreToolUse } = JSON.parse(readFileSync(paths.hooks, "utf8")).hooks;
+    writeFileSync(paths.hooks, JSON.stringify({ hooks: { PreToolUse }, ownerNote: "Synthetic owner note." }));
+    const before = observeNativeFiles(Object.values(paths));
+
+    expect(() => emitClaudeNative({ modules: ["rules"] })).toThrow(/unknown hook metadata/u);
+    expect(observeNativeFiles(Object.values(paths))).toEqual(before);
   });
 });
 

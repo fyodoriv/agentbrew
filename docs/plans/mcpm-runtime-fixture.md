@@ -9,3 +9,9 @@ candidate. Require zero tools for the raw override, one for the managed
 entry, zero saved marker values, and zero network access during execution.
 A dependency setup failure is inconclusive. No live configuration or data
 is used.
+
+The Python 3.13 run completed both handshakes. The raw override and
+managed projection each returned zero tools. The actual CLI did not
+forward the marker for the absolute Node executable. Add an explicit,
+synthetic registry value as the positive control. It must return one
+tool with the same fixture. The omission remains unqualified.

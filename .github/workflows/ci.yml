@@ -18,3 +18,4 @@ jobs:
           node-version-file: .node-version
       - run: npm ci
       - run: npx vitest run src/build-pipeline-guard.test.ts --maxWorkers=1 --retry=0 -t 'exact build guard comparison'
+      - run: bash scripts/build-pipeline-guard.sh --deps-only

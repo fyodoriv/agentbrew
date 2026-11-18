@@ -89,19 +89,33 @@ export function formatHiddenCommands(
   return [helper.styleTitle("Internal:"), ...items, ""];
 }
 
-/** Filter sync modules by a comma-separated --only list. Returns undefined on validation error. */
-export function filterSyncModules<T extends { name: string }>(modules: readonly T[], only: string): T[] | undefined {
-  const validNames = new Set(modules.map((m) => m.name));
-  const requested = only.split(",").map((s) => s.trim().toLowerCase());
-  const invalid = requested.filter((r) => !validNames.has(r));
+/** Resolve a supplied sync selection without changing command state or printing. */
+export function matchSyncModules<T extends { name: string }>(
+  modules: readonly T[],
+  only: string,
+): { selected: T[] } | { error: string; hint: string } {
+  const validNames = new Set(modules.map((module) => module.name));
+  const requested = only.split(",").map((name) => name.trim().toLowerCase());
+  const invalid = requested.filter((name) => !validNames.has(name));
   if (invalid.length > 0) {
-    cliError(`Unknown sync module(s): ${invalid.join(", ")}`, `Valid modules: ${[...validNames].join(", ")}`);
-    return undefined;
+    return {
+      error: only.trim() === "" ? "Specify at least one sync module." : `Unknown sync module(s): ${invalid.join(", ")}`,
+      hint: `Valid modules: ${[...validNames].join(", ")}`,
+    };
   }
   const requestedSet = new Set(requested);
-  const filtered = modules.filter((m) => requestedSet.has(m.name));
-  console.log(chalk.dim(`  Syncing: ${filtered.map((m) => m.name).join(", ")}\n`));
-  return filtered;
+  return { selected: modules.filter((module) => requestedSet.has(module.name)) };
+}
+
+/** Filter sync modules by a comma-separated --only list. Returns undefined on validation error. */
+export function filterSyncModules<T extends { name: string }>(modules: readonly T[], only: string): T[] | undefined {
+  const result = matchSyncModules(modules, only);
+  if ("error" in result) {
+    cliError(result.error, result.hint);
+    return undefined;
+  }
+  console.log(chalk.dim(`  Syncing: ${result.selected.map((module) => module.name).join(", ")}\n`));
+  return result.selected;
 }
 
 /** Return whether Agentfile-declared skills/recommended items should be installed for a --only filter. */

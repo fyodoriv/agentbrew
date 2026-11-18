@@ -23,6 +23,7 @@ import {
   formatHiddenCommands,
   formatUnlistedCommands,
   getHelpExamples,
+  matchSyncModules,
   shouldInstallAgentfileItems,
 } from "./cli-helpers.js";
 import { registerActionsCommand } from "./commands/cli-actions.js";
@@ -46,6 +47,7 @@ import { ConfigError, errorMessage } from "./core/errors.js";
 import { recordEvent, storyForCommand } from "./core/events.js";
 import { syncGain, targetedAgentCount } from "./core/gains.js";
 import { installOutputRedaction } from "./core/redact-output.js";
+import { redactUrlCredentials } from "./core/redact-url.js";
 import { printMotd } from "./motd.js";
 import { registerPluginCommands } from "./plugins/cli-plugin.js";
 import { autoSync, buildSyncModules, runSyncParallel, runSyncWithErrorCollection } from "./sync-runner.js";
@@ -578,6 +580,19 @@ export function recordCommandEventAtExit(code: number): void {
   closeCommandEvent(code === 0);
 }
 
+/** Refuse invalid sync input before startup or command event handling. */
+function refuseInvalidSyncSelection(program: Command, action: Command): void {
+  const only = action.opts<SyncCommandOptions>().only;
+  if (only === undefined) return;
+  const result = matchSyncModules(buildSyncModules({}), only);
+  if ("error" in result) {
+    program.error(redactUrlCredentials(`${result.error}\n${result.hint}`), {
+      code: "commander.invalidArgument",
+      exitCode: 1,
+    });
+  }
+}
+
 /**
  * One content-free `command` event per command run: the top-level command
  * name (never an argument), ok, and wall time. Every command passes through here.
@@ -587,6 +602,7 @@ function recordCommandEvents(program: Command): void {
     let top = action;
     while (top.parent && top.parent !== program) top = top.parent;
     if (top.name() === "sync") {
+      refuseInvalidSyncSelection(program, action);
       for (const item of checkCliBuildDrift()) console.warn(`⚠ ${item.detail}`);
       if (!process.argv.includes("--json")) printMotd("sync");
     }

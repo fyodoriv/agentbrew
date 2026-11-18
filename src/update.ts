@@ -338,7 +338,7 @@ function pruneDroppedGlobalAgentfileSkills(state: AgentBrewState, dryRun: boolea
 }
 
 function selectedSyncEngines(options: UpdateOptions | undefined): typeof SYNC_ENGINES | undefined {
-  return options?.only ? filterSyncModules(SYNC_ENGINES, options.only) : SYNC_ENGINES;
+  return options?.only === undefined ? SYNC_ENGINES : filterSyncModules(SYNC_ENGINES, options.only);
 }
 
 export async function update(options?: UpdateOptions): Promise<void> {

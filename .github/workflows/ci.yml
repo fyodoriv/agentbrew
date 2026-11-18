@@ -27,3 +27,19 @@ jobs:
           sudo ip netns add agentbrew-loader
           sudo ip -n agentbrew-loader link set lo up
           sudo ip netns exec agentbrew-loader runuser -u "$USER" -- env "PATH=$PATH" python3 scripts/probe-opencode-v2-loader.py "$RUNNER_TEMP/opencode-cli/node_modules/.bin/opencode" "$AGENTBREW_OC_CASE"
+  opencode-v1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: .node-version
+      - run: npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/opencode-v1" opencode-ai@1.19.5
+      - name: Check the unchanged global V1 plugin with no external network
+        run: |
+          sudo ip netns add agentbrew-v1
+          sudo ip -n agentbrew-v1 link set lo up
+          sudo ip netns exec agentbrew-v1 runuser -u "$USER" -- env "PATH=$PATH" python3 scripts/probe-opencode-v1-owned.py "$RUNNER_TEMP/opencode-v1/node_modules/.bin/opencode"

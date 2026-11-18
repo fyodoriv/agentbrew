@@ -16,10 +16,18 @@ import { type PinnedPluginFile, readPinnedPluginFiles } from "./store.js";
 export type NativeFacet = "hooks" | "mcp" | "rules";
 type Hooks = Record<string, unknown[]>;
 
+interface NativeFileObservation {
+  body: Buffer;
+  device: number;
+  inode: number;
+  mode: number;
+}
+
 interface PlannedWrite {
   path: string;
   body: Buffer;
   mode?: number;
+  before?: NativeFileObservation;
 }
 
 export function nativePluginEntry(plugin: ActivePlugin) {
@@ -69,6 +77,22 @@ function existingOwnedPath(path: string, kind: "file" | "directory"): boolean {
 
 function readOutput(path: string): Buffer | undefined {
   return existingOwnedPath(path, "file") ? readFileSync(path) : undefined;
+}
+
+function observeNativeTarget(path: string): NativeFileObservation | undefined {
+  const body = readOutput(path);
+  if (!body) return undefined;
+  const stat = lstatSync(path, { throwIfNoEntry: false });
+  if (!stat?.isFile() || stat.nlink !== 1 || stat.uid !== process.getuid?.()) {
+    refuse("destination ownership or file type is unknown");
+  }
+  return { body, device: stat.dev, inode: stat.ino, mode: stat.mode };
+}
+
+function assertNativeTargetsUnchanged(writes: readonly PlannedWrite[]): void {
+  if (writes.some(({ path, before }) => !isDeepStrictEqual(observeNativeTarget(path), before))) {
+    refuse("a planned native destination changed after review");
+  }
 }
 
 function planMissingFile(writes: PlannedWrite[], path: string, body: Buffer, mode?: number): void {
@@ -157,7 +181,8 @@ function planHooks(
     refuse("the declared and generated rule hook identities overlap");
   }
   const path = join(root, "hooks", "hooks.json");
-  const current = readHooks(readOutput(path), true);
+  const before = observeNativeTarget(path);
+  const current = readHooks(before?.body, true);
   const full = withRulesHook(declared, rulesHook);
   const rulesOnly = withRulesHook({}, rulesHook);
   const hasDeclared = isDeepStrictEqual(current, declared) || isDeepStrictEqual(current, full);
@@ -170,7 +195,7 @@ function planHooks(
   const includeRules = hasRules || selected.has("rules");
   const retained = includeDeclared ? declared : {};
   const desired = includeRules ? withRulesHook(retained, rulesHook) : retained;
-  if (!isDeepStrictEqual(current, desired)) writes.push({ path, body: jsonBytes({ hooks: desired }) });
+  if (!isDeepStrictEqual(current, desired)) writes.push({ path, body: jsonBytes({ hooks: desired }), before });
   for (const script of scripts) {
     planMissingFile(writes, join(dirname(path), script.path), script.body, script.mode);
   }
@@ -544,7 +569,8 @@ export function publishSelectedNativePlugins(
 ): void {
   if (!modules.length || !plugins.length) return;
   const path = join(marketplace, ".claude-plugin", "marketplace.json");
-  const content = readOutput(path);
+  const before = observeNativeTarget(path);
+  const content = before?.body;
   const registry: Marketplace = content
     ? JSON.parse(content.toString("utf8"))
     : { name, owner: { name: "agentbrew" }, plugins: [] };
@@ -562,12 +588,13 @@ export function publishSelectedNativePlugins(
     if (writes.length > before) planned.push(plugin.entry);
   }
   assertRetainedLauncherClaims(marketplace, registry, launcherClaims);
-  if (changedEntries) writes.push({ path, body: jsonBytes(registry) });
+  if (changedEntries) writes.push({ path, body: jsonBytes(registry), before });
   if (new Set(writes.map((write) => write.path)).size !== writes.length) refuse("native output paths overlap");
 
   if (writes.length === 0) return;
   withSignerCommitFence(allowedSignersPath(), () => {
     assertCurrentNativeSources(planned);
+    assertNativeTargetsUnchanged(writes);
     for (const { path: destination, body, mode } of writes) {
       mkdirSync(dirname(destination), { recursive: true });
       writeFileSync(destination, body, { mode });

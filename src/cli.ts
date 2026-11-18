@@ -1,5 +1,6 @@
-import { readFileSync, realpathSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Node version guard — checked before any other setup so the message is always
@@ -262,7 +263,21 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
     const { readUpdateSkillRequests } = await import("./update-skill-policy.js");
     if (!readUpdateSkillRequests(options)) return false;
   }
-  if (!options.rollback) await handleSyncWorkspaces(options);
+  let selectedWorkspaceDir: string | undefined;
+  const selectedWorkspacePath = () => {
+    selectedWorkspaceDir = mkdtempSync(join(tmpdir(), "agentbrew-selected-workspace-"));
+    return join(selectedWorkspaceDir, "workspace-Agentfile.yaml");
+  };
+  try {
+    const outputPath = options.only !== undefined && !options.pull ? selectedWorkspacePath : undefined;
+    const agentfileBaseDir = options.rollback ? undefined : await handleSyncWorkspaces(options, outputPath);
+    return await runPreparedSync(options, agentfileBaseDir);
+  } finally {
+    if (selectedWorkspaceDir) rmSync(selectedWorkspaceDir, { recursive: true, force: true });
+  }
+}
+
+async function runPreparedSync(options: SyncCommandOptions, agentfileBaseDir?: string): Promise<boolean> {
   const early = await handleSyncEarlyExits(options);
   if (early) return early === "deployed";
   if (await refuseSyncOnLockDrift()) return false;
@@ -287,7 +302,7 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
   await handleSyncFirstRun(options);
 
   const installAgentfileItems = shouldInstallAgentfileItems(options.only);
-  await handleSyncAgentfile(options, installAgentfileItems, syncModules);
+  await handleSyncAgentfile(options, installAgentfileItems, syncModules, agentfileBaseDir);
   await handleSyncRecommended(options);
 
   const runnerOpts = {
@@ -296,6 +311,7 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
     installAgentfileItems,
     dryRun: options.dryRun,
     agentfilePath: options.agentfile,
+    ...(agentfileBaseDir && { agentfileBaseDir }),
     authoritative: options.prune !== false,
     ...(syncModules && { syncModules }),
   };
@@ -309,10 +325,15 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
 }
 
 /** In workspace mode, swap the base Agentfile for one merged with every per-repo Agentfile. */
-async function handleSyncWorkspaces(options: SyncCommandOptions): Promise<void> {
-  const { prepareWorkspaceAgentfile } = await import("./core/workspaces.js");
-  const merged = prepareWorkspaceAgentfile(options);
-  if (merged) options.agentfile = merged;
+async function handleSyncWorkspaces(
+  options: SyncCommandOptions,
+  outputPath?: () => string,
+): Promise<string | undefined> {
+  const workspace = await import("./core/workspaces.js");
+  const merged = workspace.prepareWorkspaceAgentfile(options, outputPath);
+  if (!merged) return undefined;
+  options.agentfile = merged;
+  return outputPath ? dirname(workspace.workspaceAgentfilePath()) : undefined;
 }
 
 /** "deployed": a pull ran its deploy step. "stopped": the run ended with no deploy (a rollback, an unknown `--only` name). */
@@ -415,14 +436,17 @@ async function handleSyncAgentfile(
   options: SyncCommandOptions,
   installAgentfileItems: boolean,
   syncModules?: readonly string[],
+  agentfileBaseDir?: string,
 ): Promise<void> {
   if (!options.agentfile) return;
+  if (agentfileBaseDir && !options.dryRun) mkdirSync(agentfileBaseDir, { recursive: true, mode: 0o700 });
   await applyAgentfileAndInstall(options.agentfile, {
     installRequestedItems: installAgentfileItems,
     dryRun: options.dryRun,
     // `--no-prune` must also stop the Agentfile apply from pruning state-backed lists.
     authoritative: options.prune !== false,
     ...(syncModules && { syncModules }),
+    ...(agentfileBaseDir && { agentfileBaseDir }),
   });
 }
 

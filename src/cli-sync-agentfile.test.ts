@@ -1,6 +1,7 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import yaml from "js-yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./cli-helpers.js", async (importOriginal) => {
@@ -49,6 +50,7 @@ import { install } from "./catalog/install.js";
 import { buildProgram } from "./cli.js";
 import { shouldInstallAgentfileItems } from "./cli-helpers.js";
 import { applyAgentfileAndInstall } from "./commands/cli-install.js";
+import { workspaceAgentfilePath } from "./core/workspaces.js";
 import { runSyncParallel } from "./sync-runner.js";
 import { update } from "./update.js";
 
@@ -72,6 +74,64 @@ beforeEach(() => {
 afterEach(() => {
   process.exitCode = undefined;
   vi.restoreAllMocks();
+});
+
+describe("selected workspace isolation", () => {
+  it.each(["live", "preview", "failure"] as const)("isolates its rendered workspace file during %s", async (mode) => {
+    const scratch = mkdtempSync(join(tmpdir(), "selected-workspace-control-"));
+    vi.stubEnv("HOME", scratch);
+    vi.stubEnv("TMPDIR", scratch);
+    try {
+      const base = join(scratch, "Agentfile.yaml");
+      const workspace = join(scratch, "workspace");
+      const first = join(workspace, "first");
+      const second = join(workspace, "second");
+      const shared = workspaceAgentfilePath();
+      for (const directory of [first, second, dirname(shared)]) mkdirSync(directory, { recursive: true });
+      writeFileSync(shared, "Synthetic pinned shared output.\n");
+      writeFileSync(base, "defaultModel: fixture-base\n");
+      writeFileSync(join(first, "Agentfile.yaml"), "commands: [./first-commands]\n");
+      writeFileSync(join(second, "Agentfile.yaml"), "commands: [./second-commands]\n");
+
+      const failure = new Error("Synthetic selected runner failure");
+      let observedPath: string | undefined;
+      let observedMode: number | undefined;
+      let observedContent: unknown;
+      mockRunSyncParallel.mockImplementationOnce(async (_modules, options) => {
+        observedPath = options?.agentfilePath;
+        if (observedPath) {
+          observedContent = yaml.load(readFileSync(observedPath, "utf8"));
+          observedMode = statSync(dirname(observedPath)).mode & 0o777;
+        }
+        if (mode === "failure") throw failure;
+      });
+      const args = ["node", "test", "sync", "--only", "commands", "--no-recommended", "--agentfile", base];
+      args.push("--workspaces", workspace);
+      if (mode === "preview") args.push("--dry-run");
+      const result = buildSilentProgram().parseAsync(args);
+      if (mode === "failure") await expect(result).rejects.toThrow(failure);
+      else await result;
+
+      expect(observedPath).toBeDefined();
+      const output = observedPath as string;
+      expect(output).not.toBe(shared);
+      expect(observedMode).toBe(0o700);
+      expect(observedContent).toMatchObject({
+        defaultModel: "fixture-base",
+        commands: [join(first, "first-commands"), join(second, "second-commands")],
+      });
+      expect(mockApplyAgentfileAndInstall).toHaveBeenCalledWith(
+        output,
+        expect.objectContaining({ syncModules: ["commands"] }),
+      );
+      expect(readFileSync(shared, "utf8")).toBe("Synthetic pinned shared output.\n");
+      expect(existsSync(output)).toBe(false);
+      expect(existsSync(dirname(output))).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+      rmSync(scratch, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("sync --dry-run --agentfile", () => {

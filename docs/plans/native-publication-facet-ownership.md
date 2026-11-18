@@ -875,3 +875,10 @@ and type checking.
 This proof covers the signed nonempty publication path and cooperating
 writers. Settings path ownership, empty cleanup and live installation
 remain separate.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44283459129)
+acquired a second signer descriptor during the settings write.
+The [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44283769969)
+refused it with exit 75, then allowed the lock after publication
+returned. It passed 54 focused controls, 110 compatibility tests,
+ordinary publication, and type checking.

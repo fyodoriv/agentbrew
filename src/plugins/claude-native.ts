@@ -125,14 +125,15 @@ export function emitClaudeNative(options?: { modules?: readonly NativeFacet[]; c
     return;
   }
   if (options?.certifyFullOutput) {
-    withNativePublicationLock(() => publishNative(true));
+    withNativePublicationLock((beginMutation) => publishNative({ beginMutation }));
     return;
   }
   publishNative();
 }
 
-function publishNative(certify = false): void {
+function publishNative(certification?: { beginMutation: () => void }): void {
   const plugins = activePlugins();
+  certification?.beginMutation();
   const entries = plugins.map(emitPlugin);
   pruneLaunchers(
     new Set(
@@ -155,7 +156,7 @@ function publishNative(certify = false): void {
     rmSync(marketplaceDir(), { recursive: true, force: true });
   }
   updateSettings(entries.map((e) => e.name));
-  if (certify) certifyFullNativeOutput(plugins, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK);
+  if (certification) certifyFullNativeOutput(plugins, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK);
 }
 
 export interface PolicyFragment {

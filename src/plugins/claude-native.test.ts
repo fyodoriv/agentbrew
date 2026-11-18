@@ -397,8 +397,14 @@ describe("full native output proof", () => {
     appendFileSync(join(source, ".git", "info", "exclude"), "\n/hooks/certification-note.txt\n");
     writeFileSync(join(source, "hooks", "certification-note.txt"), "Synthetic local note.\n");
 
-    expect(() => emitClaudeNative({ certifyFullOutput: true })).toThrow(/full native output inventory differs/u);
-    expect(existsSync(nativeProofPath())).toBe(false);
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    try {
+      expect(() => emitClaudeNative({ certifyFullOutput: true })).toThrow(/full native output inventory differs/u);
+      expect(existsSync(nativeProofPath())).toBe(false);
+      expect(existsSync(owner)).toBe(true);
+    } finally {
+      rmSync(owner, { force: true });
+    }
   });
 });
 

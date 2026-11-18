@@ -1123,3 +1123,8 @@ and a later repair under mask 022 restored 0600. A receipt asking
 to remove signed owner permissions refused. The ordinary mask
 kept the legacy receipt shape. Both local native suites passed
 all 75 tests.
+
+The [hosted Linux check](https://github.com/fyodoriv/agentbrew/actions/runs/44317997295)
+passed both native suites. The platform-specific Mac controls ran
+locally. The Linux publisher still kept normal signed modes and the
+older receipt shape.

@@ -245,26 +245,22 @@ describe("composed native and Dotfiles signer order", () => {
   const key = KEY.pub.trim().split(/\s+/u).slice(0, 2).join(" ");
 
   function dotfilesTrust(registry: string, plugin: string, action: "--yes" | "--revoke"): number | null {
-    const checkout = process.env.DOTFILES_SIGNER_FIXTURE;
-    if (!checkout) throw new Error("Missing the exact hosted Dotfiles fixture checkout.");
-    const result = spawnSync(
-      "/bin/bash",
-      [join(checkout, "bin/dotfiles-plugin"), "trust", plugin, "--signer", key, action],
-      {
-        env: {
-          PATH: process.env.PATH,
-          HOME: home,
-          XDG_CONFIG_HOME: join(home, ".config"),
-          XDG_DATA_HOME: join(home, ".local", "share"),
-          AGENT_PLUGINS_ALLOWED_SIGNERS: registry,
-          GIT_CONFIG_GLOBAL: "/dev/null",
-          GIT_CONFIG_NOSYSTEM: "1",
-          DO_NOT_TRACK: "1",
-        },
-        stdio: "pipe",
-        timeout: 8_000,
+    const command = join(import.meta.dirname, "..", "..", "fixture-dotfiles", "bin", "dotfiles-plugin");
+    expect(existsSync(command)).toBe(true);
+    const result = spawnSync("/bin/bash", [command, "trust", plugin, "--signer", key, action], {
+      env: {
+        PATH: process.env.PATH,
+        HOME: home,
+        XDG_CONFIG_HOME: join(home, ".config"),
+        XDG_DATA_HOME: join(home, ".local", "share"),
+        AGENT_PLUGINS_ALLOWED_SIGNERS: registry,
+        GIT_CONFIG_GLOBAL: "/dev/null",
+        GIT_CONFIG_NOSYSTEM: "1",
+        DO_NOT_TRACK: "1",
       },
-    );
+      stdio: "pipe",
+      timeout: 8_000,
+    });
     expect(result.error).toBeUndefined();
     expect(result.signal).toBeNull();
     return result.status;

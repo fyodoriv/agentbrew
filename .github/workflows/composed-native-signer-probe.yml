@@ -35,8 +35,7 @@ jobs:
           fi
       - run: npm ci
       - name: Observe actual cross-tool signer writes
-        env:
-          DOTFILES_SIGNER_FIXTURE: ${{ github.workspace }}/fixture-dotfiles
         run: |
+          test "$(git -C fixture-dotfiles rev-parse HEAD)" = e76d872f7761fb84480860694fb97458e6122b07
           umask 022
           npx --no-install vitest run src/plugins/claude-native.test.ts --reporter=verbose -t 'composed native and Dotfiles signer order'

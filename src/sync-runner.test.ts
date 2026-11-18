@@ -610,6 +610,29 @@ describe("runSyncParallel sequential module handling", () => {
 });
 
 describe("prepareSync and Agentfile handling", () => {
+  it.each([false, true])("selected Agentfile gate reaches both prepared inputs, dry run: %s", async (dryRun) => {
+    mockApplyAgentfile.mockReturnValue({ skillsToInstall: [], recommendedRequested: false } as never);
+    const modules: SyncModule[] = [{ name: "hooks", fn: async () => undefined }];
+
+    await runSyncWithErrorCollection(modules, {
+      dryRun,
+      syncModules: ["hooks"],
+      ...(dryRun ? { agentfilePath: "./fixture-Agentfile.yaml", skipGlobalAgentfile: true } : {}),
+    });
+
+    expect(mockApplyAgentfile).toHaveBeenCalledTimes(2);
+    expect(mockApplyAgentfile).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining(dryRun ? "fixture-Agentfile.yaml" : ".config/agentbrew"),
+      expect.objectContaining({ dryRun, syncModules: ["hooks"] }),
+    );
+    expect(mockApplyAgentfile).toHaveBeenNthCalledWith(
+      2,
+      process.cwd(),
+      expect.objectContaining({ dryRun, syncModules: ["hooks"] }),
+    );
+  });
+
   it("applies global and project Agentfiles during sync", async () => {
     mockApplyAgentfile.mockReturnValue({ skillsToInstall: [], recommendedRequested: false } as never);
     const modules: SyncModule[] = [{ name: "ok", fn: async () => undefined }];

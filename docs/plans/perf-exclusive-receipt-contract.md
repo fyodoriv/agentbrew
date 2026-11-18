@@ -62,3 +62,26 @@ The test expected exit 2 and neither file. The old route enters the build
 before it checks the slot, then times directly inside that shared slot.
 This result covers P03 on the old route. It neither qualifies receipt
 reuse nor changes the earlier loaded-machine result.
+
+## Observe external inputs to the current command table
+
+- **Hypothesis**: The seven current budget commands finish under a
+  file-operation trace. At least one successful operation touches an
+  input outside the checkout and the scratch home.
+- **Measurement**: Run only the checked-in budget rows from a hosted
+  Ubuntu checkout with fresh built outputs. Use the timing child's
+  scratch home and restricted environment. Trace file operations in a
+  private temporary directory. Report only per-command totals for
+  checkout, scratch, toolchain, operating system and unknown paths.
+  A separate synthetic file read checks the unknown-path counter.
+- **Success**: All seven rows exit 0. Each has a nonempty trace, at least
+  one successful outside read is recorded, and the canary adds one
+  distinct unknown path. No raw path or trace reaches the workflow log.
+- **Pivot**: A missing command, absent trace or unsupported path shape
+  rules out using the observation as a complete input description.
+  Unknown dependencies still refuse receipt reuse.
+- **Anchor**: The current performance budget and the timing child's
+  environment in `scripts/perf-gate.mjs`.
+
+One trace covers the selected executions on that Ubuntu image. It
+cannot describe macOS dependencies or every future command branch.

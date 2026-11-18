@@ -22,3 +22,10 @@ before changing deadlines or assuming a cause.
   installation outside test isolation.
 - **Anchor**: The reported interruption, existing maintenance success
   marker and current scheduled plist in Agentbrew.
+
+A read-only 48-hour LaunchAgent log query found zero records for the
+named service. The prior termination cause remains unknown. The baseline
+did not produce any stage lines or enable them in the plist. The
+candidate passed all four stage sequences. The unavailable-stderr
+control still completed maintenance. All 62 tests in the command and
+LaunchAgent suites passed. The installed job was left alone.

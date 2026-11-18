@@ -1,9 +1,9 @@
 import type { Command } from "commander";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
-  return { ...actual, writeFileSync: vi.fn() };
+  return { ...actual, writeFileSync: vi.fn(), writeSync: vi.fn() };
 });
 
 vi.mock("../state.js", () => ({
@@ -18,6 +18,11 @@ vi.mock("../state.js", () => ({
     mcpServers: [],
   })),
   saveState: vi.fn(),
+}));
+
+vi.mock("../memory/backup.js", async (original) => ({
+  ...(await original<typeof import("../memory/backup.js")>()),
+  rotateMemoryBackup: vi.fn(() => ({ ok: true, path: "/fixture/backup.db" })),
 }));
 
 vi.mock("../memory/enable.js", () => ({
@@ -94,8 +99,10 @@ vi.mock("../memory/invoke.js", () => ({
   invokeMemoryMaintenance: vi.fn(() => ({ ok: true, status: 0, stdout: "", stderr: "", command: "memory maintain" })),
 }));
 
-import { writeFileSync } from "node:fs";
+import { writeFileSync, writeSync } from "node:fs";
+import { rotateMemoryBackup } from "../memory/backup.js";
 import { enableMemory } from "../memory/enable.js";
+import { invokeMemoryMaintenance } from "../memory/invoke.js";
 import { installMemoryLaunchAgents, kickstartMemoryDaemon, memoryLaunchAgentSupported } from "../memory/launchagent.js";
 import { mcpToolsListHealthy } from "../memory/mcp-client.js";
 import { checkProjectMemorySync, syncClaudeProjectMemories } from "../memory/project-sync.js";
@@ -110,6 +117,74 @@ beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => undefined);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   process.exitCode = undefined;
+});
+
+afterEach(() => vi.unstubAllEnvs());
+
+describe("memory maintenance stage logging", () => {
+  it.each([
+    ["success", true, true, 1, ["upstream", "backup", "success-marker", "complete"]],
+    ["upstream failure", false, true, 1, ["upstream", "upstream-failed"]],
+    ["backup failure", true, false, 1, ["upstream", "backup", "backup-failed"]],
+    ["manual with logging off", true, true, 0, []],
+  ] as const)("records fixed milestones for %s", async (_, upstreamOk, backupOk, trace, expected) => {
+    vi.stubEnv("AGENTBREW_MEMORY_MAINTENANCE_TRACE", trace ? "1" : undefined);
+    const operations: string[] = [];
+    vi.mocked(writeSync).mockImplementation((fd, content) => {
+      expect(fd).toBe(2);
+      const marker = /^agentbrew memory maintain pid=[0-9]+ stage=([a-z-]+)\n$/u.exec(String(content))?.[1];
+      expect(marker).toBeDefined();
+      operations.push(String(marker));
+      return String(content).length;
+    });
+    vi.mocked(invokeMemoryMaintenance).mockImplementationOnce(() => {
+      operations.push("call-upstream");
+      return {
+        ok: upstreamOk,
+        status: upstreamOk ? 0 : 1,
+        stdout: "synthetic stdout",
+        stderr: upstreamOk ? "" : "synthetic stderr",
+        command: "check-db",
+      };
+    });
+    if (upstreamOk) {
+      vi.mocked(rotateMemoryBackup).mockImplementationOnce(() => {
+        operations.push("call-backup");
+        return backupOk ? { ok: true, path: "/fixture/backup.db" } : { ok: false, error: "synthetic backup error" };
+      });
+      if (backupOk)
+        vi.mocked(writeFileSync).mockImplementationOnce(() => {
+          operations.push("call-success-marker");
+        });
+    }
+
+    await buildProgram().parseAsync(["node", "test", "memory", "maintain", "--json"]);
+
+    const stages = operations.filter((item) => !item.startsWith("call-"));
+    expect(stages).toEqual(expected);
+    expect(operations.filter((item) => item.startsWith("call-"))).toEqual([
+      "call-upstream",
+      ...(upstreamOk ? ["call-backup"] : []),
+      ...(upstreamOk && backupOk ? ["call-success-marker"] : []),
+    ]);
+    for (const stage of ["upstream", "backup", "success-marker"]) {
+      if (stages.includes(stage)) expect(operations.indexOf(stage)).toBeLessThan(operations.indexOf(`call-${stage}`));
+    }
+    const json = vi.mocked(console.log).mock.calls.at(-1)?.[0];
+    expect(JSON.parse(String(json)).ok).toBe(upstreamOk && backupOk);
+    expect(String(json)).not.toContain("stage=");
+  });
+
+  it("preserves maintenance when standard error is unavailable", async () => {
+    vi.stubEnv("AGENTBREW_MEMORY_MAINTENANCE_TRACE", "1");
+    vi.mocked(writeSync).mockImplementation(() => {
+      throw new Error("synthetic missing stderr");
+    });
+    await buildProgram().parseAsync(["node", "test", "memory", "maintain", "--json"]);
+    expect(invokeMemoryMaintenance).toHaveBeenCalledOnce();
+    expect(rotateMemoryBackup).toHaveBeenCalledOnce();
+    expect(writeFileSync).toHaveBeenCalledOnce();
+  });
 });
 
 describe("registerMemoryCommands", () => {

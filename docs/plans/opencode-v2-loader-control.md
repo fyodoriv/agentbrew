@@ -73,3 +73,30 @@ finish loading the same explicit local package.
 - **Pivot**: A missing match or marker still leaves loader admission
   unverified. Do not upgrade the earlier one-shot receipts.
 - **Anchor**: The pinned source and both earlier one-shot receipts.
+
+The [owned-server run](https://github.com/fyodoriv/agentbrew/actions/runs/44291561041)
+queried the location 49 times within its limit. The package was never
+listed and wrote no marker. The server was reaped. Readiness alone did
+not explain the missing admission in this setup.
+
+## Test the native V2 definition in the proven discovery directory
+
+The pinned [module schema](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/core/src/plugin/module.ts)
+accepts a default object with an ID and a setup function. The earlier
+legacy rejection proves the loader visited the older global plugin
+directory. Test that same direct-file discovery path with a V2 object
+that needs no external SDK package resolution.
+
+- **Hypothesis**: The same loader admits one native V2 definition from
+  the already observed direct-file directory.
+- **Measurement**: Replace the configured directory fixture with one
+  JavaScript file in the older global plugin directory. The default
+  object writes the same synthetic marker. Reuse the version, owned
+  loopback server, 30-second bound and cleanup check.
+- **Success**: The control is listed once, records one setup marker, and
+  the owned server is reaped. Keep catalogue absence on the earlier
+  package route as a separate result.
+- **Pivot**: A missing result leaves even this path unqualified. Use
+  the exact pinned loader contract and a separate proof before porting
+  any hook behavior.
+- **Anchor**: The pinned module schema and direct legacy rejection.

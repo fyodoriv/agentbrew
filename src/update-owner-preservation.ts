@@ -1,5 +1,6 @@
 import { lstatSync, readlinkSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { recordedSkillConversion } from "./catalog/skill-conversions.js";
 import { loadCatalog } from "./catalog/types.js";
 import { loadManifest } from "./manifest.js";
 import type { AgentBrewState } from "./types.js";
@@ -25,6 +26,11 @@ export function existingCatalogOwnerPaths(
         state?.sources?.some((source) => source.url === skill.source && source.skillsInstalled.includes(skill.name)),
     )
     .map((skill) => skill.name);
+  for (const source of state?.sources ?? []) {
+    for (const name of source.skillsInstalled) {
+      if (recordedSkillConversion(source, name)) names.push(name);
+    }
+  }
   const roots = new Set([
     VENDOR_NEUTRAL_SKILLS_DIR,
     ...AGENT_DEFINITIONS.map((agent) => agent.skillsDir),

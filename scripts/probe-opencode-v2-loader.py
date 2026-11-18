@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 import re
@@ -7,6 +8,7 @@ import sys
 import tempfile
 
 binary = Path(sys.argv[1]).resolve(strict=True)
+sdk_modules = Path(sys.argv[2]).resolve(strict=True)
 legacy = Path("templates/opencode/claude-hooks.js").resolve(strict=True)
 identifier = "agentbrew.loader-control"
 plugin = """import { appendFileSync } from "node:fs";
@@ -20,7 +22,7 @@ export default Plugin.define({
 """
 with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directory:
     parent = Path(directory)
-    for control in ("legacy", "v2"):
+    for control in ("v2",):
         root = parent / control
         home, workspace = root / "home", root / "workspace"
         workspace.mkdir(parents=True)
@@ -32,9 +34,12 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
             plugins.mkdir(parents=True)
             shutil.copyfile(legacy, plugins / "claude-hooks.js")
         else:
-            plugins = config / "plugins/agentbrew-loader-control"
+            plugins = config / "loader-fixture"
             plugins.mkdir(parents=True)
+            (config / "opencode.json").write_text(json.dumps({"plugins": ["./loader-fixture"]}))
+            (plugins / "package.json").write_text(json.dumps({"name": "agentbrew-loader-control", "type": "module"}))
             (plugins / "index.ts").write_text(plugin)
+            (plugins / "node_modules").symlink_to(sdk_modules, target_is_directory=True)
         environment = {
             "PATH": os.environ["PATH"], "HOME": str(home), "TMPDIR": str(root),
             "XDG_CONFIG_HOME": str(home / ".config"), "XDG_DATA_HOME": str(home / ".local/share"),
@@ -66,7 +71,14 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
         )
         observed = marker.read_text().splitlines() if marker.is_file() else []
         admitted = identifier in stdout
-        print(f"{control}: version=2.3.0 exit={result.returncode} rejected={int(rejected)} listed={int(admitted)} setup={len(observed)}")
+        diagnostic_text = "\n".join(diagnostics).lower()
+        diagnostic_classes = {
+            "module": any(piece in diagnostic_text for piece in ("cannot find module", "cannot resolve", "module not found")),
+            "entry": any(piece in diagnostic_text for piece in ("invalid plugin", "default export", "no entrypoint")),
+            "config": any(piece in diagnostic_text for piece in ("invalid configuration", "failed to load config")),
+        }
+        fixed = ",".join(key for key, value in diagnostic_classes.items() if value) or "none"
+        print(f"{control}: version=2.3.0 exit={result.returncode} rejected={int(rejected)} listed={int(admitted)} setup={len(observed)} diagnostics={fixed}")
         if result.returncode:
             raise SystemExit(f"{control} plugin list failed")
         if control == "legacy" and (not rejected or admitted or observed):

@@ -15,9 +15,9 @@ jobs:
         with:
           node-version-file: .node-version
       - name: Install the exact hosted scratch CLI
-        run: npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/opencode-cli" @opencode/cli@2.3.0
+        run: npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/opencode-cli" @opencode/cli@2.3.0 @opencode/plugin@2.3.0
       - name: Check loader admission with only loopback access
         run: |
           sudo ip netns add agentbrew-loader
           sudo ip -n agentbrew-loader link set lo up
-          sudo ip netns exec agentbrew-loader runuser -u "$USER" -- env "PATH=$PATH" python3 scripts/probe-opencode-v2-loader.py "$RUNNER_TEMP/opencode-cli/node_modules/.bin/opencode"
+          sudo ip netns exec agentbrew-loader runuser -u "$USER" -- env "PATH=$PATH" python3 scripts/probe-opencode-v2-loader.py "$RUNNER_TEMP/opencode-cli/node_modules/.bin/opencode" "$RUNNER_TEMP/opencode-cli/node_modules"

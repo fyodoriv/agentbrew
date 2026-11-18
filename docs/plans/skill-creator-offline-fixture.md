@@ -20,3 +20,11 @@ recording still reaches Git's 15-second remote lookup.
   slow boundary rejects this explanation. Keep the gate failure open.
 - **Anchor**: Hosted log 44251992514 and the remote lookup in
   `src/skills/skill-versions.ts`.
+
+The [offline baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44257357138)
+observed one attempted lookup in each single-install case and two
+in each timed-out case. It denied all seven requests before any
+network call. The [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44257609353)
+passed all six Linux cases in 1.59 seconds end to end. It kept the
+same test time limit and asserted that the lock contains the
+fixture's exact commit. The macOS qualification is queued.

@@ -45,21 +45,37 @@ export default {
       if (event.tool !== "agentbrew_fixture") return;
       await bridge["tool.execute.before"]({ sessionID: event.sessionID, tool: event.tool }, { args: event.input });
     });
+    await ctx.session.hook("prompt", async (event) => {
+      const part = { type: "text", text: event.prompt.text };
+      await bridge["chat.message"]({ sessionID: event.sessionID }, { parts: [part] });
+      event.prompt.text = part.text;
+    });
+    await ctx.tool.hook("execute.after", async (event) => {
+      if (event.tool !== "agentbrew_fixture" || event.status !== "completed" || typeof event.result.content !== "string") return;
+      const result = { output: event.result.content };
+      await bridge["tool.execute.after"]({ sessionID: event.sessionID, tool: event.tool, args: event.input }, result);
+      event.result = { ...event.result, content: result.output };
+    });
     appendFileSync(process.env.AGENTBREW_OC_LOADER_MARKER, "setup\\n");
   },
 };
 """
 hook_source = """import { appendFileSync, readFileSync } from "node:fs";
 const input = JSON.parse(readFileSync(0, "utf8"));
-const expected = input.hook_event_name === "PreToolUse" && input.tool_name === "agentbrew_fixture"
-  && input.tool_input?.value === "original";
-appendFileSync(process.env.AGENTBREW_OC_HOOK_LOG, (expected ? "original" : "unexpected") + "\\n");
-if (expected && process.env.AGENTBREW_OC_DECISION === "amend") {
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { updatedInput: { value: "amended" } } }));
-}
-if (expected && process.env.AGENTBREW_OC_DECISION === "deny") {
-  process.stderr.write("agentbrew synthetic refusal");
-  process.exitCode = 2;
+const path = process.env.AGENTBREW_OC_HOOK_LOG;
+const reply = (value) => process.stdout.write(JSON.stringify({ hookSpecificOutput: value }));
+if (input.hook_event_name === "UserPromptSubmit" && input.prompt === "Run the synthetic fixture tool.") {
+  appendFileSync(path, "prompt\\n");
+  reply({ additionalContext: "agentbrew fixture prompt note" });
+} else if (input.hook_event_name === "PreToolUse" && input.tool_name === "agentbrew_fixture" && input.tool_input?.value === "original") {
+  appendFileSync(path, "original\\n");
+  reply({ updatedInput: { value: "amended" } });
+} else if (input.hook_event_name === "PostToolUse" && input.tool_name === "agentbrew_fixture" && input.tool_input?.value === "amended"
+  && input.tool_response?.output === "synthetic marker stored") {
+  appendFileSync(path, "after\\n");
+  reply({ additionalContext: "agentbrew fixture tool note" });
+} else {
+  appendFileSync(path, "unexpected\\n");
 }
 """
 
@@ -67,6 +83,8 @@ class FixtureProvider(BaseHTTPRequestHandler):
     outcomes = []
     offer = "unseen"
     reported_denial = False
+    prompt_notes = 0
+    tool_notes = 0
 
     def log_message(self, *_):
         pass
@@ -80,6 +98,8 @@ class FixtureProvider(BaseHTTPRequestHandler):
             if query.get("model") != "probe" or query.get("stream") is not True:
                 raise ValueError
             if len(self.outcomes) == 0:
+                user = [message.get("content") for message in query.get("messages", []) if message.get("role") == "user"]
+                type(self).prompt_notes = json.dumps(user).count("agentbrew fixture prompt note")
                 exposed = [entry.get("function", {}).get("name", "") for entry in query.get("tools", [])]
                 if tool_name in exposed:
                     type(self).offer = "exact"
@@ -104,6 +124,7 @@ class FixtureProvider(BaseHTTPRequestHandler):
                 if not tool_results:
                     raise ValueError
                 type(self).reported_denial = denial_marker in json.dumps(tool_results).encode()
+                type(self).tool_notes = json.dumps(tool_results).count("agentbrew fixture tool note")
                 delta = {"role": "assistant", "content": "fixture session complete"}
                 reason = "stop"
                 self.outcomes.append("finish")
@@ -139,9 +160,12 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
     hook_script = root / "hook.mjs"
     hook_script.write_text(hook_source)
     hook_settings = root / "hooks.json"
-    hook_settings.write_text(json.dumps({"hooks": {"PreToolUse": [{
-        "matcher": tool_name, "hooks": [{"type": "command", "command": "node " + shlex.quote(str(hook_script))}],
-    }]}}))
+    fixture_hook = {"type": "command", "command": "node " + shlex.quote(str(hook_script))}
+    hook_settings.write_text(json.dumps({"hooks": {
+        "UserPromptSubmit": [{"hooks": [fixture_hook]}],
+        "PreToolUse": [{"matcher": tool_name, "hooks": [fixture_hook]}],
+        "PostToolUse": [{"matcher": tool_name, "hooks": [fixture_hook]}],
+    }}))
     password = token_hex(24)
     environment = {
         "PATH": os.environ["PATH"], "HOME": str(home), "TMPDIR": str(root),
@@ -229,14 +253,14 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
         f"requests={len(FixtureProvider.outcomes)} model-path={','.join(FixtureProvider.outcomes) or 'none'} offered={FixtureProvider.offer} "
         f"hook-original={hook.count('original')} tool-amended={tool.count('amended')} "
         f"tool-original={tool.count('original')} denied={int(cli_denial or FixtureProvider.reported_denial)} "
-        f"reaped=1 fixture-stopped={int(not fixture.is_alive())}"
+        f"prompt-hook={hook.count('prompt')} after-hook={hook.count('after')} "
+        f"prompt-note={FixtureProvider.prompt_notes} tool-note={FixtureProvider.tool_notes} "
+        f"hook-unexpected={hook.count('unexpected')} reaped=1 fixture-stopped={int(not fixture.is_alive())}"
     )
     complete = run_exit == 0 and output and FixtureProvider.outcomes == ["tool-call", "finish"]
-    if case == "deny":
-        stopped_at_denial = run_exit == 1 and cli_denial and FixtureProvider.outcomes == ["tool-call"]
-        valid = not tool and (complete or stopped_at_denial) and (cli_denial or FixtureProvider.reported_denial)
-    else:
-        expected = "amended" if case == "amend" else "original"
-        valid = complete and tool == [expected] and not (cli_denial or FixtureProvider.reported_denial)
-    if health != 200 or setup != ["setup"] or hook != ["original"] or not valid or fixture.is_alive():
-        raise SystemExit("the native V2 before-tool control was not verified")
+    if (
+        health != 200 or setup != ["setup"] or not complete or hook != ["prompt", "original", "after"]
+        or tool != ["amended"] or FixtureProvider.prompt_notes != 1 or FixtureProvider.tool_notes != 1
+        or fixture.is_alive()
+    ):
+        raise SystemExit("the native V2 prompt and tool feedback controls were not verified")

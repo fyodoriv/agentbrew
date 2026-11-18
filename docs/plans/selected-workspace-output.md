@@ -58,3 +58,13 @@ a cold live run needs it, and keep the actual workspace file private.
   candidate.
 - **Anchor**: Agentfile owner derivation, rule and skill owner records,
   and `src/sync/stale-agentfile-artifacts.ts`.
+
+The [real ownership baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44240588657)
+recorded a transient owner. The first ownership candidate passed all
+four focused cases, but the broader suite found a no-workspace mock
+compatibility issue. Load the owner path only after workspace preparation
+returns a private file. Create the stable directory immediately before
+live application. The [combined candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44241020630)
+passed four focused cases, all 73 compatibility tests and type checking.
+The cold two-run case kept a single rule and skill owner. It created no
+shared workspace YAML file.

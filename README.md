@@ -437,7 +437,7 @@ workspaceRoots:
   - acme            # a name from `tasks workspaces` (~/.config/tasks-md/workspaces.json)
 ```
 
-Or pass them per run: `agentbrew sync --workspaces ~/apps/tooling,~/apps/acme`, or `--workspace-name acme`. Each direct child folder of a workspace that holds an Agentfile is a repo, named `<workspace>::<repo>`. Sync merges every repo Agentfile, then the global (or `--agentfile`) Agentfile last, into `~/.config/agentbrew/generated/workspace-Agentfile.yaml` and applies that.
+Or pass them per run: `agentbrew sync --workspaces ~/apps/tooling,~/apps/acme`, or `--workspace-name acme`. Each direct child folder of a workspace that holds an Agentfile is a repo, named `<workspace>::<repo>`. Sync merges every repo Agentfile, then the global (or `--agentfile`) Agentfile last. Full sync and pull write the merge to `~/.config/agentbrew/generated/workspace-Agentfile.yaml`. An ordinary `--only` run applies a private merge and removes it when the run exits normally or reports an error.
 
 The base Agentfile wins every conflict. Between repos the later one wins, and sync warns when two repos declare an MCP server, `defaultModel`, or `defaultEffort` differently, naming both repos. A repo's `task_backend`, `repo`, and `project` stay with that repo.
 

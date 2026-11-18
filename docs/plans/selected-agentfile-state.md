@@ -22,3 +22,25 @@ other modules, and keep source pull behavior in its existing path.
   ambiguous shared state field outside this phase.
 - **Anchor**: The current Agentfile application and module registry
   in `src/agentfile-apply.ts` and `src/sync-runner.ts`.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44241517013)
+failed all three selected cases. The no-selection control passed.
+The [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44241713591)
+passed four focused controls, 150 compatibility tests, and type
+checking. The fixture reloads saved state before checking each family.
+
+## Owned source directories
+
+- **Hypothesis**: Command, agent and local skill declarations update
+  only their selected directory lists and keep existing ownership.
+- **Measurement**: Plant one replaceable owned directory for each
+  family. Select commands, agents and skills separately, then apply
+  the same file without a selection. Reload saved state and compare
+  the name, absolute path, origin and owner.
+- **Success**: Each selected mode replaces exactly one old directory.
+  The full control replaces all three. Workspace live apply still
+  preserves its stable owner for both rules and selected skills.
+- **Pivot**: An unselected addition or prune, dropped owner, or
+  compatibility regression rejects the change.
+- **Anchor**: Existing per-Agentfile ownership for command, agent and
+  local skill directory registrations.

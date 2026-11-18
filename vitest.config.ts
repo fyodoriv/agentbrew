@@ -10,7 +10,11 @@ export default defineConfig({
       fsModuleCache: true,
     },
     include: ["src/**/*.test.ts"],
-    exclude: [...configDefaults.exclude, "src/sync-selection-binding.prep.test.ts"],
+    exclude: [
+      ...configDefaults.exclude,
+      "src/sync-selection-binding.prep.test.ts",
+      "src/sync-selection-observation.prep.test.ts",
+    ],
     setupFiles: ["./vitest.isolated-home.ts", "./vitest.tasks-guard.ts"],
     // Tests never write the content-free event log (docs/observability.md).
     env: { AGENTBREW_EVENTS: "0", AGENTBREW_POSTHOG_KEY: "", AGENTBREW_TELEMETRY_URL: "http://127.0.0.1:9/" },

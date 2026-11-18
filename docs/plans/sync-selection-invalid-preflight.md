@@ -59,3 +59,16 @@ tests across six files passed, including valid selections, normal
 startup and operational-failure events. The independent diagnostic test
 confirmed that rejection lists valid modules without printing the input.
 Only the newly named cases ran through the dedicated fixture.
+
+## Physical scratch-file result
+
+The [built CLI and direct API run](https://github.com/fyodoriv/agentbrew/actions/runs/44228198215)
+checked the exact candidate source without network access. The empty
+pull, unknown plain selection and empty direct update all exited 1.
+Every case showed the module hint, left its entire scratch manifest
+unchanged, and made no observed subprocess attempts. The process canary
+recorded one denial. A separate no-write TypeScript loader control passed
+before the direct update. The earlier loader-cache run remains incomplete.
+
+These measurements qualify the invalid paths. Real valid selected native
+publication and workspace preparation still need their own behavior fix.

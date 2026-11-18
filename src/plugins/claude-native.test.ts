@@ -44,7 +44,7 @@ function install(): void {
   addPlugin(`${f.dir}@v1`, { yes: true, signer: KEY.pub });
 }
 
-function installFacetFixture(): void {
+function installFacetFixture(duplicateServer = false): void {
   const f = pluginFixture({
     schema: 1,
     name: "fixture-native",
@@ -57,10 +57,11 @@ function installFacetFixture(): void {
     },
     contributes: { hooks: "hooks/hooks.json", mcp_servers: "mcp/servers.yaml", rules: "rules/" },
   });
+  const server = "- name: fixture-server\n  command: node\n  args: [server.mjs]\n";
   f.release("v1.0.0", {
     "hooks/hooks.json": HOOKS,
     "hooks/guard.sh": "#!/bin/sh\nexit 0\n",
-    "mcp/servers.yaml": "- name: fixture-server\n  command: node\n  args: [server.mjs]\n",
+    "mcp/servers.yaml": duplicateServer ? server.repeat(2) : server,
     "mcp/server.mjs": "process.exitCode = 0;\n",
     "rules/fixture.md": "Synthetic rule.\n",
   });
@@ -145,6 +146,25 @@ describe("scoped native facet publication", () => {
     expect(JSON.parse(readFileSync(paths.hooks, "utf8")).hooks).toEqual(hooksBefore);
     expect(statSync(paths.launcher).mode & 0o777).toBe(0o755);
     expect(observeNativeFiles(frozen)).toEqual(before);
+  });
+
+  it.each(["mcp", "rules"] as const)("skips a cold plugin without the requested %s facet", (facet) => {
+    install();
+
+    emitClaudeNative({ modules: [facet] });
+
+    expect(existsSync(marketplaceDir())).toBe(false);
+    expect(existsSync(launcherPath("acme", "fixture-server"))).toBe(false);
+    expect(existsSync(SETTINGS())).toBe(false);
+  });
+
+  it("refuses duplicate launcher claims even when the existing file matches", () => {
+    installFacetFixture(true);
+    emitClaudeNative();
+    const before = observeNativeFiles(Object.values(nativeFacetPaths()));
+
+    expect(() => emitClaudeNative({ modules: ["mcp"] })).toThrow(/native output paths overlap/u);
+    expect(observeNativeFiles(Object.values(nativeFacetPaths()))).toEqual(before);
   });
 
   it("copies signed hook files and skips an ignored local text file", () => {

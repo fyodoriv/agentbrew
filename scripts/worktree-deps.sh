@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Install node_modules in an agentbrew checkout or worktree, fast.
 #
-# 1. When package-lock.json has not changed since the last install by this
-#    script, keep node_modules and exit. node_modules/.worktree-deps-lock.json
+# 1. When the lock and installed package versions match the last install,
+#    keep node_modules and exit. node_modules/.worktree-deps-lock.json
 #    holds the lockfile of that install.
 # 2. In a worktree whose package-lock.json matches the main checkout's, clone
 #    the main checkout's node_modules with an APFS copy-on-write clone. One
@@ -15,12 +15,13 @@
 # Usage: run from the checkout or worktree root.
 #   bash scripts/worktree-deps.sh [main-checkout]
 # The main checkout defaults to the first entry of `git worktree list`.
-# WORKTREE_DEPS_NPM overrides the npm binary (tests use a stub).
+# WORKTREE_DEPS_NPM overrides the npm binary for installs and comparison queries.
 # WORKTREE_DEPS_PYTHON overrides python3, which makes the clonefile(2) call.
 #
 # <!-- scope: human-approved task worktree-deps-apfs-clone; this file closes it -->
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 npm_bin="${WORKTREE_DEPS_NPM:-npm}"
 python_bin="${WORKTREE_DEPS_PYTHON:-python3}"
 target="$PWD"
@@ -30,12 +31,21 @@ if [[ -z "$main" ]]; then
   main="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
 fi
 
+verified_versions() {
+  node "$script_dir/check-locked-dependencies.mjs" "$1" "$npm_bin" "${@:2}"
+}
+
+publish_verified_stamp() {
+  if ! verified_versions "$target" --publish-worktree-stamp; then
+    echo "worktree-deps: could not qualify this install; check the reason above and run npm ci" >&2
+    exit 1
+  fi
+}
+
 npm_ci() {
   echo "worktree-deps: $1; running npm ci"
   "$npm_bin" ci --prefer-offline --no-audit --no-fund
-  if [[ -d "$target/node_modules" ]]; then
-    cp "$target/package-lock.json" "$stamp"
-  fi
+  publish_verified_stamp
 }
 
 # Clone directory $1 to the new path $2 with one clonefile(2) call (macOS only).
@@ -49,7 +59,15 @@ if [[ ! -f "$target/package-lock.json" ]]; then
   echo "worktree-deps: no package-lock.json in $target" >&2
   exit 1
 fi
+if [[ -L "$stamp" || ( -e "$stamp" && ! -f "$stamp" ) ]]; then
+  echo "worktree-deps: the readiness stamp is not a regular file" >&2
+  exit 1
+fi
 if [[ -d "$target/node_modules" ]] && cmp -s "$target/package-lock.json" "$stamp"; then
+  if ! verified_versions "$target"; then
+    echo "worktree-deps: stamped dependencies differ from the lock; run npm ci" >&2
+    exit 1
+  fi
   echo "worktree-deps: node_modules already matches package-lock.json; nothing to do"
   exit 0
 fi
@@ -63,6 +81,11 @@ if [[ ! -d "$main/node_modules" ]]; then
 fi
 if ! cmp -s "$target/package-lock.json" "$main/package-lock.json"; then
   npm_ci "package-lock.json differs from the main checkout"
+  exit 0
+fi
+
+if ! verified_versions "$main"; then
+  npm_ci "main checkout dependencies failed version verification"
   exit 0
 fi
 
@@ -82,6 +105,11 @@ else
     exit 0
   fi
 fi
+# A cloned donor stamp never qualifies this target.
+copied_stamp="$tmp/.worktree-deps-lock.json"
+if [[ -e "$copied_stamp" || -L "$copied_stamp" ]]; then
+  rm "$copied_stamp"
+fi
 mv "$tmp" "$target/node_modules"
-cp "$target/package-lock.json" "$stamp"
+publish_verified_stamp
 echo "worktree-deps: cloned node_modules with $how from $main (lockfiles match)"

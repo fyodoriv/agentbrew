@@ -288,3 +288,44 @@ and skips independent cache reuse in that case.
 The guard, donor and target-stamp repair remains open. Package declarations
 and the protected optional-peer findings stay in scope for their separate
 acceptance checks.
+
+### Guard observer after the exact comparison changed
+
+The post-repair hosted macOS run reported exit 0 and readiness for P1, P3
+and P4. Its recorder labeled all three unsafe. The recorder retained only
+the last npm response and decoded it as a shallow dependency object. The
+new guard finishes with a lock-only query that returns a package array.
+
+- **Hypothesis**: Capture each actual command and qualify its response
+  against the declared shape. The recorder will make zero false rejections
+  across the three supported guard controls.
+- **Measurement**: Use the existing pinned-npm hosted cohort and the
+  existing synthetic fixtures. Verify shallow list, physical query and
+  lock-only query separately and in order. Preserve attempts and raw
+  responses in runner scratch. Report bounded decision fields.
+- **Success**: Zero unsafe decisions across the five negative families
+  and four supported positives. Every positive guard command sequence
+  has three complete captures. Failed, missing and malformed responses
+  still refuse readiness. The original sealed samples still pass.
+- **Pivot**: A missing, unexpected or duplicate command, incomplete
+  response, or changed fixture prevents qualification.
+- **Anchor**: Hosted run 44219760242, job 134518424519, and the guard's
+  exact comparison command contract.
+
+The original fixture inputs and the classifier calibration stay fixed.
+
+### Hosted ordered observation result
+
+The [macOS cohort](https://github.com/fyodoriv/agentbrew/actions/runs/44226870475)
+passed all 89 checks across the three fixture files. It emitted eleven
+complete receipts across the five negative families and four positive
+controls. N2 used a verified reinstall after rejecting the stale donor.
+N1, N3, N4 and every N5 variant refused. All four positive controls were
+supported, including the real APFS clone. There were zero unsafe
+decisions. The initial run still records the old last-response parser's
+three false classifications.
+
+The [Ubuntu observer](https://github.com/fyodoriv/agentbrew/actions/runs/44227010789)
+independently verified both reuse cases and all seven guard receipts.
+These runs qualify the frozen controls. Complete publication and the full
+gate on the merged parent remain separate.

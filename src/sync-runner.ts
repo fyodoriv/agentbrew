@@ -88,10 +88,10 @@ function softUpdateOverlaySourcesBeforeSync(dryRun: boolean): void {
 function refreshManagedInstalledSkillsBeforeSync(dryRun: boolean): void {
   if (dryRun) return;
   try {
-    const state = loadState();
-    const managedSources = state?.sources?.filter(isAgentbrewProvidedSkillSource) ?? [];
+    const sources = loadState()?.sources ?? [];
+    const managedSources = sources.filter(isAgentbrewProvidedSkillSource);
     if (managedSources.length === 0) return;
-    refreshInstalledSkills(managedSources);
+    refreshInstalledSkills(managedSources, undefined, [], sources);
   } catch (e) {
     logSkipped("sync-runner/refreshManagedInstalledSkills", e);
     /* non-fatal — stale installed copies must never abort sync */

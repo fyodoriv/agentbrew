@@ -530,6 +530,21 @@ describe("cold native receipt coverage", () => {
   });
 });
 
+describe("cold native launcher ownership", () => {
+  it("refuses to certify a matching launcher with no verified native owner", () => {
+    installFacetFixture();
+    const paths = nativeFacetPaths();
+    emitClaudeNative({ modules: ["mcp"] });
+    rmSync(marketplaceDir(), { recursive: true, force: true });
+    const previous = observeNativeFiles([paths.launcher]);
+
+    expect(() => emitClaudeNative({ modules: ["mcp"] })).toThrow(/native receipt.*selected extension/u);
+    expect(observeNativeFiles([paths.launcher])).toEqual(previous);
+    expect(existsSync(marketplaceDir())).toBe(false);
+    expect(existsSync(paths.settings)).toBe(false);
+  });
+});
+
 describe("partial native receipt progression", () => {
   const sequences = [
     { first: "hooks", next: "mcp", retained: ["hooks", "script"] },

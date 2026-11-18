@@ -479,3 +479,39 @@ target signer under the short commit lock before replacing the checkout.
   uses another plan's checkout, or blocks ordinary approved rotation.
 - **Anchor**: The approval and apply phases in `src/plugins/update.ts`
   and the shared signer commit fence.
+
+The [physical path baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44246329276)
+failed the two alias controls. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44246543277)
+passed 26 focused and 84 compatibility cases. The
+[lifecycle candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44247657379)
+passed all four admission refusals and 88 compatibility cases. The
+[approved update candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44248069195)
+passed six focused and 90 compatibility cases. The installed pin and
+signer are rechecked before applying its staged update.
+
+## Verify a full native output receipt
+
+Add an internal proof option to the draft. The routine full writer
+still uses its existing publication path. Only the explicit proof
+option verifies and records output. The proof describes artifacts
+for a pinned source. It does not certify activation or host readiness.
+
+- **Hypothesis**: The normal full writer produces an exact inventory
+  for a supported signed fixture. An ignored source file that
+  reaches the legacy output prevents a receipt.
+- **Measurement**: Run standard full publication and explicit
+  full certification in separate signed scratch homes. Build the
+  independent expected inventory from Git object bytes and Claude's
+  generated formats. Check marketplace and launcher coverage,
+  complete per-plugin file lists, and the private source digest.
+  Add a benign ignored source note to the negative fixture.
+- **Success**: The exact fixture writes a mode-0600 receipt naming
+  each five verified plugin files. Standard full publication leaves
+  no proof file. An extra payload refuses certification and writes
+  zero receipts. All earlier controls stay green.
+- **Pivot**: A receipt for unverified bytes, an extra or unidentified
+  output, a missing pin, or an ordinary route regression rejects
+  certification. Activation and restart recovery stay open.
+- **Anchor**: The full legacy emitter, verified Git object reader
+  and independent artifact ownership review.

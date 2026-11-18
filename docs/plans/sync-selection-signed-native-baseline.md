@@ -127,3 +127,28 @@ before producing a complete receipt. No full baseline passed.
   based on a package-mutation diagnosis.
 - **Anchor**: Hosted run 44231181327 and the context-budget post-sync
   writer in `src/measure/context-budget.ts`.
+
+## Separate default positive control
+
+Run 44231771838 qualified all three selected receipts with zero unknown
+entries. It recorded three new package entries and only a parent
+directory timestamp change in the default arm. Source review found that
+the default instructions engine generates two context documents in the
+running distribution. Keep those files as part of ordinary default
+behavior.
+
+- **Hypothesis**: The default arm adds only the context directory and
+  the two documented generated instructions files in the package.
+- **Measurement**: Run only the default arm on the same application
+  source. Verify exact known contents against the shipped template and
+  fixed headings. Allow package metadata changes only where implied by
+  creating these files. Admit the canonical instructions and listed
+  helper outputs to the scratch manifest. Keep installed source and
+  all other package paths identical.
+- **Success**: The default arm exits 0. Both expected context documents
+  match exactly, every default native output qualifies, and there are
+  zero other package changes, unknown home writes or denied calls.
+- **Pivot**: Any additional path, changed source or existing artifact,
+  or different generated document leaves the default arm incomplete.
+- **Anchor**: Hosted run 44231771838 and `getContextFiles` in
+  `src/sync/instructions-sync.ts`.

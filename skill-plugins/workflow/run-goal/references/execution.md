@@ -217,6 +217,12 @@ served output after the deploy, not only the pipeline's output.
 - Then fetch the served output and read every entry for wrong content.
   In one run, the plan audit was 100%, but the live calendar feed still had old
   entries with wrong end times, from a path the audit never read.
+- If a cached response could hide a failure, retest the same served path with
+  a proven cache miss. Record the cache status or matching origin receipt,
+  serving revision, and test result. If you cannot prove a miss, leave that
+  check unverified. If the fresh result fails, leave the criterion open and
+  record the cause only when you can verify it. Keep release status and
+  approval fields tied to their own evidence.
 - For a dashboard or report goal, include a done-criterion that compares at
   least the headline numbers with source-of-truth data: raw events, the source
   channel, or the database. Use the same time window, filters, and counting unit.

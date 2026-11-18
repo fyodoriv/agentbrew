@@ -105,3 +105,11 @@ discovery on the existing path.
   outside MCP, or a full or pull behavior change blocks this phase.
 - **Anchor**: Existing source ownership and installed skill pruning in
   Agentfile application, and the managed memory MCP registration.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44251020538)
+failed the three selected cases. The full apply and existing mixed
+pull controls passed. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44251187364)
+passed 14 focused controls, 159 compatibility tests, and type
+checking. Shared pack discovery and agent exclusions keep their
+earlier behavior.

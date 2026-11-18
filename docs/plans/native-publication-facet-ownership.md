@@ -259,3 +259,23 @@ passed all fourteen scoped cases, compatibility tests and type checking.
   the candidate. Pending publication recovery remains separate.
 - **Anchor**: Operating system exclusive file creation and the shared
   publisher admission outcomes.
+
+The [alias baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44238921344)
+failed the two collision controls, and the
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44239077017)
+passed all seventeen scoped controls, including the valid nested file.
+The selected writer reserves the generated hooks JSON and verifies
+its auxiliary paths before touching any destination. It refuses an
+auxiliary name outside the checked ASCII subset.
+
+The [shared admission baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44239169548)
+allowed both publishers past a pre-existing owner. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44239349321)
+refused both modes and released its own record after success and
+ordinary refusal. The
+[independent process run](https://github.com/fyodoriv/agentbrew/actions/runs/44239466728)
+passed all twenty-two focused cases and all thirty-eight tests in the
+two ordinary files. Retrying after an interrupted owner preserved its
+record and refused. This proves process admission and known-owner
+release. It does not recover partial payload files, serialize plugin
+lifecycle changes or establish durable source ownership.

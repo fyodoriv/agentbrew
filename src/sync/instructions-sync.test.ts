@@ -20,6 +20,10 @@ vi.mock("../utils.js", () => ({
   },
 }));
 
+vi.mock("../core/opencode-version.js", () => ({
+  readOpencodeMajor: vi.fn(),
+}));
+
 vi.mock("../manifest.js", async () => {
   const actual = await vi.importActual("../manifest.js");
   return {
@@ -59,6 +63,8 @@ vi.mock("../state.js", async () => {
   };
 });
 
+import { readOpencodeMajor } from "../core/opencode-version.js";
+import { loadManifest, saveManifest } from "../manifest.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import {
   compressSkillsListing,
@@ -108,6 +114,8 @@ Some skills here.
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  vi.mocked(loadManifest).mockImplementation(() => ({ hashes: {} }));
+  vi.mocked(readOpencodeMajor).mockReset();
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -182,6 +190,53 @@ describe("usesAgentsMdStandardPath", () => {
 });
 
 describe("syncInstructions", () => {
+  it("selects the installed OpenCode major without changing preview or owner files", async () => {
+    writeAgentsMd();
+    const source = join(agentBrewDir, "templates", "opencode");
+    const plugin = join(testDir, ".config", "opencode", "plugin");
+    const target = join(plugin, "claude-hooks.js");
+    const ownerFile = join(plugin, "user.js");
+    mkdirSync(source, { recursive: true });
+    mkdirSync(plugin, { recursive: true });
+    writeFileSync(join(source, "claude-hooks.js"), "export const legacy = 1;\n");
+    writeFileSync(join(source, "claude-hooks-v2.js"), "export default { id: 'fixture' };\n");
+    writeFileSync(ownerFile, "owner plugin\n");
+    const manifest = { hashes: {} };
+    vi.mocked(loadManifest).mockReturnValue(manifest);
+    vi.mocked(saveManifest).mockClear();
+
+    vi.mocked(readOpencodeMajor).mockReturnValue(1);
+    await syncInstructions({ quiet: true });
+    expect(readFileSync(target, "utf8")).toBe("export const legacy = 1;\n");
+
+    vi.mocked(readOpencodeMajor).mockReturnValue(2);
+    const previousManifest = structuredClone(manifest);
+    vi.mocked(saveManifest).mockClear();
+    await syncInstructions({ dryRun: true, quiet: true });
+    expect(saveManifest).not.toHaveBeenCalled();
+    expect(manifest).toEqual(previousManifest);
+    expect(readFileSync(target, "utf8")).toBe("export const legacy = 1;\n");
+    await syncInstructions({ quiet: true });
+    expect(readFileSync(target, "utf8")).toBe("export const legacy = 1;\n\nexport default { id: 'fixture' };\n");
+    expect(readFileSync(ownerFile, "utf8")).toBe("owner plugin\n");
+
+    vi.mocked(readOpencodeMajor).mockImplementation(() => {
+      throw new Error("unknown CLI");
+    });
+    await syncInstructions({ quiet: true });
+    expect(readFileSync(target, "utf8")).toContain("export default");
+
+    vi.mocked(readOpencodeMajor).mockReturnValue(1);
+    await syncInstructions({ quiet: true });
+    expect(readFileSync(target, "utf8")).toBe("export const legacy = 1;\n");
+
+    writeFileSync(target, "owner replacement\n");
+    vi.mocked(readOpencodeMajor).mockReturnValue(2);
+    await syncInstructions({ quiet: true });
+    expect(readFileSync(target, "utf8")).toBe("owner replacement\n");
+    expect(readFileSync(ownerFile, "utf8")).toBe("owner plugin\n");
+  });
+
   it("deploys canonical AGENTS.md and proprietary copies plus standard symlinks", async () => {
     writeAgentsMd();
 

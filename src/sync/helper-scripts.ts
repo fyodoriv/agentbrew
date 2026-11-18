@@ -8,10 +8,11 @@
  * or a file an org overlay installs — is kept and reported, never replaced.
  */
 import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
+import { readOpencodeMajor } from "../core/opencode-version.js";
 import type { Manifest } from "../manifest.js";
 import { contentHash, isUserModified } from "../manifest.js";
 import { HELPER_SCRIPTS_DIR } from "../paths.js";
@@ -34,10 +35,11 @@ export const HELPER_SCRIPT_SOURCES: Readonly<Record<string, string>> = {
  * OpenCode plugins agentbrew deploys to `~/.config/opencode/plugin/` when
  * OpenCode is installed. `claude-hooks.js` runs Claude Code hooks in OpenCode.
  */
-export const OPENCODE_PLUGIN_DIR = "~/.config/opencode/plugin";
-export const OPENCODE_PLUGIN_SOURCES: Readonly<Record<string, string>> = {
-  "claude-hooks.js": join("templates", "opencode", "claude-hooks.js"),
-};
+const OPENCODE_PLUGIN_DIR = "~/.config/opencode/plugin";
+const OPENCODE_LEGACY_SOURCE = join("templates", "opencode", "claude-hooks.js");
+const OPENCODE_NATIVE_SOURCE = join("templates", "opencode", "claude-hooks-v2.js");
+
+type HelperScriptSource = string | readonly [string, ...string[]];
 
 const EXECUTABLE_MODE = 0o755;
 
@@ -57,7 +59,7 @@ interface SyncHelperScriptsOptions {
   /** Defaults to `~/.config/agentbrew/scripts`. */
   targetDir?: string;
   /** Defaults to `HELPER_SCRIPT_SOURCES`. */
-  sources?: Readonly<Record<string, string>>;
+  sources?: Readonly<Record<string, HelperScriptSource>>;
 }
 
 function lexists(path: string): boolean {
@@ -84,14 +86,16 @@ export function syncHelperScripts(options: SyncHelperScriptsOptions): HelperScri
   const sources = Object.entries(options.sources ?? HELPER_SCRIPT_SOURCES).sort(([a], [b]) => a.localeCompare(b));
 
   return sources.flatMap(([name, relativeSource]): HelperScriptResult[] => {
-    const source = join(projectRoot, relativeSource);
-    if (!existsSync(source)) {
-      logSkipped(`helper-scripts/missing-source/${name}`, source);
+    const parts = typeof relativeSource === "string" ? [relativeSource] : relativeSource;
+    const paths = parts.map((part) => join(projectRoot, part));
+    const missing = paths.find((path) => !existsSync(path));
+    if (missing) {
+      logSkipped(`helper-scripts/missing-source/${name}`, missing);
       return [];
     }
     const target = join(targetDir, name);
     try {
-      const content = readFileSync(source, "utf-8");
+      const content = paths.map((path) => readFileSync(path, "utf-8")).join("\n");
       const action = planHelperScript(target, content, manifest);
       if (!dryRun && (action === "installed" || action === "updated")) {
         mkdirSync(targetDir, { recursive: true });
@@ -103,5 +107,29 @@ export function syncHelperScripts(options: SyncHelperScriptsOptions): HelperScri
     } catch (err) {
       return [{ name, target, action: "kept-user-file", error: errorMessage(err) }];
     }
+  });
+}
+
+/** Deploy only the bridge for the installed runtime. Keep existing bytes if the version is unknown. */
+export function syncOpenCodePlugin(projectRoot: string, manifest: Manifest, dryRun: boolean): HelperScriptResult[] {
+  const targetDir = expandHome(OPENCODE_PLUGIN_DIR);
+  if (!existsSync(dirname(targetDir))) return [];
+
+  let major: 1 | 2;
+  try {
+    major = readOpencodeMajor(2_000);
+  } catch {
+    logSkipped("helper-scripts/opencode-version", "Could not read a supported OpenCode version");
+    return [];
+  }
+
+  return syncHelperScripts({
+    projectRoot,
+    manifest,
+    dryRun,
+    targetDir,
+    sources: {
+      "claude-hooks.js": major === 1 ? OPENCODE_LEGACY_SOURCE : [OPENCODE_LEGACY_SOURCE, OPENCODE_NATIVE_SOURCE],
+    },
   });
 }

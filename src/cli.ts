@@ -410,9 +410,12 @@ async function refuseSyncOnLockDrift(): Promise<boolean> {
 /** Publish the native marketplace when needed. Keep redaction current for every live sync. */
 async function emitNativePluginOutput(syncModules?: readonly string[]): Promise<void> {
   try {
-    if (!syncModules || syncModules.some((name) => name === "hooks" || name === "mcp" || name === "rules")) {
+    const facets = syncModules?.filter(
+      (name): name is "hooks" | "mcp" | "rules" => name === "hooks" || name === "mcp" || name === "rules",
+    );
+    if (!facets || facets.length > 0) {
       const { emitClaudeNative } = await import("./plugins/claude-native.js");
-      emitClaudeNative();
+      emitClaudeNative(facets ? { modules: facets } : undefined);
     }
     const { writeRedactPatterns } = await import("./plugins/leak-audit.js");
     writeRedactPatterns();

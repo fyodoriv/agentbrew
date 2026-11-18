@@ -737,18 +737,6 @@
   - **Anchor**: WCAG 2.2 SC 2.5.8 (target size); sidequest PR #9 measurements.
   - **Blocked**: needs-owner-approval — 2026-10-27: filing on anthropics/claude-plugins-official is a public post in another org. The owner must approve the exact issue text from the `report-upstream` skill first; agents do not post it on their own.
 
-- [ ] Drop the basic-ftp override once get-uri accepts a patched range
-  - **ID**: scout-basic-ftp-override-removal
-  - **Tags**: scout, dependencies, security
-  - **Hypothesis**: once `get-uri` accepts a patched `basic-ftp`, removing the override drops one pinned transitive dependency with no new audit finding.
-  - **Measurement**: `npm view get-uri dependencies.basic-ftp` and `npm audit --json | jq '.vulnerabilities["basic-ftp"]'`.
-  - **Pivot**: if `get-uri` has not widened its range by the next quarterly review, keep the pin and close this task with that reason.
-  - **Anchor**: the `basic-ftp` 5.x denial-of-service advisory; dependency audit 2026-10-16.
-  - **Details**: `package.json` pins `basic-ftp` to 6.2.3 through `overrides` because `get-uri@8` asks for `^5.3.1`, and 5.x has an open denial-of-service advisory. Remove the override when `get-uri` (via `promptfoo` > `proxy-agent`) widens its range to a patched release, so the pin stops hiding upstream drift.
-  - **Files**: package.json, package-lock.json
-  - **Acceptance**: (1) the `basic-ftp` entry is gone from `overrides`; (2) `npm audit` stays free of high findings from `basic-ftp`.
-  - **Blocked**: upstream — re-checked 2026-10-16: `get-uri` 8.0.1 (latest) still depends on `basic-ftp` `^5.3.1`; the override keeps 6.2.3.
-
 - [ ] (Publish-only step) File the staged upstream issue at `neiii/bridle` (upstream relocated 2026-05-02 from `superwall/bridle`) noting `harness-locate` uses singular `skill/` and `command/` for OpenCode but the official OpenCode docs use plural.
   - **ID**: bridle-opencode-path-issue
   - **Tags**: upstream-contribution, bridle, scout, blocked-explicit-permission, publish-only

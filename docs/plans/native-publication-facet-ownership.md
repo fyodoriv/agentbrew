@@ -699,3 +699,11 @@ passed.
 
 This repair reuses prior coverage. An expanded selection still
 requires all earlier payloads to be present and verified.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44266738534)
+refused all three repairs. The first candidate restored scripts and
+launchers. Its rules case still rejected the empty signed parent
+folder. The [corrected candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44267284512)
+allowed existing parents of verified repair paths and passed all
+three repairs, 47 focused controls, 103 compatibility tests, and
+type checking.

@@ -1,6 +1,6 @@
 import { lstatSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, posix, relative, sep } from "node:path";
+import { dirname, isAbsolute, join, normalize, posix, relative, sep } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { sync as writeFileSync } from "write-file-atomic";
 import type { ActivePlugin } from "./contributions.js";
@@ -132,7 +132,7 @@ function planHooks(
   }
 }
 
-function planMcp(writes: PlannedWrite[], claims: Set<string>, plugin: ActivePlugin, root: string): void {
+function planMcp(writes: PlannedWrite[], claims: Map<string, string>, plugin: ActivePlugin, root: string): void {
   const rel = plugin.manifest.contributes?.mcp_servers;
   if (typeof rel !== "string") return;
   const [declaration, ...others] = readPinnedPluginFiles(plugin.entry, rel);
@@ -144,7 +144,7 @@ function planMcp(writes: PlannedWrite[], claims: Set<string>, plugin: ActivePlug
     const command = launcherPath(plugin.entry.name, server.name);
     const claim = command.toLowerCase();
     if (claims.has(claim)) refuse("native output paths overlap");
-    claims.add(claim);
+    claims.set(claim, plugin.entry.name);
     planMissingFile(writes, command, Buffer.from(launcherContent(server)), 0o755);
     return [server.name, { command, args: [] }] as const;
   });
@@ -155,6 +155,49 @@ interface Marketplace {
   name: string;
   owner: { name: string };
   plugins: ReturnType<typeof nativePluginEntry>[];
+}
+
+function assertMarketplaceRegistry(registry: Marketplace, name: string): void {
+  if (registry?.name !== name || registry.owner?.name !== "agentbrew" || !Array.isArray(registry.plugins)) {
+    refuse("the marketplace index has unknown ownership");
+  }
+  const names = new Set<string>();
+  for (const entry of registry.plugins) {
+    if (
+      typeof entry?.name !== "string" ||
+      !/^[a-z0-9][a-z0-9-]{0,63}$/u.test(entry.name) ||
+      entry.source !== `./plugins/${entry.name}`
+    ) {
+      refuse("a marketplace entry has unknown ownership");
+    }
+    if (names.has(entry.name)) refuse("marketplace identities overlap");
+    names.add(entry.name);
+  }
+}
+
+function assertRetainedLauncherClaims(
+  marketplace: string,
+  registry: Marketplace,
+  claims: ReadonlyMap<string, string>,
+): void {
+  if (claims.size === 0) return;
+  for (const entry of registry.plugins) {
+    const content = readOutput(join(marketplace, entry.source, ".mcp.json"));
+    if (!content) continue;
+    const config = JSON.parse(content.toString("utf8")) as { mcpServers?: unknown } | null;
+    const servers = config?.mcpServers;
+    if (!servers || typeof servers !== "object" || Array.isArray(servers)) {
+      refuse("a retained MCP configuration has unknown launcher references");
+    }
+    for (const server of Object.values(servers) as Array<{ command?: unknown } | null>) {
+      const command = server?.command;
+      if (typeof command !== "string" || !isAbsolute(command)) {
+        refuse("a retained MCP configuration has unknown launcher references");
+      }
+      const owner = claims.get(normalize(command).toLowerCase());
+      if (owner !== undefined && owner !== entry.name) refuse("native output paths overlap");
+    }
+  }
 }
 
 function withPinnedManifest(plugin: ActivePlugin): ActivePlugin {
@@ -173,7 +216,7 @@ function withPinnedManifest(plugin: ActivePlugin): ActivePlugin {
 
 function planPlugin(
   writes: PlannedWrite[],
-  launcherClaims: Set<string>,
+  launcherClaims: Map<string, string>,
   active: ActivePlugin,
   registry: Marketplace,
   options: { marketplace: string; selected: ReadonlySet<NativeFacet>; rulesHook: unknown },
@@ -224,17 +267,16 @@ export function publishSelectedNativePlugins(
   const registry: Marketplace = content
     ? JSON.parse(content.toString("utf8"))
     : { name, owner: { name: "agentbrew" }, plugins: [] };
-  if (registry.name !== name || registry.owner?.name !== "agentbrew" || !Array.isArray(registry.plugins)) {
-    refuse("the marketplace index has unknown ownership");
-  }
+  assertMarketplaceRegistry(registry, name);
 
   const selected = new Set(modules);
   const writes: PlannedWrite[] = [];
-  const launcherClaims = new Set<string>();
+  const launcherClaims = new Map<string, string>();
   let changedEntries = false;
   for (const plugin of plugins) {
     if (planPlugin(writes, launcherClaims, plugin, registry, { marketplace, selected, rulesHook })) changedEntries = true;
   }
+  assertRetainedLauncherClaims(marketplace, registry, launcherClaims);
   if (changedEntries) writes.push({ path, body: jsonBytes(registry) });
   if (new Set(writes.map((write) => write.path)).size !== writes.length) refuse("native output paths overlap");
 

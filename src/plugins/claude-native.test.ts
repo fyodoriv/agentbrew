@@ -29,11 +29,18 @@ const { home, previousHome } = vi.hoisted(() => {
   return { home: dir, previousHome: previous };
 });
 
+vi.mock("./store.js", async (original) => {
+  const store = await original<typeof import("./store.js")>();
+  return { ...store, readPinnedPluginFiles: vi.fn(store.readPinnedPluginFiles) };
+});
+
 import { fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { emitClaudeNative, MARKETPLACE_NAME, marketplaceDir, policyFragment } from "./claude-native.js";
 import { launcherPath } from "./mcp-launcher.js";
 import { withNativePublicationLock } from "./native-publication-lock.js";
-import { addPlugin, pluginDir, removePlugin } from "./store.js";
+import { withSignerCommitFence } from "./signer-commit-fence.js";
+import { allowedSignersPath, revokeSigner, signersFor } from "./signers.js";
+import { addPlugin, pluginDir, readPinnedPluginFiles, removePlugin } from "./store.js";
 
 const KEY = fixtureKey();
 const SETTINGS = () => join(home, ".claude", "settings.json");
@@ -200,6 +207,32 @@ describe("native publisher admission", () => {
     writeFileSync(hooks, JSON.stringify({ hooks: {}, ownerNote: "Synthetic note." }));
     expect(() => emitClaudeNative({ modules: ["rules"] })).toThrow(/unknown hook metadata/u);
     expect(existsSync(owner)).toBe(false);
+  });
+});
+
+describe("selected native signer commit fence", () => {
+  it("refuses selected publication while another signer write holds the fence", () => {
+    installFacetFixture();
+    withSignerCommitFence(allowedSignersPath(), () => {
+      expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/registry is busy/u);
+      expect(existsSync(marketplaceDir())).toBe(false);
+      expect(existsSync(SETTINGS())).toBe(false);
+    });
+  });
+
+  it("refuses a signer revoked after the first pinned read", async () => {
+    installFacetFixture();
+    const store = await vi.importActual<typeof import("./store.js")>("./store.js");
+    vi.mocked(readPinnedPluginFiles).mockImplementationOnce((entry, path) => {
+      const pinned = store.readPinnedPluginFiles(entry, path);
+      revokeSigner("fixture-native", KEY.pub);
+      return pinned;
+    });
+
+    expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/signer trust changed/u);
+    expect(existsSync(marketplaceDir())).toBe(false);
+    expect(existsSync(SETTINGS())).toBe(false);
+    expect(signersFor("fixture-native")).toEqual([]);
   });
 });
 

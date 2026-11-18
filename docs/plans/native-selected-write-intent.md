@@ -36,3 +36,10 @@ output. Verify the owner and complete file results before removing it.
 The directory tree and settings remain outside this selected-file
 experiment. The full certified and ordinary paths have no new intent
 format here.
+
+The cold, warm and interrupted baseline tests found no intent. The
+candidate recorded five cold files and both changed warm files before
+the first write. Each write used the recorded mode. Special permission
+bits and over-limit records refused without output. The interrupted
+write and changed final index both kept the intent and existing bytes.
+The two native suites passed all 83 tests on macOS.

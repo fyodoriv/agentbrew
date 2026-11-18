@@ -372,3 +372,24 @@ reason. All three local sessions and their owned processes ended.
   unqualified.
 - **Anchor**: The pinned [V2 prompt hook](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/plugin/src/promise/session.ts)
   and [V2 tool hooks](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/plugin/src/promise/tool.ts).
+
+The pinned core normalizes a string result to a content array before the
+after-tool hook. The corrected control passed on an actual local pipeline
+with one prompt note and one after-tool note.
+
+## Verify the existing single-file deployment path
+
+- **Hypothesis**: The native default export can load from the exact V1
+  managed destination, while sharing the working command-hook implementation.
+- **Measurement**: Run the existing V2 prompt, tool and amended-input control.
+  Put the combined bridge source only at the scratch global
+  `opencode/plugin/claude-hooks.js` path. Remove the explicit plugins config.
+  Confirm the runtime serves a fresh authenticated request using that file.
+- **Success**: One setup, one prompt, one before-tool and one after-tool
+  call, each expected provider note once, one amended tool effect, zero
+  extra calls, and all owned processes stopped.
+- **Pivot**: If auto-discovery still needs a config entry, a split plugin or
+  more than one deploy step, preserve the current V1 routing while testing
+  a supported location with transactional ownership.
+- **Anchor**: The pinned [source discovery](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/core/src/plugin/source-directory.ts)
+  and the current managed helper destination in `src/sync/helper-scripts.ts`.

@@ -36,3 +36,14 @@ The [first worker candidate](https://github.com/fyodoriv/agentbrew/actions/runs/
 produced zero opt-in records. Vitest's isolated-home setup removes
 `AGENTBREW_*` settings before test discovery. Use a test-only variable
 so the normal isolation remains in place.
+
+## Hosted result
+
+The [observer-free baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44209225778)
+emitted zero records in both modes. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44209591302)
+emitted zero with the flag off and all five fixed records with the flag
+on. The addition completed, the release stayed open, and the removal
+failed. No synthetic error marker appeared. The selected test observed
+the original error object on rejection. Only this synthetic fixture
+ran with the flag enabled. The earlier real timeout remains unexplained.

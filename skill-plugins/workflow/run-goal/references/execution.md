@@ -359,8 +359,13 @@ start it again after the edits; never report its result for the new code.
 
 ## Hosted checks
 
-- When hosted checks exist, they are the gate. Wait for every check. Never
-  merge on a pending or red one, also with a green local gate.
+- Record the full required check list for the target branch. Use branch rules
+  and workflow triggers as the source. The last merged pull request on that
+  branch can help identify check names. A watcher that sees only green checks
+  can exit before a required check registers. Keep the merge open until each
+  required check has registered and passed on the current head and the pull
+  request is up to date with its base. Stop your own watchers after you confirm
+  the merge.
 - A test that fails only on the clean runner has a hidden need: a tool, a
   shell, a config file, or another operating system.
 - Read the job log first. `gh api repos/<o>/<r>/actions/jobs/<id>/logs`

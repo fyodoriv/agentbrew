@@ -113,6 +113,7 @@ appendFileSync(process.env.AGENTBREW_OC_HOOK_LOG, JSON.stringify({ event, id: va
     target_count = 0
     anonymous = "unavailable"
     authenticated = "unavailable"
+    first_health = "unavailable"
     config_exit = "unavailable"
     inventory_exit = "unavailable"
     listed = 0
@@ -150,9 +151,9 @@ appendFileSync(process.env.AGENTBREW_OC_HOOK_LOG, JSON.stringify({ event, id: va
                 opener = build_opener(ProxyHandler({}))
                 address = endpoint + "/api/info"
 
-                def health(headers):
+                def health(headers, timeout=2):
                     try:
-                        with opener.open(Request(address, headers=headers), timeout=2) as response:
+                        with opener.open(Request(address, headers=headers), timeout=timeout) as response:
                             return response.status
                     except HTTPError as error:
                         return error.code
@@ -161,7 +162,19 @@ appendFileSync(process.env.AGENTBREW_OC_HOOK_LOG, JSON.stringify({ event, id: va
 
                 anonymous = health({})
                 header = b64encode(f"opencode:{password}".encode()).decode()
-                authenticated = health({"Authorization": f"Basic {header}"})
+                authorized_headers = {"Authorization": f"Basic {header}"}
+                readiness_deadline = time.monotonic() + 10
+                authenticated = first_health = health(authorized_headers)
+                while authenticated == 503 and time.monotonic() < readiness_deadline:
+                    remaining = readiness_deadline - time.monotonic()
+                    time.sleep(min(0.2, max(0, remaining)))
+                    remaining = readiness_deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    authenticated = health(authorized_headers, timeout=min(2, remaining))
+                if authenticated != 200:
+                    print(f"first-health={first_health} authenticated={authenticated}")
+                    raise SystemExit("the owned server did not reach readiness")
 
                 def client(*arguments, timeout=10):
                     try:
@@ -246,7 +259,7 @@ appendFileSync(process.env.AGENTBREW_OC_HOOK_LOG, JSON.stringify({ event, id: va
                 process.wait(timeout=3)
 
     print(
-        f"version=2.3.0 socket={int(socket_ready)} anonymous={anonymous} authenticated={authenticated} "
+        f"version=2.3.0 socket={int(socket_ready)} anonymous={anonymous} first-health={first_health} authenticated={authenticated} "
         f"config-exit={config_exit} json={int(json_ok)} document={source_count} target={target_count} "
         f"inventory-exit={inventory_exit} listed={listed} setup={len(marker_lines)} reaped=1 "
         f"lifecycle={lifecycle} created={created} deleted={deleted} other={other} "

@@ -38,27 +38,41 @@ ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 # input_hash [paths...]: one hash over the path and content of every file the
 # repo holds, or of the files under the given paths only (then origin/main is
 # not in the key).
-input_hash() {
+input_hash() (
+  local files hashes
+  files="$(mktemp "$metrics_dir/.gate-files.XXXXXX")" || return 1
+  trap 'rm -- "$files"' EXIT
+  git ls-files -co --exclude-standard -- "$@" | sort -u | while IFS= read -r f; do
+    if [ -f "$f" ]; then printf '%s\n' "$f"; fi
+  done >"$files" || return 1
+  # Cache the bytes the check reads. Git's clean filters can normalize them.
+  hashes="$(git hash-object --no-filters --stdin-paths <"$files")" || return 1
   {
-    node --version
+    node --version || return 1
     if [ "$#" = 0 ]; then
       git rev-parse -q --verify origin/main 2>/dev/null || echo no-origin-main
     fi
-    git ls-files -co --exclude-standard -- "$@" | sort -u | while IFS= read -r f; do
-      [ -f "$f" ] && printf '%s\n' "$f"
-    done >"$metrics_dir/.gate-files"
-    paste "$metrics_dir/.gate-files" <(git hash-object --stdin-paths <"$metrics_dir/.gate-files")
+    if [ -s "$files" ]; then printf '%s\n' "$hashes" | paste "$files" -; fi
   } | git hash-object --stdin
-}
+)
 
 # step_inputs <name>: the paths a step depends on, when it is not the whole repo.
 step_inputs() {
   case "$1" in
   lockfile-sync) echo "package.json package-lock.json scripts/check-lockfile-sync.sh scripts/stubs" ;;
+  lint-artifacts) echo "scripts/lint-repo-artifacts.sh scripts/verify.sh" ;;
+  lint-tasks) echo "TASKS.md .tasks-stability-allowlist scripts/lint-tasks-stability.mjs scripts/verify.sh" ;;
   # The fixtures run hook scripts, the perf helper, and the wrap-up skill's
   # open-work script (src/scripts/verify-cache.test.ts checks this list).
   hook-fixtures) echo "hooks templates/scripts skill-plugins/workflow/wrap-up scripts/run-hook-fixtures.sh" ;;
   esac
+}
+
+cacheable_file() {
+  [ -f "$1" ] && [ -r "$1" ] && [ ! -L "$1" ] || return 1
+  local ignore_rc=0
+  git check-ignore --quiet -- "$1" || ignore_rc=$?
+  [ "$ignore_rc" = 1 ]
 }
 
 # Only these exact commands use source without the checkout's installed packages.
@@ -71,12 +85,19 @@ source_only_step() {
       ;;
     "lint-security bash scripts/lint-security.sh") tools="grep sed" ;;
     "lint-artifacts bash scripts/lint-repo-artifacts.sh")
+      cacheable_file "$3" || return 1
       local artifact
       artifact="$(/usr/bin/find . -maxdepth 1 -type f -name '=*' -print -quit)" || return 1
       [ -z "$artifact" ] || return 1
       tools="basename sed"
       ;;
-    "lint-tasks node scripts/lint-tasks-stability.mjs TASKS.md") tools="" ;;
+    "lint-tasks node scripts/lint-tasks-stability.mjs TASKS.md")
+      cacheable_file "$3" && cacheable_file TASKS.md || return 1
+      if [ -e .tasks-stability-allowlist ] || [ -L .tasks-stability-allowlist ]; then
+        cacheable_file .tasks-stability-allowlist || return 1
+      fi
+      tools=""
+      ;;
     *) return 2 ;;
   esac
 
@@ -116,7 +137,7 @@ cache_scope() {
   fi
 }
 
-inputs="$(input_hash)"
+inputs="$(input_hash)" || inputs=""
 gate_start="$(now_ms)"
 steps=0
 cached_steps=0
@@ -140,8 +161,10 @@ step() {
   if [ -n "$scope" ]; then
     paths="$(step_inputs "$name")"
     # shellcheck disable=SC2086 # the path list splits on spaces by design
-    [ -z "$paths" ] || base="$(input_hash $paths)"
-    key="$(printf 'cache-v2\n%s\n%s\n%s\n' "$scope" "$base" "$*" | git hash-object --stdin)"
+    if [ -n "$paths" ]; then base="$(input_hash $paths)" || base=""; fi
+    if [ -n "$base" ]; then
+      key="$(printf 'cache-v3\n%s\n%s\n%s\n' "$scope" "$base" "$*" | git hash-object --stdin)" || key=""
+    fi
   fi
   if [ -n "$key" ] && [ "${NO_CACHE:-0}" != 1 ] && [ -f "$cache_dir/$name/$key" ]; then
     cached_steps=$((cached_steps + 1))

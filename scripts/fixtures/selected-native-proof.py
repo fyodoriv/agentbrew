@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tarfile
@@ -88,6 +89,7 @@ def admitted_path(path):
         "home/.config/agentbrew/manifest.json", "home/.config/agentbrew/state.yaml",
         "home/.config/agentbrew/state.yaml.bak", "home/.config/agentbrew/sync-errors.json",
         "home/.config/agentbrew/generated", "home/.config/agentbrew/generated/workspace-Agentfile.yaml",
+        "home/.config/agentbrew/metrics", "home/.config/agentbrew/metrics/latest.json",
         "home/.local", "home/.local/share", "home/.local/share/agentbrew",
         "home/.local/share/agentbrew/launchers",
         "home/.local/share/agentbrew/launchers/fixture-native--fixture-native-server.sh",
@@ -98,7 +100,12 @@ def admitted_path(path):
         "home/.local/share/agentbrew/claude-marketplace", "home/.claude/codeassist/hooks-scripts",
     )
     exact.add("home/.claude/codeassist")
-    return path in exact or any(path == prefix or path.startswith(prefix + "/") for prefix in generated)
+    context_snapshot = re.fullmatch(
+        r"home/\.config/agentbrew/metrics/context-budget-\d{4}-\d{2}-\d{2}\.json", path,
+    )
+    return path in exact or bool(context_snapshot) or any(
+        path == prefix or path.startswith(prefix + "/") for prefix in generated
+    )
 
 
 def public_record(entry, root, relative_path):
@@ -111,6 +118,21 @@ def public_record(entry, root, relative_path):
         require(absolute.is_relative_to(root), "Native fixture produced an outside link")
         content = str(absolute.relative_to(root)) if target.is_absolute() else content
     return {"mode": mode, "mtime_ns": mtime, "digest_or_link": content}
+
+
+def package_mutation(before, after):
+    altered = [p for p in before.keys() & after.keys() if before[p] != after[p]]
+    return {
+        "removed": sorted(str(p) for p in before.keys() - after.keys()),
+        "added_count": len(after.keys() - before.keys()),
+        "altered": {
+            str(p): {
+                "mode": before[p][0] != after[p][0], "mtime": before[p][1] != after[p][1],
+                "data": before[p][2] != after[p][2],
+            }
+            for p in sorted(altered, key=str)
+        },
+    }
 
 
 def setup_case(root, fixture, repo, node, loader):
@@ -247,7 +269,13 @@ for (const attempt of [
             if facet != "default":
                 args += ["--only", facet]
             result = run(args, work, env)
-            require(manifest(install) == install_before, "A native sync arm changed the shared npm package")
+            package_after = manifest(install)
+            if package_after != install_before:
+                print(json.dumps({
+                    "facet": facet, "exit": result.returncode, "complete": False,
+                    "package_mutation": package_mutation(install_before, package_after),
+                }, sort_keys=True), flush=True)
+                raise SystemExit("A native sync arm changed the shared npm package")
             after = manifest(fixture)
             require(
                 all(tuple(manifest(path) for path in paths) == snapshots[sibling]

@@ -18,8 +18,22 @@ identifier = "agentbrew.loader-control"
 plugin = """import { appendFileSync } from "node:fs";
 export default {
   id: "agentbrew.loader-control",
-  setup() {
+  setup(ctx) {
+    const controller = new AbortController();
+    const types = ["session.created", "session.deleted"];
+    const events = ctx.event.subscribe({ types, signal: controller.signal })[Symbol.asyncIterator]();
+    const first = events.next();
+    const path = process.env.AGENTBREW_OC_EVENTS;
+    void (async () => {
+      for (let current = await first; !current.done; current = await events.next()) {
+        const event = current.value;
+        appendFileSync(path, JSON.stringify({ type: event.type, id: event.data?.sessionID }) + "\\n");
+      }
+    })().catch(() => {
+      if (!controller.signal.aborted) appendFileSync(path, '{"type":"error"}\\n');
+    });
     appendFileSync(process.env.AGENTBREW_OC_LOADER_MARKER, "setup\\n");
+    return () => controller.abort();
   },
 };
 """
@@ -29,6 +43,7 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
     home, workspace = root / "home", root / "workspace"
     workspace.mkdir()
     marker = root / "setup.marker"
+    event_log = root / "events.jsonl"
     config = home / ".config/opencode"
     plugins = config / "loader-fixture"
     plugins.mkdir(parents=True)
@@ -41,7 +56,8 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
         "PATH": os.environ["PATH"], "HOME": str(home), "TMPDIR": str(root),
         "XDG_CONFIG_HOME": str(home / ".config"), "XDG_DATA_HOME": str(home / ".local/share"),
         "XDG_STATE_HOME": str(home / ".local/state"), "XDG_CACHE_HOME": str(home / ".cache"),
-        "AGENTBREW_OC_LOADER_MARKER": str(marker), "DO_NOT_TRACK": "1", "CI": "1",
+        "AGENTBREW_OC_LOADER_MARKER": str(marker), "AGENTBREW_OC_EVENTS": str(event_log),
+        "DO_NOT_TRACK": "1", "CI": "1",
         "OPENCODE_PASSWORD": password, "OPENCODE_DISABLE_MODELS_FETCH": "1",
     }
     common = {"cwd": workspace, "env": environment, "stdin": subprocess.DEVNULL}
@@ -65,6 +81,8 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
     listed = 0
     marker_lines = []
     json_ok = False
+    lifecycle = "unavailable"
+    created = deleted = other = 0
 
     def values(value):
         if isinstance(value, str):
@@ -138,6 +156,44 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
                         if listed == 1 and marker_lines == ["setup"]:
                             break
                         time.sleep(min(0.5, max(0, deadline - time.monotonic())))
+
+                def observed():
+                    if not event_log.is_file():
+                        return []
+                    return [json.loads(line) for line in event_log.read_text().splitlines()]
+
+                def await_count(expected):
+                    deadline = time.monotonic() + 4
+                    items = observed()
+                    while len(items) < expected and time.monotonic() < deadline:
+                        time.sleep(0.1)
+                        items = observed()
+                    return items
+
+                if listed == 1 and marker_lines == ["setup"]:
+                    request_headers = {"Authorization": f"Basic {header}", "Content-Type": "application/json"}
+                    try:
+                        create = Request(
+                            endpoint + "/api/session",
+                            data=json.dumps({"title": "Synthetic lifecycle control", "location": {"directory": str(workspace)}}).encode(),
+                            headers=request_headers, method="POST",
+                        )
+                        with opener.open(create, timeout=5) as response:
+                            session = json.loads(response.read())["data"]["id"]
+                        if not isinstance(session, str) or not re.fullmatch(r"ses_[a-zA-Z0-9]+", session):
+                            raise ValueError("unexpected fixture session identity")
+                        await_count(1)
+                        remove = Request(endpoint + "/api/session/" + session, headers=request_headers, method="DELETE")
+                        with opener.open(remove, timeout=5) as response:
+                            if response.status != 204:
+                                raise ValueError("fixture session removal failed")
+                        items = await_count(2)
+                        created = items.count({"type": "session.created", "id": session})
+                        deleted = items.count({"type": "session.deleted", "id": session})
+                        other = len(items) - created - deleted
+                        lifecycle = "observed"
+                    except (KeyError, ValueError, OSError):
+                        lifecycle = "read-failed"
         finally:
             if process.poll() is None:
                 os.killpg(process.pid, signal.SIGTERM)
@@ -150,11 +206,12 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
     print(
         f"version=2.3.0 socket={int(socket_ready)} anonymous={anonymous} authenticated={authenticated} "
         f"config-exit={config_exit} json={int(json_ok)} document={source_count} target={target_count} "
-        f"inventory-exit={inventory_exit} listed={listed} setup={len(marker_lines)} reaped=1"
+        f"inventory-exit={inventory_exit} listed={listed} setup={len(marker_lines)} reaped=1 "
+        f"lifecycle={lifecycle} created={created} deleted={deleted} other={other}"
     )
     if (
         anonymous != 401 or authenticated != 200 or config_exit != 0 or not json_ok
         or source_count != 1 or target_count != 1 or inventory_exit != 0
-        or listed != 1 or marker_lines != ["setup"]
+        or listed != 1 or marker_lines != ["setup"] or created != 1 or deleted != 1 or other != 0
     ):
-        raise SystemExit("the authenticated V2 startup was not verified")
+        raise SystemExit("the V2 session lifecycle control was not verified")

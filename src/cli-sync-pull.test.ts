@@ -416,3 +416,32 @@ describe("selected Agentfile source directories", () => {
     ]);
   });
 });
+
+describe("selected pull keeps established mixed preparation", () => {
+  it("applies its mixed Agentfile before an MCP-only pull dispatch", async () => {
+    const config = join(home, ".config", "agentbrew");
+    writeFileSync(
+      join(config, "Agentfile.yaml"),
+      yaml.dump({
+        sources: [FIXED_URL],
+        mcp: [{ name: "fixture-pull", command: "node", args: [] }],
+        hooks: [{ event: "PreToolUse", command: "fixture-pull-hook" }],
+        defaultModel: "fixture-pull-model",
+        commands: ["./fixture-pull-commands"],
+      }),
+    );
+    let prepared: ReturnType<typeof loadState> | undefined;
+    mockUpdate.mockImplementationOnce(async () => {
+      invalidateState();
+      prepared = loadState();
+    });
+
+    await runSync("--pull", "--only", "mcp");
+
+    expect(mockUpdate).toHaveBeenCalledOnce();
+    expect(prepared?.mcpServers?.map(({ name }) => name)).toContain("fixture-pull");
+    expect(prepared?.hooks?.map(({ command }) => command)).toContain("fixture-pull-hook");
+    expect(prepared?.defaultModel).toBe("fixture-pull-model");
+    expect(prepared?.commandSourceDirs?.map(({ path }) => path)).toContain(join(config, "fixture-pull-commands"));
+  });
+});

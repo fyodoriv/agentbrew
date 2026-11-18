@@ -45,6 +45,7 @@ import { install as catalogInstall } from "./catalog/install.js";
 import { buildProgram } from "./cli.js";
 import { applyAgentfileAndInstall } from "./commands/cli-install.js";
 import { workspaceAgentfilePath } from "./core/workspaces.js";
+import { MEMORY_MANAGED_SERVER_NAME, MEMORY_MANAGED_SOURCE } from "./memory/constants.js";
 import { invalidateState, loadState, saveState } from "./state.js";
 import { pruneStaleAgentfileArtifacts } from "./sync/stale-agentfile-artifacts.js";
 import type { Source } from "./types.js";
@@ -417,6 +418,37 @@ describe("selected Agentfile source directories", () => {
   });
 });
 
+describe("selected Agentfile source and memory state", () => {
+  it.each(["skills", "mcp", "hooks", "all"] as const)("keeps state within %s preparation", (facet) => {
+    const policy = join(home, ".config", "agentbrew", "Agentfile.yaml");
+    writeFileSync(policy, yaml.dump({ sources: [FIXED_URL], memory: { enabled: true } }));
+    const state = loadState();
+    if (!state) throw new Error("Synthetic state is missing");
+    state.workSteps = ["synthetic migration marker"];
+    saveState(state);
+    invalidateState();
+
+    applyAgentfile(policy, {
+      quiet: true,
+      authoritative: true,
+      ...(facet === "all" ? {} : { syncModules: [facet], scopeAgentfileContent: true }),
+    });
+    invalidateState();
+
+    const saved = loadState();
+    const sourcesSelected = facet === "skills" || facet === "all";
+    const memorySelected = facet === "mcp" || facet === "all";
+    expect(seenFixtureUrls()).toEqual([sourcesSelected ? FIXED_URL : STALE_URL]);
+    expect(saved?.memory?.enabled === true).toBe(memorySelected);
+    expect(
+      saved?.mcpServers?.some(({ name, source }) =>
+        name === MEMORY_MANAGED_SERVER_NAME && source === MEMORY_MANAGED_SOURCE,
+      ) ?? false,
+    ).toBe(memorySelected);
+    expect(saved?.workSteps).toEqual(facet === "all" ? undefined : ["synthetic migration marker"]);
+  });
+});
+
 describe("selected pull keeps established mixed preparation", () => {
   it("applies its mixed Agentfile before an MCP-only pull dispatch", async () => {
     const config = join(home, ".config", "agentbrew");
@@ -427,6 +459,7 @@ describe("selected pull keeps established mixed preparation", () => {
         mcp: [{ name: "fixture-pull", command: "node", args: [] }],
         hooks: [{ event: "PreToolUse", command: "fixture-pull-hook" }],
         defaultModel: "fixture-pull-model",
+        memory: { enabled: true },
         commands: ["./fixture-pull-commands"],
       }),
     );
@@ -442,6 +475,8 @@ describe("selected pull keeps established mixed preparation", () => {
     expect(prepared?.mcpServers?.map(({ name }) => name)).toContain("fixture-pull");
     expect(prepared?.hooks?.map(({ command }) => command) ?? []).toContain("fixture-pull-hook");
     expect(prepared?.defaultModel).toBe("fixture-pull-model");
+    expect(prepared?.memory?.enabled).toBe(true);
+    expect(prepared?.sources?.map(({ url }) => url)).toContain(FIXED_URL);
     expect(prepared?.commandSourceDirs?.map(({ path }) => path)).toContain(join(config, "fixture-pull-commands"));
   });
 });

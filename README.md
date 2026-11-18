@@ -508,6 +508,10 @@ Every sync creates a timestamped snapshot. Pruning only touches entries agentbre
 
 During a selected sync, Agentfiles defer live rule writes until you select
 `rules`, and defer pruning dropped Agentfile skills until you select `skills`.
+An ordinary selected sync applies the Agentfile MCP servers, hooks, models,
+and source directories for the modules you select. Select `skills` to update
+tracked skill sources. Select `mcp` to register managed memory.
+
 For example, `agentbrew sync --only commands` leaves the native Claude
 marketplace unchanged. A selection that includes hooks, MCP, or rules
 refreshes the complete native marketplace. Every live sync refreshes the

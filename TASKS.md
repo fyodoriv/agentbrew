@@ -394,19 +394,6 @@
   - **Pivot**: fewer than 5 of 6 after the gate is restored means agents do not load the rule; drop the gate.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate: a gate that always fails is ignored; Basili, Caldiera and Rombach (1994), GQM.
 
-- [ ] Move the hosted Linux job back to ubuntu-latest when Playwright supports it
-  - **ID**: ci-ubuntu-latest-playwright
-  - **Tags**: ci, tests
-  - **Mode**: AFK
-  - **Details**: On 2026-11-10 the first hosted run of `.github/workflows/ci.yml` failed on `ubuntu-latest` at the `playwright-install` step: `Playwright does not support chromium on ubuntu26.04-x64`. The job now runs on `ubuntu-24.04`. GitHub removes old images over time, so check the installed Playwright version against the newest image and move the label back when Chromium installs there.
-  - **Files**: `.github/workflows/ci.yml`, `package.json`
-  - **Output**: code
-  - **Acceptance**: the `verify` job passes on `ubuntu-latest`, and the pin comment in `ci.yml` is gone.
-  - **Hypothesis**: a Playwright version with a Chromium build for the newest image moves `playwright-install` failures on `ubuntu-latest` from 1 of 1 to 0.
-  - **Measurement**: `gh workflow run ci.yml --ref <branch>` on a branch with `ubuntu-latest`, then `gh run view <id> --json jobs --jq '.jobs[].conclusion'`.
-  - **Success**: every job prints `success`.
-  - **Pivot**: if no Playwright release supports the image 60 days before GitHub retires `ubuntu-24.04`, run the browser tests in the Playwright container image instead.
-  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (change failure rate).
 
 - [ ] Detect duplicate Ollama servers before they split the local prompt cache
   - **ID**: ollama-single-server-readiness

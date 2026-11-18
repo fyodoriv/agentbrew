@@ -381,3 +381,25 @@ an interrupted long publisher record.
   stage. Native publication remains separately unwired.
 - **Anchor**: The exact Node and Dotfiles focused receipts and the
   `AGENT_PLUGINS_ALLOWED_SIGNERS` contract.
+
+## Revalidate signer trust before selected publication
+
+The selected prototype may plan output before taking the short signer
+lock. Take that lock before any planned output becomes visible. Reload
+the plugin lock and signer registry, then require each proposed plugin
+to retain the same full source identity and trusted signer.
+
+- **Hypothesis**: A held signer fence or a signer revoked after
+  planning begins prevents all selected native output writes.
+- **Measurement**: Install a signed fixture in a scratch home. Hold
+  the short writer fence during one selected publish. In a separate
+  run, revoke the fixture signer immediately after the first real
+  pinned source read. Check native output and activation paths.
+- **Success**: Both negative controls refuse before any native writes.
+  Existing cold, warm and default controls stay green. Revocation
+  remains present after the attempt.
+- **Pivot**: Any planned write reaching output after contention or
+  revocation blocks the candidate. Remaining lifecycle and recovery
+  conditions still apply before live activation.
+- **Anchor**: The shared signer descriptor, the pinned read and
+  the current native output plan.

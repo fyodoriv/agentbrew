@@ -1031,3 +1031,26 @@ mutation. Both inputs then refused with their complete prior
 snapshots intact. All three separate-process interruption controls
 still passed. This qualifies an early refusal, not support for
 publishing under the incompatible mask.
+
+## Keep Linux certification under a stricter mask
+
+The [first hosted copy control](https://github.com/fyodoriv/agentbrew/actions/runs/44310371269)
+disagreed with the Mac result. Linux kept a mode-0644 file at 0644
+under both 022 and 077. Preserve this as a measured platform difference.
+
+- **Hypothesis**: Apply the ambient copy-mask forecast only on the Mac.
+  Linux continues to certify the known signed mode under 077. The installed
+  mode check still rejects a changed source file on either platform.
+- **Measurement**: Run the exact recursive-copy fixture with both masks
+  on hosted Linux. Run the signed full publisher with an installed 0644
+  guard under 077. Observe callback, native mode and owner retirement.
+  Keep the Mac 077 refusal, changed-source refusal and three process
+  interruption cases.
+- **Success**: Linux publishes mode 0644 and retires its owner,
+  the Mac preserves all prior output under 077, both platforms reject
+  the altered installed guard, and all ordinary controls pass.
+- **Pivot**: A Linux refusal for this known valid input, a Mac partial
+  write, permission broadening, or a wrong signed mode blocks the
+  forecast on that platform. The final full receipt check remains in place.
+- **Anchor**: The pinned recursive copy controls and unsigned output
+  exclusion in the existing full-certification contract.

@@ -987,14 +987,19 @@ file types or modes. The expected incremental progress before each
 boundary still needs corroboration in the hosted run.
 
 The checkpoint fixture pins its synthetic installed guard to the
-0644 mode registered in the signed tree. The three targets then stay
-the same when the queue applies 077 to its child environment. This
-does not qualify a private-mask production clone. An isolated copy
-retained the source mode with either mask, so the clone boundary
-remains the mode-refusal source.
+0644 mode registered in the signed tree. A single-file copy kept that
+mode under either mask. The first test of this setup still failed
+before the settings checkpoint. See the recursive copy control below.
 
 The installed fixture mode alone did not reach settings under 077.
 A recursive copy reproduced the distinction. It copied a 0644 source
 as 0600 under 077 and as 0644 under 022. The checkpoint child uses the
 registered 022 even when its parent queue keeps 077. This isolates the
 three interruption controls without changing real user permissions.
+
+
+The final control passed all three checkpoints in the default queue
+with its parent mask unchanged. The child returned 77 before each
+target write. Each replacement returned 75 and preserved the complete
+observed output snapshot. This includes the completed earlier files
+and receipts at the marketplace and settings boundaries.

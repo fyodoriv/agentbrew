@@ -287,6 +287,7 @@ describe("native publication process loss at output checkpoints", () => {
     const moduleUrl = new URL("./claude-native.ts", import.meta.url).href;
     const source = `
       import { createRequire } from "node:module";
+      process.umask(0o022);
       const atomic = createRequire(import.meta.url)("write-file-atomic");
       const write = atomic.sync;
       const checkpoint = ${JSON.stringify(checkpoint ?? null)};
@@ -316,6 +317,8 @@ describe("native publication process loss at output checkpoints", () => {
     ["activation settings", "settings", true],
   ] as const)("preserves the partial output before %s across a process restart", (_name, key, full) => {
     installFacetFixture();
+    // The signed fixture uses 0644 even when the local queue applies umask 077.
+    chmodSync(join(pluginDir("fixture-native"), "hooks", "guard.sh"), 0o644);
     const paths = nativeFacetPaths();
     const target = paths[key];
     try {

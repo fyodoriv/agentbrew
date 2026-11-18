@@ -209,6 +209,7 @@
   - **Details**: Published evidence is retained in [draft PR #805](https://github.com/fyodoriv/agentbrew/pull/805); keep it unmerged while qualification is false. The [frozen diagnostic cohort](docs/plans/source-lease-failure-observation.md#bounded-real-failure-cohort) is closed at its ten-invocation cap. Every invocation passed; no real failure was classified. The original acceptance remains UNVERIFIED and the earlier cause UNKNOWN. Preserve that contract and every receipt; do not reopen or extend the cohort. The separate `source-lease-release-window-research` task studies controlled physical schedules and cannot satisfy this real-incident criterion.
   - **Blocked**: closed-cohort-no-admission — all ten natural-cohort invocations are consumed without a classified failure. Acceptance remains UNVERIFIED; earlier cause UNKNOWN. No additional invocation is authorized by this handoff.
   - **PR**: https://github.com/fyodoriv/agentbrew/pull/805
+  - **Progress**: [Fixed worker records](docs/plans/plugin-lifecycle-stage-evidence.md) passed the hosted writer control with five safe records when enabled and none when disabled. A dedicated diagnostic of the original lifecycle case remains pending.
   - **Files**: `src/sync/pull-source-caches.test.ts`, `docs/plans/source-lease-failure-observation.md`
   - **Output**: measurement
   - **Acceptance**: at least one actual failed invocation has its safe enum record; zero failures remain unclassified and zero private errors are disclosed. Every result belongs to the frozen source revision and keeps its actual exit. A current failure class does not establish the earlier incident's cause or authorize an unregistered product fix.
@@ -252,19 +253,19 @@
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration; the actual terminal timeout and current in-process `Command.parseAsync` lifecycle fixture.
 
 
-- [ ] Build and install evidence rejects stale locked dependencies
-  - **ID**: locked-install-evidence
-  - **Tags**: security, stability, dependencies
+- [ ] Qualify the Claude hook bridge on OpenCode 2
+  - **ID**: opencode-v2-claude-hook-bridge
+  - **Tags**: opencode, hooks, reliability, security
   - **Mode**: AFK
-  - **Details**: The build preflight can report a lockfile match with a stale transitive package. The worktree helper can clone an unqualified donor and issue a fresh lock stamp, while the full-gate cache excludes installed dependencies from its identity. Follow [the registered preparation](docs/plans/locked-install-evidence.md). Reuse supported dependency tooling before adding an adapter. Land instrumentation first; keep existing optional-peer failures explicit and preserve canonical dependencies during qualification.
-  - **Files**: `scripts/build-pipeline-guard.sh`, `scripts/worktree-deps.sh`, `scripts/verify.sh`, their existing tests, dependency setup guidance
+  - **Details**: A bounded standalone OpenCode 2.3.0 session rejected the installed `claude-hooks.js` because it exports the V1 hook map. Startup also timed out separately before reaching the local model. Qualify V2 loader admission and hook behavior before claiming that either problem is fixed. V1 remains supported.
+  - **Files**: `templates/opencode/`, `src/opencode-hooks/`, the helper deployment code, `docs/support-matrix.md`.
   - **Output**: code
-  - **Acceptance**: stale transitive packages, unqualified donors and installation changes cannot produce a false lock-exact receipt or reuse an unrelated successful gate. Supported optional and local-file dependencies remain supported; errors and unavailable evidence fail closed without changing the declared dependency contract.
-  - **Hypothesis**: the five registered negative controls produce zero unsafe permits after repair, while all four supported controls remain valid. Baseline values must come from the new instrumentation, not the current shallow check or source inspection.
-  - **Measurement**: register and land the plan's instrumentation, then run `JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/build-pipeline-guard.test.ts src/worktree-deps.test.ts src/scripts/verify-cache.test.ts` before and after repair, followed by a qualified task-owned installation and `JOBS=1 NO_CACHE=1 heavy-run npm run verify`.
-  - **Success**: zero unsafe permits across all five fixed negative controls, all four positive controls pass, no dependency-policy change or canonical installation mutation, and normal repository gates pass on the qualified installation.
-  - **Pivot**: any unsafe permit, unsupported omission, manufactured stamp, cached result from a different installation or hidden optional-peer failure rejects the approach; preserve the evidence and revise the adapter rather than weaken the contract.
-  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; npm's documented dependency-tree scope and lockfile contract linked in the plan.
+  - **Acceptance**: A fresh V2 CLI accepts the bridge, runs supported hook events, blocks a synthetic denied action before execution, and keeps the V1 behavior and owner files safe.
+  - **Hypothesis**: The V2 loader goes from one rejection to zero, and registered actions have zero lost guard decisions across approved, denied, amended and session-event controls.
+  - **Measurement**: Register exact V1/V2 versions and synthetic fixtures before running a fresh isolated server. Record load, guard inputs and final output. Run the existing `src/opencode-hooks/claude-hooks.test.ts` and the hosted gate.
+  - **Success**: 2/2 loaders accept their artifacts, all four effect controls match, zero denied effects run, and zero owner files change.
+  - **Pivot**: If any V2 lifecycle or guard effect cannot be verified, keep that host capability unqualified. Do not infer coverage from plugin load alone.
+  - **Anchor**: OpenCode 2.3.0 loader output and [V1 migration guide](https://opencode.ai/docs/build/plugins/migrate-v1).
 
 - [ ] Remove the frozen vulnerable dependency ranges without hiding optional paths
   - **ID**: dependency-alert-remediation
@@ -334,6 +335,7 @@
   - **ID**: wrap-up-fetch-caller-timeout
   - **Tags**: tests, flaky, wrap-up
   - **Details**: On 2026-11-15, under a busy machine, `npx vitest run src/skills/wrap-up-open-work.test.ts` failed `'W03' observes the real wrap-up caller` with `W03 fixture did not complete` (32.6 s) and W04 (6.0 s); the observation printed `{"id":"W03","status":"inconclusive"}`. The file took 323 s. The same file failed on unchanged main, so it is not caused by a recent change. Find what the fixture waits on and give it a wait sized for a busy machine, or mark the case inconclusive without failing.
+  - **Progress**: [Phase observations](docs/plans/wrap-up-fixture-phase-evidence.md) distinguish setup and caller timeouts. The synthetic controls passed. The original failure still needs a classified observation before changing a timeout.
   - **Files**: src/skills/wrap-up-open-work.test.ts
   - **Hypothesis**: with a load-sized wait, the file fails 0 times in 10 queued runs, against 2 of 2 seen now.
   - **Measurement**: `heavy-run bash -c 'for i in $(seq 10); do npx vitest run src/skills/wrap-up-open-work.test.ts >/dev/null 2>&1 || echo fail; done | wc -l'`, plus the hosted `verify` jobs. Never add load on purpose: an unqueued heavy run froze this Mac on 2026-11-15.
@@ -353,32 +355,18 @@
   - **Pivot**: If all existing staging writers cannot share a safe coordination boundary, refuse the refresh and retain the prior copy; do not silently prune.
   - **Anchor**: `src/update.ts`, `src/catalog/install-skill.ts`, and the 2026-11-13 managed-skill observation.
 
-- [ ] The task lint rejects a task with no Success line or no ID
-  - **ID**: task-lint-success-and-id-gaps
-  - **Tags**: tasks, lint, measurement
-  - **Details**: A review of the "measure every task" rule (2026-11-10) found two gaps in the lint step `npx @tasks-md/lint --require-prereg TASKS.md`. It accepts an **Acceptance** line in place of **Success**, and it skips a block that has no **ID**. So a task can pass the gate without a numeric keep line. Check both in this repo first (a small test over `TASKS.md`), then report the gap to the tasks.md repo.
-  - **Files**: `src/docs/`, `TASKS.md`, `docs/shared-rules.md`
-  - **Output**: code
-  - **Acceptance**: a task block with no **Success** line, or with no **ID**, fails a test in this repo.
-  - **Hypothesis**: task shapes that pass the gate without a Success line go from 2 known shapes to 0.
-  - **Measurement**: `npx vitest run src/docs/` with two new cases, one per shape, each built from a fixture block.
-  - **Success**: both cases pass, and each is red against a lint that accepts the shape.
-  - **Pivot**: if existing tasks fail in numbers above 10, backfill them in a first PR and turn the check on in a second.
-  - **Anchor**: Munafo et al. 2017 (pre-registration); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
-
-- [ ] Old agent worktrees are removed when their branch is merged
-  - **ID**: stale-worktrees-cleanup
-  - **Tags**: dx, disk, cleanup
-  - **Details**: On 2026-11-10 `git worktree list` in this repo showed about 100 worktrees, most from merged or closed work. Each holds a `node_modules` folder, so they cost disk space and slow file search. Add a safe prune: remove a worktree only when its branch is merged into `origin/main` and it has no uncommitted file and no unpushed commit; list the rest with the reason.
-  - **Files**: `scripts/`, `docs/agent-workflow.md`
-  - **Output**: code
-  - **Acceptance**: one command lists each worktree as removed or kept with its reason, and never removes one with uncommitted or unpushed work.
-  - **Hypothesis**: worktrees of merged branches go from about 100 to 0, with no lost work.
-  - **Measurement**: `git worktree list | wc -l` before and after, and a test with three fixture worktrees (merged and clean, dirty, unpushed).
-  - **Success**: the test passes; the count after is the number of kept worktrees the command names.
-  - **Pivot**: if the merged check cannot see squash merges, match on the pull request state through `gh` and keep any worktree it cannot match.
-  - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric).
-
+- [ ] Report the required-field check gap to tasks.md
+  - **ID**: task-lint-required-fields-upstream-report
+  - **Tags**: tasks, lint, upstream
+  - **Details**: Agentbrew adds queue checks for an explicit ID and a separate Success field in PR #1053. The pinned tasks.md lint accepts a task without an ID and accepts Acceptance in place of Success. Prepare the exact report with the two synthetic fixtures before requesting publication approval.
+  - **Output**: docs
+  - **Acceptance**: An approved upstream report describes the two cases and points to the local controls.
+  - **Hypothesis**: One upstream report gives the tools maintainers both runnable cases.
+  - **Measurement**: Read the resulting issue and count the two cases with runnable examples.
+  - **Success**: One approved report records both cases.
+  - **Pivot**: If upstream has a matching issue, link it once and retire this task.
+  - **Anchor**: Agentbrew PR #1053 and the tasks.md metadata parser.
+  - **Blocked**: needs-exact-publication-approval — posting the upstream report requires review and approval of its exact text.
 
 - [ ] The perf gate's catch rate for small slowdowns under load is measured
   - **ID**: perf-gate-marginal-slowdown-detection-under-load
@@ -408,33 +396,6 @@
   - **Pivot**: fewer than 5 of 6 after the gate is restored means agents do not load the rule; drop the gate.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate: a gate that always fails is ignored; Basili, Caldiera and Rombach (1994), GQM.
 
-- [ ] Move the hosted Linux job back to ubuntu-latest when Playwright supports it
-  - **ID**: ci-ubuntu-latest-playwright
-  - **Tags**: ci, tests
-  - **Mode**: AFK
-  - **Details**: On 2026-11-10 the first hosted run of `.github/workflows/ci.yml` failed on `ubuntu-latest` at the `playwright-install` step: `Playwright does not support chromium on ubuntu26.04-x64`. The job now runs on `ubuntu-24.04`. GitHub removes old images over time, so check the installed Playwright version against the newest image and move the label back when Chromium installs there.
-  - **Files**: `.github/workflows/ci.yml`, `package.json`
-  - **Output**: code
-  - **Acceptance**: the `verify` job passes on `ubuntu-latest`, and the pin comment in `ci.yml` is gone.
-  - **Hypothesis**: a Playwright version with a Chromium build for the newest image moves `playwright-install` failures on `ubuntu-latest` from 1 of 1 to 0.
-  - **Measurement**: `gh workflow run ci.yml --ref <branch>` on a branch with `ubuntu-latest`, then `gh run view <id> --json jobs --jq '.jobs[].conclusion'`.
-  - **Success**: every job prints `success`.
-  - **Pivot**: if no Playwright release supports the image 60 days before GitHub retires `ubuntu-24.04`, run the browser tests in the Playwright container image instead.
-  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (change failure rate).
-
-- [ ] Make the perf gate timing tests steady on hosted runners
-  - **ID**: perf-gate-tests-hosted-noise
-  - **Tags**: ci, tests, perf
-  - **Mode**: AFK
-  - **Details**: On the hosted macOS run of 2026-11-10 a few timing cases in `src/scripts/perf-gate.test.ts` failed on wall-clock noise (for example `expected 3.39 to be less than 0`, and `tool got slower: 46.3 ms -> 68.0 ms` for a head that sleeps less). A retry on every timing case did not help: the next run failed on other cases (`base 63.0 ms head 108.1 ms +71.5% slower` for an unchanged tool). The gate-spawning groups now skip on the hosted macOS runner only (`HOSTED_MAC` in the test file); they still run on hosted Linux and on a local Mac. Remove that skip when this task lands. A retry does not remove the cause: the fixtures compare sleeps 20 to 50 ms apart while the suite runs on 3 shared cores. Make the fixtures independent of the wall clock (wider gaps, or a fake clock passed to the gate).
-  - **Files**: `src/scripts/perf-gate.test.ts`, `scripts/perf-gate.mjs`
-  - **Output**: code
-  - **Acceptance**: the file passes 20 of 20 hosted macOS runs with `retry` set to 0.
-  - **Hypothesis**: fixtures that do not depend on the wall clock move hosted failures of this file from a failure in the first hosted run to none in 20 runs.
-  - **Measurement**: `gh run list -w ci.yml -L 20 --json conclusion --jq '[.[]|select(.conclusion=="failure")]|length'`, then read each failed log for `perf-gate.test.ts`.
-  - **Success**: 0 failures of this file in 20 runs.
-  - **Pivot**: if a fake clock needs a large change in the gate (more than a screen of code), run this file in its own serial step after the suite.
-  - **Anchor**: Luo et al. (2014), An Empirical Analysis of Flaky Tests.
 
 - [ ] Detect duplicate Ollama servers before they split the local prompt cache
   - **ID**: ollama-single-server-readiness
@@ -686,26 +647,13 @@
   - **Tags**: release, github-actions, npm, human-blocked
   - **Hypothesis**: one owner-run publish brings npm `latest`, the git tag, and `package.json` to the same version (version drift goes to 0).
   - **Measurement**: `npm view agentbrew version`, `node -p "require('./package.json').version"`, and `git describe --tags --abbrev=0`.
+  - **Success**: Zero version differences across npm latest, the Git tag, and the package manifest after the owner publishes.
   - **Pivot**: if the publish fails on auth again, write a reviewed manual release path and close the automation part.
   - **Anchor**: `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`.
   - **Details**: The Auto-release workflow did not run after the merged delivery. `github.com/fyodoriv/agentbrew` is now the only canonical home, and GitHub Actions is disabled there. The documented manual fallback was blocked by `npm whoami` returning `ENEEDAUTH`. The workflow already has a `workflow_dispatch` fallback. Release stays blocked until Actions is enabled on `fyodoriv/agentbrew` (or a reviewed manual release path exists) and npm credentials are available. See `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`.
   - **Files**: `.github/workflows/auto-publish.yml`, `scripts/publish-latest.sh`, `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
-
-- [ ] Classify upstream skill-to-plugin conversions during source refresh
-  - **ID**: classify-upstream-skill-plugin-conversions
-  - **Tags**: skills, sync, ownership, upstream
-  - **Mode**: AFK
-  - **Details**: On 2026-11-08, `agentbrew sync --pull` printed `insecure-defaults not found in trailofbits/skills`. Upstream commit `82e8e0a` intentionally removed its `SKILL.md` and converted it to a plugin-only workflow. A refresh should distinguish this from a missing or broken source, preserve owner-modified installed content, and never silently prune it.
-  - **Files**: `src/update.ts`, source/skill discovery and removal tests, `README.md`
-  - **Output**: code
-  - **Acceptance**: a synthetic upstream skill-to-plugin conversion produces an explicit classified result and supported migration guidance on repeated refreshes; owner edits and unmanaged copies survive; the status report does not keep calling the source missing.
-  - **Hypothesis**: source-aware conversion classification reduces unclassified `not found` refresh warnings for the fixture from 1 to 0 with 0 unowned removals.
-  - **Measurement**: `JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/update.test.ts` with a conversion fixture and a repeated-refresh ownership control.
-  - **Success**: 0 unclassified conversion warnings and 0 unowned removals in the fixture and repeat control.
-  - **Pivot**: if plugin conversion cannot be detected generically, require an explicit recorded classification instead of adding layout guesses or automatic deletion.
-  - **Anchor**: VISION G1 and "Never destroy data you didn't create"; trailofbits/skills commit `82e8e0a` (2026-08-05).
 
 ## P3
 
@@ -742,6 +690,7 @@
   - **Tags**: upstream-contribution, bridle, scout, blocked-explicit-permission, publish-only
   - **Hypothesis**: filing the staged issue gets the OpenCode singular and plural path mismatch fixed or closed upstream, so the next path audit stops flagging it.
   - **Measurement**: `gh issue list --repo neiii/bridle --state all --search opencode` (state of the filed issue).
+  - **Success**: One upstream issue records the verified path discrepancy and links to both official path references.
   - **Pivot**: no maintainer response within 90 days: drop the task (VISION 90-day rule).
   - **Anchor**: `docs/audits/harness-locate-cross-check.md`; VISION "delegate, contribute, absorb".
   - **Details**: Surfaced from the 2026-04-26 `audit-harness-locate-paths` audit (see [`docs/audits/harness-locate-cross-check.md`](docs/audits/harness-locate-cross-check.md)). Bridle's `harness-locate::opencode` returns `~/.config/opencode/skill/` (singular) and `~/.config/opencode/command/` (singular). Per [OpenCode docs](https://opencode.ai/docs/skills) (2026-04-26), the actual paths are plural: `~/.config/opencode/skills/<name>/SKILL.md` and `~/.config/opencode/commands/<name>.md`.
@@ -888,6 +837,7 @@
   - **Tags**: ecosystem, contribution, standards
   - **Hypothesis**: one upstream PR that links the marker spec gets at least one more tool to use the shared format, so marker collisions between tools stay at zero.
   - **Measurement**: the upstream PR state (`gh pr view <url> --json state`) and the tools listed as using the format in `docs/specs/managed-section-markers.md`.
+  - **Success**: At least one upstream submission links to the published marker spec.
   - **Pivot**: no response within 90 days: keep the spec local and close the task.
   - **Anchor**: `docs/specs/managed-section-markers.md`.
   - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
@@ -904,6 +854,7 @@
   - **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission, bug-fix
   - **Hypothesis**: landing the staged fixes upstream builds maintainer trust, so larger delegation asks get reviewed; at least one PR merges.
   - **Measurement**: `gh pr list --repo vercel-labs/skills --author fyodoriv --state merged --json number --jq length`.
+  - **Success**: At least one staged fix merges upstream within 90 days of filing.
   - **Pivot**: no merge within 90 days of filing: stop filing and keep the fixes local where agentbrew needs them.
   - **Anchor**: `docs/competition/vercel-skills-cli-vs-agentbrew.md` § Contribution roadmap.
   - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
@@ -957,6 +908,7 @@
   - **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission, data-safety
   - **Hypothesis**: an RFC comment with agentbrew's classifier taxonomy shapes the upstream fix, so the merged fix preserves user-created skills.
   - **Measurement**: `gh issue view 268 --repo vercel-labs/skills --json state,comments`.
+  - **Success**: The two linked issues each contain one approved comment with the preservation invariant and classifier reference.
   - **Pivot**: if issue #268 closes without a preservation fix, keep agentbrew's own classifier and close this task.
   - **Anchor**: `docs/competition/vercel-skills-cli-vs-agentbrew.md` § Feature 7.
   - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
@@ -999,10 +951,10 @@
     - No application needed on a public repo: CodeRabbit and Sourcery free AI review, Sentry for Open Source (includes Seer).
     - **Hypothesis**: once agentbrew passes one threshold, one accepted application removes 6 months of AI subscription cost for the owner.
     - **Measurement**: `gh api repos/fyodoriv/agentbrew -q .stargazers_count` and `gh api repos/fyodoriv/agentbrew/contributors -q length`
-    - **Success**: at least one program accepts and the benefit is active on the owner's account.
     - **Pivot**: if two applications made after a threshold is met are both rejected, close this task and stop applying.
     - **Anchor**: Anthropic Claude for Open Source program terms (https://www.anthropic.com/claude-for-oss-terms); Basili, Caldiera and Rombach (1994), GQM.
   - **Files**: none (owner fills web forms); this task records the outcome
+  - **Success**: At least one program accepts and the benefit is active on the owner's account.
   - **Output**: docs
   - **Acceptance**: the owner has applied to each program whose threshold agentbrew meets, and this task records each answer, or records why no application was made.
   - **Blocked**: needs-traction-and-owner-application — 2026-11-10: agentbrew is below every threshold. Agents never submit applications or forms; the owner applies. Unblock when the measurement shows 50 or more stars or 20 or more contributors, or when the owner chooses to try the discretionary tracks.

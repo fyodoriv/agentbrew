@@ -38,6 +38,11 @@ vi.mock("./store.js", async (original) => {
   return { ...store, readPinnedPluginFiles: vi.fn(store.readPinnedPluginFiles) };
 });
 
+vi.mock("./signer-commit-fence.js", async (original) => {
+  const signers = await original<typeof import("./signer-commit-fence.js")>();
+  return { ...signers, withSignerCommitFence: vi.fn(signers.withSignerCommitFence) };
+});
+
 import { readLock } from "../lock.js";
 import { fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { emitClaudeNative, MARKETPLACE_NAME, marketplaceDir, policyFragment } from "./claude-native.js";
@@ -243,6 +248,26 @@ describe("selected native signer commit fence", () => {
     expect(existsSync(marketplaceDir())).toBe(false);
     expect(existsSync(SETTINGS())).toBe(false);
     expect(signersFor("fixture-native")).toEqual([]);
+  });
+});
+
+describe("selected native destination commit observation", () => {
+  it.each(["script", "index"] as const)("refuses when a planned %s appears before the first write", async (target) => {
+    installFacetFixture();
+    const files = nativeFacetPaths();
+    const actual = await vi.importActual<typeof import("./signer-commit-fence.js")>("./signer-commit-fence.js");
+    const planted = "Synthetic file created after planning.\n";
+    vi.mocked(withSignerCommitFence).mockImplementationOnce((registry, commit) => {
+      mkdirSync(dirname(files[target]), { recursive: true });
+      writeFileSync(files[target], planted);
+      return actual.withSignerCommitFence(registry, commit);
+    });
+
+    expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/destination changed/u);
+    expect(readFileSync(files[target], "utf8")).toBe(planted);
+    expect(existsSync(files.envelope)).toBe(false);
+    expect(existsSync(files.settings)).toBe(false);
+    expect(existsSync(files.hooks)).toBe(false);
   });
 });
 

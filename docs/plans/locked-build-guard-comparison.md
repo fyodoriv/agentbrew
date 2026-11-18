@@ -32,3 +32,12 @@ metadata on disk as npm reports that location. Compare a present optional
 dependency normally. A missing row is admissible only when the locked
 record marks it optional. This checks versions and locations, without
 claiming every byte in a package matches its tarball.
+
+## Hosted results
+
+The original guard allowed the stale version, empty response, malformed
+response and missing transitive manifest. The first candidate also allowed
+a successful query containing only the root. The final comparison anchors
+npm's output to the raw lock, rejects unsafe paths and passed all nine
+controls. A normal hosted installation passed the same preflight.
+[Hosted result](https://github.com/fyodoriv/agentbrew/actions/runs/44204480604)

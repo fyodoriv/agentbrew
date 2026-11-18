@@ -21,6 +21,11 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 - **Perf gate timing tests on macOS.** The gate-spawning groups of `src/scripts/perf-gate.test.ts` skip on the hosted macOS runner: its wall clock is too noisy for them. They run on the hosted Linux runner and on a local Mac (task `perf-gate-tests-hosted-noise`).
 - **Linux image.** The Linux job runs on `ubuntu-24.04` until Playwright supports the newer image (task `ci-ubuntu-latest-playwright`).
 
+The build preflight compares installed package versions with the tracked
+lockfile before running the build. It refuses missing or incomplete npm
+comparison data. A declared optional package can be absent, and checked-in
+local package links must still point to their recorded targets.
+
 ## Step cache (like nx)
 
 `scripts/verify.sh` records each step that passed, keyed on the step's inputs. A later run skips a step whose inputs did not change (today the hook-fixture step on a pull request; the lint steps also key on `origin/main`, and the test step always runs), and prints `cached (inputs unchanged since it passed)`. The hosted job keeps that record between runs with `actions/cache`. A cache entry cannot be changed, so each run saves a new entry and restores the newest one. A pull request can read `main`'s entries and its own; it cannot write to `main`'s. The last gate line shows the effect: `verify: passed; N of M steps from cache`. To run every step, delete the entries: `gh cache delete --all` (this also removes the browser cache).

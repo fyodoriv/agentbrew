@@ -187,18 +187,6 @@
 
 ## P1
 
-- [ ] Explain an empty readiness marker in the interrupted install test
-  - **ID**: mcp-interrupted-ready-marker
-  - **Tags**: ci, testing, stability
-  - **Details**: A hosted Mac run failed when the interrupted-install test tried to scan an empty readiness path. The marker existence check can observe a file before its write finishes, but the hosted cause is not yet established. Preserve the existing signal and cleanup policy; do not run the physical test locally without an independently reviewed ownership and cleanup method. A no-signal fixture demonstrated that a newly created file can be observed empty before its content is written; it did not prove the hosted cause. Independent review found that the proposed diagnostic adds timing and can skip the existing signal if raised early, so the registered pivot applies; define and preregister a safe revised observation before implementation.
-  - **Output**: code
-  - **Acceptance**: A closed diagnostic distinguishes missing, empty and nonempty marker observations without logging the path. Partial and complete nonempty content remain indistinguishable without further evidence.
-  - **Hypothesis**: A bounded marker diagnostic will distinguish all 3 planted marker observations and expose no path values; the suspected write race remains unproven until observed.
-  - **Measurement**: Focused no-signal marker controls and hosted CI; the test reports the closed marker state on failure.
-  - **Success**: 3 of 3 planted observations are distinguished, 0 raw paths are reported, and 0 local processes are signaled.
-  - **Pivot**: If a diagnostic changes test timing or cannot identify the state safely, retain the failure as unknown and do not claim a root cause.
-  - **Anchor**: Hosted job 132299647921, `src/mcp/mcp-git-install.test.ts:1112` and `:1406`.
-
 - [ ] Validate every sync selection before preparation can publish outputs
   - **ID**: sync-selection-preflight
   - **Tags**: security, stability, sync, cli
@@ -761,18 +749,6 @@
   - **Pivot**: if upstream declines, keep it in ui-ux-rankings only and close this task.
   - **Anchor**: WCAG 2.2 SC 2.5.8 (target size); sidequest PR #9 measurements.
   - **Blocked**: needs-owner-approval — 2026-10-27: filing on anthropics/claude-plugins-official is a public post in another org. The owner must approve the exact issue text from the `report-upstream` skill first; agents do not post it on their own.
-
-- [ ] Drop the basic-ftp override once get-uri accepts a patched range
-  - **ID**: scout-basic-ftp-override-removal
-  - **Tags**: scout, dependencies, security
-  - **Hypothesis**: once `get-uri` accepts a patched `basic-ftp`, removing the override drops one pinned transitive dependency with no new audit finding.
-  - **Measurement**: `npm view get-uri dependencies.basic-ftp` and `npm audit --json | jq '.vulnerabilities["basic-ftp"]'`.
-  - **Pivot**: if `get-uri` has not widened its range by the next quarterly review, keep the pin and close this task with that reason.
-  - **Anchor**: the `basic-ftp` 5.x denial-of-service advisory; dependency audit 2026-10-16.
-  - **Details**: `package.json` pins `basic-ftp` to 6.2.3 through `overrides` because `get-uri@8` asks for `^5.3.1`, and 5.x has an open denial-of-service advisory. Remove the override when `get-uri` (via `promptfoo` > `proxy-agent`) widens its range to a patched release, so the pin stops hiding upstream drift.
-  - **Files**: package.json, package-lock.json
-  - **Acceptance**: (1) the `basic-ftp` entry is gone from `overrides`; (2) `npm audit` stays free of high findings from `basic-ftp`.
-  - **Blocked**: upstream — re-checked 2026-10-16: `get-uri` 8.0.1 (latest) still depends on `basic-ftp` `^5.3.1`; the override keeps 6.2.3.
 
 - [ ] (Publish-only step) File the staged upstream issue at `neiii/bridle` (upstream relocated 2026-05-02 from `superwall/bridle`) noting `harness-locate` uses singular `skill/` and `command/` for OpenCode but the official OpenCode docs use plural.
   - **ID**: bridle-opencode-path-issue

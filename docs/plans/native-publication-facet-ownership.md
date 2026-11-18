@@ -1170,3 +1170,21 @@ After release, the next child certifies the signed result. The
 ordinary publisher keeps its existing path. Both affected suites
 passed all 78 tests on macOS, including the three descriptor-loss
 boundaries.
+
+## Refuse a later selected destination changed during publication
+
+- **Hypothesis**: Selected publication refuses when the first output write
+  is followed by an edit to a later destination. The edited bytes and
+  pending intent survive, and a retry makes zero further writes.
+- **Measurement**: In the signed scratch fixture, make the first actual
+  atomic write to the hooks file. Add a competing synthetic edit to a
+  later script or envelope in that write callback. Run the two focused
+  cases before and after adding per-write destination checks.
+- **Success**: Both edits are preserved, both publications refuse, both
+  private intent records remain, and both retries make zero writes.
+  The full native suites pass.
+- **Pivot**: An overwritten file, retired intent, later write on retry,
+  or ordinary regression rejects the change. A last-moment pre-write
+  comparison cannot qualify external writers for live activation.
+- **Anchor**: The existing selected publisher's destination observations,
+  private write intent, and independent review of the selected intent draft.

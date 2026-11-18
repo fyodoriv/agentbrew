@@ -262,3 +262,20 @@ event carries the ID, with no required location in its payload.
   unqualified and needs separate evidence.
 - **Anchor**: The pinned deletion schema and the rejected workspace
   control above.
+
+The [identity-bound run](https://github.com/fyodoriv/agentbrew/actions/runs/44296108566)
+observed one correct start and end and zero other calls. Its initial
+authenticated health probe returned 503. That kept the complete
+fixture red. The pinned [server process](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/server/src/process.ts)
+opens the socket before readiness and returns 503 during startup.
+
+- **Hypothesis**: Waiting for the documented readiness response makes
+  the fixture observe health after the server is ready.
+- **Measurement**: After the socket opens, accept only 503 as a transient
+  response for at most ten seconds. Require 200 before any config or
+  lifecycle measurement. Record the first response and final status.
+- **Success**: Health becomes 200 within ten seconds. Anonymous access
+  still returns 401. The same authenticated config, inventory,
+  lifecycle and bridge measurements all pass without deadline changes.
+- **Pivot**: Any other health response, expired readiness, missing hook
+  or extra call leaves the fixture unqualified.

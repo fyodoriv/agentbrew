@@ -56,3 +56,29 @@ This cohort covers cold native publication. Warm owner/version decisions,
 disabled or unknown settings, shared-source envelopes, generated rule
 ownership, launcher pruning and required redaction still need registered
 controls before any behavior change.
+
+## Fixture admission
+
+Every arm uses an explicit scratch workspace; the default arm omits only
+the module selection. Freeze all four local signed tags before running any
+arm. Record and remove the synthetic private signer before CLI startup.
+Use a current-version scratch cache to keep update checks offline.
+Extract the actual npm package into scratch without Git metadata. Verify
+the package includes its root hooks and rule templates, the bundle
+matches the build, and the install tree stays unchanged across all four
+runs. The Node observer may run Bash with only its syntax-check flag on
+an exact regular file from the package's hooks tree. It never runs a hook.
+
+Allow the Node child boundary to read only enumerated Git metadata at an
+exact verified root. Require separate refusal receipts from the canaries
+for a harmless non-Git call, a Git read in the wrong root and an
+unlisted Git argument. It is an observed Node boundary in addition to
+the network namespace. All measured calls must stay inside it.
+
+The public hosted output includes exact synthetic identity records and
+approved relative manifest deltas. Paths outside the registered output
+families are counted without names. A new or removed link outside
+scratch refuses the measurement. Verify the signed source, checkout,
+workspace, lock and signer allowlist remain byte- and metadata-identical.
+The output oracle checks exact native plugin mappings, script bytes,
+launcher mode, workspace contents and the synthetic redaction receipt.

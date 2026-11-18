@@ -441,8 +441,8 @@ describe("selected Agentfile source and memory state", () => {
     expect(seenFixtureUrls()).toEqual([sourcesSelected ? FIXED_URL : STALE_URL]);
     expect(saved?.memory?.enabled === true).toBe(memorySelected);
     expect(
-      saved?.mcpServers?.some(({ name, source }) =>
-        name === MEMORY_MANAGED_SERVER_NAME && source === MEMORY_MANAGED_SOURCE,
+      saved?.mcpServers?.some(
+        ({ name, source }) => name === MEMORY_MANAGED_SERVER_NAME && source === MEMORY_MANAGED_SOURCE,
       ) ?? false,
     ).toBe(memorySelected);
     expect(saved?.workSteps).toEqual(facet === "all" ? undefined : ["synthetic migration marker"]);

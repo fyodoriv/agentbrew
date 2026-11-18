@@ -50,6 +50,7 @@ vi.mock("./catalog/index-source.js", () => ({
       source: source.url,
       status: "refreshed",
       reason: "fixture checkout",
+      path: source.url === "trailofbits/skills" ? "/cache/no-skills" : undefined,
       sha: "fresh-sha",
     })),
   ),
@@ -421,6 +422,43 @@ describe("update", () => {
     expect(mockCopySkillFromCache).toHaveBeenCalledWith("/cache/user-repo", "plan");
   });
 
+  it("reports a recorded plugin conversion repeatedly without replacing existing copies", async () => {
+    const name = "insecure-defaults";
+    const source = makeSource({ url: "trailofbits/skills", skillsInstalled: [name] });
+    const fallback = makeSource({ url: "other/skills", skillsInstalled: [name] });
+    mockLoadState.mockReturnValue({ ...makeState(), sources: [fallback, source] });
+    mockGetSourceCachePath.mockImplementation((entry) =>
+      entry.url === source.url ? "/cache/no-skills" : "/cache/other-skills",
+    );
+    mockCopySkillFromCache.mockReturnValue(undefined);
+    mockExecFileSync.mockReturnValue("update available" as never);
+    const staging = join(homedir(), ".config", "agentbrew", "installed-skills", name);
+    const unmanaged = join(homedir(), ".claude", "skills", name);
+    expect(existsSync(staging)).toBe(false);
+    expect(existsSync(unmanaged)).toBe(false);
+    mkdirSync(staging, { recursive: true });
+    mkdirSync(unmanaged, { recursive: true });
+    writeFileSync(join(staging, "SKILL.md"), "edited installed copy\n");
+    writeFileSync(join(unmanaged, "SKILL.md"), "independent owner copy\n");
+    try {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        vi.mocked(console.log).mockClear();
+        vi.mocked(console.error).mockClear();
+        await update({ only: "skills" });
+        const output = [...vi.mocked(console.log).mock.calls, ...vi.mocked(console.error).mock.calls].flat().join(" ");
+        expect(output).toContain("moved to the insecure-defaults@trailofbits plugin");
+        expect(output).not.toContain("not found in trailofbits/skills");
+      }
+      expect(mockCopySkillFromCache).not.toHaveBeenCalled();
+      expect(mockExecFileSync).not.toHaveBeenCalledWith("npx", ["skills", "update"], expect.anything());
+      expect(readFileSync(join(staging, "SKILL.md"), "utf8")).toBe("edited installed copy\n");
+      expect(readFileSync(join(unmanaged, "SKILL.md"), "utf8")).toBe("independent owner copy\n");
+    } finally {
+      rmSync(staging, { recursive: true, force: true });
+      rmSync(unmanaged, { recursive: true, force: true });
+    }
+  });
+
   it("skips npx skills check and sync engines in dry-run mode", async () => {
     const source = makeSource();
     mockLoadState.mockReturnValue({ ...makeState(), sources: [source] });
@@ -523,6 +561,47 @@ describe("clearMcpmBridgeAttemptedMissing", () => {
 });
 
 describe("refreshInstalledSkills", () => {
+  it.each([
+    ["https://github.com/other/skills", "/cache/no-skills", "failed"],
+    ["https://github.com/trailofbits/skills.git", "/cache/old", "refreshed"],
+    ["https://example.invalid/github.com/trailofbits/skills", "/cache/no-skills", "failed"],
+  ])("preserves ordinary refresh behavior for %s with %s", (url, cachePath, status) => {
+    const source = makeSource({ url, skillsInstalled: ["insecure-defaults"] });
+    mockGetSourceCachePath.mockReturnValue(cachePath);
+    mockCopySkillFromCache.mockReturnValue(cachePath.endsWith("/old") ? "/installed/skill" : undefined);
+    expect(refreshInstalledSkills([source])[0]).toEqual({ source: url, skill: "insecure-defaults", status });
+  });
+
+  it.each(["skipped", "failed"] as const)("does not report a conversion from a %s checkout", (status) => {
+    const source = makeSource({
+      url: "https://github.com:443/trailofbits/skills.git",
+      skillsInstalled: ["insecure-defaults"],
+    });
+    mockGetSourceCachePath.mockReturnValue("/cache/no-skills");
+    const result = refreshInstalledSkills([source], undefined, [
+      {
+        source: source.url,
+        status,
+        reason: "unverified fixture",
+        path: "/cache/no-skills",
+        sha: "retained",
+      },
+    ]);
+    expect(result[0]?.status).toBe("skipped");
+    expect(mockCopySkillFromCache).not.toHaveBeenCalled();
+  });
+
+  it("keeps a user conversion owner when plain sync refreshes only managed sources", () => {
+    const name = "insecure-defaults";
+    const managed = makeSource({ url: "other/skills", skillsInstalled: [name] });
+    const converted = makeSource({ url: "trailofbits/skills", skillsInstalled: [name] });
+    mockGetSourceCachePath.mockReturnValue("/cache/other-skills");
+    mockCopySkillFromCache.mockReturnValue("/installed/skill");
+    const results = refreshInstalledSkills([managed], undefined, [], [managed, converted]);
+    expect(results).toEqual([{ source: managed.url, skill: name, status: "skipped" }]);
+    expect(mockCopySkillFromCache).not.toHaveBeenCalled();
+  });
+
   it("skips local sources", () => {
     const source = makeSource({ type: "local" });
     mockGetSourceCachePath.mockReturnValue("/cache/local");

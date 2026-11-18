@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { logSkipped } from "../core/logger.js";
 import { SHARED_RULES_PATH } from "../paths.js";
 import { dedupeSharedRulesContent } from "../rules-hygiene.js";
@@ -6,6 +6,7 @@ import { loadState } from "../state.js";
 import { compressSkillsListing } from "../sync/instructions-content.js";
 import {
   CANARY_DELEGATED_AGENTS,
+  chooseRulesFileWriters,
   collectCanaryDelegation,
   extractManagedSection,
   loadSharedRules,
@@ -16,17 +17,17 @@ import type { DriftItem } from "./types.js";
 
 /** Check a single rules file for managed-section drift. */
 function checkRulesDriftForTarget(
-  target: { agent: string; path: string },
+  target: { agentName: string; expandedPath: string },
   freshRules: string | undefined,
   startMarker: string,
 ): DriftItem | undefined {
-  const expanded = expandHome(target.path);
+  const expanded = target.expandedPath;
   if (!existsSync(expanded)) return undefined;
 
   try {
     const content = readFileSync(expanded, "utf-8");
     if (!content.includes(startMarker)) {
-      return { agent: target.agent, type: "rules", detail: "no managed section — rules not deployed" };
+      return { agent: target.agentName, type: "rules", detail: "no managed section — rules not deployed" };
     }
 
     if (freshRules) {
@@ -37,7 +38,7 @@ function checkRulesDriftForTarget(
         const delta = sourceLines - deployedLines;
         const deltaStr = delta > 0 ? `+${delta}` : String(delta);
         return {
-          agent: target.agent,
+          agent: target.agentName,
           type: "rules",
           detail: `managed section out of date (${deltaStr} lines) — Run: agentbrew sync`,
           diff: { deployedLines, sourceLines },
@@ -46,7 +47,7 @@ function checkRulesDriftForTarget(
     }
   } catch (e) {
     logSkipped("drift/date", e);
-    return { agent: target.agent, type: "rules", detail: "rules file unreadable" };
+    return { agent: target.agentName, type: "rules", detail: "rules file unreadable" };
   }
   return undefined;
 }
@@ -104,35 +105,10 @@ export function checkRulesDrift(): DriftItem[] {
 
   const allTargets = AGENT_DEFINITIONS.filter((a) => a.rulesFile !== undefined && detectedNames.has(a.name)).map(
     (a) => ({
-      agent: a.name,
-      path: a.rulesFile ?? "",
+      agentName: a.name,
+      expandedPath: expandHome(a.rulesFile ?? ""),
     }),
   );
-
-  // Deduplicate by resolved path — agents sharing the same rulesFile (e.g.
-  // claude-code + claude-desktop, or codex + another agent both symlinked to
-  // ~/.config/agentbrew/AGENTS.md) should only produce one drift item.
-  // When a carve-out shares a file with a delegated agent, the delegated
-  // agent owns drift detection (ai-rules content wins over native carve-out).
-  const byResolvedPath = new Map<string, { agent: string; path: string }>();
-  for (const t of allTargets) {
-    const expanded = expandHome(t.path);
-    let resolved = expanded;
-    try {
-      if (existsSync(expanded)) resolved = realpathSync(expanded);
-    } catch (e) {
-      logSkipped("drift/rules/realpath", e);
-    }
-    const existing = byResolvedPath.get(resolved);
-    if (!existing) {
-      byResolvedPath.set(resolved, t);
-      continue;
-    }
-    if (CANARY_DELEGATED_AGENTS.has(t.agent) && !CANARY_DELEGATED_AGENTS.has(existing.agent)) {
-      byResolvedPath.set(resolved, t);
-    }
-  }
-  const targets = [...byResolvedPath.values()];
 
   const sharedPath = expandHome(SHARED_RULES_PATH);
   if (!existsSync(sharedPath)) return [];
@@ -147,17 +123,13 @@ export function checkRulesDrift(): DriftItem[] {
 
   // Invoke the same delegation path syncRules uses so drift compares
   // against the actual deployed content for canary agents.
-  const delegated = collectCanaryDelegation(
-    targets.map((t) => ({ agentName: t.agent })),
-    freshRules,
-  );
+  const delegated = collectCanaryDelegation(allTargets, freshRules);
+  const targets = chooseRulesFileWriters(allTargets, delegated);
 
   const targetDrift = targets
     .map((t) => {
-      const delegatedContent = delegated.get(t.agent);
-      // Slice 4: delegated agents with no delegated content are skipped
-      // — matches syncRules' skip behavior when ai-rules is missing.
-      if (delegatedContent === undefined && CANARY_DELEGATED_AGENTS.has(t.agent)) return undefined;
+      const delegatedContent = delegated.get(t.agentName);
+      if (delegatedContent === undefined && CANARY_DELEGATED_AGENTS.has(t.agentName)) return undefined;
       return checkRulesDriftForTarget(t, delegatedContent ?? freshRules, START_MARKER);
     })
     .filter((d): d is DriftItem => d !== undefined);

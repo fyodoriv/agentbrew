@@ -39,6 +39,7 @@ vi.mock("./sync-runner.js", async (original) => ({
 }));
 vi.mock("./catalog/install.js", () => ({ install: vi.fn() }));
 
+import { applyAgentfile } from "./agentfile.js";
 import { install as catalogInstall } from "./catalog/install.js";
 import { buildProgram } from "./cli.js";
 import { applyAgentfileAndInstall } from "./commands/cli-install.js";
@@ -332,5 +333,43 @@ describe("selected workspace stable ownership", () => {
     expect(existsSync(owner)).toBe(true);
     expect(existsSync(generated)).toBe(false);
     expect(pruneStaleAgentfileArtifacts(state, rules)).toEqual({ content: rules, changed: false });
+  });
+});
+
+describe("selected Agentfile state fields", () => {
+  it.each(["mcp", "hooks", "models", "all"] as const)("persists only the %s preparation fields", (facet) => {
+    const config = join(home, ".config", "agentbrew");
+    const policy = join(config, "Agentfile.yaml");
+    const state = loadState();
+    if (!state) throw new Error("Synthetic state is missing");
+    state.mcpServers = [{ name: "fixture-old", command: "node", args: [], env: {}, source: "agentfile" }];
+    state.hooks = [{ event: "PreToolUse", type: "command", command: "old-fixture", source: "agentfile" }];
+    state.defaultModel = "fixture-old-model";
+    saveState(state);
+    invalidateState();
+    writeFileSync(
+      policy,
+      yaml.dump({
+        sources: [STALE_URL],
+        mcp: [{ name: "fixture-new", command: "node", args: [] }],
+        hooks: [{ event: "PreToolUse", command: "new-fixture" }],
+        defaultModel: "fixture-new-model",
+      }),
+    );
+
+    applyAgentfile(policy, {
+      quiet: true,
+      authoritative: true,
+      ...(facet === "all" ? {} : { syncModules: [facet] }),
+    });
+    invalidateState();
+
+    const saved = loadState();
+    const applied = (name: typeof facet) => facet === "all" || facet === name;
+    expect(saved?.mcpServers?.filter(({ name }) => name.startsWith("fixture-")).map(({ name }) => name)).toEqual([
+      applied("mcp") ? "fixture-new" : "fixture-old",
+    ]);
+    expect(saved?.hooks?.map(({ command }) => command)).toEqual([applied("hooks") ? "new-fixture" : "old-fixture"]);
+    expect(saved?.defaultModel).toBe(applied("models") ? "fixture-new-model" : "fixture-old-model");
   });
 });

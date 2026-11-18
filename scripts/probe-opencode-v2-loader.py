@@ -42,12 +42,18 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
             "AGENTBREW_OC_LOADER_MARKER": str(marker), "DO_NOT_TRACK": "1", "CI": "1",
         }
         def cli(*args):
-            return subprocess.run(
-                [str(binary), *args], cwd=workspace, env=environment,
-                stdin=subprocess.DEVNULL, capture_output=True, timeout=60,
-            )
+            try:
+                return subprocess.run(
+                    [str(binary), *args], cwd=workspace, env=environment,
+                    stdin=subprocess.DEVNULL, capture_output=True, timeout=60,
+                )
+            except subprocess.TimeoutExpired:
+                raise SystemExit(f"{control}: standalone command exceeded 60 seconds") from None
         version = cli("--version")
-        if version.returncode or version.stdout.decode(errors="replace").strip() != "2.3.0":
+        parsed = re.fullmatch(r"(?:opencode v)?(\d+\.\d+\.\d+)", version.stdout.decode(errors="replace").strip())
+        value = parsed.group(1) if parsed else "unrecognized"
+        print(f"{control}: version-exit={version.returncode} version={value}")
+        if version.returncode or value != "2.3.0":
             raise SystemExit("OpenCode 2.3.0 not verified")
         result = cli("plugin", "list", "--standalone")
         stdout = result.stdout.decode(errors="replace")

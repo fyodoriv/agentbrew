@@ -55,7 +55,7 @@ import { fixtureGit, fixtureKey, pluginFixture } from "../test-utils/plugin-fixt
 import { emitClaudeNative, MARKETPLACE_NAME, marketplaceDir, policyFragment } from "./claude-native.js";
 import { launcherPath } from "./mcp-launcher.js";
 import { withNativePublicationLock } from "./native-publication-lock.js";
-import { withSignerCommitFence } from "./signer-commit-fence.js";
+import { SignerCommitBusyError, withSignerCommitFence } from "./signer-commit-fence.js";
 import { allowedSignersPath, revokeSigner, signersFor } from "./signers.js";
 import { pluginSourceIdentity } from "./source-identity.js";
 import { addPlugin, pluginDir, readPinnedPluginFiles, removePlugin } from "./store.js";
@@ -403,6 +403,33 @@ describe("full native output proof", () => {
       },
     });
     expect(existsSync(nativeProofPath())).toBe(true);
+  });
+
+  it("holds the signer lock during the certified settings write", async () => {
+    installFacetFixture();
+    const atomic = await vi.importActual<typeof import("write-file-atomic")>("write-file-atomic");
+    const statuses: number[] = [];
+    const registryAvailable = () => withSignerCommitFence(allowedSignersPath(), () => 0);
+    vi.mocked(atomicWrite).mockImplementation((...args) => {
+      if (args[0] === SETTINGS()) {
+        try {
+          statuses.push(registryAvailable());
+        } catch (error) {
+          if (!(error instanceof SignerCommitBusyError)) throw error;
+          statuses.push(error.exitCode);
+        }
+      }
+      return atomic.sync(...args);
+    });
+
+    try {
+      emitClaudeNative({ certifyFullOutput: true });
+      expect(statuses).toEqual([75]);
+      expect(registryAvailable()).toBe(0);
+      expect(existsSync(nativeProofPath())).toBe(true);
+    } finally {
+      vi.mocked(atomicWrite).mockImplementation(atomic.sync);
+    }
   });
 
   it("leaves the ordinary full writer on its current output path", () => {

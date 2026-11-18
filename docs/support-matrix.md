@@ -41,7 +41,7 @@ included), and global rules (`~/.config/opencode/AGENTS.md`).
   subagent. Claude Code uses its built-in subagents; OpenCode uses its built-in
   `general` subagent through its task tool. agentbrew syncs no agent
   definitions for either, so nothing extra is needed.
-- **Hooks**: `agentbrew sync` deploys the `claude-hooks` plugin to
+- **Hooks (OpenCode 1.x)**: `agentbrew sync` deploys the `claude-hooks` plugin to
   `~/.config/opencode/plugin/claude-hooks.js` (source:
   `templates/opencode/claude-hooks.js`). It runs the same hooks Claude Code
   runs: it reads `~/.claude/settings.json` and the project's `.claude/`
@@ -54,6 +54,9 @@ included), and global rules (`~/.config/opencode/AGENTS.md`).
   SessionEnd → `session.deleted`. PermissionDenied and PostToolUseFailure
   have no OpenCode event. Hooks see `CLAUDE_HOOKS_HOST=opencode`. Turn it off
   with `OPENCODE_CLAUDE_HOOKS=0`.
+- **OpenCode 2.x hooks**: The current bridge uses the V1 plugin API. OpenCode
+  2.3.0 rejected that bridge during startup. V2 hook enforcement remains
+  unqualified. [OpenCode migration guide](https://opencode.ai/docs/build/plugins/migrate-v1)
 - **Model**: agentbrew does not set OpenCode's model. Pick it per run
   (`opencode run -m <provider/model>`) or in the Desktop model picker.
 

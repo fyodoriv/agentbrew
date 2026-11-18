@@ -253,6 +253,21 @@
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration; the actual terminal timeout and current in-process `Command.parseAsync` lifecycle fixture.
 
 
+- [ ] Deliver OpenCode 2 session hooks during a cold CLI start
+  - **ID**: opencode-v2-cold-session-hooks
+  - **Tags**: opencode, hooks, stability
+  - **Mode**: AFK
+  - **Details**: OpenCode 2.3.0 passed the same approval and feedback controls in cold and warm starts. Only the run that waited for the installed plugin in the inventory produced a SessionStart marker. The native event subscription has no replay cursor. Never run a start command after a prompt or infer ownership of an unseen session from its directory alone.
+  - **Blocked**: Needs a supported OpenCode activation barrier or a trustworthy creation-event replay with stable ownership across plugin initialization. Keep the verified warm and explicit workspace paths available.
+  - **Files**: `templates/opencode/claude-hooks-v2.js`, `src/opencode-hooks/claude-hooks.test.ts`, the hook coverage docs.
+  - **Output**: code
+  - **Acceptance**: One start before any prompt hook and one end for the same session after deletion. No callbacks for sessions outside the workspace or before installation.
+  - **Hypothesis**: A supported activation boundary raises cold SessionStart from zero to one without changing the warm and guard results.
+  - **Measurement**: Rerun the registered [cold and warm fixture](https://github.com/fyodoriv/agentbrew/actions/runs/44303400336) with three fresh starts per case, then cover one duplicate and one foreign event and run the hosted gate.
+  - **Success**: 3/3 cold and 3/3 warm exact lifecycle pairs, zero duplicate or foreign callbacks, and all three before-tool outcomes still pass.
+  - **Pivot**: A callback after prompt handling, a wrong scope, a duplicate or a changed guard result rejects the route.
+  - **Anchor**: The installed OpenCode 2.3.0 timing comparison and its [pinned event subscription options](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/client/src/shared-events.ts).
+
 - [ ] Remove the frozen vulnerable dependency ranges without hiding optional paths
   - **ID**: dependency-alert-remediation
   - **Tags**: security, stability, dependencies

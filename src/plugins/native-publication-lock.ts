@@ -9,9 +9,23 @@ import {
   realpathSync,
   unlinkSync,
   writeFileSync,
+  writeSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+
+interface FileState {
+  digest: string;
+  mode: number;
+}
+
+export interface NativeWriteIntent {
+  path: string;
+  before: FileState | null;
+  after: FileState;
+}
+
+type BeginNativeMutation = (intent?: readonly NativeWriteIntent[]) => void;
 
 function acquire(path: string): number {
   try {
@@ -23,7 +37,7 @@ function acquire(path: string): number {
 }
 
 /** The invoking process owns the lock through one synchronous publication. */
-export function withNativePublicationLock<T>(publish: (beginMutation: () => void) => T): T {
+export function withNativePublicationLock<T>(publish: (beginMutation: BeginNativeMutation) => T): T {
   const home = realpathSync.native(homedir());
   const directory = lstatSync(home);
   if (!directory.isDirectory() || directory.uid !== process.getuid?.()) {
@@ -34,7 +48,8 @@ export function withNativePublicationLock<T>(publish: (beginMutation: () => void
   const fd = acquire(path);
   try {
     const identity = fstatSync(fd);
-    const record = Buffer.from(JSON.stringify({ pid: process.pid, token: randomUUID() }));
+    const owner = { pid: process.pid, token: randomUUID() };
+    let record = Buffer.from(JSON.stringify(owner));
     writeFileSync(fd, record);
     fsyncSync(fd);
     const assertOwner = () => {
@@ -57,8 +72,25 @@ export function withNativePublicationLock<T>(publish: (beginMutation: () => void
     let finished = false;
     assertOwner();
     try {
-      const result = publish(() => {
+      const result = publish((intent) => {
         assertOwner();
+        if (intent) {
+          if (mutationStarted || intent.length === 0 || intent.length > 1024) {
+            throw new Error("Claude native publication intent is outside its admitted bounds.");
+          }
+          const planned = Buffer.from(JSON.stringify({ ...owner, intent }));
+          if (planned.length > 256 * 1024) {
+            throw new Error("Claude native publication intent is outside its admitted bounds.");
+          }
+          // Keep the owner even if a short write or crash leaves a partial intent.
+          mutationStarted = true;
+          if (writeSync(fd, planned, 0, planned.length, 0) !== planned.length) {
+            throw new Error("Claude native publication could not write the complete intent.");
+          }
+          fsyncSync(fd);
+          record = planned;
+          assertOwner();
+        }
         mutationStarted = true;
       });
       finished = true;

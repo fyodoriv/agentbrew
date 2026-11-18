@@ -8,6 +8,7 @@ import { type PluginLockEntry, readLock } from "../lock.js";
 import type { ActivePlugin } from "./contributions.js";
 import { capabilitiesHash, MANIFEST_FILE, parseManifest } from "./manifest.js";
 import { launcherContent, launcherPath, parsePluginMcpServers, validateMcpServers } from "./mcp-launcher.js";
+import type { NativeWriteIntent } from "./native-publication-lock.js";
 import { withSignerCommitFence } from "./signer-commit-fence.js";
 import { allowedSignersPath, readSigners } from "./signers.js";
 import { pluginSourceIdentity } from "./source-identity.js";
@@ -728,40 +729,74 @@ function verifyFullFile({ path, body, mode }: PlannedWrite) {
   const content = readOutput(path);
   if (!content?.equals(body)) refuse("full native output bytes differ");
   const stat = lstatSync(path);
-  const actualMode = stat.mode & 0o777;
-  if (stat.nlink !== 1 || (mode !== undefined && actualMode !== mode))
+  const actualMode = stat.mode & 0o7777;
+  if (stat.nlink !== 1 || actualMode > 0o777 || (mode !== undefined && actualMode !== mode))
     refuse("full native output file identity differs");
   return { path: relative(homedir(), path), mode: actualMode, digest: digest(content) };
 }
 
-function verifiedReceiptFiles(files: readonly PlannedWrite[]) {
-  return files
-    .map(verifyFullFile)
-    .sort((left, right) => (left.path < right.path ? -1 : Number(left.path > right.path)));
+function verifiedReceiptFiles(files: readonly PlannedWrite[], verify = verifyFullFile) {
+  return files.map(verify).sort((left, right) => (left.path < right.path ? -1 : Number(left.path > right.path)));
 }
 
-function certifySelectedNativeOutput(plans: readonly SelectedNativeReceiptPlan[], assertLock: () => void): void {
-  const receipts = plans.map(({ entry, root, facets, files, before, hookCopyMask }) => {
-    const path = join(root, NATIVE_RECEIPT_FILE);
-    const localFiles = files.map(({ path }) => path).filter((path) => path.startsWith(`${root}${sep}`));
-    if (before) localFiles.push(path);
-    assertNativeTree(root, localFiles);
+function selectedReceiptWrite(
+  { entry, root, facets, files, before, hookCopyMask }: SelectedNativeReceiptPlan,
+  verify?: typeof verifyFullFile,
+): PlannedWrite {
+  return {
+    path: join(root, NATIVE_RECEIPT_FILE),
+    before,
+    mode: 0o600,
+    body: jsonBytes({
+      schema: 2,
+      ...(hookCopyMask ? { hookCopyMask } : {}),
+      facets,
+      sourceDigest: digest(JSON.stringify(pluginSourceIdentity(entry))),
+      files: verifiedReceiptFiles(files, verify),
+    }),
+  };
+}
+
+function assertSelectedReceipt(
+  { root, before, files, ...source }: SelectedNativeReceiptPlan,
+  expected: PlannedWrite,
+): void {
+  const localFiles = files.map(({ path }) => path).filter((path) => path.startsWith(`${root}${sep}`));
+  if (before) localFiles.push(expected.path);
+  assertNativeTree(root, localFiles);
+  const verified = selectedReceiptWrite({ root, before, files, ...source });
+  if (!verified.body.equals(expected.body)) refuse("native receipt differs from intent");
+}
+
+function materializeSelectedWrite(write: PlannedWrite): PlannedWrite & { mode: number } {
+  const priorMode = write.before ? write.before.mode & 0o7777 : undefined;
+  const mode = write.mode ?? priorMode ?? 0o666 & ~process.umask();
+  if ((priorMode ?? 0) > 0o777 || !Number.isInteger(mode) || mode <= 0 || mode > 0o777) {
+    refuse("native intent file mode is unknown");
+  }
+  return { ...write, mode };
+}
+
+function recordSelectedWrites(writes: readonly (PlannedWrite & { mode: number })[]): NativeWriteIntent[] {
+  const paths = new Set<string>();
+  return writes.map((write) => {
+    const path = relative(homedir(), write.path);
+    const spelling = physicalSpelling(path);
+    if (!path || isAbsolute(path) || path.split(sep)[0] === ".." || paths.has(spelling)) {
+      refuse("native intent paths are unknown or overlap");
+    }
+    paths.add(spelling);
     return {
       path,
-      body: jsonBytes({
-        schema: 2,
-        ...(hookCopyMask ? { hookCopyMask } : {}),
-        facets,
-        sourceDigest: digest(JSON.stringify(pluginSourceIdentity(entry))),
-        files: verifiedReceiptFiles(files),
-      }),
+      before: write.before ? { digest: digest(write.before.body), mode: write.before.mode & 0o777 } : null,
+      after: { digest: digest(write.body), mode: write.mode },
     };
   });
-  assertLock();
-  for (const { path, body } of receipts) writeFileSync(path, body, { mode: 0o600 });
 }
 
-function writeNativeOutput({ path, body, mode }: PlannedWrite): void {
+function writeNativeOutput(write: PlannedWrite): void {
+  const { path, body, mode } = write;
+  assertNativeTargetsUnchanged([write]);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, body, { mode });
 }
@@ -847,7 +882,7 @@ export function publishSelectedNativePlugins(
     marketplace: string;
     name: string;
     rulesHook: unknown;
-    beginMutation: () => void;
+    beginMutation: (intent: readonly NativeWriteIntent[]) => void;
   },
 ): void {
   if (!modules.length || !plugins.length) return;
@@ -884,14 +919,35 @@ export function publishSelectedNativePlugins(
   const receiptTargets = receipts.map(({ root, before }) => ({ path: join(root, NATIVE_RECEIPT_FILE), before }));
   withSignerCommitFence(allowedSignersPath(), (_registry, _mode, assertLock) => {
     assertCurrentNativeSources(planned);
-    assertNativeTargetsUnchanged([...writes, ...receiptTargets, ...observations]);
+    const targets = [...writes, ...receiptTargets, ...observations];
+    assertNativeTargetsUnchanged(targets);
+    const payload = writes.map(materializeSelectedWrite);
+    const proposed = new Map(payload.map((write) => [write.path, write]));
+    const receiptPlans = receipts.map((receipt) => ({
+      receipt,
+      write: materializeSelectedWrite(
+        selectedReceiptWrite(receipt, (file) => {
+          const write = proposed.get(file.path);
+          if (!write) return verifyFullFile(file);
+          return { path: relative(homedir(), write.path), mode: write.mode, digest: digest(write.body) };
+        }),
+      ),
+    }));
+    const manifest = index ? materializeSelectedWrite(index) : undefined;
+    const allWrites = [...payload, ...receiptPlans.map(({ write }) => write), ...(manifest ? [manifest] : [])];
+    const intent = recordSelectedWrites(allWrites);
     assertLock();
-    beginMutation();
-    for (const write of writes) writeNativeOutput(write);
-    certifySelectedNativeOutput(receipts, assertLock);
-    if (index) {
+    beginMutation(intent);
+    assertNativeTargetsUnchanged(targets);
+    for (const write of payload) writeNativeOutput(write);
+    for (const { receipt, write } of receiptPlans) assertSelectedReceipt(receipt, write);
+    assertLock();
+    assertNativeTargetsUnchanged(receiptTargets);
+    for (const { write } of receiptPlans) writeNativeOutput(write);
+    if (manifest) {
       assertLock();
-      writeNativeOutput(index);
+      writeNativeOutput(manifest);
     }
+    for (const write of allWrites) verifyFullFile(write);
   });
 }

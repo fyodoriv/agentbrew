@@ -241,6 +241,73 @@ describe("native publisher admission", () => {
   });
 });
 
+describe("selected native publication write intent", () => {
+  it.each(["cold", "warm"] as const)("records the complete %s file plan before writing", async (state) => {
+    installFacetFixture();
+    const files = nativeFacetPaths();
+    if (state === "warm") emitClaudeNative({ modules: ["hooks"] });
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    const targets =
+      state === "cold"
+        ? [files.hooks, files.script, files.envelope, nativeProofPath(), files.index]
+        : [files.hooks, nativeProofPath()];
+    const fileState = (path: string) =>
+      existsSync(path)
+        ? {
+            digest: createHash("sha256").update(readFileSync(path)).digest("hex"),
+            mode: statSync(path).mode & 0o777,
+          }
+        : null;
+    const before = targets.map(fileState);
+    const atomic = await vi.importActual<typeof import("write-file-atomic")>("write-file-atomic");
+    let record: unknown;
+    vi.mocked(atomicWrite).mockImplementationOnce((...args) => {
+      expect(statSync(owner).mode & 0o777).toBe(0o600);
+      expect(targets.map(fileState)).toEqual(before);
+      record = JSON.parse(readFileSync(owner, "utf8")).intent;
+      atomic.sync(...args);
+    });
+
+    emitClaudeNative({ modules: state === "cold" ? ["hooks"] : ["rules"] });
+
+    expect(record).toEqual(
+      targets.map((path, index) => ({
+        path: relative(home, path),
+        before: before[index],
+        after: fileState(path),
+      })),
+    );
+    expect(JSON.stringify(record)).not.toContain(home);
+    for (const path of targets) {
+      expect(atomicWrite).toHaveBeenCalledWith(path, expect.any(Buffer), { mode: fileState(path)?.mode });
+    }
+    expect(existsSync(owner)).toBe(false);
+    expect(existsSync(files.settings)).toBe(false);
+  });
+});
+
+it("refuses special file permissions before warming a selected facet", () => {
+  installFacetFixture();
+  emitClaudeNative({ modules: ["hooks"] });
+  const files = nativeFacetPaths();
+  chmodSync(files.hooks, 0o1644);
+  expect(statSync(files.hooks).mode & 0o7777).toBe(0o1644);
+  const before = observeNativeFiles([files.hooks, nativeProofPath(), files.index]);
+  expect(() => emitClaudeNative({ modules: ["rules"] })).toThrow(/native intent file mode is unknown/u);
+  expect(observeNativeFiles([files.hooks, nativeProofPath(), files.index])).toEqual(before);
+  expect(existsSync(join(home, ".agentbrew-native-publication.lock"))).toBe(false);
+});
+
+it("refuses an unbounded publication intent before leaving recovery state", () => {
+  const owner = join(home, ".agentbrew-native-publication.lock");
+  const row = { path: "fixture.json", before: null, after: { digest: "0".repeat(64), mode: 0o600 } };
+  const plans = [[], Array.from({ length: 1025 }, () => row), [{ ...row, path: "x".repeat(256 * 1024) }]];
+  for (const plan of plans) {
+    expect(() => withNativePublicationLock((begin) => begin(plan))).toThrow(/outside its admitted bounds/u);
+    expect(existsSync(owner)).toBe(false);
+  }
+});
+
 describe("selected native publication interruption", () => {
   it("preserves the owner record when an error follows a real write", async () => {
     installFacetFixture();
@@ -253,6 +320,16 @@ describe("selected native publication interruption", () => {
     });
     try {
       expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/Synthetic partial publication failure/u);
+      const record = JSON.parse(readFileSync(owner, "utf8"));
+      expect(record.intent).toHaveLength(5);
+      expect(record.intent[0]).toEqual({
+        path: relative(home, files.hooks),
+        before: null,
+        after: {
+          digest: createHash("sha256").update(readFileSync(files.hooks)).digest("hex"),
+          mode: statSync(files.hooks).mode & 0o777,
+        },
+      });
       const previous = observeNativeFiles([files.hooks, owner]);
       expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/native publication is busy/u);
       expect(observeNativeFiles([files.hooks, owner])).toEqual(previous);
@@ -260,6 +337,67 @@ describe("selected native publication interruption", () => {
       expect(existsSync(files.index)).toBe(false);
       expect(existsSync(files.settings)).toBe(false);
     } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+
+  it.each(["script", "envelope"] as const)("refuses a later %s edit after the first native write", async (kind) => {
+    installFacetFixture();
+    const files = nativeFacetPaths();
+    const target = files[kind];
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    const edit = "Synthetic owner edit.\n";
+    const atomic = await vi.importActual<typeof import("write-file-atomic")>("write-file-atomic");
+    vi.mocked(atomicWrite).mockClear();
+    vi.mocked(atomicWrite).mockImplementationOnce((...args) => {
+      expect(args[0]).toBe(files.hooks);
+      atomic.sync(...args);
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, edit);
+    });
+    const publish = () => emitClaudeNative({ modules: ["hooks"] });
+    try {
+      expect(publish).toThrow(/a planned native destination changed after review/u);
+      expect(readFileSync(target, "utf8")).toBe(edit);
+      expect(statSync(owner).mode & 0o777).toBe(0o600);
+      const record = JSON.parse(readFileSync(owner, "utf8"));
+      expect(record.intent).toHaveLength(5);
+      expect(record.intent).toContainEqual({
+        path: relative(home, target),
+        before: null,
+        after: { digest: expect.any(String), mode: expect.any(Number) },
+      });
+      expect(existsSync(nativeProofPath())).toBe(false);
+      expect(existsSync(files.index)).toBe(false);
+      expect(atomicWrite).toHaveBeenCalledTimes(kind === "script" ? 1 : 2);
+      const beforeRetry = observeNativeFiles([owner, target, files.hooks]);
+      vi.mocked(atomicWrite).mockClear();
+      expect(publish).toThrow(/native publication is busy/u);
+      expect(atomicWrite).not.toHaveBeenCalled();
+      expect(observeNativeFiles([owner, target, files.hooks])).toEqual(beforeRetry);
+      expect(existsSync(files.index)).toBe(false);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+
+  it("keeps the intent when the last native file no longer matches it", async () => {
+    installFacetFixture();
+    const files = nativeFacetPaths();
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    const atomic = await vi.importActual<typeof import("write-file-atomic")>("write-file-atomic");
+    vi.mocked(atomicWrite).mockImplementation((...args) => {
+      atomic.sync(...args);
+      if (args[0] === files.index) writeFileSync(files.index, "Synthetic concurrent edit.\n");
+    });
+    try {
+      expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/full native output bytes differ/u);
+      const record = JSON.parse(readFileSync(owner, "utf8"));
+      expect(record.intent).toHaveLength(5);
+      expect(record.intent.at(-1).path).toBe(relative(home, files.index));
+      expect(readFileSync(files.index, "utf8")).toBe("Synthetic concurrent edit.\n");
+    } finally {
+      vi.mocked(atomicWrite).mockImplementation(atomic.sync);
       rmSync(owner, { force: true });
     }
   });

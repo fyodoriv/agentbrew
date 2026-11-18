@@ -22,6 +22,21 @@ function fail(error: unknown): void {
   process.exitCode = error instanceof CapabilityError || error instanceof SignerCommitBusyError ? error.exitCode : 1;
 }
 
+/** Run a staged lifecycle commit and its native output under one process owner. */
+function commitPluginLifecycle<T>(commit: (beginMutation: () => void) => T, discard?: () => void): T {
+  let admitted = false;
+  try {
+    return withNativePublicationLock((beginMutation) => {
+      admitted = true;
+      const result = commit(beginMutation);
+      emitClaudeNative();
+      return result;
+    });
+  } finally {
+    if (!admitted) discard?.();
+  }
+}
+
 /** Registers `agentbrew plugin add|list|remove` (v2 company plugins, #208). */
 export function registerPluginCommands(program: Command): void {
   const plugin = program.command("plugin").description("Manage signed company plugins");
@@ -44,8 +59,7 @@ export function registerPluginCommands(program: Command): void {
             throw e;
           }
         }
-        const entry = applyAdd(plan, { yes });
-        emitClaudeNative();
+        const entry = commitPluginLifecycle((begin) => applyAdd(plan, { yes }, begin), plan.discard);
         console.log(
           `${ICON_SUCCESS} Plugin ${entry.name} pinned at ${entry.commit.slice(0, 8)} (tree ${entry.tree.slice(0, 8)})`,
         );
@@ -144,8 +158,10 @@ export function registerPluginCommands(program: Command): void {
         if (yes && plan.capabilitiesChanged && tty) {
           capabilityApproved = await confirm({ message: "The capabilities changed. Approve them?", default: false });
         }
-        const entry = applyUpdate(plan, { yes, capabilityApproved });
-        emitClaudeNative();
+        const entry = commitPluginLifecycle(
+          (begin) => applyUpdate(plan, { yes, capabilityApproved }, begin),
+          plan.discard,
+        );
         console.log(`${ICON_SUCCESS} Plugin ${name} updated to ${entry.ref} (${entry.commit.slice(0, 8)})`);
         try {
           const { getSkillSources } = await import("../sync/skills-sync.js");
@@ -237,8 +253,7 @@ export function registerPluginCommands(program: Command): void {
     .description("Re-pin the previous locked version of a plugin")
     .action((name: string) => {
       try {
-        const entry = rollbackPlugin(name);
-        emitClaudeNative();
+        const entry = commitPluginLifecycle((begin) => rollbackPlugin(name, begin));
         console.log(`${ICON_SUCCESS} Plugin ${name} rolled back to ${entry.ref} (${entry.commit.slice(0, 8)})`);
       } catch (e) {
         fail(e);
@@ -250,10 +265,7 @@ export function registerPluginCommands(program: Command): void {
     .description("Delete a plugin and everything it emitted")
     .action((name: string) => {
       try {
-        withNativePublicationLock((beginMutation) => {
-          removePlugin(name, beginMutation);
-          emitClaudeNative();
-        });
+        commitPluginLifecycle((begin) => removePlugin(name, begin));
         console.log(`${ICON_SUCCESS} Plugin ${name} removed`);
       } catch (e) {
         fail(e);

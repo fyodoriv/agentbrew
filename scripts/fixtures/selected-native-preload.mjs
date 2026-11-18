@@ -29,6 +29,11 @@ const gitReads = new Map([
   ['["remote","get-url","origin"]', ["workspace", "sample"]],
   ['["config","--get","remote.origin.url"]', ["workspace", "sample"]],
 ]);
+const tags = JSON.parse(process.env.NATIVE_FIXTURE_TAGS);
+const sourceRepo = process.env.NATIVE_FIXTURE_PLUGIN_SOURCE;
+const pluginRoot = join(process.env.HOME, ".local/share/agentbrew/plugins");
+const refs = Object.keys(tags).map((tag) => `refs/tags/${tag}`);
+const tagObjects = new Set(Object.values(tags).map(({ object }) => object));
 const pin = process.env.NATIVE_FIXTURE_COMMIT;
 const objects = new Set(JSON.parse(process.env.NATIVE_FIXTURE_BLOBS ?? "[]"));
 for (const path of ["agentbrew-plugin.yaml", "hooks", "hooks/hooks.json", "mcp/servers.yaml"]) {
@@ -163,12 +168,96 @@ function readFixtureGit(call, file, args, options) {
   }
 }
 
+function fixtureStagePath(path) {
+  if (typeof path !== "string" || dirname(path) !== pluginRoot) return false;
+  return new RegExp(`^\\.staging-${process.pid}-[0-9]+$`, "u").test(basename(path));
+}
+
+function fixtureTempFile(path, prefix, filename) {
+  if (typeof path !== "string" || basename(path) !== filename) return false;
+  const dir = dirname(path);
+  return dirname(dir) === scratchTemp && basename(dir).startsWith(prefix) && realpathSync(path) === path;
+}
+
+function fixtureRootGit(args) {
+  if (args.length === 4 && args[0] === "ls-remote" && args[1] === "--end-of-options")
+    return args[2] === sourceRepo && refs.includes(args[3]);
+  if (args.length === 3 && args[0] === "init" && args[1] === "--quiet") return fixtureStagePath(args[2]);
+  if (args.length !== 10 || args[0] !== "--git-dir" || basename(args[1]) !== ".git") return false;
+  if (!fixtureStagePath(dirname(args[1]))) return false;
+  if (JSON.stringify(args.slice(2, 8)) !== '["fetch","--quiet","--no-tags","--depth","1","--end-of-options"]')
+    return false;
+  return args[8] === sourceRepo && refs.some((ref) => args[9] === `${ref}:${ref}`);
+}
+
+function fixtureTagProof(args) {
+  if (args.length !== 10 || args[9] === undefined || !tagObjects.has(args[9])) return false;
+  const proof = args[3].match(/^gpg\.ssh\.allowedSignersFile=(.+)$/u)?.[1];
+  if (!proof || !fixtureTempFile(proof, "agentbrew-signers-", "allowed_signers")) return false;
+  return (
+    JSON.stringify(args.slice(0, 3)) === '["-c","gpg.format=ssh","-c"]' &&
+    JSON.stringify(args.slice(4, 9)) === '["-c","gpg.openpgp.program=false","-c","gpg.x509.program=false","verify-tag"]'
+  );
+}
+
+const stageReads = new Set();
+for (const [tag, { object, commit }] of Object.entries(tags)) {
+  for (const args of [
+    ["rev-parse", "HEAD"],
+    ["rev-parse", "--verify", `${object}^{commit}`],
+    ["rev-parse", `${commit}^{tree}`],
+    ["show-ref", "--verify", "--hash", `refs/tags/${tag}`],
+    ["cat-file", "-t", object],
+    ["cat-file", "tag", object],
+    ["cat-file", "blob", `${commit}:agentbrew-plugin.yaml`],
+    ["-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", commit],
+  ])
+    stageReads.add(JSON.stringify(args));
+}
+
+function fixtureStageGit(args) {
+  return stageReads.has(JSON.stringify(args)) || fixtureTagProof(args);
+}
+
+function runFixtureStageGit(call, args, options) {
+  const cwd = realpathSync(options?.cwd ?? process.cwd());
+  const checkedRef = args.length === 2 && args[0] === "check-ref-format" && refs.includes(args[1]);
+  const expected =
+    (checkedRef && cwd === gitDirectories.workspace) ||
+    (cwd === pluginRoot && fixtureRootGit(args)) ||
+    (fixtureStagePath(cwd) && fixtureStageGit(args));
+  if (!expected) return deny();
+  const hash = options?.env?.GIT_DEFAULT_HASH === "sha256" ? "sha256" : "sha1";
+  const result = call("/usr/bin/git", args, {
+    cwd,
+    encoding: options?.encoding,
+    stdio: options?.stdio,
+    timeout: 8_000,
+    env: { ...gitEnv, GIT_DEFAULT_HASH: hash },
+  });
+  appendFileSync(receipts, "fixture-stage-git\n");
+  return result;
+}
+
+function fixtureFingerprint(call, args, options) {
+  if (args.length !== 2 || args[0] !== "-lf" || !fixtureTempFile(args[1], "agentbrew-key-", "key.pub")) return deny();
+  return call("/usr/bin/ssh-keygen", args, { encoding: options?.encoding, stdio: "pipe", timeout: 8_000, env: gitEnv });
+}
+
+function readLifecycleGit(call, file, args, options) {
+  if (!gitReads.has(JSON.stringify(args)) || fixtureStagePath(options?.cwd))
+    return runFixtureStageGit(call, args, options);
+  return readFixtureGit(call, file, args, options);
+}
+
 function restrict(call, allowBash = false) {
   return (file, args, options) => {
     if (!allowBash && file === "/usr/bin/flock") return fixtureSignerDescriptor(call, file, args, options);
     if (allowBash && file === missingRenderer) return missingOptionalRenderer(args, options);
     if (allowBash && file === "bash") return parsePackagedBash(call, args);
-    return readFixtureGit(call, file, args, options);
+    if (file === "ssh-keygen" && allowBash) return fixtureFingerprint(call, args, options);
+    if (file !== "git" || !Array.isArray(args)) return deny();
+    return readLifecycleGit(call, file, args, options);
   };
 }
 

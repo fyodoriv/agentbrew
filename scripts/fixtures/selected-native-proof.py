@@ -208,6 +208,7 @@ def setup_case(root, fixture, repo, node, loader):
         "catalogVersion": "0.1.0",
     }
     (config / "state.yaml").write_text(json.dumps(state))
+    env["NATIVE_FIXTURE_LIFECYCLE"] = fixture.name
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     (config / "upgrade-check.json").write_text(json.dumps({"checkedAt": now, "latestVersion": "1.0.0"}))
     sample = work / "synthetic-project"
@@ -246,10 +247,16 @@ def setup_case(root, fixture, repo, node, loader):
     require(all(identity[field] for field in ("tagObject", "commit", "tree", "fingerprint", "capabilitiesHash")),
             "The signed fixture identity recording is incomplete")
     env["NATIVE_FIXTURE_PROCESS_RECEIPT"] = str(outside_observer / "processes")
-    env["NATIVE_FIXTURE_COMMIT"] = identity["commit"]
-    listing = checked(["/usr/bin/git", "ls-tree", "-r", identity["commit"]],
-                      checkout, env, "Signed fixture inventory setup failed")
-    env["NATIVE_FIXTURE_BLOBS"] = json.dumps([row.split()[2] for row in listing.stdout.decode().splitlines()])
+    env["NATIVE_FIXTURE_TAGS"] = json.dumps(identity["tags"])
+    env["NATIVE_FIXTURE_PLUGIN_SOURCE"] = str(source.resolve())
+    target_tag = "v1.1.0" if fixture.name == "update" else "v1.0.0"
+    env["NATIVE_FIXTURE_COMMIT"] = identity["tags"][target_tag]["commit"]
+    objects = []
+    for pin in identity["tags"].values():
+        listing = checked(["/usr/bin/git", "ls-tree", "-r", pin["commit"]],
+                          source, env, "Signed fixture inventory setup failed")
+        objects.extend([row.split()[2] for row in listing.stdout.decode().splitlines()])
+    env["NATIVE_FIXTURE_BLOBS"] = json.dumps(objects)
     env["NATIVE_FIXTURE_GIT_ROOTS"] = json.dumps({
         "plugin": str(checkout.resolve()), "workspace": str(work.resolve()), "sample": str(sample.resolve()),
     })
@@ -338,8 +345,7 @@ def main():
             if path.is_file() and path.resolve() == path
         ]
         require(packaged_hooks, "The npm package contained no regular hook sources")
-        package_before = manifest(install)
-        for arm in ("selected", "default", "remove"):
+        for arm in ("add", "update", "rollback"):
             fixture = root / arm
             work, home, env, identity, checkout, source, observer = setup_case(root, fixture, repo, node, loader)
             env["NATIVE_FIXTURE_BASH_FILES"] = json.dumps(packaged_hooks)
@@ -350,54 +356,55 @@ def main():
             signer_registry = home / ".config/agent-plugins/allowed_signers"
             pin_before, signer_before = installed_pin.read_bytes(), signer_registry.read_bytes()
             source_before = manifest(source)
-            package_checkpoint = manifest(install)
+            checkout_before = manifest(checkout) if checkout.exists() else None
+            package_before = manifest(install)
             market = home / ".local/share/agentbrew/claude-marketplace"
-            args = [node, "--import", str(preload), str(installed_bundle)]
-            if arm == "remove":
-                args += ["plugin", "remove", identity["name"]]
-            else:
-                args += ["sync", "--no-recommended", "--workspaces", str(work)]
-                if arm == "selected":
-                    args += ["--only", "hooks"]
+            name = identity["name"]
+            args = [node, "--import", str(preload), str(installed_bundle), "plugin"]
+            requests = {
+                "add": ["add", str(source) + "@v1.0.0", "--yes"],
+                "update": ["update", name, "v1.1.0", "--yes"],
+                "rollback": ["rollback", name],
+            }
+            args += requests[arm]
             with hold_native_owner(node, repo, loader, work, env, observer) as holder:
                 before = owner_receipt(owner)
                 refused = run(args, work, env)
                 retained = holder.poll() is None and before == owner_receipt(owner)
-                busy_paths_safe = (not market.exists() and not known_output(home, identity)["enabled"] and
-                                   installed_pin.read_bytes() == pin_before and checkout.is_dir() and
+                checkout_after = manifest(checkout) if checkout.exists() else None
+                busy_paths_safe = (not market.exists() and installed_pin.read_bytes() == pin_before and
+                                   checkout_after == checkout_before and not list(checkout.parent.glob(".staging-*")) and
                                    signer_registry.read_bytes() == signer_before and manifest(source) == source_before)
-                busy_denied = (observer / "processes").read_text().splitlines().count("denied")
+                busy_processes = (observer / "processes").read_text().splitlines()
                 busy = refused.returncode == 1 and b"publication is busy" in refused.stderr
             released = not owner.exists()
             retry_env = {**env, "NATIVE_FIXTURE_PROCESS_RECEIPT": str(observer / "retry-processes")}
             retry = run(args, work, retry_env)
-            outputs = known_output(home, identity)
-            emitted = outputs["plugin_envelope"] and outputs["marketplace_index"]
-            pin_kept = installed_pin.read_bytes() == pin_before and checkout.is_dir()
-            pin_removed = not checkout.exists() and identity["name"].encode() not in installed_pin.read_bytes()
-            retry_case = {
-                "selected": emitted and outputs["declared_hook"] and pin_kept and not outputs["enabled"]
-                            and not outputs["mcp_config"] and not outputs["rule_hook"],
-                "default": emitted and pin_kept and all(outputs[key] for key in
-                           ("declared_hook", "mcp_config", "rule_hook", "enabled")),
-                "remove": pin_removed and not market.exists(),
-            }[arm]
-            denied = busy_denied + (observer / "retry-processes").read_text().splitlines().count("denied")
+            stage_count = len(list(checkout.parent.glob(".staging-*")))
+            pin = env["NATIVE_FIXTURE_COMMIT"]
+            checkout_pinned = checkout.exists() and checked(["/usr/bin/git", "rev-parse", "HEAD"],
+                               checkout, env, "Missing installed HEAD").stdout.decode().strip() == pin
+            index_path = market / ".claude-plugin" / "marketplace.json"
+            index_pinned = False
+            if index_path.is_file():
+                plugins = json.loads(index_path.read_text()).get("plugins", [])
+                index_pinned = len(plugins) == 1 and plugins[0].get("name") == name and plugins[0].get("version", "").endswith("+" + pin[:8])
+            retry_processes = (observer / "retry-processes").read_text().splitlines()
+            denied = busy_processes.count("denied") + retry_processes.count("denied")
             summary = {
                 "arm": arm, "busy_exit": refused.returncode, "busy": busy, "busy_paths_safe": busy_paths_safe,
                 "owner_retained": retained, "released": released, "retry_exit": retry.returncode,
-                "native_emitted": emitted, "pin_kept": pin_kept, "pin_removed": pin_removed,
+                "checkout_pinned": checkout_pinned, "index_pinned": index_pinned, "staging_count": stage_count,
                 "denied": denied, "signer_preserved": signer_registry.read_bytes() == signer_before,
                 "source_preserved": manifest(source) == source_before,
                 "complete": busy and retained and busy_paths_safe and released and retry.returncode == 0 and
-                            retry_case and not owner.exists(),
+                            checkout_pinned and index_pinned and pin.encode() in installed_pin.read_bytes() and
+                            stage_count == 0 and not owner.exists(),
             }
-            allowed_package = (default_package_context(install, package_before, manifest(install)) if arm == "default"
-                               else manifest(install) == package_checkpoint)
             print(json.dumps(summary, sort_keys=True), flush=True)
-            require(summary["complete"] and summary["denied"] == 0 and summary["signer_preserved"]
-                    and summary["source_preserved"] and allowed_package,
-                    "A registered coordinated writer control did not qualify")
+            require(summary["complete"] and denied == 0 and summary["signer_preserved"]
+                    and summary["source_preserved"] and manifest(install) == package_before,
+                    "A registered signed lifecycle control did not qualify")
             with evidence.open("a", encoding="utf-8") as output:
                 output.write(json.dumps(summary, sort_keys=True) + "\n")
     require(digest(bundle) == bundle_digest, "The selected native baseline changed its bundle")

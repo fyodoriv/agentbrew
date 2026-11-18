@@ -2,7 +2,8 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { addPlugin, pluginDir, pluginDrift } from "../../src/plugins/store.js";
+import { addPlugin, pluginDir, pluginDrift, removePlugin } from "../../src/plugins/store.js";
+import { updatePlugin } from "../../src/plugins/update.js";
 
 const [source, key, receipt] = process.argv.slice(2);
 const name = "fixture-native";
@@ -88,6 +89,23 @@ const files = Object.keys(pluginFiles).map((path) => {
     sha256: createHash("sha256").update(bytes).digest("hex"),
   };
 });
+const nextTag = "v1.1.0";
+const manifestPath = join(source, "agentbrew-plugin.yaml");
+writeFileSync(manifestPath, pluginFiles["agentbrew-plugin.yaml"].replace("version: 1.0.0", "version: 1.1.0"));
+git(["add", "--all"]);
+git([...identity, "commit", "-qm", "Synthetic next fixture"]);
+git([...identity, "-c", "gpg.format=ssh", "-c", `user.signingkey=${key}`, "tag", "-s", nextTag, "-m", nextTag]);
+const tags = {
+  [tag]: { object: tagObject, commit: entry.commit, tree: entry.tree },
+  [nextTag]: {
+    object: git(["rev-parse", `refs/tags/${nextTag}`]),
+    commit: git(["rev-parse", "HEAD"]),
+    tree: git(["rev-parse", "HEAD^{tree}"]),
+  },
+};
+if (process.env.NATIVE_FIXTURE_LIFECYCLE === "add") removePlugin(name);
+if (process.env.NATIVE_FIXTURE_LIFECYCLE === "rollback") updatePlugin(name, nextTag, { yes: true, capabilityApproved: false });
+
 writeFileSync(
   receipt,
   JSON.stringify({
@@ -99,6 +117,7 @@ writeFileSync(
     fingerprint,
     capabilitiesHash: entry.capabilitiesHash,
     files,
+    tags,
   }),
   { flag: "wx", mode: 0o600 },
 );

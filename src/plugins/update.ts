@@ -10,16 +10,21 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, renameSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { type PluginLockEntry, readLock, writeLock } from "../lock.js";
 import { hookEvents } from "./capabilities.js";
 import { type PluginManifest, readManifest } from "./manifest.js";
 import { readPluginMcpServers } from "./mcp-launcher.js";
+import { withSignerCommitFence } from "./signer-commit-fence.js";
+import { allowedSignersPath, signersFor } from "./signers.js";
+import { pluginSourceIdentity } from "./source-identity.js";
 import { pluginDir, type Staged, stage } from "./store.js";
 import { unknownPluginMessage } from "./update-guidance.js";
 
 export interface UpdatePlan {
   name: string;
   entry: PluginLockEntry;
+  installed: ReturnType<typeof pluginSourceIdentity>;
   diff: string;
   capabilitiesChanged: boolean;
   /** Delete the staged checkout without applying. */
@@ -127,6 +132,7 @@ export function planUpdate(name: string, ref: string): UpdatePlan {
     return {
       name,
       entry: staged.entry,
+      installed: pluginSourceIdentity(current),
       diff: lines.join("\n"),
       capabilitiesChanged: staged.entry.capabilitiesHash !== current.capabilitiesHash,
       discard,
@@ -146,20 +152,32 @@ export interface UpdateOptions {
 }
 
 /** Apply a plan: swap the checkout and lock entry; keep the old entry as `previous`. */
-export function applyUpdate(plan: UpdatePlan, options: UpdateOptions): PluginLockEntry {
+export function applyUpdate(plan: UpdatePlan, options: UpdateOptions, beginMutation?: () => void): PluginLockEntry {
   try {
     if (!options.yes) throw new Error("Update not applied: confirm the diff (or pass --yes).");
     if (plan.capabilitiesChanged && !options.capabilityApproved) {
       throw new Error("Update not applied: the capabilities changed and need your explicit approval at the terminal.");
     }
-    const lock = readLock();
-    const current = lock.plugins?.find((p) => p.name === plan.name) as PluginLockEntry;
-    const entry: PluginLockEntry = { ...plan.entry, previous: { ...current, previous: undefined } };
-    rmSync(pluginDir(plan.name), { recursive: true, force: true });
-    renameSync(plan.staged.dir, pluginDir(plan.name));
-    lock.plugins = (lock.plugins ?? []).map((p) => (p.name === plan.name ? entry : p));
-    writeLock(lock);
-    return entry;
+    return withSignerCommitFence(allowedSignersPath(), (_registry, _mode, assertLock) => {
+      const lock = readLock();
+      const matches = (lock.plugins ?? []).filter((plugin) => plugin.name === plan.name);
+      const current = matches[0];
+      if (matches.length !== 1 || !current || !isDeepStrictEqual(pluginSourceIdentity(current), plan.installed)) {
+        throw new Error("Update not applied: the installed plugin pin changed. Review a fresh update.");
+      }
+      if (!signersFor(plan.name).includes(plan.entry.signer)) {
+        throw new Error("Update not applied: the staged signer is no longer trusted.");
+      }
+      const entry: PluginLockEntry = { ...plan.entry, previous: { ...current, previous: undefined } };
+      const destination = pluginDir(plan.name);
+      assertLock();
+      beginMutation?.();
+      rmSync(destination, { recursive: true, force: true });
+      renameSync(plan.staged.dir, destination);
+      lock.plugins = (lock.plugins ?? []).map((plugin) => (plugin.name === plan.name ? entry : plugin));
+      writeLock(lock);
+      return entry;
+    });
   } finally {
     plan.discard();
   }

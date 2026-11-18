@@ -285,7 +285,7 @@ export function planAdd(spec: string, options: { signer?: string }): AddPlan {
  * lock commit, tree hash, capabilities hash, and signer. Without approval it
  * installs nothing. The staged checkout is deleted either way.
  */
-export function applyAdd(plan: AddPlan, options: { yes: boolean }): PluginLockEntry {
+export function applyAdd(plan: AddPlan, options: { yes: boolean }, beginMutation?: () => void): PluginLockEntry {
   try {
     if (!options.yes) throw new Error("Plugin capabilities need approval: re-run with --yes to approve them.");
     const { manifest, entry } = plan.staged;
@@ -296,6 +296,7 @@ export function applyAdd(plan: AddPlan, options: { yes: boolean }): PluginLockEn
     if (!approvedNew && !signersFor(manifest.name).includes(entry.signer)) {
       throw new Error(`The signer of "${manifest.name}" is no longer trusted. Nothing was installed.`);
     }
+    beginMutation?.();
     if (approvedNew) trustSigner(manifest.name, entry.signer);
     renameSync(plan.staged.dir, pluginDir(manifest.name));
     lock.plugins = [...(lock.plugins ?? []), entry];
@@ -312,7 +313,7 @@ export function addPlugin(spec: string, options: AddPluginOptions): PluginLockEn
 }
 
 /** Re-pin the previous lock entry after verifying it again. The current entry becomes the previous one. */
-export function rollbackPlugin(name: string): PluginLockEntry {
+export function rollbackPlugin(name: string, beginMutation?: () => void): PluginLockEntry {
   const lock = readLock();
   const current = lock.plugins?.find((p) => p.name === name);
   if (!current) throw new Error(`Plugin "${name}" is not installed.`);
@@ -324,6 +325,7 @@ export function rollbackPlugin(name: string): PluginLockEntry {
       throw new Error(`Tag ${target.ref} of "${name}" moved since it was locked. Refusing to roll back.`);
     }
     const entry: PluginLockEntry = { ...staged.entry, previous: { ...current, previous: undefined } };
+    beginMutation?.();
     rmSync(pluginDir(name), { recursive: true, force: true });
     renameSync(staged.dir, pluginDir(name));
     lock.plugins = (lock.plugins ?? []).map((p) => (p.name === name ? entry : p));

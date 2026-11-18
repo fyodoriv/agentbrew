@@ -29,3 +29,20 @@ Treat the V1 source as the common implementation. Select the V2 adapter
 only after the CLI reports a supported major. Reuse the existing single
 target, atomic write and manifest ownership check. A missing or unsupported
 version leaves the installed helper in place. Write no OpenCode config.
+
+## Qualify cold and warm CLI session callbacks
+
+- **Hypothesis**: The loopback health endpoint can respond before OpenCode
+  activates its plugin instance. Creating a session before activation can
+  explain the absent start marker in the exact CLI guard controls.
+- **Measurement**: Start two fresh OpenCode 2.3.0 servers with the built
+  Agentbrew bridge. Use the same approved tool fixture for each. Wait
+  only for authenticated health on cold, and additionally wait for the
+  two expected plugin IDs on warm. Count known start markers and the
+  exact guard effect in both.
+- **Success**: Both controls approve once. Warm produces one start marker
+  and cold produces none, with zero unexpected markers on either.
+- **Pivot**: A warm missing callback or an extra marker leaves the timing
+  cause open. Test observed ordering before changing ownership logic.
+- **Anchor**: The scoped lifecycle and CLI guard results above, and the
+  pinned V2 CLI session resolution through its explicit directory.

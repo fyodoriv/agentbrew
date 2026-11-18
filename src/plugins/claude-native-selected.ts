@@ -9,6 +9,7 @@ import { capabilitiesHash, MANIFEST_FILE, parseManifest } from "./manifest.js";
 import { launcherContent, launcherPath, parsePluginMcpServers, validateMcpServers } from "./mcp-launcher.js";
 import { withSignerCommitFence } from "./signer-commit-fence.js";
 import { allowedSignersPath, readSigners } from "./signers.js";
+import { pluginSourceIdentity } from "./source-identity.js";
 import { readPinnedPluginFiles } from "./store.js";
 
 export type NativeFacet = "hooks" | "mcp" | "rules";
@@ -300,11 +301,6 @@ function planPlugin(
   return true;
 }
 
-function sourceIdentity(entry: PluginLockEntry) {
-  const { name, version, source, ref, commit, tree, capabilitiesHash, signer } = entry;
-  return { name, version, source, ref, commit, tree, capabilitiesHash, signer };
-}
-
 function assertCurrentNativeSources(planned: readonly PluginLockEntry[]): void {
   const current = readLock().plugins ?? [];
   const signers = readSigners();
@@ -312,7 +308,7 @@ function assertCurrentNativeSources(planned: readonly PluginLockEntry[]): void {
     const matches = current.filter(({ name }) => name === entry.name);
     if (
       matches.length !== 1 ||
-      !isDeepStrictEqual(sourceIdentity(matches[0] as PluginLockEntry), sourceIdentity(entry))
+      !isDeepStrictEqual(pluginSourceIdentity(matches[0] as PluginLockEntry), pluginSourceIdentity(entry))
     ) {
       refuse("the planned plugin source pin changed");
     }

@@ -1,10 +1,12 @@
-import { lstatSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { lstatSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, relative, sep } from "node:path";
+import { dirname, join, posix, relative, sep } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { sync as writeFileSync } from "write-file-atomic";
 import type { ActivePlugin } from "./contributions.js";
-import { launcherContent, launcherPath, readPluginMcpServers } from "./mcp-launcher.js";
+import { capabilitiesHash, MANIFEST_FILE, parseManifest } from "./manifest.js";
+import { launcherContent, launcherPath, parsePluginMcpServers, validateMcpServers } from "./mcp-launcher.js";
+import { readPinnedPluginFiles } from "./store.js";
 
 export type NativeFacet = "hooks" | "mcp" | "rules";
 type Hooks = Record<string, unknown[]>;
@@ -64,9 +66,12 @@ function jsonBytes(value: unknown): Buffer {
   return Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
 }
 
-function readHooks(text: Buffer | undefined): Hooks {
+function readHooks(text: Buffer | undefined, strict = false): Hooks {
   if (!text) return {};
-  const { hooks } = JSON.parse(text.toString("utf8")) as { hooks?: unknown };
+  const document = JSON.parse(text.toString("utf8")) as unknown;
+  if (!document || typeof document !== "object" || Array.isArray(document)) refuse("the hook groups are unreadable");
+  if (strict && !isDeepStrictEqual(Object.keys(document), ["hooks"])) refuse("unknown hook metadata");
+  const { hooks } = document as { hooks?: unknown };
   if (hooks === undefined) return {};
   if (
     !hooks ||
@@ -83,19 +88,16 @@ function withRulesHook(hooks: Hooks, rulesHook: unknown): Hooks {
   return { ...hooks, SessionStart: [...(hooks.SessionStart ?? []), rulesHook] };
 }
 
-function planHookFiles(writes: PlannedWrite[], source: string, destination: string, managedHookPath: string): void {
-  for (const entry of readdirSync(source, { withFileTypes: true })) {
-    const sourcePath = join(source, entry.name);
-    const targetPath = join(destination, entry.name);
-    if (entry.isDirectory()) {
-      planHookFiles(writes, sourcePath, targetPath, managedHookPath);
-    } else if (entry.isFile()) {
-      if (targetPath === managedHookPath) continue;
-      planMissingFile(writes, targetPath, readFileSync(sourcePath), lstatSync(sourcePath).mode & 0o777);
-    } else {
-      refuse("the signed hook output contains an unsupported file type");
-    }
-  }
+function readSignedHooks(plugin: ActivePlugin, includeFiles: boolean) {
+  const source = plugin.manifest.contributes?.hooks;
+  if (typeof source !== "string") return { declared: {}, scripts: [] };
+  const sourceDir = posix.dirname(source);
+  if (includeFiles && sourceDir === ".") refuse("the signed hook files have no dedicated directory");
+  const files = readPinnedPluginFiles(plugin.entry, includeFiles ? sourceDir : source);
+  const declaredFile = files.find((file) => file.path === source);
+  if (!declaredFile) refuse("the declared hook file is absent from the signed tree");
+  const scripts = includeFiles ? files.map((file) => ({ ...file, path: posix.relative(sourceDir, file.path) })) : [];
+  return { declared: readHooks(declaredFile.body), scripts };
 }
 
 function planHooks(
@@ -105,11 +107,12 @@ function planHooks(
   selected: ReadonlySet<NativeFacet>,
   rulesHook: unknown,
 ): void {
-  const rel = plugin.manifest.contributes?.hooks;
-  const source = typeof rel === "string" ? join(plugin.dir, rel) : undefined;
-  const declared = source ? readHooks(readFileSync(source)) : {};
+  const { declared, scripts } = readSignedHooks(plugin, selected.has("hooks"));
+  if (declared.SessionStart?.some((group) => isDeepStrictEqual(group, rulesHook))) {
+    refuse("the declared and generated rule hook identities overlap");
+  }
   const path = join(root, "hooks", "hooks.json");
-  const current = readHooks(readOutput(path));
+  const current = readHooks(readOutput(path), true);
   const full = withRulesHook(declared, rulesHook);
   const rulesOnly = withRulesHook({}, rulesHook);
   const hasDeclared = isDeepStrictEqual(current, declared) || isDeepStrictEqual(current, full);
@@ -123,11 +126,19 @@ function planHooks(
   const retained = includeDeclared ? declared : {};
   const desired = includeRules ? withRulesHook(retained, rulesHook) : retained;
   if (!isDeepStrictEqual(current, desired)) writes.push({ path, body: jsonBytes({ hooks: desired }) });
-  if (source && selected.has("hooks")) planHookFiles(writes, dirname(source), dirname(path), path);
+  for (const script of scripts) {
+    const target = join(dirname(path), script.path);
+    if (target !== path) planMissingFile(writes, target, script.body, script.mode);
+  }
 }
 
 function planMcp(writes: PlannedWrite[], plugin: ActivePlugin, root: string): void {
-  const servers = readPluginMcpServers(plugin.dir, plugin.manifest);
+  const rel = plugin.manifest.contributes?.mcp_servers;
+  if (typeof rel !== "string") return;
+  const [declaration, ...others] = readPinnedPluginFiles(plugin.entry, rel);
+  if (declaration?.path !== rel || others.length > 0) refuse("the MCP declaration is absent from the signed tree");
+  const servers = parsePluginMcpServers(declaration.body.toString("utf8"));
+  if (validateMcpServers(servers).length > 0) refuse("the signed MCP declaration is invalid");
   if (servers.length === 0) return;
   const entries = servers.map((server) => {
     const command = launcherPath(plugin.entry.name, server.name);
@@ -143,12 +154,27 @@ interface Marketplace {
   plugins: ReturnType<typeof nativePluginEntry>[];
 }
 
+function withPinnedManifest(plugin: ActivePlugin): ActivePlugin {
+  const [source, ...others] = readPinnedPluginFiles(plugin.entry, MANIFEST_FILE);
+  if (source?.path !== MANIFEST_FILE || others.length > 0) refuse("the signed plugin manifest is missing");
+  const manifest = parseManifest(source.body.toString("utf8"));
+  if (
+    manifest.name !== plugin.entry.name ||
+    manifest.version !== plugin.entry.version ||
+    capabilitiesHash(manifest) !== plugin.entry.capabilitiesHash
+  ) {
+    refuse("the signed manifest does not match the plugin lock");
+  }
+  return { ...plugin, manifest };
+}
+
 function planPlugin(
   writes: PlannedWrite[],
-  plugin: ActivePlugin,
+  active: ActivePlugin,
   registry: Marketplace,
   options: { marketplace: string; selected: ReadonlySet<NativeFacet>; rulesHook: unknown },
 ): boolean {
+  const plugin = withPinnedManifest(active);
   const entry = nativePluginEntry(plugin);
   const root = join(options.marketplace, entry.source);
   const { source: _source, ...envelope } = entry;

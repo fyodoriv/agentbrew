@@ -57,7 +57,11 @@ export function validateMcpServers(servers: PluginMcpServer[]): string[] {
 export function readPluginMcpServers(dir: string, manifest: PluginManifest): PluginMcpServer[] {
   const rel = manifest.contributes?.mcp_servers;
   if (typeof rel !== "string" || !existsSync(join(dir, rel))) return [];
-  const parsed = yaml.load(readFileSync(join(dir, rel), "utf-8"));
+  return parsePluginMcpServers(readFileSync(join(dir, rel), "utf-8"));
+}
+
+export function parsePluginMcpServers(text: string): PluginMcpServer[] {
+  const parsed = yaml.load(text);
   if (Array.isArray(parsed)) return parsed as PluginMcpServer[];
   if (parsed && typeof parsed === "object") {
     return Object.entries(parsed as Record<string, Omit<PluginMcpServer, "name">>).map(([name, s]) => ({ ...s, name }));

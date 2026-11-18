@@ -102,3 +102,28 @@ That run has no complete target receipt. Preserve it as incomplete.
 - **Pivot**: Exceeding either new bound, an outside link, a failed fixture
   receipt or an unknown entry leaves the cohort incomplete.
 - **Anchor**: Hosted run 44230819586 and its exact reporter-bound refusal.
+
+## Package and context-budget diagnosis
+
+Run 44231181327 captured all three requested native facets and the two
+unselected facets in each selected case. It left three entries per case
+unclassified. The default arm changed its package tree and stopped
+before producing a complete receipt. No full baseline passed.
+
+- **Hypothesis**: The context-budget writer accounts for the three
+  unclassified paths. Record any default package change before refusal,
+  with safe labels that distinguish existing entries from new ones.
+- **Measurement**: Admit only the exact context-budget output directory,
+  latest JSON and dated snapshot described in the current paths module.
+  Preserve the original cap and protections. Classify changed public
+  shipped paths by kind, mode, mtime and content. Count unknown new
+  package paths without printing their names or contents.
+- **Success**: Explain the three entries with exact known paths, or
+  retain the unresolved count. A package change still refuses the
+  default arm. A complete baseline needs four unchanged package trees
+  and all existing oracles.
+- **Pivot**: Any package, source, sibling or unknown change keeps the
+  relevant case incomplete. Do not promote a scoped runtime candidate
+  based on a package-mutation diagnosis.
+- **Anchor**: Hosted run 44231181327 and the context-budget post-sync
+  writer in `src/measure/context-budget.ts`.

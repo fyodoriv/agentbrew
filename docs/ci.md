@@ -18,7 +18,7 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 
 - **Leaks.** The private-pattern file is not on the runner. Run the local leak check before every push.
 - **Tools the runner lacks.** The runner has no `ai-rules` CLI and no agent CLIs. Tests that need them accept the documented skip there. A change to delegated rule sync (`src/sync/rules-delegate.ts`) still needs `npm run verify:changed` on a machine with `ai-rules`.
-- **Linux image.** The Linux job runs on `ubuntu-24.04` until Playwright supports the newer image (task `ci-ubuntu-latest-playwright`).
+- **Linux image.** The Linux job uses `ubuntu-latest`. Keep the pinned Playwright version compatible with the runner image.
 
 The build preflight compares installed package versions with the tracked
 lockfile before running the build. It refuses missing or incomplete npm

@@ -1051,3 +1051,20 @@ publishing under the incompatible mask.
   the CLI route unqualified. This does not enable the publisher.
 - **Anchor**: The signed selected and default baselines and the
   retained interruption controls.
+
+## Observe native index and redaction order in the built CLI
+
+- **Hypothesis**: In each successful signed case, the native index
+  commits once before privacy redaction commits once. The observer
+  cannot change the output it measures.
+- **Measurement**: Keep the same four signed cases. Add a write
+  observer around the built-in rename operation. Record fixed events
+  only after successful commits to the exact synthetic index and
+  redaction paths. Preserve all four independent file and process
+  checks from the previous run.
+- **Success**: Four exact two-event sequences in order, with all
+  four signed output controls green and no unknown paths or calls.
+- **Pivot**: A reordered, missing or repeated event, a write failure
+  or a changed fixture result blocks the order claim.
+- **Anchor**: The recorded built CLI matrix and the real atomic writes
+  in native publication and privacy redaction.

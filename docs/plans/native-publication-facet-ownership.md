@@ -774,3 +774,23 @@ removed the owner record after a partial write. The
 kept the same record and refused a retry before another write.
 The run passed 51 focused controls, 107 compatibility tests, the
 ordinary publication control, and type checking.
+
+## Retain ownership after a certified full write fails
+
+- **Hypothesis**: The opt-in full certification path retains the same
+  owner after a real native write fails. A second opted-in run refuses
+  without changing the interrupted output.
+- **Measurement**: Fail after the signed fixture's first native envelope
+  write in the existing scratch publisher test. Record the owner and
+  envelope, then try the full certification again with the same fixture.
+  Check the ordinary no-options publisher separately.
+- **Success**: One interrupted write, the exact owner and envelope retained,
+  zero changes on retry, and zero settings or certification receipt created.
+  Full certification success and the ordinary publisher still pass.
+- **Pivot**: Fail on a clear owner record after mutation, a second write
+  before recovery, or an ordinary publisher behavior change.
+- **Anchor**: The selected write failure control above and the full
+  publisher's separate certification path.
+
+This proof covers the opt-in writer. It does not authorize recovery,
+change ordinary full publication, or reach a user's installed state.

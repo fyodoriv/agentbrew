@@ -920,3 +920,25 @@ Ubuntu job also passed the 57 focused and 113 compatibility tests and type
 checking. The first Windows run stopped at formatting because checkout
 converted the line endings. The scratch workflow retained the committed
 line endings for the passing run.
+
+## Recheck the shared signer descriptor at publication
+
+- **Hypothesis**: After the signer writer change lands, the native proof
+  uses its descriptor check before publication writes.
+- **Measurement**: Reuse the merged descriptor helper in the scratch
+  fixture. Supply a check that reports lost ownership at the first
+  publication boundary. Repeat at the later boundary after a real
+  selected payload write. Check full certification separately.
+- **Success**: A first selected refusal leaves zero payload files,
+  receipts or settings and releases its process record. A late selected
+  refusal keeps the partial payload and owner but writes zero receipts
+  or marketplace index. A full certification refusal creates no
+  receipt or settings and retains its admitted owner.
+- **Pivot**: A payload write after an early refusal, a new certificate or
+  index after the later refusal, or an ordinary publication change
+  rejects the composed candidate.
+- **Anchor**: The merged Agentbrew and Dotfiles descriptor contract,
+  plus the planning and interruption controls above.
+
+The fixture changes a callable check only. It leaves the actual signer
+registry and its descriptor in the normal owned state.

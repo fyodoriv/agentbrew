@@ -62,6 +62,8 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
     authenticated = "unavailable"
     config_exit = "unavailable"
     inventory_exit = "unavailable"
+    listed = 0
+    marker_lines = []
     json_ok = False
 
     def values(value):
@@ -105,11 +107,11 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
                 header = b64encode(f"opencode:{password}".encode()).decode()
                 authenticated = health({"Authorization": f"Basic {header}"})
 
-                def client(*arguments):
+                def client(*arguments, timeout=10):
                     try:
                         return subprocess.run(
                             [str(binary), "--server", endpoint, *arguments],
-                            **common, capture_output=True, timeout=10,
+                            **common, capture_output=True, timeout=timeout,
                         )
                     except subprocess.TimeoutExpired:
                         return None
@@ -125,8 +127,17 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
                         json_ok = True
                     except (ValueError, UnicodeError):
                         pass
-                inventory = client("plugin", "list")
-                inventory_exit = inventory.returncode if inventory else "deadline"
+                if config_exit == 0 and json_ok and source_count == target_count == 1:
+                    deadline = time.monotonic() + 30
+                    while process.poll() is None and time.monotonic() < deadline:
+                        remaining = deadline - time.monotonic()
+                        inventory = client("plugin", "list", timeout=min(3, max(0.001, remaining)))
+                        inventory_exit = inventory.returncode if inventory else "deadline"
+                        listed = inventory.stdout.decode(errors="replace").count(identifier) if inventory_exit == 0 else 0
+                        marker_lines = marker.read_text().splitlines() if marker.is_file() else []
+                        if listed == 1 and marker_lines == ["setup"]:
+                            break
+                        time.sleep(min(0.5, max(0, deadline - time.monotonic())))
         finally:
             if process.poll() is None:
                 os.killpg(process.pid, signal.SIGTERM)
@@ -139,10 +150,11 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
     print(
         f"version=2.3.0 socket={int(socket_ready)} anonymous={anonymous} authenticated={authenticated} "
         f"config-exit={config_exit} json={int(json_ok)} document={source_count} target={target_count} "
-        f"inventory-exit={inventory_exit} reaped=1"
+        f"inventory-exit={inventory_exit} listed={listed} setup={len(marker_lines)} reaped=1"
     )
     if (
         anonymous != 401 or authenticated != 200 or config_exit != 0 or not json_ok
         or source_count != 1 or target_count != 1 or inventory_exit != 0
+        or listed != 1 or marker_lines != ["setup"]
     ):
-        raise SystemExit("the authenticated configuration route was not verified")
+        raise SystemExit("the authenticated V2 startup was not verified")

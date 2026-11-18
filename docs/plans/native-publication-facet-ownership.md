@@ -972,3 +972,10 @@ checking.
   evidence. No live activation or automated recovery follows.
 - **Anchor**: The interrupted-publication matrix, and the earlier
   real single-writer and in-process partial-write controls.
+
+The first local settings case stopped before the injected checkpoint.
+The scratch clone and legacy copy produced a mode-0600 guard where the
+signed tree requires 0644. The shared test queue sets umask 077. Keep
+that exact conservative refusal as a separate unresolved configuration.
+Run the three checkpoint controls with a registered umask 022 so that
+they exercise the intended settings boundary.

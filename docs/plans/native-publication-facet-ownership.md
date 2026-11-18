@@ -787,10 +787,17 @@ ordinary publication control, and type checking.
 - **Success**: One interrupted write, the exact owner and envelope retained,
   zero changes on retry, and zero settings or certification receipt created.
   Full certification success and the ordinary publisher still pass.
-- **Pivot**: Fail on a clear owner record after mutation, a second write
+- **Pivot**: Fail if the writer clears the owner record after mutation, a second write
   before recovery, or an ordinary publisher behavior change.
 - **Anchor**: The selected write failure control above and the full
   publisher's separate certification path.
 
-This proof covers the opt-in writer. It does not authorize recovery,
-change ordinary full publication, or reach a user's installed state.
+This proof covers the opt-in writer in a scratch home. Recovery and any
+change to ordinary full publication need separate qualification.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44281159545)
+wrote the native envelope, threw the synthetic error and removed the
+owner. The [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44281522433)
+kept the owner and exact envelope, and a retry refused before any write.
+The candidate passed 52 focused controls, 108 compatibility tests,
+ordinary publication, and type checking.

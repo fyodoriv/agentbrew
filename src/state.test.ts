@@ -7,10 +7,8 @@ const mockReadFileSync = vi.fn();
 const mockCopyFileSync = vi.fn();
 const mockMkdirSync = vi.fn();
 const mockWriteFileSync = vi.fn();
-const mockChmodSync = vi.fn();
 
 vi.mock("node:fs", () => ({
-  chmodSync: (...args: unknown[]) => mockChmodSync(...args),
   existsSync: (...args: unknown[]) => mockExistsSync(...args),
   readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
   copyFileSync: (...args: unknown[]) => mockCopyFileSync(...args),
@@ -187,7 +185,7 @@ describe("diskIO.write", () => {
     expect(mockWriteFileSync).toHaveBeenCalledWith(
       expect.stringContaining("state.yaml"),
       expect.stringContaining("schemaVersion"),
-      "utf-8",
+      { encoding: "utf-8", mode: 0o600 },
     );
   });
 
@@ -373,12 +371,16 @@ describe("diskIO.write", () => {
     expect(written).toContain("agents: []");
   });
 
-  it("sets state.yaml permissions to 0600 after writing", () => {
+  it("sets mode 0600 on the atomic state file write", () => {
     const diskIO = extractDiskIO();
     mockExistsSync.mockReturnValue(false);
     const state = { schemaVersion: 1, agents: [], catalogVersion: "0.1.0" } as never;
     diskIO.write(state);
-    expect(mockChmodSync).toHaveBeenCalledWith(expect.stringContaining("state.yaml"), 0o600);
+    expect(mockWriteFileSync).toHaveBeenCalledWith(
+      expect.stringContaining("state.yaml"),
+      expect.any(String),
+      expect.objectContaining({ mode: 0o600 }),
+    );
   });
 
   it("handles state where every agent has a commandTransform function", () => {
@@ -589,7 +591,7 @@ describe("diskIO.write error handling", () => {
       throw new Error("EACCES: permission denied");
     });
     const state = { schemaVersion: 1, agents: [], catalogVersion: "0.1.0" } as never;
-    diskIO.write(state);
+    expect(diskIO.write(state)).toBe(false);
     expect(process.exitCode).toBe(1);
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Failed to write state.yaml"));
   });
@@ -601,7 +603,7 @@ describe("diskIO.write error handling", () => {
       throw new Error("ENOSPC: no space left on device");
     });
     const state = { schemaVersion: 1, agents: [], catalogVersion: "0.1.0" } as never;
-    diskIO.write(state);
+    expect(diskIO.write(state)).toBe(false);
     expect(process.exitCode).toBe(1);
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Failed to write state.yaml"));
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("disk space"));

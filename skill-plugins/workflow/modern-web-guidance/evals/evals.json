@@ -1,0 +1,75 @@
+{
+  "skill_name": "modern-web-guidance",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Build accessible light-dismiss dialog behavior in our web UI.",
+      "expectations": [
+        "Searches and retrieves a matching guide with the pinned CLI before editing",
+        "Checks browser support and native dialog behavior",
+        "Verifies dismissal and focus behavior in the intended browsers"
+      ],
+      "expected_output": "A guide-backed implementation plan with browser fallback checks."
+    },
+    {
+      "id": 2,
+      "prompt": "Add a popover and support the browsers in AGENTS.md.",
+      "expectations": [
+        "Uses the project browser support policy",
+        "Applies the guide's relevant fallbacks without changing the support policy",
+        "Reports which unsupported browser needs a fallback"
+      ],
+      "expected_output": "The configured browser support and any guide-based fallback."
+    },
+    {
+      "id": 3,
+      "prompt": "Review this entire web codebase for legacy platform patterns.",
+      "expectations": [
+        "Uses the pinned legacy-scan on the scoped project tree",
+        "Distinguishes verified modernization changes from fallbacks",
+        "Does not change code or broaden the scan for a review-only request"
+      ],
+      "expected_output": "Verified scanner findings and retained fallbacks."
+    },
+    {
+      "id": 4,
+      "prompt": "Build and test a Chrome extension's side panel.",
+      "expectations": [
+        "Uses the pinned extension guide and matching references",
+        "Uses one extension route and avoids adding another marketplace",
+        "Verifies the chosen feature against the side panel permissions and lifecycle"
+      ],
+      "expected_output": "One pinned Manifest V3 reference path and extension checks."
+    },
+    {
+      "id": 5,
+      "prompt": "Choose a distinctive visual direction for a landing page.",
+      "expectations": [
+        "Uses Hallmark for creative direction",
+        "Uses Modern Web Guidance only when implementing an actual platform feature",
+        "Does not run a platform search for the visual brief alone"
+      ],
+      "expected_output": "A visual direction from Hallmark."
+    },
+    {
+      "id": 6,
+      "prompt": "Run one Lighthouse audit on my page and report findings.",
+      "expectations": [
+        "Uses the running-page audit route alone for the measurement",
+        "Uses platform guidance when implementing a fix",
+        "Reports the audit as measured evidence before proposing implementation changes"
+      ],
+      "expected_output": "A single running-page audit and evidence."
+    },
+    {
+      "id": 7,
+      "prompt": "Decide where a Next.js server component should fetch data.",
+      "expectations": [
+        "Uses framework guidance for the architecture decision",
+        "Avoids unrelated browser-platform queries",
+        "Checks the route against the project’s Next.js version and data boundaries"
+      ],
+      "expected_output": "Framework routing with no unrelated platform search."
+    }
+  ]
+}

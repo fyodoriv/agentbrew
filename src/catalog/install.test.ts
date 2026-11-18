@@ -3054,6 +3054,7 @@ describe("install — local scope (--local flag)", () => {
       "/my/project",
       "agent-browser",
       expect.stringContaining("agent-browser"),
+      undefined,
     );
     // Should NOT update global state
     expect(mockSaveState).not.toHaveBeenCalled();

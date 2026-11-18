@@ -747,25 +747,16 @@ describe("impeccable in catalog", () => {
     expect(impeccable).toBeDefined();
     expect(impeccable!.source).toBe("pbakaus/impeccable");
     expect(impeccable!.category).toBe("design");
-    // recommended: false stays — taste is already recommended in the same
-    // category, and design skills are per-taste choices.
     expect(impeccable!.recommended).toBe(false);
   });
 
-  it("disambiguates impeccable from taste / frontend-design / web-design-guidelines in the description", () => {
-    // Multiple design skills share the catalog. The description has to
-    // spell out the difference vs the other design skills in the catalog so users
-    // don't install all four expecting them to compose.
+  it("keeps Impeccable's command set distinct from Hallmark's creative route", () => {
     mockLoadState.mockReturnValue(makeState());
     const data = getCatalogData({ skills: true });
-    const impeccable = data.skills.find((s) => s.name === "impeccable");
-    expect(impeccable).toBeDefined();
-    // Description must reference at least one neighbour by name to be
-    // useful disambiguation text.
-    const description = impeccable!.description;
-    const mentionsNeighbour =
-      description.includes("taste") || description.includes("frontend-design") || description.includes("web-design");
-    expect(mentionsNeighbour).toBe(true);
+    const description = data.skills.find((skill) => skill.name === "impeccable")?.description ?? "";
+    expect(description).toContain("project uses its command set");
+    expect(description).toContain("Choose Hallmark for creative direction");
+    expect(description).not.toMatch(/\btaste\b|\bfrontend-design\b|\bweb-design-guidelines\b/iu);
   });
 });
 

@@ -81,3 +81,12 @@ closing the parent task.
 - **Pivot**: Any changed frozen input, install on the donor, unproven
   refusal, or misclassified setup failure rejects the measurement.
 - **Anchor**: The N2/N3 and P2 rows in the original locked-install plan.
+
+The [baseline with exact test selection](https://github.com/fyodoriv/agentbrew/actions/runs/44218967255)
+recorded incomplete evidence for both N2 and N3. The
+[Linux comparison](https://github.com/fyodoriv/agentbrew/actions/runs/44219503013)
+reported a supported fresh install for N2 and a verified refusal for N3.
+The observer requires the verifier's actual version-mismatch reason and
+unchanged files to distinguish refusal from a failed npm query. It derives
+the scratch paths from their physical locations and uses its own empty npm
+configuration.

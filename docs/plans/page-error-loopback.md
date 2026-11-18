@@ -136,3 +136,25 @@ default launch under the outer Darwin profile. Both runs used disposable
 profiles, test keychain flags, the debugging pipe, and synthetic local
 pages. This fixture result leaves production capture integration and
 general event-drain coverage open.
+
+## Native trace completion experiment
+
+Can Chrome's trace flush qualify capture of console, exception, and request
+failures? On one disposable Chrome instance, start a trace and subscribe to
+Runtime and Network events before opening the loopback fixture. The fixture
+must log one console error, raise one uncaught exception, and receive one
+HTTP 503 response. The independent Runtime and Network events must report
+all three. The local server must observe exactly one request for the failing
+resource.
+
+Run the private fixture with `heavy-run node "$PAGE_TRACE_PROBE"`. Bound
+the run to 30 seconds. Allow network access to the fixture port only. Use
+fresh browser state and the test keychain flags. Record only counts and the
+trace completion flag. Keep the trace candidate only if the trace reports
+each of the three failures in a structured event and reports no trace loss.
+Use the request ID to match a received response to the exact fixture path.
+If a direct control fails, the run is inconclusive. If the controls pass
+and the trace misses a failure, keep production closure unverified and
+reject that trace configuration as the event source.
+Anchor: [Chrome Tracing completion](https://chromedevtools.github.io/devtools-protocol/tot/Tracing/#event-tracingComplete),
+issue #563, and Basili, Caldiera and Rombach (1994).

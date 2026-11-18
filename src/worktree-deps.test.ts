@@ -210,6 +210,27 @@ cp -R -- "$4" "$5"
     );
   });
 
+  it("leaves no copied donor stamp when the resulting clone fails verification", () => {
+    const { main, wt, runIn } = setup({ worktreeLock: '{"lock":1}' });
+    writeFileSync(
+      join(main, "node_modules", ".worktree-deps-lock.json"),
+      readFileSync(join(main, "package-lock.json"), "utf8"),
+    );
+    const fakePython = join(wt, "fixture-clone");
+    writeFileSync(
+      fakePython,
+      `#!/bin/sh
+cp -R -- "$4" "$5" || exit
+printf '%s\\n' '{"name":"leaf","version":"1.0.0"}' > "$5/leaf/package.json"
+`,
+      { mode: 0o700 },
+    );
+    const result = runIn(wt, { WORKTREE_DEPS_PYTHON: fakePython });
+    expect(result.status).toBe(1);
+    expect(existsSync(join(wt, "node_modules", ".worktree-deps-lock.json"))).toBe(false);
+    expect(existsSync(join(main, "node_modules", ".worktree-deps-lock.json"))).toBe(true);
+  });
+
   it("refuses a stale target even when its stamp still matches", () => {
     const { wt, run, npmCalls } = setup({ worktreeLock: '{"lock":2}' });
     expect(run().status).toBe(0);

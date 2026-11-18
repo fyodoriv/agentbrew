@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 import re
 from secrets import token_hex
+import shlex
+import shutil
 import signal
 import socket
 import subprocess
@@ -16,9 +18,11 @@ from urllib.request import ProxyHandler, Request, build_opener
 binary = Path(sys.argv[1]).resolve(strict=True)
 identifier = "agentbrew.loader-control"
 plugin = """import { appendFileSync } from "node:fs";
+import { ClaudeHooks } from "./v1-bridge.js";
 export default {
   id: "agentbrew.loader-control",
-  setup(ctx) {
+  async setup(ctx) {
+    const bridge = await ClaudeHooks({ directory: ctx.location.directory });
     const controller = new AbortController();
     const types = ["session.created", "session.deleted"];
     const events = ctx.event.subscribe({ types, signal: controller.signal })[Symbol.asyncIterator]();
@@ -27,7 +31,14 @@ export default {
     void (async () => {
       for (let current = await first; !current.done; current = await events.next()) {
         const event = current.value;
-        appendFileSync(path, JSON.stringify({ type: event.type, id: event.data?.sessionID }) + "\\n");
+        const id = event.data?.sessionID;
+        const directory = event.location?.directory ?? event.data?.location?.directory;
+        if (typeof id !== "string" || directory !== ctx.location.directory) {
+          appendFileSync(path, '{"type":"unknown-scope"}\\n');
+          continue;
+        }
+        await bridge.event({ event: { type: event.type, properties: { info: { id } } } });
+        appendFileSync(path, JSON.stringify({ type: event.type, id }) + "\\n");
       }
     })().catch(() => {
       if (!controller.signal.aborted) appendFileSync(path, '{"type":"error"}\\n');
@@ -44,6 +55,9 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
     workspace.mkdir()
     marker = root / "setup.marker"
     event_log = root / "events.jsonl"
+    hook_log = root / "hooks.jsonl"
+    hook_settings = root / "hook-settings.json"
+    hook_script = root / "hook.mjs"
     config = home / ".config/opencode"
     plugins = config / "loader-fixture"
     plugins.mkdir(parents=True)
@@ -51,6 +65,20 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
     target = "./loader-fixture"
     document.write_text(json.dumps({"plugins": [target]}))
     (plugins / "index.js").write_text(plugin)
+    shutil.copyfile(Path("templates/opencode/claude-hooks.js"), plugins / "v1-bridge.js")
+    hook_script.write_text("""import { appendFileSync, readFileSync } from "node:fs";
+const value = JSON.parse(readFileSync(0, "utf8"));
+const event = value.hook_event_name;
+const kind = event === "SessionStart" ? value.source : value.reason;
+const directory = process.env.AGENTBREW_OC_EXPECTED_WORKSPACE;
+const ok = value.cwd === directory && process.env.CLAUDE_PROJECT_DIR === directory
+  && process.env.CLAUDE_HOOKS_HOST === "opencode";
+appendFileSync(process.env.AGENTBREW_OC_HOOK_LOG, JSON.stringify({ event, id: value.session_id, kind, ok }) + "\\n");
+""")
+    fixture_command = {"type": "command", "command": "node " + shlex.quote(str(hook_script))}
+    hook_settings.write_text(json.dumps({"hooks": {
+        event: [{"hooks": [fixture_command]}] for event in ("SessionStart", "SessionEnd")
+    }}))
     password = token_hex(24)
     environment = {
         "PATH": os.environ["PATH"], "HOME": str(home), "TMPDIR": str(root),
@@ -58,6 +86,8 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
         "XDG_STATE_HOME": str(home / ".local/state"), "XDG_CACHE_HOME": str(home / ".cache"),
         "AGENTBREW_OC_LOADER_MARKER": str(marker), "AGENTBREW_OC_EVENTS": str(event_log),
         "DO_NOT_TRACK": "1", "CI": "1",
+        "CLAUDE_HOOKS_SETTINGS": str(hook_settings), "AGENTBREW_OC_HOOK_LOG": str(hook_log),
+        "AGENTBREW_OC_EXPECTED_WORKSPACE": str(workspace),
         "OPENCODE_PASSWORD": password, "OPENCODE_DISABLE_MODELS_FETCH": "1",
     }
     common = {"cwd": workspace, "env": environment, "stdin": subprocess.DEVNULL}
@@ -83,6 +113,7 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
     json_ok = False
     lifecycle = "unavailable"
     created = deleted = other = 0
+    hook_starts = hook_ends = hook_other = 0
 
     def values(value):
         if isinstance(value, str):
@@ -191,6 +222,10 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
                         created = items.count({"type": "session.created", "id": session})
                         deleted = items.count({"type": "session.deleted", "id": session})
                         other = len(items) - created - deleted
+                        calls = [json.loads(line) for line in hook_log.read_text().splitlines()] if hook_log.is_file() else []
+                        hook_starts = calls.count({"event": "SessionStart", "id": session, "kind": "startup", "ok": True})
+                        hook_ends = calls.count({"event": "SessionEnd", "id": session, "kind": "other", "ok": True})
+                        hook_other = len(calls) - hook_starts - hook_ends
                         lifecycle = "observed"
                     except (KeyError, ValueError, OSError):
                         lifecycle = "read-failed"
@@ -207,11 +242,13 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
         f"version=2.3.0 socket={int(socket_ready)} anonymous={anonymous} authenticated={authenticated} "
         f"config-exit={config_exit} json={int(json_ok)} document={source_count} target={target_count} "
         f"inventory-exit={inventory_exit} listed={listed} setup={len(marker_lines)} reaped=1 "
-        f"lifecycle={lifecycle} created={created} deleted={deleted} other={other}"
+        f"lifecycle={lifecycle} created={created} deleted={deleted} other={other} "
+        f"hook-start={hook_starts} hook-end={hook_ends} hook-other={hook_other}"
     )
     if (
         anonymous != 401 or authenticated != 200 or config_exit != 0 or not json_ok
         or source_count != 1 or target_count != 1 or inventory_exit != 0
         or listed != 1 or marker_lines != ["setup"] or created != 1 or deleted != 1 or other != 0
+        or hook_starts != 1 or hook_ends != 1 or hook_other != 0
     ):
         raise SystemExit("the V2 session lifecycle control was not verified")

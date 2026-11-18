@@ -21,3 +21,10 @@ jobs:
         env:
           CHAT_RULE_FIXTURE_STRESS_DELAY_MS: "4500"
         run: node --test --test-name-pattern='^concurrent attempts admit one$' scripts/eval-chat-message-rule-821.test.mjs
+      - name: Repeat concurrent reservations without retry
+        run: |
+          for attempt in {1..20}; do
+            node --test --test-name-pattern='^concurrent attempts admit one$' scripts/eval-chat-message-rule-821.test.mjs || exit 1
+          done
+      - name: Run all receipt and schema controls
+        run: bash scripts/run-chat-rule-controls.sh && bash scripts/run-chat-rule-schema-controls.sh

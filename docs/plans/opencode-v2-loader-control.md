@@ -49,3 +49,27 @@ not accept the documented V2 prefix.
   loader open. Preserve the independently observed legacy result.
 - **Anchor**: [OpenCode plugin discovery](https://opencode.ai/docs/plugins/)
   and the first version-verified result above.
+
+The [explicit-package run](https://github.com/fyodoriv/agentbrew/actions/runs/44290805781)
+also exited zero with no active control, no setup marker and no classified
+diagnostic. The explicit directory and SDK alone were insufficient.
+
+## Observe activation in a single owned server
+
+The pinned [CLI startup helper](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/cli/src/services/plugin-startup.ts)
+documents that a cold location can return an empty plugin list. The
+pinned [list handler](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/cli/src/commands/handlers/plugin/list.ts)
+reads the server's inventory once. Check whether a retained server can
+finish loading the same explicit local package.
+
+- **Hypothesis**: A fresh, owned server reaches a state where the known
+  V2 control is listed and has written its one marker.
+- **Measurement**: Keep the same package, version, workspace and loopback
+  boundary. Start one owned server on a free loopback port. Query only
+  that fixed location until the control is listed and the expected
+  marker exists, or at most 30 seconds. Stop and reap the same server.
+- **Success**: One version-verified server, one setup marker and an
+  active-list match in at most 30 seconds, followed by successful cleanup.
+- **Pivot**: A missing match or marker still leaves loader admission
+  unverified. Do not upgrade the earlier one-shot receipts.
+- **Anchor**: The pinned source and both earlier one-shot receipts.

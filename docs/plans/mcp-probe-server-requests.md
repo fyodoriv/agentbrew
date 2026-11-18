@@ -20,3 +20,10 @@ The probe currently dispatches only replies to its own request IDs.
   request accepted as a tool result, or timeout regression blocks rollout.
 - **Anchor**: MCP [roots](https://modelcontextprotocol.io/specification/2025-11-25/client/roots)
   and [ping](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/ping).
+
+The baseline timed out after initializing with distinct IDs. The
+overlapping ID case incorrectly returned zero tools as healthy.
+The candidate listed one tool in both cases after all three reply
+frames matched. No notification reply or root path was sent.
+All 58 tests in the probe, spec, and scheduler suites passed. The
+TypeScript check passed. Both cases used synthetic subprocesses.

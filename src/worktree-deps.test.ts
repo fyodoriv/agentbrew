@@ -7,6 +7,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -494,7 +495,7 @@ describe("locked-install helper observation calibration", () => {
         npmPath,
         `#!${process.execPath}\nconst fs=require('node:fs'),path=require('node:path');
 const args=process.argv.slice(2);
-const roots=${JSON.stringify([fixture.main, fixture.wt])};
+const roots=${JSON.stringify([realpathSync(fixture.main), realpathSync(fixture.wt)])};
 const comparisons=[
  ["ls","--depth=0","--loglevel=error","--package-lock-only=false","--json"],
  ["query","*","--package-lock-only=false","--json"],
@@ -505,7 +506,7 @@ if(args[0]==="--prefix" && roots.includes(args[1]) && args[2]==="--offline" &&
  const result=require("node:child_process").spawnSync(process.execPath,[${JSON.stringify(npmCli)},...args],{stdio:"inherit",timeout:10000});
  process.exit(result.status??2);
 }
-if(process.cwd()!==${JSON.stringify(fixture.wt)}||JSON.stringify(args)!==JSON.stringify(['ci','--prefer-offline','--no-audit','--no-fund']))process.exit(2);
+if(process.cwd()!==${JSON.stringify(realpathSync(fixture.wt))}||JSON.stringify(args)!==JSON.stringify(['ci','--prefer-offline','--no-audit','--no-fund']))process.exit(2);
 fs.appendFileSync(${JSON.stringify(npmLog)},args.join(' ')+'\\n');
 for(const [name,metadata] of [['fixture-parent',${JSON.stringify(parentPackage)}],['fixture-leaf',{name:'fixture-leaf',version:'1.0.1'}]]){
  const dir=path.join('node_modules',name);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'package.json'),JSON.stringify(metadata)+'\\n');
@@ -552,8 +553,12 @@ fs.writeFileSync('node_modules/.package-lock.json',${JSON.stringify(hiddenText)}
         JSON.stringify(donorFilesBefore) === JSON.stringify(donorFilesAfter);
       const npmCalls = fixture.npmCalls().trim().split("\n").filter(Boolean);
       const cloneProven = selection === "clone" && npmCalls.length === 0 && independentTarget && donorUnchanged;
+      const staleVersionReported = result.stderr.includes(
+        "Build pipeline guard: an installed package differs from the selected lockfile version",
+      );
       const refusalProven =
         sample.scenario === "N3" &&
+        staleVersionReported &&
         result.status === 1 &&
         selection === null &&
         npmCalls.length === 0 &&
@@ -606,9 +611,15 @@ fs.writeFileSync('node_modules/.package-lock.json',${JSON.stringify(hiddenText)}
         complete: decisionComplete,
         setupFailure: result.status !== 0 && !refusalProven ? "helper-exit-unqualified" : null,
         refusalProven,
+        staleVersionReported,
         classification,
         meetsRequiredDecision: {
-          N2: classification === "supported" && selection === "install" && npmCalls.length === 1 && independentTarget,
+          N2:
+            staleVersionReported &&
+            classification === "supported" &&
+            selection === "install" &&
+            npmCalls.length === 1 &&
+            independentTarget,
           N3: classification === "refused",
           P2: classification === "supported" && cloneProven,
         }[sample.scenario],

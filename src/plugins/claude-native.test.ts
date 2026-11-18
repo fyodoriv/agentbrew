@@ -380,6 +380,7 @@ describe("full native output proof", () => {
       })),
     });
     expect(statSync(nativeProofPath()).mode & 0o777).toBe(0o600);
+    expect(settings().enabledPlugins).toEqual({ "fixture-native@agentbrew-plugins": true });
   });
 
   it("preserves an explicitly disabled plugin during full certification", () => {
@@ -418,10 +419,14 @@ describe("full native output proof", () => {
     const source = pluginDir("fixture-native");
     appendFileSync(join(source, ".git", "info", "exclude"), "\n/hooks/certification-note.txt\n");
     writeFileSync(join(source, "hooks", "certification-note.txt"), "Synthetic local note.\n");
+    mkdirSync(dirname(SETTINGS()), { recursive: true });
+    const previousSettings = '{ "ownerSetting": ["keep"] }\n';
+    writeFileSync(SETTINGS(), previousSettings);
 
     const owner = join(home, ".agentbrew-native-publication.lock");
     try {
       expect(() => emitClaudeNative({ certifyFullOutput: true })).toThrow(/full native output inventory differs/u);
+      expect(readFileSync(SETTINGS(), "utf8")).toBe(previousSettings);
       expect(existsSync(nativeProofPath())).toBe(false);
       expect(existsSync(owner)).toBe(true);
     } finally {

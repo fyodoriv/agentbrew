@@ -51,9 +51,10 @@ function readSignerBody(path: string): string {
 function parseSigner(line: string): AllowedSigner | undefined {
   const text = line.trim();
   if (text.startsWith("#")) return undefined;
-  const match = /^(\S+)\s+(?:namespaces="[^"]*"\s+)?(\S+\s+\S+)/u.exec(text);
+  const match = /^(\S+)\s+(?:namespaces="[^"]*"\s+)?((?:ssh-|ecdsa-|sk-)\S+)\s+([A-Za-z0-9+/=]+)(?=\s|$)/u.exec(text);
   if (!match) return undefined;
-  return { principal: match[1] as string, key: match[2] as string };
+  const [, principal, type, value] = match;
+  return { principal: principal as string, key: `${type} ${value}` };
 }
 
 export function readSigners(): AllowedSigner[] {
@@ -81,8 +82,10 @@ export function signersFor(principal: string): string[] {
 }
 
 function signerMatches(line: string, principal: string, key: string): boolean {
-  const signer = parseSigner(line);
-  return signer?.principal === principal && signer.key === key;
+  const [owner, ...fields] = line.trim().split(/\s+/u);
+  if (owner !== principal || owner.startsWith("#")) return false;
+  if (fields[0]?.startsWith("namespaces=")) fields.shift();
+  return fields.length >= 2 && `${fields[0]} ${fields[1]}` === key;
 }
 
 /** Trust `key` for plugin `principal`. Idempotent. */

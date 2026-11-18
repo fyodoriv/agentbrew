@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -59,6 +59,14 @@ function setup(opts: { worktreeLock: string; mainModules?: boolean; env?: Record
   writeFileSync(
     npm,
     `#!/bin/sh
+if [ "$1" != ci ]; then
+  if [ "${"$"}{CHANGE_LOCK_DURING_CHECK:-}" = 1 ] && [ "$6" = --package-lock-only=true ]; then
+    npm "$@" || exit
+    printf '\n' >> "$2/package-lock.json"
+    exit
+  fi
+  exec npm "$@"
+fi
 echo "$@" >> "${log}"
 mkdir -p node_modules/dep node_modules/leaf
 printf '%s\\n' '${JSON.stringify(depFixture)}' > node_modules/dep/package.json
@@ -229,6 +237,30 @@ printf '%s\\n' '{"name":"leaf","version":"1.0.0"}' > "$5/leaf/package.json"
     expect(result.status).toBe(1);
     expect(existsSync(join(wt, "node_modules", ".worktree-deps-lock.json"))).toBe(false);
     expect(existsSync(join(main, "node_modules", ".worktree-deps-lock.json"))).toBe(true);
+  });
+
+  it("refuses a linked readiness stamp without changing its destination", () => {
+    const { wt, run } = setup({ worktreeLock: '{"lock":2}' });
+    const modules = join(wt, "node_modules");
+    const destination = join(wt, "unrelated.txt");
+    const stamp = join(modules, ".worktree-deps-lock.json");
+    mkdirSync(modules);
+    writeFileSync(destination, "preserve this file");
+    symlinkSync(destination, stamp);
+    const result = run();
+    expect(result.status).toBe(1);
+    expect(lstatSync(stamp).isSymbolicLink()).toBe(true);
+    expect(readFileSync(destination, "utf8")).toBe("preserve this file");
+  });
+
+  it("refuses to stamp a lockfile that changes during verification", () => {
+    const { wt, runIn } = setup({ worktreeLock: '{"lock":2}' });
+    const lock = join(wt, "package-lock.json");
+    const before = readFileSync(lock, "utf8");
+    const result = runIn(wt, { CHANGE_LOCK_DURING_CHECK: "1" });
+    expect(result.status).toBe(1);
+    expect(readFileSync(lock, "utf8")).toBe(before + "\n");
+    expect(existsSync(join(wt, "node_modules", ".worktree-deps-lock.json"))).toBe(false);
   });
 
   it("refuses a stale target even when its stamp still matches", () => {

@@ -942,3 +942,13 @@ line endings for the passing run.
 
 The fixture changes a callable check only. It leaves the actual signer
 registry and its descriptor in the normal owned state.
+
+The [composed baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44292026610)
+ignored all three descriptor checks. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44292333014)
+refused each at its registered boundary. Early selected refusal wrote
+nothing. Late selected refusal retained the partial output and its owner
+without writing a receipt or index. Full certification kept its owner
+without writing settings or a receipt. The candidate passed 60 focused
+controls, 117 compatibility tests, ordinary publication, and type
+checking.

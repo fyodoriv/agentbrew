@@ -550,9 +550,10 @@ function mergeAgentfileMemory(
   agentfile: { memory?: { enabled?: boolean }; memoryPacks?: string[] },
   state: AgentBrewState,
   baseDir: string,
+  registerMcp: boolean,
 ): boolean {
   let changed = false;
-  if (agentfile.memory?.enabled === true) {
+  if (registerMcp && agentfile.memory?.enabled === true) {
     const wasEnabled = state.memory?.enabled === true;
     state.memory = { ...state.memory, enabled: true };
     const registrationChanged = ensureMemoryMcpServer(state);
@@ -799,7 +800,9 @@ export function applyAgentfile(
   const state = options?.stateOverride ?? (dryRun ? cloneStateForDryRun(loaded.state) : loaded.state);
 
   const { mcp, hooksUpdated, defaultModelUpdated } = prepareSelectedAgentfileState(agentfile, state, options);
-  const sourcesAdded = mergeAgentfileSources(agentfile, state, authoritative, baseDir);
+  const sourcesAdded = preparesAgentfileContent(options, "skills")
+    ? mergeAgentfileSources(agentfile, state, authoritative, baseDir)
+    : [];
   const { skillDirsChanged, commandDirs, agentDirs, skillsToInstall } = prepareSelectedAgentfileDirectories(
     agentfile,
     state,
@@ -812,8 +815,8 @@ export function applyAgentfile(
   const ruleOwnersChanged =
     previousRuleOwners !== JSON.stringify([state.agentfileRuleOwners, state.agentfileRuleHashes]);
   const excludedAgents = mergeAgentfileExcludeAgents(agentfile, state);
-  const workStepsChanged = dropLegacyWorkSteps(state);
-  const memoryUpdated = mergeAgentfileMemory(agentfile, state, baseDir);
+  const workStepsChanged = !options?.scopeAgentfileContent && dropLegacyWorkSteps(state);
+  const memoryUpdated = mergeAgentfileMemory(agentfile, state, baseDir, preparesAgentfileContent(options, "mcp"));
   const agentfileSkillsChanged = pruneAgentfileSkills(agentfile, state, dryRun, quiet, options);
 
   const result: ApplyAgentfileResult = {

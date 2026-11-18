@@ -13,10 +13,32 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const network = vi.hoisted(() => ({ cache: "" }));
+const network = vi.hoisted(() => ({ cache: "", remoteLookups: 0, fixtureSha: "a".repeat(40) }));
+vi.mock("node:child_process", async (original) => {
+  const child = await original<typeof import("node:child_process")>();
+  return {
+    ...child,
+    execFileSync: (...args: unknown[]) => {
+      const [file, command] = args;
+      if (file === "git" && Array.isArray(command) && command[0] === "ls-remote") {
+        network.remoteLookups++;
+        throw new Error("Synthetic fixture denied a remote version lookup.");
+      }
+      return Reflect.apply(child.execFileSync, undefined, args);
+    },
+  };
+});
 vi.mock("../catalog/index-source.js", async (original) => ({
   ...(await original<typeof import("../catalog/index-source.js")>()),
   getSourceCachePath: vi.fn(() => network.cache),
+}));
+
+vi.mock("../skills/skill-versions.js", async (original) => ({
+  ...(await original<typeof import("../skills/skill-versions.js")>()),
+  getGitHeadSha: () => network.fixtureSha,
+  recordSourceSha: (source: Source) => {
+    source.commitSha = network.fixtureSha;
+  },
 }));
 
 import { applyAgentfile } from "../agentfile-apply.js";
@@ -24,9 +46,10 @@ import { installSkills } from "../catalog/install.js";
 import { installSkill } from "../catalog/install-skill.js";
 import * as catalog from "../catalog/types.js";
 import { checkUserCreatedSkills } from "../drift-checks/skills.js";
+import { readLock } from "../lock.js";
 import { loadManifest } from "../manifest.js";
 import { defaultState, loadState, saveState } from "../state.js";
-import { AGENT_DEFINITIONS } from "../types.js";
+import { AGENT_DEFINITIONS, type Source } from "../types.js";
 import { cleanBrokenSymlinksGlobally, extractFrontmatterFeatures, findSkillCopies, syncSkills } from "./skills-sync.js";
 
 const name = "skill-creator";
@@ -81,7 +104,7 @@ function seed(): void {
         skillsInstalled: [],
         availableItems: [],
         addedAt: "2026-01-01",
-        commitSha: "a".repeat(40),
+        commitSha: network.fixtureSha,
       },
     ],
   });
@@ -90,11 +113,15 @@ async function installPlanned(): Promise<void> {
   await installSkill(planned, { alreadyInstalled: [], failedSourceSkips: new Map() });
 }
 beforeEach(() => {
+  network.remoteLookups = 0;
   seed();
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  expect(network.remoteLookups).toBe(0);
+});
 
 describe("optional skill creator catalog selection", () => {
   it("pins the optional public provider and resolves its Agentfile name without a warning", () => {
@@ -129,6 +156,10 @@ describe("optional skill creator catalog selection", () => {
     }
     expect(readFileSync(join(native, "SKILL.md"), "utf-8")).toBe("NATIVE_CREATOR_FIXTURE\n");
     expect(loadState()!.sources?.find((entry) => entry.url === source)?.skillsInstalled).toEqual([name]);
+    expect(readLock().locked.find((entry) => entry.source === source)).toMatchObject({
+      sha: network.fixtureSha,
+      skills: [name],
+    });
     expect(extractFrontmatterFeatures({ name, description: "Synthetic portable fixture" })).toEqual([]);
   });
 

@@ -18,3 +18,8 @@ only repeated state validation inside one command.
   change in validation output rejects the approach. Keep the prior
   LaunchAgent failure open until independently explained.
 - **Anchor**: Issue #1089 and `src/core/state-manager.ts`.
+
+The baseline emitted six identical notices. The corrected manager
+emitted one and still read all six times without a write. A different
+notice and a cleared notice that returned both appeared once.
+All 120 state and memory compatibility tests passed.

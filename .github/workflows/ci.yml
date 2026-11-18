@@ -23,6 +23,13 @@ jobs:
         run: |
           export LOCKED_INSTALL_OBSERVATION=1
           export LOCKED_INSTALL_OBSERVATION_NPM_CLI="$RUNNER_TEMP/qualified-npm/node_modules/npm/bin/npm-cli.js"
+          npx vitest list src/worktree-deps.test.ts > "$RUNNER_TEMP/locked-install-selection.log" 2>&1
+          python3 - "$RUNNER_TEMP/locked-install-selection.log" <<'PYLIST'
+          import pathlib,sys
+          for line in pathlib.Path(sys.argv[1]).read_text().splitlines():
+              if "records physical content and the real helper decision" in line:
+                  print(line.rsplit(" > ",2)[-1])
+          PYLIST
           status=0
           npx vitest run src/worktree-deps.test.ts -t 'N[23] records physical content' --maxWorkers=1 --retry=0 --reporter=default --silent=false > "$RUNNER_TEMP/locked-install-observations.log" 2>&1 || status=$?
           python3 - "$RUNNER_TEMP/locked-install-observations.log" "$status" <<'PYCONTROL'

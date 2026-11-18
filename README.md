@@ -632,6 +632,7 @@ configuration.
 A background scheduler (LaunchAgent / systemd / cron) runs `agentbrew fix` every 30 minutes. If an agent update or manual edit breaks your config, it auto-repairs. The same tick does these MCP checks:
 
 - It probes stdio and URL MCP servers through initialization plus `tools/list`. Each distinct server spec starts once, however many agents list it.
+  The stdio probe replies to `roots/list` with an empty list and answers `ping`.
 - It uses catalog-defined read-only `smokeCall` metadata, except for entries marked `probe: fast`, to avoid side-effectful scheduler probes.
 - It attempts registered heal actions for common failures.
 - It does not try futile heals on catalog-documented known-broken failures, but keeps them visible in `~/.cache/agentbrew/mcp-health.json`.

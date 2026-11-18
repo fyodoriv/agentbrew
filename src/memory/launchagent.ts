@@ -10,7 +10,12 @@ import {
   resolveAgentBrewCliJsPath,
   resolveSchedulerNode,
 } from "../sync/scheduler-paths.js";
-import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_PINNED_SPEC, MEMORY_UVX_ARGS } from "./constants.js";
+import {
+  MEMORY_DAEMON_ENVIRONMENT,
+  MEMORY_MAINTENANCE_TRACE_ENV,
+  MEMORY_PINNED_SPEC,
+  MEMORY_UVX_ARGS,
+} from "./constants.js";
 import { resolveUvxBin } from "./invoke.js";
 import { defaultMemoryDbPath, memoryLaunchAgentLogDir } from "./paths.js";
 
@@ -136,7 +141,9 @@ ${programArgsXml}
     <key>PATH</key>
     <string>${pathValue}</string>
     <key>LANG</key>
-    <string>${LAUNCHAGENT_LANG}</string>${nodeOverrideXml}
+    <string>${LAUNCHAGENT_LANG}</string>
+    <key>${MEMORY_MAINTENANCE_TRACE_ENV}</key>
+    <string>1</string>${nodeOverrideXml}
   </dict>
   <key>StandardOutPath</key>
   <string>${logDir}/mcp-memory-maintain.out.log</string>

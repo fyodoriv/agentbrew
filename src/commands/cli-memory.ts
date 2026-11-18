@@ -1,8 +1,9 @@
-import { writeFileSync } from "node:fs";
+import { writeFileSync, writeSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Command } from "commander";
 import { newestBackupInDir, rotateMemoryBackup, verifySqliteBackup, writeMemoryBackup } from "../memory/backup.js";
+import { MEMORY_MAINTENANCE_TRACE_ENV } from "../memory/constants.js";
 import { disableMemory, enableMemory, getMemoryPackSearchPaths, isMemoryEnabled } from "../memory/enable.js";
 import { buildMemoryStatusJson, runMemoryDoctor, runMemoryReadinessDoctor } from "../memory/health.js";
 import { invokeMemory, invokeMemoryMaintenance } from "../memory/invoke.js";
@@ -143,6 +144,37 @@ function maintenanceLaunchAgentFailure(launchAgent: { maintainLoaded?: boolean; 
   return launchAgent.maintainLoaded === false && !launchAgent.maintainDisabled
     ? "memory maintenance LaunchAgent unavailable"
     : "";
+}
+
+type MaintenanceStage = "upstream" | "upstream-failed" | "backup" | "backup-failed" | "success-marker" | "complete";
+
+function logMaintenanceStage(stage: MaintenanceStage): void {
+  if (process.env[MEMORY_MAINTENANCE_TRACE_ENV] !== "1") return;
+  try {
+    // Write before synchronous work so a process kill cannot lose a buffered marker.
+    writeSync(2, `agentbrew memory maintain pid=${process.pid} stage=${stage}\n`);
+  } catch {
+    // A diagnostic output error must not interrupt the backup.
+  }
+}
+
+function performMemoryMaintenance() {
+  logMaintenanceStage("upstream");
+  const result = invokeMemoryMaintenance();
+  logMaintenanceStage(result.ok ? "backup" : "upstream-failed");
+  // Upstream maintain checks the schema only. This command writes the daily backup.
+  const backup = result.ok ? rotateMemoryBackup(resolveMemoryDbPath(), resolveMemoryBackupsDir()) : null;
+  if (backup && !backup.ok) {
+    logMaintenanceStage("backup-failed");
+    result.ok = false;
+    result.stderr = `${result.stderr}\nmemory backup failed: ${backup.error}`.trim();
+  }
+  if (result.ok) {
+    logMaintenanceStage("success-marker");
+    recordMemoryMaintenanceSuccess();
+    logMaintenanceStage("complete");
+  }
+  return { result, backup };
 }
 
 function recordMemoryMaintenanceSuccess(): void {
@@ -401,16 +433,7 @@ export function registerMemoryCommands(program: Command): void {
     .option("--deep", "Run deep maintenance when supported")
     .option("--json", "Output as JSON")
     .action((options: { deep?: boolean; json?: boolean }) => {
-      const result = invokeMemoryMaintenance();
-      // Upstream maintain checks the schema only; the daily backup the doctor expects is written here.
-      const backup = result.ok ? rotateMemoryBackup(resolveMemoryDbPath(), resolveMemoryBackupsDir()) : null;
-      if (backup && !backup.ok) {
-        result.ok = false;
-        result.stderr = `${result.stderr}\nmemory backup failed: ${backup.error}`.trim();
-      }
-      if (result.ok) {
-        recordMemoryMaintenanceSuccess();
-      }
+      const { result, backup } = performMemoryMaintenance();
       if (options.json) {
         printJson({
           ok: result.ok,
@@ -419,12 +442,14 @@ export function registerMemoryCommands(program: Command): void {
           stdout: result.stdout,
           stderr: result.stderr,
         });
-      } else if (!result.ok) {
+        return;
+      }
+      if (!result.ok) {
         console.error(result.stderr || "maintain failed");
         process.exitCode = 1;
-      } else {
-        console.log(result.stdout.trim() || "maintain complete");
+        return;
       }
+      console.log(result.stdout.trim() || "maintain complete");
     });
 
   memory

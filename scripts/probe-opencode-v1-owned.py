@@ -19,8 +19,9 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-v1-") as tmp:
     home, workspace = root / "home", root / "workspace"
     workspace.mkdir()
     config = home / ".config/opencode"
+    shutil.copytree(Path(sys.argv[2]), config)
     plugins = config / "plugin"
-    plugins.mkdir(parents=True)
+    plugins.mkdir()
     shutil.copyfile("templates/opencode/claude-hooks.js", plugins / "claude-hooks.js")
     marker, hook, settings = (root / name for name in ("events", "hook.cjs", "hooks.json"))
     hook.write_text("""
@@ -83,6 +84,8 @@ fs.appendFileSync(process.env.FIXTURE_MARKER, JSON.stringify([input.hook_event_n
                     ended = wait_until(lambda: events() == [["SessionStart", session], ["SessionEnd", session]], 4)
         except HTTPError as error:
             print(f"v1-session-http={error.code}")
+        except TimeoutError:
+            print("v1-session-http=deadline")
         finally:
             if server.poll() is None:
                 os.killpg(server.pid, signal.SIGTERM)

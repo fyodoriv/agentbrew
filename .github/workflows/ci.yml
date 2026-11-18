@@ -38,8 +38,10 @@ jobs:
         with:
           node-version-file: .node-version
       - run: npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/opencode-v1" opencode-ai@1.19.5
+      - name: Prepare the pinned V1 configuration dependency
+        run: npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/opencode-v1-config" @opencode-ai/plugin@1.19.5
       - name: Check the unchanged global V1 plugin with no external network
         run: |
           sudo ip netns add agentbrew-v1
           sudo ip -n agentbrew-v1 link set lo up
-          sudo ip netns exec agentbrew-v1 runuser -u "$USER" -- env "PATH=$PATH" python3 scripts/probe-opencode-v1-owned.py "$RUNNER_TEMP/opencode-v1/node_modules/.bin/opencode"
+          sudo ip netns exec agentbrew-v1 runuser -u "$USER" -- env "PATH=$PATH" python3 scripts/probe-opencode-v1-owned.py "$RUNNER_TEMP/opencode-v1/node_modules/.bin/opencode" "$RUNNER_TEMP/opencode-v1-config"

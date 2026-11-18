@@ -2,6 +2,7 @@ import {
   closeSync,
   constants,
   fchmodSync,
+  fchownSync,
   fstatSync,
   fsyncSync,
   lstatSync,
@@ -26,6 +27,7 @@ function sameEntry(first: Stats | undefined, second: Stats | undefined): boolean
     first.dev === second.dev &&
     first.ino === second.ino &&
     first.uid === second.uid &&
+    first.gid === second.gid &&
     first.mode === second.mode &&
     first.nlink === second.nlink
   );
@@ -50,11 +52,17 @@ function registrySnapshot(path: string): RegistrySnapshot {
   }
 }
 
-function writeStagedRegistry(path: string, body: string, mode: number): void {
+function writeStagedRegistry(path: string, body: string, identity?: Stats): void {
   const fd = openSync(path, "wx", 0o600);
   try {
     writeFileSync(fd, body);
-    fchmodSync(fd, mode);
+    if (identity) {
+      const staged = fstatSync(fd);
+      if (staged.uid !== identity.uid || staged.gid !== identity.gid) {
+        fchownSync(fd, identity.uid, identity.gid);
+      }
+      fchmodSync(fd, identity.mode & 0o777);
+    }
     fsyncSync(fd);
   } finally {
     closeSync(fd);
@@ -78,8 +86,7 @@ export function editLockedSignerRegistry(
   const tempDir = mkdtempSync(join(dirname(registry), ".agentbrew-signers-"));
   try {
     const staged = join(tempDir, "signers");
-    const mode = original.identity ? original.identity.mode & 0o777 : 0o600;
-    writeStagedRegistry(staged, next, mode);
+    writeStagedRegistry(staged, next, original.identity);
     const current = registrySnapshot(registry);
     if (!sameEntry(original.identity, current.identity) || !original.data.equals(current.data)) {
       throw changedRegistry();

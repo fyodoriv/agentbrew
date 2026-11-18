@@ -64,8 +64,9 @@ it("keeps a restricted signer row out of unrestricted trust and lets revoke remo
 const alternateGroup = process.getgroups?.().find((group) => group !== process.getgid?.());
 it.skipIf(!SUPPORTED || alternateGroup === undefined)("preserves the existing registry group", () => {
   if (alternateGroup === undefined) throw new Error("Synthetic secondary group is unavailable");
-  const owner = statSync(registry).uid;
-  chownSync(registry, owner, alternateGroup);
+  const before = statSync(registry);
+  expect(before.gid).not.toBe(alternateGroup);
+  chownSync(registry, before.uid, alternateGroup);
   chmodSync(registry, 0o640);
 
   trustSigner("fixture", NEXT_KEY);

@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   appendFileSync,
+  chmodSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -44,7 +45,7 @@ vi.mock("./signer-commit-fence.js", async (original) => {
 });
 
 import { readLock } from "../lock.js";
-import { fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
+import { fixtureGit, fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { emitClaudeNative, MARKETPLACE_NAME, marketplaceDir, policyFragment } from "./claude-native.js";
 import { launcherPath } from "./mcp-launcher.js";
 import { withNativePublicationLock } from "./native-publication-lock.js";
@@ -73,7 +74,7 @@ function install(): void {
   addPlugin(`${f.dir}@v1`, { yes: true, signer: KEY.pub });
 }
 
-function installFacetFixture(duplicateServer = false): void {
+function installFacetFixture(options: { duplicateServer?: boolean; executableHook?: boolean } = {}): void {
   const f = pluginFixture({
     schema: 1,
     name: "fixture-native",
@@ -90,11 +91,17 @@ function installFacetFixture(duplicateServer = false): void {
   f.release("v1.0.0", {
     "hooks/hooks.json": HOOKS,
     "hooks/guard.sh": "#!/bin/sh\nexit 0\n",
-    "mcp/servers.yaml": duplicateServer ? server.repeat(2) : server,
+    "mcp/servers.yaml": options.duplicateServer ? server.repeat(2) : server,
     "mcp/server.mjs": "process.exitCode = 0;\n",
     "rules/fixture.md": "Synthetic rule.\n",
   });
-  addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub });
+  const ref = options.executableHook ? "executable-fixture" : "v1.0.0";
+  if (options.executableHook) {
+    fixtureGit(f.dir, "config", "core.filemode", "true");
+    chmodSync(join(f.dir, "hooks", "guard.sh"), 0o755);
+    f.release(ref, { "hooks/guard.sh": "#!/bin/sh\nexit 0\n" });
+  }
+  addPlugin(`${f.dir}@${ref}`, { yes: true, signer: KEY.pub });
 }
 
 function installCustomHooks(auxiliaryPath: string): void {
@@ -395,7 +402,7 @@ describe("scoped native facet publication", () => {
   });
 
   it("refuses duplicate launcher claims even when the existing file matches", () => {
-    installFacetFixture(true);
+    installFacetFixture({ duplicateServer: true });
     emitClaudeNative();
     const before = observeNativeFiles(Object.values(nativeFacetPaths()));
 
@@ -635,6 +642,26 @@ describe("partial native receipt repair", () => {
     expect(statSync(missing).mode).toBe(mode);
     expect(observeNativeFiles(frozen)).toEqual(previous);
     expect(existsSync(paths.settings)).toBe(false);
+  });
+});
+
+describe("signed native executable mode", () => {
+  it("keeps a signed executable hook mode through partial receipt repair", () => {
+    installFacetFixture({ executableHook: true });
+    const entry = readLock().plugins?.[0];
+    if (!entry) throw new Error("Synthetic source pin is missing");
+    expect(fixtureGit(pluginDir("fixture-native"), "ls-tree", entry.commit, "hooks/guard.sh")).toMatch(/^100755 /u);
+    const { script } = nativeFacetPaths();
+    const receipt = nativeProofPath();
+
+    emitClaudeNative({ modules: ["hooks"] });
+    const proof = observeNativeFiles([receipt]);
+    expect(statSync(script).mode & 0o777).toBe(0o755);
+    rmSync(script);
+    emitClaudeNative({ modules: ["hooks"] });
+
+    expect(statSync(script).mode & 0o777).toBe(0o755);
+    expect(observeNativeFiles([receipt])).toEqual(proof);
   });
 });
 

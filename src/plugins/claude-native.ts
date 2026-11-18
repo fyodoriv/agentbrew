@@ -17,6 +17,7 @@ import { sync as writeFileSync } from "write-file-atomic";
 import { type NativeFacet, nativePluginEntry, publishSelectedNativePlugins } from "./claude-native-selected.js";
 import { type ActivePlugin, activePlugins } from "./contributions.js";
 import { launcherPath, readPluginMcpServers, renderLauncher } from "./mcp-launcher.js";
+import { withNativePublicationLock } from "./native-publication-lock.js";
 
 export const MARKETPLACE_NAME = "agentbrew-plugins";
 
@@ -106,9 +107,13 @@ function updateSettings(names: string[]): void {
 
 /** Regenerate the local marketplace and settings from the active plugins. */
 export function emitClaudeNative(options?: { modules?: readonly NativeFacet[] }): void {
+  withNativePublicationLock(() => publishNative(options?.modules));
+}
+
+function publishNative(modules: readonly NativeFacet[] | undefined): void {
   const plugins = activePlugins();
-  if (options?.modules) {
-    publishSelectedNativePlugins(plugins, options.modules, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK);
+  if (modules) {
+    publishSelectedNativePlugins(plugins, modules, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK);
     return;
   }
   const entries = plugins.map(emitPlugin);

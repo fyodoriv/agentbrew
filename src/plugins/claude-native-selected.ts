@@ -132,7 +132,7 @@ function planHooks(
   }
 }
 
-function planMcp(writes: PlannedWrite[], plugin: ActivePlugin, root: string): void {
+function planMcp(writes: PlannedWrite[], claims: Set<string>, plugin: ActivePlugin, root: string): void {
   const rel = plugin.manifest.contributes?.mcp_servers;
   if (typeof rel !== "string") return;
   const [declaration, ...others] = readPinnedPluginFiles(plugin.entry, rel);
@@ -142,6 +142,9 @@ function planMcp(writes: PlannedWrite[], plugin: ActivePlugin, root: string): vo
   if (servers.length === 0) return;
   const entries = servers.map((server) => {
     const command = launcherPath(plugin.entry.name, server.name);
+    const claim = command.toLowerCase();
+    if (claims.has(claim)) refuse("native output paths overlap");
+    claims.add(claim);
     planMissingFile(writes, command, Buffer.from(launcherContent(server)), 0o755);
     return [server.name, { command, args: [] }] as const;
   });
@@ -170,11 +173,17 @@ function withPinnedManifest(plugin: ActivePlugin): ActivePlugin {
 
 function planPlugin(
   writes: PlannedWrite[],
+  launcherClaims: Set<string>,
   active: ActivePlugin,
   registry: Marketplace,
   options: { marketplace: string; selected: ReadonlySet<NativeFacet>; rulesHook: unknown },
 ): boolean {
   const plugin = withPinnedManifest(active);
+  const declarations = plugin.manifest.contributes;
+  const facets = { hooks: declarations?.hooks, mcp: declarations?.mcp_servers, rules: declarations?.rules };
+  const selected = new Set([...options.selected].filter((facet) => typeof facets[facet] === "string"));
+  if (selected.size === 0) return false;
+
   const entry = nativePluginEntry(plugin);
   const root = join(options.marketplace, entry.source);
   const { source: _source, ...envelope } = entry;
@@ -187,16 +196,18 @@ function planPlugin(
     }
   } else if (body || existingOwnedPath(root, "directory")) {
     refuse("the native directory has no verified marketplace entry");
-  } else {
-    writes.push({ path: envelopePath, body: jsonBytes(envelope) });
-    registry.plugins.push(entry);
   }
 
-  if (options.selected.has("hooks") || options.selected.has("rules")) {
-    planHooks(writes, plugin, root, options.selected, options.rulesHook);
+  const priorWrites = writes.length;
+  if (selected.has("hooks") || selected.has("rules")) {
+    planHooks(writes, plugin, root, selected, options.rulesHook);
   }
-  if (options.selected.has("mcp")) planMcp(writes, plugin, root);
-  return !existing;
+  if (selected.has("mcp")) planMcp(writes, launcherClaims, plugin, root);
+  if (existing || priorWrites === writes.length) return false;
+
+  writes.push({ path: envelopePath, body: jsonBytes(envelope) });
+  registry.plugins.push(entry);
+  return true;
 }
 
 /** Publish only proven payloads. Activation is outside this writer. */
@@ -219,9 +230,10 @@ export function publishSelectedNativePlugins(
 
   const selected = new Set(modules);
   const writes: PlannedWrite[] = [];
+  const launcherClaims = new Set<string>();
   let changedEntries = false;
   for (const plugin of plugins) {
-    if (planPlugin(writes, plugin, registry, { marketplace, selected, rulesHook })) changedEntries = true;
+    if (planPlugin(writes, launcherClaims, plugin, registry, { marketplace, selected, rulesHook })) changedEntries = true;
   }
   if (changedEntries) writes.push({ path, body: jsonBytes(registry) });
   if (new Set(writes.map((write) => write.path)).size !== writes.length) refuse("native output paths overlap");

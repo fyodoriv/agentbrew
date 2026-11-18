@@ -88,3 +88,17 @@ Set `end` to the recorded UTC start plus seven days in milliseconds.
 Run the review once that end has passed. Report the observed syntax, timed
 correlations, and unknowns before applying the original outcome thresholds.
 A missing observation gives an unknown result.
+
+## First window review
+
+The registered seven-day replay completed using the installed
+reporter. Independent review matched the aggregate. Every observed
+sleep-loop syntax row had a paired tool duration and outcome. The
+earlier `until <arg>` report label was absent.
+
+A background tool call measures its launch. Some recorded calls
+had unknown execution mode. The recorder's boolean outcomes leave
+the cause of a timeout unknown. The available rows leave actual
+polling behavior, worker duration, and the earlier comparison
+unresolved. Success and Pivot remain open under their original
+thresholds. The private report retains the measured totals.

@@ -91,4 +91,12 @@ describe("hosted workflows", () => {
     expect(text).toMatch(/persist-credentials: false/);
     expect(text).toMatch(/cancel-in-progress:/);
   });
+
+  it("scopes both gate cache operations to the runner image version", () => {
+    const text = workflows.find((workflow) => workflow.name === "ci.yml")?.text ?? "";
+    expect(text).toContain('"$ImageOS" "$ImageVersion" "$RUNNER_ARCH" >> "$GITHUB_OUTPUT"');
+    expect(text).toContain("if: steps.gate-image.outputs.scope != ''");
+    expect(text).toContain("key: ${{ steps.gate-image.outputs.scope }}-");
+    expect(text).toContain("restore-keys: |\n            ${{ steps.gate-image.outputs.scope }}-");
+  });
 });

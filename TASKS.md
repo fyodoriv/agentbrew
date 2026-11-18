@@ -365,19 +365,6 @@
   - **Pivot**: If all existing staging writers cannot share a safe coordination boundary, refuse the refresh and retain the prior copy; do not silently prune.
   - **Anchor**: `src/update.ts`, `src/catalog/install-skill.ts`, and the 2026-11-13 managed-skill observation.
 
-- [ ] The telemetry file sink refuses a target whose parent folder is a symlink
-  - **ID**: telemetry-file-sink-symlinked-parent
-  - **Tags**: telemetry, security
-  - **Details**: The org log sink (`kind: file`) checks that the target file is not a symlink and that the path is inside the home folder. `parsePath` in `src/core/telemetry-sink.ts` uses `resolve`, not the real path, so a parent folder that is a symlink to a place outside home passes the check. The policy file comes from a trusted overlay, so the risk is low. Resolve the real path of the nearest existing parent and apply the inside-home check to it.
-  - **Files**: `src/core/telemetry-sink.ts`, `src/core/telemetry-sink.test.ts`, `docs/observability.md`
-  - **Output**: code
-  - **Acceptance**: a policy whose `path` has a symlinked parent that leaves the home folder is invalid, and nothing is written.
-  - **Hypothesis**: file-sink path shapes that can write outside the home folder go from 1 known shape to 0.
-  - **Measurement**: `npx vitest run src/core/telemetry-sink.test.ts -t "symlinked parent"`
-  - **Success**: the new case passes, and it is red on the unchanged reader.
-  - **Pivot**: if the real-path check breaks a home folder that is itself a symlink, compare against the real path of home and keep the check; drop it only if both fail.
-  - **Anchor**: MITRE CWE-59 (improper link resolution before file access).
-
 - [ ] The task lint rejects a task with no Success line or no ID
   - **ID**: task-lint-success-and-id-gaps
   - **Tags**: tasks, lint, measurement
@@ -404,19 +391,6 @@
   - **Pivot**: if the merged check cannot see squash merges, match on the pull request state through `gh` and keep any worktree it cannot match.
   - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric).
 
-
-- [ ] The updates-landed hook fixture passes when heavy-run pauses its slot
-  - **ID**: updates-landed-fixture-wall-clock-limit
-  - **Tags**: tests, flaky, hooks
-  - **Details**: Test 5 of the `updates-landed.sh` hook fixture ("hung script -> silent within 5s") checks a wall-clock limit. On 2026-11-10 it took 11 s and failed inside `heavy-run npm run verify`, on a branch that does not touch `hooks/`: heavy-run had paused the slot under memory pressure, and the pause counts as test time. A plain rerun passed. Judge the hook by what it does (it stops waiting for the hung script and prints nothing), not by the wall clock of the whole test, or measure only the hook's own timeout.
-  - **Files**: `hooks/checks/updates-landed.test.sh`, `hooks/checks/updates-landed.sh`
-  - **Output**: code
-  - **Acceptance**: the fixture passes when the test process is stopped for 10 s in the middle of Test 5 (`kill -STOP`, then `kill -CONT`), and still fails when the hook waits for the hung script without a limit.
-  - **Hypothesis**: a check that does not count paused time moves the failures of Test 5 under a 10 s pause from 1 of 1 to 0 of 10.
-  - **Measurement**: a test that runs the fixture 10 times with a 10 s `kill -STOP` pause in Test 5, plus one run with the hook's timeout removed.
-  - **Success**: 0 failures in 10 paused runs, and the run without the timeout fails.
-  - **Pivot**: if 1 or more of the 10 paused runs fails, drop the time check and assert only on the hook's output and exit code.
-  - **Anchor**: Luo et al. 2014 (An Empirical Analysis of Flaky Tests: async wait and time are top causes); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
 
 - [ ] The perf gate's catch rate for small slowdowns under load is measured
   - **ID**: perf-gate-marginal-slowdown-detection-under-load
@@ -459,20 +433,6 @@
   - **Success**: every job prints `success`.
   - **Pivot**: if no Playwright release supports the image 60 days before GitHub retires `ubuntu-24.04`, run the browser tests in the Playwright container image instead.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (change failure rate).
-
-- [ ] Key the hosted step cache on the runner image and on more of each step's inputs
-  - **ID**: ci-step-cache-key-image-and-inputs
-  - **Tags**: ci, cache, perf
-  - **Mode**: AFK
-  - **Details**: The hosted job keeps the `scripts/verify.sh` step record with `actions/cache` under the key `gate-<matrix.os>-<run>`. Two gaps, found by the review of the pull request that turned hosted CI on. (1) The key has no runner image version. When `macos-latest` moves to a new image, a step record made with the older `jq` or `bash` is reused. Add the image name (`ImageOS`) and `RUNNER_ARCH` to the key through a step output. (2) On a pull request only the hook-fixture step is served from the record: the lint steps key on `origin/main` and every repo file, and the test step never caches. Give the lint steps listed inputs so a docs-only change skips them, and measure the saved time.
-  - **Files**: `.github/workflows/ci.yml`, `scripts/verify.sh`, `docs/ci.md`
-  - **Output**: code
-  - **Acceptance**: the cache key holds the image name, and a second hosted run of a docs-only change serves the lint steps from the record.
-  - **Hypothesis**: listed inputs for the lint steps move the cached share of a docs-only hosted run from 1 step to every lint step, with no stale pass after an image change.
-  - **Measurement**: the last gate line of the hosted job log (`verify: passed; N of M steps from cache`) on two runs of one docs-only branch.
-  - **Success**: N on the second run covers every lint step.
-  - **Pivot**: if a lint step cannot list its inputs without missing a real failure in a seeded test, leave it uncached and close the task with only the image key.
-  - **Anchor**: Mokhov, Mitchell and Peyton Jones (2018), Build Systems à la Carte.
 
 - [ ] Make the perf gate timing tests steady on hosted runners
   - **ID**: perf-gate-tests-hosted-noise

@@ -599,3 +599,22 @@ refused both before the first write and kept the existing file
 bytes. It passed 35 focused controls, 91 compatibility tests, the
 ordinary publication control, and type checking. The new check
 compares every planned destination before native output begins.
+
+## Certify the selected artifacts from an empty marketplace
+
+- **Hypothesis**: Each selected publish can record exactly the
+  new signed artifacts it produced in a private receipt.
+- **Measurement**: Start with an empty native directory for hooks,
+  MCP, rules, and hooks plus rules. Compare the receipt fields to
+  the pinned identity, expected output paths, digests, and modes.
+- **Success**: All four cases record exactly their selected coverage
+  and written files. The receipt is readable only by its owner.
+  Settings and unselected payloads retain the cold fixture behavior.
+- **Pivot**: Any unexpected artifact, incorrect proof, mixed source,
+  or setting change blocks this step.
+- **Anchor**: The signed selected writer, the full receipt verifier,
+  and the existing cold scoped fixture.
+
+The cold receipt records its coverage separately from the earlier
+full receipt. Later publication still needs a qualified transition
+from partial coverage to a second selected facet.

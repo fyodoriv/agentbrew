@@ -573,3 +573,21 @@ checks, 89 compatibility tests, and type checking. Only explicit
 prototype calls enter the experimental path. The lifecycle and
 signer-writer experiments are retained separately. No product
 caller adopts the new receipt or lock in this phase.
+
+## Recheck planned file destinations under the signer lock
+
+- **Hypothesis**: A selected publication leaves the output untouched
+  if a file appears after planning or a planned registry target
+  changes before the lock is held.
+- **Measurement**: Insert a synthetic earlier owner file at the
+  exact admission boundary. Repeat for the selected hook script
+  and the marketplace index. Compare every known output path.
+- **Success**: Both injected changes cause refusal before any write
+  by the publisher. The unchanged signed cold and warm controls pass.
+- **Pivot**: Any overwritten fixture file, new plugin envelope, or
+  settings change rejects the prototype.
+- **Anchor**: Read-only selected plan, lock admission, and signed
+  native scratch controls.
+
+The comparison covers the last pre-write observation. The process
+owner coordinates other native prototype invocations.

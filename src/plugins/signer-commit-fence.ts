@@ -39,7 +39,10 @@ function assertFenceIdentity(path: string, fd: number, uid: number): void {
 }
 
 /** One synchronous operation holds the shared registry descriptor until it finishes. */
-export function withSignerCommitFence<T>(requested: string, action: (path: string, mode: number) => T): T {
+export function withSignerCommitFence<T>(
+  requested: string,
+  action: (path: string, mode: number, assertLock: () => void) => T,
+): T {
   const parent = realpathSync.native(dirname(requested));
   const directory = lstatSync(parent);
   if (!directory.isDirectory() || directory.uid !== process.getuid?.() || (directory.mode & 0o022) !== 0) {
@@ -60,7 +63,8 @@ export function withSignerCommitFence<T>(requested: string, action: (path: strin
     ) {
       throw new Error("The shared plugin signer registry ownership or file type is unknown.");
     }
-    return action(registry, original ? original.mode & 0o777 : 0o600);
+    const assertLock = () => assertFenceIdentity(path, fd, directory.uid);
+    return action(registry, original ? original.mode & 0o777 : 0o600, assertLock);
   } finally {
     closeSync(fd);
   }

@@ -17,6 +17,7 @@ import { dirname, join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
 import { cacheGitEnv } from "../mcp/git-ref.js";
 import { withSignerCommitFence } from "./signer-commit-fence.js";
+import { editLockedSignerRegistry } from "./signer-registry.js";
 
 export interface AllowedSigner {
   principal: string;
@@ -64,15 +65,14 @@ export function readSigners(): AllowedSigner[] {
 }
 
 function editSigners(path: string, edit: (body: string) => string | undefined): void {
-  const publish = (registry: string, mode: number) => {
-    const body = edit(readSignerBody(registry));
-    if (body !== undefined) writeFileSync(registry, body, { mode });
-  };
   if (process.platform === "darwin" || process.platform === "linux") {
-    withSignerCommitFence(path, publish);
-  } else {
-    publish(path, 0o644);
+    withSignerCommitFence(path, (registry, _mode, assertLock) => {
+      editLockedSignerRegistry(registry, assertLock, edit);
+    });
+    return;
   }
+  const body = edit(readSignerBody(path));
+  if (body !== undefined) writeFileSync(path, body, { mode: 0o644 });
 }
 
 export function signersFor(principal: string): string[] {

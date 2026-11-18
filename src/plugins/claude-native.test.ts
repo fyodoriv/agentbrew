@@ -538,7 +538,7 @@ describe("cold native launcher ownership", () => {
     rmSync(marketplaceDir(), { recursive: true, force: true });
     const previous = observeNativeFiles([paths.launcher]);
 
-    expect(() => emitClaudeNative({ modules: ["mcp"] })).toThrow(/native receipt.*selected extension/u);
+    expect(() => emitClaudeNative({ modules: ["mcp"] })).toThrow(/native receipt.*selected output plan/u);
     expect(observeNativeFiles([paths.launcher])).toEqual(previous);
     expect(existsSync(marketplaceDir())).toBe(false);
     expect(existsSync(paths.settings)).toBe(false);

@@ -362,8 +362,11 @@ function planPlugin(
   }
 
   writes.push({ path: envelopePath, body: jsonBytes(envelope) });
+  const facets = [...selected].sort();
+  const files = expectedPartialOutput(plugin, root, facets, options.rulesHook);
+  assertPartialExtension([], files, writes.slice(priorWrites));
   registry.plugins.push(entry);
-  return { entry: plugin.entry, root, facets: [...selected].sort(), files: writes.slice(priorWrites) };
+  return { entry: plugin.entry, root, facets, files };
 }
 
 function assertCurrentNativeSources(planned: readonly PluginLockEntry[], complete = false): void {
@@ -548,7 +551,7 @@ function assertPartialExtension(
       return !write?.body.equals(body) || write.mode !== mode;
     })
   ) {
-    refuse("native receipt does not match the selected extension");
+    refuse("native receipt does not match the selected output plan");
   }
 }
 

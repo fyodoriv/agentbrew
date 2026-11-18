@@ -545,3 +545,21 @@ compatibility tests, and type checking. A warm repair kept the
 receipt and restored the recorded bytes and mode. A missing
 receipt, a changed source digest, and an edited unselected file
 each stopped the repair before any writes.
+
+## Keep the prototype off ordinary publication paths
+
+- **Hypothesis**: Ordinary full sync continues to emit without the
+  experimental process owner. Only explicit prototype calls enter
+  that owner. Warm receipts cannot omit signed unselected files.
+- **Measurement**: Run the full no-plugin emitter with an unavailable
+  prototype owner on Linux and Windows. On Linux exercise the
+  signed full and warm controls. Remove an unselected launcher and
+  its receipt row before attempting a selected hook repair.
+- **Success**: Ordinary publication avoids the prototype owner in
+  both operating system controls. The incomplete receipt causes
+  refusal with zero mutations. All supported prototype controls
+  and existing lifecycle compatibility tests pass.
+- **Pivot**: Any changed ordinary invocation or partial receipt
+  admission keeps the prototype out of delivery.
+- **Anchor**: The no-options native emitter, its real lifecycle
+  callers and independent review of complete receipt ownership.

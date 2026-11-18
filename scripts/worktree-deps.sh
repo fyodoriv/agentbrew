@@ -15,7 +15,7 @@
 # Usage: run from the checkout or worktree root.
 #   bash scripts/worktree-deps.sh [main-checkout]
 # The main checkout defaults to the first entry of `git worktree list`.
-# WORKTREE_DEPS_NPM overrides the npm binary (tests use a stub).
+# WORKTREE_DEPS_NPM overrides the npm binary for installs and comparison queries.
 # WORKTREE_DEPS_PYTHON overrides python3, which makes the clonefile(2) call.
 #
 # <!-- scope: human-approved task worktree-deps-apfs-clone; this file closes it -->
@@ -32,15 +32,14 @@ if [[ -z "$main" ]]; then
 fi
 
 verified_versions() {
-  node "$script_dir/check-locked-dependencies.mjs" "$1"
+  node "$script_dir/check-locked-dependencies.mjs" "$1" "$npm_bin" "${@:2}"
 }
 
 publish_verified_stamp() {
-  if ! verified_versions "$target"; then
-    echo "worktree-deps: installed versions do not match the lock; run npm ci" >&2
+  if ! verified_versions "$target" --publish-worktree-stamp; then
+    echo "worktree-deps: could not qualify this install; check the reason above and run npm ci" >&2
     exit 1
   fi
-  cp "$target/package-lock.json" "$stamp"
 }
 
 npm_ci() {
@@ -58,6 +57,10 @@ sys.exit(1 if libc.clonefile(sys.argv[1].encode(), sys.argv[2].encode(), 0) else
 
 if [[ ! -f "$target/package-lock.json" ]]; then
   echo "worktree-deps: no package-lock.json in $target" >&2
+  exit 1
+fi
+if [[ -L "$stamp" || ( -e "$stamp" && ! -f "$stamp" ) ]]; then
+  echo "worktree-deps: the readiness stamp is not a regular file" >&2
   exit 1
 fi
 if [[ -d "$target/node_modules" ]] && cmp -s "$target/package-lock.json" "$stamp"; then

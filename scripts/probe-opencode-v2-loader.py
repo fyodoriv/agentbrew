@@ -51,10 +51,15 @@ export default {
       event.prompt.text = part.text;
     });
     await ctx.tool.hook("execute.after", async (event) => {
-      if (event.tool !== "agentbrew_fixture" || event.status !== "completed" || typeof event.result.content !== "string") return;
-      const result = { output: event.result.content };
+      if (event.tool !== "agentbrew_fixture" || event.status !== "completed") return;
+      const content = event.result.content;
+      if (!Array.isArray(content) || content.length !== 1 || content[0].type !== "text") return;
+      const original = content[0].text;
+      const result = { output: original };
       await bridge["tool.execute.after"]({ sessionID: event.sessionID, tool: event.tool, args: event.input }, result);
-      event.result = { ...event.result, content: result.output };
+      if (result.output !== original) {
+        event.result = { ...event.result, content: [...content, { type: "text", text: result.output.slice(original.length) }] };
+      }
     });
     appendFileSync(process.env.AGENTBREW_OC_LOADER_MARKER, "setup\\n");
   },

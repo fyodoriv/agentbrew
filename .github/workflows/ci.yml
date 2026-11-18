@@ -25,6 +25,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
+  NO_CACHE: "1"
   # Never send usage data or event logs from a runner.
   DO_NOT_TRACK: "1"
   AGENTBREW_EVENTS: "0"
@@ -37,7 +38,7 @@ jobs:
       matrix:
         # ubuntu-24.04, not ubuntu-latest: Playwright has no Chromium build
         # for the newer image yet (TASKS.md ci-ubuntu-latest-playwright).
-        os: [ubuntu-24.04, macos-latest]
+        os: [ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:

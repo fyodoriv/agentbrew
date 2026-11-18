@@ -173,6 +173,17 @@ globalThis.fetch = async (url) => {
   if (process.env.FAKE_CHAT_DELAY) await new Promise((resolve) => setTimeout(resolve, 25));
   if (kind === "metadata") return { ok: true, json: async () => ({ models: [{ name: "qwen3:4b", digest: "a".repeat(64) }] }) };
   generation += 1;
+  if (generation === 1 && process.env.FAKE_CHAT_CLAIM_SIGNAL) {
+    writeFileSync(process.env.FAKE_CHAT_CLAIM_SIGNAL, "claim reached");
+    const deadline = Date.now() + 12000;
+    while (!existsSync(process.env.FAKE_CHAT_CLAIM_RELEASE)) {
+      if (Date.now() >= deadline) throw new Error("synthetic claim was not released");
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    if (process.env.FAKE_CHAT_FIRST_REQUEST_DELAY) {
+      await new Promise((resolve) => setTimeout(resolve, Number(process.env.FAKE_CHAT_FIRST_REQUEST_DELAY)));
+    }
+  }
   if (Number(process.env.FAKE_CHAT_FAIL_AT || 0) === generation) throw new Error("synthetic interruption");
   const answers = (process.env.FAKE_CHAT_ANSWERS || "POST,POST,POST,POST").split(",");
   return { ok: true, json: async () => ({ message: { content: answers[generation - 1] } }) };
@@ -236,7 +247,7 @@ function readEvents(fixture) {
     .map((line) => JSON.parse(line));
 }
 
-function runBaselineAsync(fixture, env = {}) {
+function runBaselineAsync(fixture, env = {}, watchdogMs = 3800) {
   return new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,
@@ -257,15 +268,19 @@ function runBaselineAsync(fixture, env = {}) {
           FAKE_CHAT_SYNC_RELEASE: fixture.syncRelease,
           ...env,
         },
-        stdio: "ignore",
+        stdio: ["ignore", "ignore", "pipe"],
       },
     );
-    const terminate = setTimeout(() => child.kill("SIGTERM"), 3800);
-    const escalate = setTimeout(() => child.kill("SIGKILL"), 4200);
+    let stderr = "";
+    child.stderr.setEncoding("utf8").on("data", (chunk) => {
+      stderr = (stderr + chunk).slice(0, 4096);
+    });
+    const terminate = setTimeout(() => child.kill("SIGTERM"), watchdogMs);
+    const escalate = setTimeout(() => child.kill("SIGKILL"), watchdogMs + 400);
     const deadline = setTimeout(() => {
       cleanup();
       reject(new Error("synthetic child did not terminate"));
-    }, 4800);
+    }, watchdogMs + 1000);
     function cleanup() {
       clearTimeout(terminate);
       clearTimeout(escalate);
@@ -275,9 +290,13 @@ function runBaselineAsync(fixture, env = {}) {
       cleanup();
       reject(error);
     });
-    child.once("close", (status) => {
+    child.once("close", (status, signal) => {
       cleanup();
-      resolve(status);
+      if (signal) {
+        reject(new Error(`synthetic receipt child stopped by ${signal}`));
+      } else {
+        resolve({ status, stderr });
+      }
     });
   });
 }
@@ -323,12 +342,44 @@ test("interrupted attempt blocks retry", () => {
 
 test("concurrent attempts admit one", async () => {
   const fixture = fakeModelFixture();
+  const claim = join(fixture.root, "claim-reached");
+  const release = join(fixture.root, "claim-release");
+  const watchdogMs = 15000;
+  const winner = runBaselineAsync(
+    fixture,
+    {
+      FAKE_CHAT_CLAIM_SIGNAL: claim,
+      FAKE_CHAT_CLAIM_RELEASE: release,
+      FAKE_CHAT_FIRST_REQUEST_DELAY: process.env.CHAT_RULE_FIXTURE_STRESS_DELAY_MS ?? "",
+    },
+    watchdogMs,
+  ).catch((error) => ({ error }));
   try {
-    const statuses = await Promise.all([runBaselineAsync(fixture), runBaselineAsync(fixture)]);
-    assert.deepEqual(statuses.sort(), [0, 1]);
+    let winnerResult;
+    try {
+      const deadline = Date.now() + 10000;
+      while ((!existsSync(claim) || readFileSync(claim, "utf8") !== "claim reached") && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      assert.equal(readFileSync(claim, "utf8"), "claim reached");
+      const contender = await runBaselineAsync(fixture, {}, watchdogMs);
+      assert.equal(contender.status, 1);
+      assert.match(contender.stderr, /^EEXIST:/m);
+      assert.ok(contender.stderr.includes(`open '${fixture.receipt}'`));
+      assert.equal(existsSync(`${fixture.receipt}.finalized`), false);
+    } finally {
+      try {
+        writeFileSync(release, "release");
+      } finally {
+        winnerResult = await winner;
+      }
+    }
+    if (winnerResult.error) throw winnerResult.error;
+    assert.equal(winnerResult.status, 0);
     const events = readEvents(fixture);
     assert.equal(events.filter((entry) => entry.kind === "generation").length, 4);
     assert.equal(events.filter((entry) => entry.kind === "metadata").length, 2);
+    assert.ok(existsSync(`${fixture.receipt}.finalized`));
     assert.equal(JSON.parse(readFileSync(fixture.receipt, "utf8")).answers.length, 4);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
@@ -430,7 +481,7 @@ test("inflight receipt stays unfinalized", async () => {
       writeFileSync(fixture.syncRelease, "release");
     } finally {
       try {
-        assert.equal(await pending, 0);
+        assert.equal((await pending).status, 0);
         assert.ok(existsSync(`${fixture.receipt}.finalized`));
       } finally {
         rmSync(fixture.root, { recursive: true, force: true });
@@ -440,7 +491,7 @@ test("inflight receipt stays unfinalized", async () => {
   const timed = fakeModelFixture();
   try {
     const started = Date.now();
-    const status = await runBaselineAsync(timed, { FAKE_CHAT_PAUSE_SYNC: "1" });
+    const { status } = await runBaselineAsync(timed, { FAKE_CHAT_PAUSE_SYNC: "1" });
     assert.equal(status, 1);
     assert.ok(Date.now() - started < 5000);
     assert.equal(readFileSync(timed.syncSignal, "utf8"), "sync reached");

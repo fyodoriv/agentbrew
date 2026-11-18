@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 const SCRIPT = resolve(import.meta.dirname, "..", "scripts", "worktree-deps.sh");
@@ -377,6 +377,23 @@ describe("locked-install helper observation calibration", () => {
       });
     }
 
+    function qualifiedNpmCli(root: string): string | null {
+      const cli = process.env.LOCKED_INSTALL_OBSERVATION_NPM_CLI ?? process.env.npm_execpath;
+      if (!cli || !isAbsolute(cli)) return null;
+      try {
+        const metadata = JSON.parse(readFileSync(join(dirname(dirname(cli)), "package.json"), "utf8"));
+        if (!lstatSync(cli).isFile() || metadata.name !== "npm" || metadata.version !== "10.9.9") return null;
+        const version = spawnSync(process.execPath, [cli, "--offline", "--version"], {
+          cwd: root,
+          encoding: "utf8",
+          timeout: 10_000,
+        });
+        return version.status === 0 && version.stdout.trim() === "10.9.9" ? cli : null;
+      } catch {
+        return null;
+      }
+    }
+
     function writeTree(root: string, version: "1.0.0" | "1.0.1") {
       const modules = join(root, "node_modules");
       for (const [name, metadata] of [
@@ -451,7 +468,20 @@ describe("locked-install helper observation calibration", () => {
           ].join(":"),
         },
       });
-      rmSync(join(fixture.main, "node_modules", "dep"), { recursive: true });
+      const npmCli = qualifiedNpmCli(fixture.wt);
+      if (!npmCli) {
+        console.info(
+          `LOCKED_INSTALL_OBSERVATION ${JSON.stringify({
+            scenario: sample.scenario,
+            boundary: "worktree-helper",
+            complete: false,
+            classification: "inconclusive",
+            setupFailure: "npm-tool-unqualified",
+          })}`,
+        );
+        throw new Error("The frozen helper observation requires qualified npm 10.9.9");
+      }
+      for (const name of ["dep", "leaf"]) rmSync(join(fixture.main, "node_modules", name), { recursive: true });
       for (const root of [fixture.main, fixture.wt]) {
         writeFileSync(join(root, "package.json"), `${JSON.stringify(rootPackage)}\n`);
         writeFileSync(join(root, "package-lock.json"), lockText);
@@ -464,6 +494,17 @@ describe("locked-install helper observation calibration", () => {
         npmPath,
         `#!${process.execPath}\nconst fs=require('node:fs'),path=require('node:path');
 const args=process.argv.slice(2);
+const roots=${JSON.stringify([fixture.main, fixture.wt])};
+const comparisons=[
+ ["ls","--depth=0","--loglevel=error","--package-lock-only=false","--json"],
+ ["query","*","--package-lock-only=false","--json"],
+ ["query","*","--package-lock-only=true","--json"]
+];
+if(args[0]==="--prefix" && roots.includes(args[1]) && args[2]==="--offline" &&
+ comparisons.some((expected)=>JSON.stringify(expected)===JSON.stringify(args.slice(3)))){
+ const result=require("node:child_process").spawnSync(process.execPath,[${JSON.stringify(npmCli)},...args],{stdio:"inherit",timeout:10000});
+ process.exit(result.status??2);
+}
 if(process.cwd()!==${JSON.stringify(fixture.wt)}||JSON.stringify(args)!==JSON.stringify(['ci','--prefer-offline','--no-audit','--no-fund']))process.exit(2);
 fs.appendFileSync(${JSON.stringify(npmLog)},args.join(' ')+'\\n');
 for(const [name,metadata] of [['fixture-parent',${JSON.stringify(parentPackage)}],['fixture-leaf',{name:'fixture-leaf',version:'1.0.1'}]]){
@@ -475,6 +516,7 @@ fs.writeFileSync('node_modules/.package-lock.json',${JSON.stringify(hiddenText)}
       chmodSync(npmPath, 0o755);
       const donorBefore = inspectTree(fixture.main);
       const targetBefore = inspectTree(fixture.wt);
+      const targetFilesBefore = sample.targetVersion ? ownedIdentity(fixture.wt) : [];
       const donorFilesBefore = ownedIdentity(fixture.main);
       const donorIdentityBefore = lstatSync(join(fixture.main, "node_modules"));
       const result = fixture.run();
@@ -508,7 +550,16 @@ fs.writeFileSync('node_modules/.package-lock.json',${JSON.stringify(hiddenText)}
         donorIdentityBefore.ino === donorIdentityAfter.ino &&
         donorIdentityBefore.dev === donorIdentityAfter.dev &&
         JSON.stringify(donorFilesBefore) === JSON.stringify(donorFilesAfter);
-      const cloneProven = selection === "clone" && fixture.npmCalls() === "" && independentTarget && donorUnchanged;
+      const npmCalls = fixture.npmCalls().trim().split("\n").filter(Boolean);
+      const cloneProven = selection === "clone" && npmCalls.length === 0 && independentTarget && donorUnchanged;
+      const refusalProven =
+        sample.scenario === "N3" &&
+        result.status === 1 &&
+        selection === null &&
+        npmCalls.length === 0 &&
+        result.stderr.includes("worktree-deps: stamped dependencies differ from the lock; run npm ci") &&
+        JSON.stringify(targetBefore) === JSON.stringify(target) &&
+        JSON.stringify(targetFilesBefore) === JSON.stringify(targetFiles);
       const complete =
         !result.error &&
         typeof result.status === "number" &&
@@ -518,6 +569,9 @@ fs.writeFileSync('node_modules/.package-lock.json',${JSON.stringify(hiddenText)}
         donorBefore.physicalLeafVersion === sample.donorVersion &&
         donorBefore.inputContentEqual &&
         donorUnchanged &&
+        [fixture.main, fixture.wt].every(
+          (root) => readFileSync(join(root, "package-lock.json"), "utf8") === lockText,
+        ) &&
         target.inspected &&
         (result.status !== 0 || selection !== null) &&
         (sample.scenario !== "N3" ||
@@ -533,6 +587,7 @@ fs.writeFileSync('node_modules/.package-lock.json',${JSON.stringify(hiddenText)}
           selection === "shortcut" ||
           (selection === "install" && result.status === 0 && target.stampEqual),
         target.fixtureContentEqual && target.stampEqual && target.hiddenLockEqual,
+        refusalProven,
       );
       const decisionComplete = complete && classification !== "inconclusive";
       const observation = {
@@ -540,7 +595,7 @@ fs.writeFileSync('node_modules/.package-lock.json',${JSON.stringify(hiddenText)}
         boundary: "worktree-helper",
         actualExit: result.status,
         selection,
-        npmCalls: fixture.npmCalls().trim().split("\n").filter(Boolean),
+        npmCalls,
         donorPhysicalLeafVersion: donorBefore.physicalLeafVersion,
         inputHiddenLockEqual: sample.scenario === "N3" ? targetBefore.hiddenLockEqual : donorBefore.hiddenLockEqual,
         inputStampEqual: sample.scenario === "N3" ? targetBefore.stampEqual : donorBefore.stampEqual,
@@ -549,12 +604,14 @@ fs.writeFileSync('node_modules/.package-lock.json',${JSON.stringify(hiddenText)}
         cloneProven,
         ...target,
         complete: decisionComplete,
-        setupFailure: result.status !== 0 ? "helper-exit-unqualified" : null,
+        setupFailure: result.status !== 0 && !refusalProven ? "helper-exit-unqualified" : null,
+        refusalProven,
         classification,
-        meetsRequiredDecision:
-          sample.scenario === "P2"
-            ? classification === "supported"
-            : classification === "supported" || classification === "refused",
+        meetsRequiredDecision: {
+          N2: classification === "supported" && selection === "install" && npmCalls.length === 1 && independentTarget,
+          N3: classification === "refused",
+          P2: classification === "supported" && cloneProven,
+        }[sample.scenario],
       };
       console.info(`LOCKED_INSTALL_OBSERVATION ${JSON.stringify(observation)}`);
       expect(decisionComplete, `${sample.scenario} observation is incomplete; it is not zero unsafe permits`).toBe(

@@ -1091,3 +1091,54 @@ passed three active-owner refusals and three known-state retries after
 normal release. The refused CLI calls made no native or installed-pin
 change. Each test reaped its own holder. Add, update, rollback and live
 activation remain separate controls.
+
+## Qualify native receipts under a group-and-other restriction
+
+Keep the previous mode-refusal controls as the baseline. This test
+registers a distinct policy for the native prototype. A process may
+apply the specified group or other restriction while preserving the
+signed owner permission bits. The actual effective mode must enter
+the verified receipt and stay exact for later repairs.
+
+- **Hypothesis**: On the Mac, an installed signed 0644 hook can
+  certify as 0600 under mask 077 and repair as 0600 under 022.
+  The same normal source still certifies at 0644 under 022.
+- **Measurement**: Run the real full writer and selected repair in
+  separate processes with the two masks. Check the exact file and
+  full receipt mode, unchanged index and settings, a rejected owner
+  permission change, and a legacy receipt with no mode policy field.
+- **Success**: One strict full receipt and one exact warm repair,
+  with zero permission broadening and no legacy or Linux regression.
+  The unknown or changed source mode still refuses before writes.
+- **Pivot**: An unexpected mode, unacceptable mask, late mutation
+  or warm permission broadening prevents promotion. The default
+  ordinary publisher remains outside this prototype.
+- **Anchor**: The cross-platform recursive-copy evidence and
+  the complete native receipt and owner-file checks.
+
+On the baseline, both Mac private-mode tests exited 1 rather than
+certifying. The candidate bound the effective hook mask to both
+receipt forms. A strict full or partial receipt stored mode 0600,
+and a later repair under mask 022 restored 0600. A receipt asking
+to remove signed owner permissions refused. The ordinary mask
+kept the legacy receipt shape. Both local native suites passed
+all 75 tests.
+
+The [hosted Linux check](https://github.com/fyodoriv/agentbrew/actions/runs/44317997295)
+passed both native suites. The platform-specific Mac controls ran
+locally. The Linux publisher still kept normal signed modes and the
+older receipt shape.
+
+## Remaining entry-point and settings controls
+
+The [signed add, update and rollback controls](https://github.com/fyodoriv/agentbrew/actions/runs/44315064215)
+held the same kind of active process owner. All three refused before
+changing installed state. After normal release, each installed the
+exact signed pin and one matching index entry. No staging directory,
+unclassified child or holder remained.
+
+The [activation preservation control](https://github.com/fyodoriv/agentbrew/actions/runs/44316263800)
+kept cold, warm enabled, warm disabled and unknown settings byte-for-byte.
+Both warm repairs restored only the signed file. Its containing folder's
+timestamp changed as expected. These are scratch routes, independent
+from enabling a new publisher in the live CLI.

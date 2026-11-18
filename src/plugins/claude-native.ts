@@ -15,12 +15,12 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
 import {
-  assertFullNativeHookCopyModes,
   certifyFullNativeOutput,
   type NativeFacet,
   nativePluginEntry,
   planNativeSettingsCheck,
   publishSelectedNativePlugins,
+  verifyFullNativeHookCopyMask,
 } from "./claude-native-selected.js";
 import { type ActivePlugin, activePlugins } from "./contributions.js";
 import { launcherPath, readPluginMcpServers, renderLauncher } from "./mcp-launcher.js";
@@ -140,10 +140,8 @@ export function emitClaudeNative(options?: { modules?: readonly NativeFacet[]; c
 function publishNative(certification?: { beginMutation: () => void }): void {
   const plugins = activePlugins();
   const checkSettings = certification && planNativeSettingsCheck(claudeSettingsPath());
-  if (certification) {
-    assertFullNativeHookCopyModes(plugins);
-    certification.beginMutation();
-  }
+  const hookCopyMask = certification ? verifyFullNativeHookCopyMask(plugins) : 0;
+  certification?.beginMutation();
   const entries = plugins.map(emitPlugin);
   pruneLaunchers(
     new Set(
@@ -167,10 +165,14 @@ function publishNative(certification?: { beginMutation: () => void }): void {
   }
   const names = entries.map((entry) => entry.name);
   if (checkSettings) {
-    certifyFullNativeOutput(plugins, marketplaceDir(), MARKETPLACE_NAME, RULES_HOOK, () => {
-      checkSettings();
-      updateSettings(names, true);
-    });
+    certifyFullNativeOutput(
+      plugins,
+      { marketplace: marketplaceDir(), name: MARKETPLACE_NAME, rulesHook: RULES_HOOK, hookCopyMask },
+      () => {
+        checkSettings();
+        updateSettings(names, true);
+      },
+    );
     return;
   }
   updateSettings(names);

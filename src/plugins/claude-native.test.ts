@@ -322,10 +322,14 @@ describe("native publication process loss at output checkpoints", () => {
     const before = roots.map(snapshot);
     try {
       const result = publishFromChild(true, undefined, mask);
-      if (mask === 0o077 && process.platform === "linux") {
+      if (mask === 0o077) {
         expect(result).toMatchObject({ status: 0, stdout: "published", stderr: "" });
-        expect(statSync(paths.script).mode & 0o777).toBe(0o644);
-        expect(existsSync(nativeProofPath())).toBe(true);
+        const expectedMode = process.platform === "darwin" ? 0o600 : 0o644;
+        expect(statSync(paths.script).mode & 0o777).toBe(expectedMode);
+        const proof = JSON.parse(readFileSync(nativeProofPath(), "utf8"));
+        expect(proof.files.find((file: { path: string }) => file.path.endsWith("/hooks/guard.sh")).mode).toBe(
+          expectedMode,
+        );
         expect(existsSync(paths.settings)).toBe(true);
         expect(existsSync(owner)).toBe(false);
         return;
@@ -333,6 +337,66 @@ describe("native publication process loss at output checkpoints", () => {
       expect(result.status).toBe(1);
       expect(roots.map(snapshot)).toEqual(before);
       expect(result.stderr).toMatch(/signed hook copy mode cannot be reproduced/u);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+
+  it.skipIf(process.platform !== "darwin")("keeps the certified private hook mode during a later repair", () => {
+    installFacetFixture();
+    chmodSync(join(pluginDir("fixture-native"), "hooks", "guard.sh"), 0o644);
+    const paths = nativeFacetPaths();
+    try {
+      expect(publishFromChild(true, undefined, 0o077)).toMatchObject({ status: 0, stdout: "published", stderr: "" });
+      const fixed = [paths.hooks, paths.index, paths.settings, nativeProofPath()];
+      const before = observeNativeFiles(fixed);
+      expect(statSync(paths.script).mode & 0o777).toBe(0o600);
+      rmSync(paths.script);
+      expect(publishFromChild(false, undefined, 0o022)).toMatchObject({ status: 0, stdout: "published", stderr: "" });
+      expect(statSync(paths.script).mode & 0o777).toBe(0o600);
+      expect(readFileSync(paths.script, "utf8")).toBe("#!/bin/sh\nexit 0\n");
+      expect(observeNativeFiles(fixed)).toEqual(before);
+      expect(existsSync(owner)).toBe(false);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+
+  it.skipIf(process.platform !== "darwin")("keeps the private mode from a cold selected receipt", () => {
+    installFacetFixture();
+    const paths = nativeFacetPaths();
+    try {
+      expect(publishFromChild(false, undefined, 0o077)).toMatchObject({ status: 0, stdout: "published", stderr: "" });
+      const proof = readFileSync(nativeProofPath(), "utf8");
+      expect(JSON.parse(proof)).toMatchObject({ schema: 2, hookCopyMask: 0o055 });
+      expect(statSync(paths.script).mode & 0o777).toBe(0o600);
+      expect(existsSync(paths.settings)).toBe(false);
+      rmSync(paths.script);
+      expect(publishFromChild(false, undefined, 0o022)).toMatchObject({ status: 0, stdout: "published", stderr: "" });
+      expect(statSync(paths.script).mode & 0o777).toBe(0o600);
+      expect(readFileSync(nativeProofPath(), "utf8")).toBe(proof);
+      expect(existsSync(paths.settings)).toBe(false);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+
+  it("refuses a receipt mask that would remove signed owner permissions", () => {
+    installFacetFixture();
+    chmodSync(join(pluginDir("fixture-native"), "hooks", "guard.sh"), 0o644);
+    const paths = nativeFacetPaths();
+    try {
+      expect(publishFromChild(true)).toMatchObject({ status: 0, stdout: "published", stderr: "" });
+      const proof = JSON.parse(readFileSync(nativeProofPath(), "utf8"));
+      expect(proof).not.toHaveProperty("hookCopyMask");
+      writeFileSync(nativeProofPath(), JSON.stringify({ ...proof, hookCopyMask: 0o400 }));
+      rmSync(paths.script);
+      const roots = [marketplaceDir(), dirname(paths.launcher), dirname(paths.settings), owner];
+      const before = roots.map(snapshot);
+      const result = publishFromChild(false);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toMatch(/invalid hook copy mask/u);
+      expect(roots.map(snapshot)).toEqual(before);
     } finally {
       rmSync(owner, { force: true });
     }

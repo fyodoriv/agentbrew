@@ -38,6 +38,7 @@ interface SelectedNativeReceiptPlan {
   root: string;
   facets: NativeFacet[];
   files: PlannedWrite[];
+  hookCopyMask: number;
   before?: NativeFileObservation;
 }
 
@@ -191,7 +192,7 @@ function planHooks(
   plugin: ActivePlugin,
   root: string,
   selected: ReadonlySet<NativeFacet>,
-  rulesHook: unknown,
+  { rulesHook, hookCopyMask }: { rulesHook: unknown; hookCopyMask: number },
 ): void {
   const { declared, scripts } = readSignedHooks(plugin, selected.has("hooks"));
   if (declared.SessionStart?.some((group) => isDeepStrictEqual(group, rulesHook))) {
@@ -214,7 +215,7 @@ function planHooks(
   const desired = includeRules ? withRulesHook(retained, rulesHook) : retained;
   if (!isDeepStrictEqual(current, desired)) writes.push({ path, body: jsonBytes({ hooks: desired }), before });
   for (const script of scripts) {
-    planMissingFile(writes, join(dirname(path), script.path), script.body, script.mode);
+    planMissingFile(writes, join(dirname(path), script.path), script.body, script.mode & ~hookCopyMask);
   }
 }
 
@@ -331,6 +332,24 @@ function declaredNativeFacets(plugin: ActivePlugin, asked: Iterable<NativeFacet>
   return [...asked].filter((facet) => typeof facets[facet] === "string");
 }
 
+function readPluginOutputReceipt(
+  existing: ReturnType<typeof nativePluginEntry> | undefined,
+  entry: ReturnType<typeof nativePluginEntry>,
+  pin: PluginLockEntry,
+  root: string,
+): ObservedNativeReceipt | undefined {
+  const { source: _source, ...envelope } = entry;
+  const body = readOutput(join(root, ".claude-plugin", "plugin.json"));
+  if (!existing) {
+    if (body || existingOwnedPath(root, "directory")) refuse("the native directory has no verified marketplace entry");
+    return undefined;
+  }
+  if (!isDeepStrictEqual(existing, entry) || !body?.equals(jsonBytes(envelope))) {
+    refuse("the native envelope belongs to an unknown source version");
+  }
+  return readWarmReceipt(join(root, NATIVE_RECEIPT_FILE), pin);
+}
+
 function planPlugin(
   writes: PlannedWrite[],
   launcherClaims: Map<string, string>,
@@ -352,25 +371,18 @@ function planPlugin(
   const { source: _source, ...envelope } = entry;
   const envelopePath = join(root, ".claude-plugin", "plugin.json");
   const existing = registry.plugins.find(({ name }) => name === entry.name);
-  const body = readOutput(envelopePath);
-  if (existing) {
-    if (!isDeepStrictEqual(existing, entry) || !body?.equals(jsonBytes(envelope))) {
-      refuse("the native envelope belongs to an unknown source version");
-    }
-  } else if (body || existingOwnedPath(root, "directory")) {
-    refuse("the native directory has no verified marketplace entry");
-  }
-
+  const receiptPath = join(root, NATIVE_RECEIPT_FILE);
+  const receipt = readPluginOutputReceipt(existing, entry, plugin.entry, root);
+  const hookCopyMask = receipt?.hookCopyMask ?? (existing ? 0 : currentNativeHookMask());
+  if (receipt) options.observations.push({ path: receiptPath, before: receipt.before });
   const priorWrites = writes.length;
   if (selected.has("hooks") || selected.has("rules")) {
-    planHooks(writes, plugin, root, selected, options.rulesHook);
+    planHooks(writes, plugin, root, selected, { rulesHook: options.rulesHook, hookCopyMask });
   }
   if (selected.has("mcp")) planMcp(writes, launcherClaims, plugin, root);
   if (priorWrites === writes.length) return undefined;
   if (existing) {
-    const receiptPath = join(root, NATIVE_RECEIPT_FILE);
-    const receipt = readWarmReceipt(receiptPath, plugin.entry);
-    options.observations.push({ path: receiptPath, before: receipt.before });
+    if (!receipt) refuse("native receipt is missing");
     const changes = writes.slice(priorWrites);
     if (receipt.facets) {
       return planPartialExtension(plugin, root, receipt, changes, {
@@ -379,17 +391,17 @@ function planPlugin(
         observations: options.observations,
       });
     }
-    const expected = expectedFullOutput(plugin, options.marketplace, options.rulesHook);
+    const expected = expectedFullOutput(plugin, options.marketplace, options.rulesHook, hookCopyMask);
     assertWarmNativeReceipt(root, receipt.files, changes, expected.files, options.observations);
     return undefined;
   }
 
   writes.push({ path: envelopePath, body: jsonBytes(envelope) });
   const facets = [...selected].sort();
-  const files = expectedPartialOutput(plugin, root, facets, options.rulesHook);
+  const files = expectedPartialOutput(plugin, root, facets, options.rulesHook, hookCopyMask);
   assertPartialExtension([], files, writes.slice(priorWrites));
   registry.plugins.push(entry);
-  return { entry: plugin.entry, root, facets, files };
+  return { entry: plugin.entry, root, facets, files, hookCopyMask };
 }
 
 function assertCurrentNativeSources(planned: readonly PluginLockEntry[], complete = false): void {
@@ -427,13 +439,30 @@ interface ObservedNativeReceipt {
   before: NativeFileObservation;
   files: unknown[];
   facets?: NativeFacet[];
+  hookCopyMask: number;
 }
 
-function readWarmReceipt(path: string, entry: PluginLockEntry): ObservedNativeReceipt {
+const RECORDED_HOOK_MASK = 0o055;
+
+function currentNativeHookMask(): number {
+  // Recursive copy preserves the source mode on Linux.
+  if (process.platform !== "darwin") return 0;
+  const mask = process.umask();
+  if (mask & 0o700) refuse("the native hook copy would remove signed owner permissions");
+  return mask & RECORDED_HOOK_MASK;
+}
+
+function readWarmReceipt(path: string, entry: PluginLockEntry): ObservedNativeReceipt | undefined {
   const before = observeNativeTarget(path);
-  if (!before) refuse("native receipt is missing");
+  if (!before) return undefined;
   if ((before.mode & 0o777) !== 0o600) refuse("native receipt ownership differs");
-  let receipt: { schema?: unknown; sourceDigest?: unknown; files?: unknown; facets?: unknown } | null;
+  let receipt: {
+    schema?: unknown;
+    sourceDigest?: unknown;
+    files?: unknown;
+    facets?: unknown;
+    hookCopyMask?: unknown;
+  } | null;
   try {
     receipt = JSON.parse(before.body.toString("utf8"));
   } catch {
@@ -442,7 +471,15 @@ function readWarmReceipt(path: string, entry: PluginLockEntry): ObservedNativeRe
   if (receipt?.sourceDigest !== digest(JSON.stringify(pluginSourceIdentity(entry))) || !Array.isArray(receipt.files)) {
     refuse("native receipt does not match the source pin");
   }
-  if (receipt.schema === 1) return { before, files: receipt.files };
+  const hookCopyMask = receipt.hookCopyMask === undefined ? 0 : receipt.hookCopyMask;
+  if (
+    typeof hookCopyMask !== "number" ||
+    !Number.isInteger(hookCopyMask) ||
+    (hookCopyMask & RECORDED_HOOK_MASK) !== hookCopyMask
+  ) {
+    refuse("native receipt has an invalid hook copy mask");
+  }
+  if (receipt.schema === 1) return { before, files: receipt.files, hookCopyMask };
   const facets = receipt.facets;
   if (
     receipt.schema !== 2 ||
@@ -453,7 +490,7 @@ function readWarmReceipt(path: string, entry: PluginLockEntry): ObservedNativeRe
   ) {
     refuse("native receipt has unknown coverage");
   }
-  return { before, files: receipt.files, facets };
+  return { before, files: receipt.files, facets, hookCopyMask };
 }
 
 function checkedReceiptFile(raw: unknown): NativeReceiptFile {
@@ -533,6 +570,7 @@ function expectedPartialHooks(
   root: string,
   covered: ReadonlySet<NativeFacet>,
   rulesHook: unknown,
+  hookCopyMask: number,
 ): PlannedWrite[] {
   const includeHooks = covered.has("hooks");
   const includeRules = covered.has("rules");
@@ -541,7 +579,11 @@ function expectedPartialHooks(
   const hooks = includeHooks ? declared : {};
   const output = includeRules ? withRulesHook(hooks, rulesHook) : hooks;
   const hooksRoot = join(root, "hooks");
-  const files: PlannedWrite[] = scripts.map((file) => ({ ...file, path: join(hooksRoot, file.path) }));
+  const files: PlannedWrite[] = scripts.map((file) => ({
+    ...file,
+    path: join(hooksRoot, file.path),
+    mode: file.mode & ~hookCopyMask,
+  }));
   if (Object.keys(output).length > 0) {
     files.push({ path: join(hooksRoot, "hooks.json"), body: jsonBytes({ hooks: output }) });
   }
@@ -553,12 +595,13 @@ function expectedPartialOutput(
   root: string,
   facets: readonly NativeFacet[],
   rulesHook: unknown,
+  hookCopyMask: number,
 ): PlannedWrite[] {
   const covered = new Set(facets);
   const { source: _source, ...envelope } = nativePluginEntry(plugin);
   return [
     { path: join(root, ".claude-plugin", "plugin.json"), body: jsonBytes(envelope) },
-    ...expectedPartialHooks(plugin, root, covered, rulesHook),
+    ...expectedPartialHooks(plugin, root, covered, rulesHook, hookCopyMask),
     ...(covered.has("mcp") ? nativeMcpFiles(plugin, root) : []),
   ];
 }
@@ -600,16 +643,16 @@ function planPartialExtension(
   const earlier = receipt.facets ?? [];
   if (declaredNativeFacets(plugin, earlier).length !== earlier.length)
     refuse("native receipt coverage does not match the signed manifest");
-  const previous = expectedPartialOutput(plugin, root, earlier, rulesHook);
+  const previous = expectedPartialOutput(plugin, root, earlier, rulesHook, receipt.hookCopyMask);
   const facets = [...new Set([...earlier, ...selected])].sort();
   if (facets.length === earlier.length) {
     assertWarmNativeReceipt(root, receipt.files, writes, previous, observations);
     return undefined;
   }
   assertWarmNativeReceipt(root, receipt.files, [], previous, observations);
-  const files = expectedPartialOutput(plugin, root, facets, rulesHook);
+  const files = expectedPartialOutput(plugin, root, facets, rulesHook, receipt.hookCopyMask);
   assertPartialExtension(previous, files, writes);
-  return { root, facets, files, entry: plugin.entry, before: receipt.before };
+  return { root, facets, files, entry: plugin.entry, before: receipt.before, hookCopyMask: receipt.hookCopyMask };
 }
 
 function fullNativeHooks(plugin: ActivePlugin) {
@@ -620,9 +663,9 @@ function fullNativeHooks(plugin: ActivePlugin) {
 }
 
 /** Reject an incompatible legacy copy mode before starting certified publication. */
-export function assertFullNativeHookCopyModes(plugins: readonly ActivePlugin[]): void {
-  // Recursive copy applies the process mask on macOS and preserves the source mode on Linux.
-  const mask = process.platform === "darwin" ? process.umask() : 0;
+export function verifyFullNativeHookCopyMask(plugins: readonly ActivePlugin[]): number {
+  const mask = currentNativeHookMask();
+  const observedMask = process.platform === "darwin" ? process.umask() : 0;
   for (const installed of plugins) {
     const plugin = withPinnedManifest(installed);
     const source = plugin.manifest.contributes?.hooks;
@@ -630,14 +673,15 @@ export function assertFullNativeHookCopyModes(plugins: readonly ActivePlugin[]):
     const sourceDir = join(plugin.dir, posix.dirname(source));
     for (const file of fullNativeHooks(plugin).auxiliary) {
       const stat = lstatSync(join(sourceDir, file.path), { throwIfNoEntry: false });
-      if (!stat?.isFile() || (stat.mode & 0o777 & ~mask) !== file.mode) {
+      if (!stat?.isFile() || (stat.mode & 0o777 & ~observedMask) !== (file.mode & ~mask)) {
         refuse("signed hook copy mode cannot be reproduced");
       }
     }
   }
+  return mask;
 }
 
-function expectedFullOutput(plugin: ActivePlugin, marketplace: string, rulesHook: unknown) {
+function expectedFullOutput(plugin: ActivePlugin, marketplace: string, rulesHook: unknown, hookCopyMask: number) {
   const entry = nativePluginEntry(plugin);
   const root = join(marketplace, entry.source);
   const { source: _source, ...envelope } = entry;
@@ -647,7 +691,7 @@ function expectedFullOutput(plugin: ActivePlugin, marketplace: string, rulesHook
   const files: PlannedWrite[] = [
     { path: join(root, ".claude-plugin", "plugin.json"), body: jsonBytes(envelope) },
     { path: join(hooksRoot, "hooks.json"), body: jsonBytes({ hooks: withRulesHook(declared, rulesHook) }) },
-    ...auxiliary.map((file) => ({ ...file, path: join(hooksRoot, file.path) })),
+    ...auxiliary.map((file) => ({ ...file, path: join(hooksRoot, file.path), mode: file.mode & ~hookCopyMask })),
     ...mcp,
   ];
   return { entry, root, files, sourceDigest: digest(JSON.stringify(pluginSourceIdentity(plugin.entry))) };
@@ -697,7 +741,7 @@ function verifiedReceiptFiles(files: readonly PlannedWrite[]) {
 }
 
 function certifySelectedNativeOutput(plans: readonly SelectedNativeReceiptPlan[], assertLock: () => void): void {
-  const receipts = plans.map(({ entry, root, facets, files, before }) => {
+  const receipts = plans.map(({ entry, root, facets, files, before, hookCopyMask }) => {
     const path = join(root, NATIVE_RECEIPT_FILE);
     const localFiles = files.map(({ path }) => path).filter((path) => path.startsWith(`${root}${sep}`));
     if (before) localFiles.push(path);
@@ -706,6 +750,7 @@ function certifySelectedNativeOutput(plans: readonly SelectedNativeReceiptPlan[]
       path,
       body: jsonBytes({
         schema: 2,
+        ...(hookCopyMask ? { hookCopyMask } : {}),
         facets,
         sourceDigest: digest(JSON.stringify(pluginSourceIdentity(entry))),
         files: verifiedReceiptFiles(files),
@@ -724,16 +769,26 @@ function writeNativeOutput({ path, body, mode }: PlannedWrite): void {
 /** Verify full output before applying its settings while holding the signer descriptor. */
 export function certifyFullNativeOutput(
   plugins: readonly ActivePlugin[],
-  marketplace: string,
-  name: string,
-  rulesHook: unknown,
+  {
+    marketplace,
+    name,
+    rulesHook,
+    hookCopyMask,
+  }: {
+    marketplace: string;
+    name: string;
+    rulesHook: unknown;
+    hookCopyMask: number;
+  },
   applySettings: () => void,
 ): void {
   if (plugins.length === 0 && (readLock().plugins ?? []).length === 0) {
     applySettings();
     return;
   }
-  const expected = plugins.map((plugin) => expectedFullOutput(withPinnedManifest(plugin), marketplace, rulesHook));
+  const expected = plugins.map((plugin) =>
+    expectedFullOutput(withPinnedManifest(plugin), marketplace, rulesHook, hookCopyMask),
+  );
   const launcherRoot = dirname(launcherPath("x", "y"));
   const index: PlannedWrite = {
     path: join(marketplace, ".claude-plugin", "marketplace.json"),
@@ -753,6 +808,7 @@ export function certifyFullNativeOutput(
       path: join(root, NATIVE_RECEIPT_FILE),
       body: jsonBytes({
         schema: 1,
+        ...(hookCopyMask ? { hookCopyMask } : {}),
         sourceDigest,
         files: verifiedReceiptFiles(files),
       }),

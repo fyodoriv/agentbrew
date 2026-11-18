@@ -18,6 +18,7 @@ export async function applyAgentfileAndInstall(
     dryRun?: boolean;
     authoritative?: boolean;
     syncModules?: readonly string[];
+    agentfileBaseDir?: string;
   },
 ): Promise<void> {
   const { resolve } = await import("node:path");
@@ -30,6 +31,7 @@ export async function applyAgentfileAndInstall(
     includeSkillInstallReport: installRequestedItems,
     dryRun,
     ...(options?.syncModules && { syncModules: options.syncModules }),
+    ...(options?.agentfileBaseDir && { agentfileBaseDir: options.agentfileBaseDir }),
   });
   if (!result) {
     console.error(chalk.yellow(`  Agentfile not found: ${resolved}`));

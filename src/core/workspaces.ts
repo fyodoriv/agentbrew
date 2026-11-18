@@ -223,7 +223,10 @@ export function resolveBaseAgentfilePath(agentfile: string | undefined): string 
  * Discover, report, and merge the workspaces this run covers. Returns the
  * generated Agentfile path, or `undefined` when workspace mode is off.
  */
-export function prepareWorkspaceAgentfile(options: WorkspaceSyncOptions): string | undefined {
+export function prepareWorkspaceAgentfile(
+  options: WorkspaceSyncOptions,
+  outputPath: () => string = workspaceAgentfilePath,
+): string | undefined {
   const basePath = resolveBaseAgentfilePath(options.agentfile);
   const base = basePath ? loadAgentfileFromPath(basePath) : undefined;
   const roots = resolveWorkspaceRoots(options, base);
@@ -236,7 +239,7 @@ export function prepareWorkspaceAgentfile(options: WorkspaceSyncOptions): string
   for (const collision of findWorkspaceCollisions(workspaces)) {
     console.warn(chalk.yellow(`  ⚠ ${formatCollision(collision)}`));
   }
-  return writeWorkspaceAgentfile(basePath, workspaces, workspaceAgentfilePath());
+  return writeWorkspaceAgentfile(basePath, workspaces, outputPath());
 }
 
 function markDeployed(names: string[], deployed: Set<string>): string {

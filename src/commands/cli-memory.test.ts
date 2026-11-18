@@ -150,7 +150,9 @@ describe("memory maintenance stage logging", () => {
     if (upstreamOk) {
       vi.mocked(rotateMemoryBackup).mockImplementationOnce(() => {
         operations.push("call-backup");
-        return backupOk ? { ok: true, path: "/fixture/backup.db" } : { ok: false, error: "synthetic backup error" };
+        return backupOk
+          ? { ok: true, path: "/fixture/backup.db" }
+          : { ok: false, path: null, error: "synthetic backup error" };
       });
       if (backupOk)
         vi.mocked(writeFileSync).mockImplementationOnce(() => {

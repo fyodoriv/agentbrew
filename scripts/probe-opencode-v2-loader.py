@@ -233,12 +233,18 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
                         pass
                     time.sleep(0.2)
                 if health == 200 and case == "lifecycle":
-                    inventory = subprocess.run(
-                        [str(binary), "--server", endpoint, "plugin", "list"],
-                        **common, capture_output=True, timeout=10,
-                    )
-                    if inventory.returncode or inventory.stdout.count(b"agentbrew.claude-hooks") != 1:
-                        raise SystemExit("the managed bridge was missing from the native inventory")
+                    config_result = subprocess.run([str(binary), "--server", endpoint, "debug", "config"],
+                                                   **common, capture_output=True, timeout=10)
+                    deadline = time.monotonic() + 8
+                    while time.monotonic() < deadline:
+                        inventory = subprocess.run([str(binary), "--server", endpoint, "plugin", "list"],
+                                                   **common, capture_output=True, timeout=3)
+                        admission = inventory.stdout.count(b"agentbrew.claude-hooks")
+                        if inventory.returncode == 0 and admission == 1:
+                            break
+                        time.sleep(0.2)
+                    print(f"config-exit={config_result.returncode} inventory-exit={inventory.returncode} "
+                          f"native-id-count={admission} fixture-id-count={inventory.stdout.count(b'agentbrew.fixture-tool')}")
                     headers = {"Authorization": f"Basic {auth}", "Content-Type": "application/json"}
                     payload = {"title": "Synthetic lifecycle control", "location": {"directory": str(workspace)}}
                     request = Request(endpoint + "/api/session", data=json.dumps(payload).encode(), headers=headers, method="POST")

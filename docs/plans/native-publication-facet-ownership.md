@@ -654,3 +654,23 @@ refused all three supported transitions. The
 preserved the retained files and recorded the three coverage unions.
 An edited retained script still caused refusal. The run passed 43
 focused controls, 99 compatibility tests, and type checking.
+
+## Refuse a pre-existing unowned launcher during a cold publish
+
+Review found that an unchanged launcher could be missing from a
+cold receipt because the writer built the inventory from files it
+planned to write. Derive the complete cold inventory from the
+signed source and compare it to the plan before the first write.
+
+- **Hypothesis**: An exact byte match at an unowned launcher path
+  causes refusal instead of an incomplete cold receipt.
+- **Measurement**: Keep one exact signed launcher in the scratch
+  home and remove the synthetic marketplace. Attempt the same
+  selected MCP publication against that state.
+- **Success**: The publisher leaves the retained launcher untouched
+  and creates zero marketplace files or settings. All normal cold
+  controls still record their complete inventories.
+- **Pivot**: Adoption, a partial receipt, or a changed retained file
+  rejects the candidate.
+- **Anchor**: Independent review of the selected output receipt
+  and the pinned launcher inventory.

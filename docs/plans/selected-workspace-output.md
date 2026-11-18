@@ -30,3 +30,31 @@ current shared output path.
 
 This phase qualifies the generated workspace file. Native facets,
 shared state and other preparation write boundaries remain open.
+
+## Preserve ownership across invocations
+
+The [path baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44240098583)
+reused the shared output in all three cases. The
+[first candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44240264722)
+passed those file lifetime controls. Independent review found that the
+application layer derives its persistent owner from the file's parent.
+That would attach rules and skill directories to the removed temporary
+directory. Keep the old workspace owner directory, create it only when
+a cold live run needs it, and keep the actual workspace file private.
+
+- **Hypothesis**: Two live selected applies share one existing workspace
+  owner. Scratch paths never appear in persisted rule or skill ownership.
+- **Measurement**: From a cold scratch home, run the full Commander
+  and explicit application routes twice. Change the source rule
+  between runs. Observe saved rule owners, content hashes, source
+  directory ownership, and stale-owner cleanup after both scratch
+  paths are removed.
+- **Success**: Preserve one durable owner and one copy of each
+  declaration, replace the first rule body once, and remove zero valid
+  settings or rules during stale-owner cleanup. Generate zero shared
+  workspace YAML files. The first phase route and cleanup cases pass.
+- **Pivot**: A transient owner, duplicate registration, stale removal,
+  unexpected config output, or default-route regression rejects the
+  candidate.
+- **Anchor**: Agentfile owner derivation, rule and skill owner records,
+  and `src/sync/stale-agentfile-artifacts.ts`.

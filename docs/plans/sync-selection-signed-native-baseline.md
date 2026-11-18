@@ -152,3 +152,30 @@ behavior.
   or different generated document leaves the default arm incomplete.
 - **Anchor**: Hosted run 44231771838 and `getContextFiles` in
   `src/sync/instructions-sync.ts`.
+
+## Separate offline default fallback
+
+Run 44232128598 proved the two context files and native outputs, but
+one denied call and eight unclassified paths left the control incomplete.
+Source review predicts one optional command-renderer call and eight
+specific output entries. The first receipt does not identify the call.
+
+- **Hypothesis**: The ordinary native fallback works when the optional
+  command renderer is unavailable. The eight unknown changes are its
+  temporary directory timestamp, three deployed command files plus
+  their parent, and three empty skills-related directories.
+- **Measurement**: Run the default arm once with the supported renderer
+  override pointing to an undiscoverable file inside its synthetic temp
+  directory. Record the exact argv and canonical temp root as a fixed
+  observation label. Return ENOENT without running a tool. Confirm the
+  scratch temp tree is empty afterward and mode and identity are intact.
+  Verify all three command bytes against the shipped files and verify
+  the skills directories are empty. Keep every native, package, and
+  safety oracle from the previous control.
+- **Success**: One matched absent-renderer attempt, no other denied
+  process, zero unknown changes, the expected ordinary outputs and
+  exit 0. The prior incomplete result remains unchanged.
+- **Pivot**: A wrong argument, extra subprocess, different file bytes,
+  unclassified path or missing receipt keeps the default control open.
+- **Anchor**: Hosted run 44232128598. Source: the commands-delegate,
+  command-sync and skills-sync modules.

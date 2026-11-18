@@ -61,3 +61,23 @@ Both hosts refused the linked-stamp fixtures and the lockfile change during
 verification. These focused runs qualify the changed helper and tests. The
 full gate and the combined frozen observation are still required before
 closing the parent task.
+
+## Keep the frozen observer usable after the guard change
+
+- **Hypothesis**: The existing sealed donor and target fixtures can use the
+  pinned read-only npm comparison without changing their source locks,
+  hidden locks, manifests or payloads. A targeted refusal can be measured
+  by its exact exit, no install call and independently unchanged files.
+- **Measurement**: Run only the sealed N2 and N3 worktree observations on
+  hosted Linux using a runner-local npm 10.9.9. Compare the pre-fix observer
+  to the repaired observer. Leave the same sealed fixture bytes in place.
+  Finish the complete cohort on a macOS runner, which supports the P2
+  clone. Keep raw synthetic responses out of published logs.
+- **Success**: The old observer gives incomplete evidence. With the
+  repaired port, N2 records a fresh supported install after rejecting its
+  donor and N3 records a refusal without changing the stamped target.
+  Both observations are complete. The later full cohort reports zero
+  unsafe families and supports all four positive cases.
+- **Pivot**: Any changed frozen input, install on the donor, unproven
+  refusal, or misclassified setup failure rejects the measurement.
+- **Anchor**: The N2/N3 and P2 rows in the original locked-install plan.

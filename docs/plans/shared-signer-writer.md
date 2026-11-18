@@ -52,3 +52,10 @@ Trust and revoke compare that result to a canonical one-space key.
   bytes rejects the parser.
 - **Anchor**: Dotfiles' field-based registry parser and the
   independent review of Agentbrew's key normalization.
+
+A row with `namespaces` followed by validity restrictions also
+matches the Dotfiles writer. Trust must leave that row unchanged.
+Revoke may remove the exact row. The Agentbrew signature verifier
+must not read restricted rows as unrestricted trust. The restricted
+control fails qualification on a duplicate row, an accepted broad
+trust entry, or a lost unrelated field.

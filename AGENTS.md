@@ -86,6 +86,11 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 
 ## Gotchas
 
+- **OpenCode hooks.** Keep the V1 source usable on its own. The deployer
+  joins the V2 adapter to that source for OpenCode 2 so both use one
+  owned destination and one set of hook verdicts. Test the installed CLI
+  in a scratch home. V2 can answer 503 before authenticated readiness.
+
 - Test rule [rewrite/removal order](docs/plans/trusted-rule-rewrite-provenance.md).
 - [Hosts](docs/support-matrix.md), [owners](docs/skill-directories.md), [headless](docs/shared-memory-research.md#headless-session-save).
 

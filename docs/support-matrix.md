@@ -54,9 +54,12 @@ included), and global rules (`~/.config/opencode/AGENTS.md`).
   SessionEnd → `session.deleted`. PermissionDenied and PostToolUseFailure
   have no OpenCode event. Hooks see `CLAUDE_HOOKS_HOST=opencode`. Turn it off
   with `OPENCODE_CLAUDE_HOOKS=0`.
-- **OpenCode 2.x hooks**: The current bridge uses the V1 plugin API. OpenCode
-  2.3.0 rejected that bridge during startup. V2 hook enforcement remains
-  unqualified. [OpenCode migration guide](https://opencode.ai/docs/build/plugins/migrate-v1)
+- **OpenCode 2.x hooks**: Sync uses the same managed file with a native V2
+  adapter. It supports PreToolUse, PostToolUse, UserPromptSubmit,
+  SessionStart, and SessionEnd. The matching start and end use session
+  ownership held by the loaded plugin instance. Stop, PermissionDenied,
+  and PostToolUseFailure are outside V2 coverage. Use the same
+  `OPENCODE_CLAUDE_HOOKS=0` switch as V1.
 - **Model**: agentbrew does not set OpenCode's model. Pick it per run
   (`opencode run -m <provider/model>`) or in the Desktop model picker.
 

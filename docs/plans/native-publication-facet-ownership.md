@@ -674,3 +674,10 @@ signed source and compare it to the plan before the first write.
   rejects the candidate.
 - **Anchor**: Independent review of the selected output receipt
   and the pinned launcher inventory.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44265947064)
+accepted the unowned launcher. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44266213545)
+left it untouched and refused before creating the native directory.
+All 44 focused controls, 100 compatibility tests, and type checking
+passed.

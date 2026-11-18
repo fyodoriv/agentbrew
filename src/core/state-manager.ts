@@ -176,17 +176,19 @@ function normalizeMcpServers(state: AgentBrewState): void {
 export function createStateManager(io: StateIO): StateManager {
   let cached: AgentBrewState | undefined;
   let loaded = false;
+  let reportedValidationWarnings = new Set<string>();
 
   function ensureLoaded(): AgentBrewState | undefined {
     if (!loaded) {
       const raw = io.read();
       cached = raw ? migrateState(raw) : undefined;
-      if (cached) {
-        const warnings = validateState(cached);
-        for (const w of warnings) {
-          console.error(chalk.yellow(`  ⚠ state.yaml: ${w}`));
+      const warnings = new Set(cached ? validateState(cached) : []);
+      for (const warning of warnings) {
+        if (!reportedValidationWarnings.has(warning)) {
+          console.error(chalk.yellow(`  ⚠ state.yaml: ${warning}`));
         }
       }
+      reportedValidationWarnings = warnings;
       loaded = true;
     }
     return cached;

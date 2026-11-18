@@ -6,7 +6,7 @@ import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { AGENTFILE_NAMES, loadAgentfile } from "./agentfile.js";
 import { loadCatalog } from "./catalog/types.js";
 import { logSkipped } from "./core/logger.js";
-import { copySkillDirectory } from "./skills/copy-skill-directory.js";
+import { copySkillDirectory, projectSkillRelativePath } from "./skills/copy-skill-directory.js";
 import type { McpServer } from "./types.js";
 import { ICON_SUCCESS } from "./ui/output.js";
 import { expandHome } from "./utils.js";
@@ -177,13 +177,15 @@ export function installSkillToProject(
   sourcePath: string,
   preserveExisting?: boolean,
 ): void {
-  const relativePath = join(".agentbrew", "skills", skillName);
-  if (!copySkillDirectory(sourcePath, join(directory, relativePath), preserveExisting)) {
+  const relativePath = projectSkillRelativePath(skillName);
+  const copied = copySkillDirectory(sourcePath, join(directory, relativePath), preserveExisting, () => {
+    addSkillToAgentfile(directory, skillName);
+  });
+  if (!copied) {
     console.log(`  Kept existing skill '${skillName}' at ${relativePath}.`);
     return;
   }
 
-  addSkillToAgentfile(directory, skillName);
   console.log(`  ${ICON_SUCCESS} Skill '${skillName}' installed to ${relativePath}`);
   console.log(`  ${ICON_SUCCESS} Added '${skillName}' to Agentfile skills`);
   console.log(chalk.dim("  Run `agentbrew sync` to deploy to per-project agent configs.\n"));

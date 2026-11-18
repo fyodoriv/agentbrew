@@ -74,3 +74,9 @@ combined catalog, Agentfile, and deployment tests passed 268 checks.
 - **Anchor**: Catalog copy and registration order in
   `src/catalog/install-skill.ts` and project registration in
   `src/agentfile-mutate.ts`.
+
+The first candidate failed all six controls. It contacted the source for
+an existing copy, and a registration error left a protected directory
+behind. The final local check passed all 457 tests in ten suites.
+A same-name copy now skips source lookup. A failed registration removes
+the copy created by that install, so a later retry can register it.

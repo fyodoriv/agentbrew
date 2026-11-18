@@ -32,9 +32,10 @@ function mockIO(state?: AgentBrewState): StateIO & { written: AgentBrewState[] }
     read() {
       return current;
     },
-    write(s: AgentBrewState) {
+    write(s: AgentBrewState): false | undefined {
       current = s;
       io.written.push(s);
+      return undefined;
     },
   };
   return io;
@@ -137,6 +138,20 @@ describe("createStateManager", () => {
       s.catalogVersion = "2.0.0";
     });
     expect(io.written).toHaveLength(0);
+  });
+
+  it("keeps the loaded state when persistence fails", () => {
+    const original = makeState();
+    const io = mockIO(original);
+    const manager = createStateManager(io);
+    expect(manager.load()).toBe(original);
+    vi.spyOn(io, "write").mockReturnValueOnce(false);
+    const changed = { ...original, catalogVersion: "2.0.0" };
+
+    expect(manager.save(changed)).toBe(false);
+    expect(manager.load()).toBe(original);
+    manager.save(changed);
+    expect(manager.load()).toBe(changed);
   });
 
   it("invalidate forces re-read from io", () => {

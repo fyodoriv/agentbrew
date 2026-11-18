@@ -8,7 +8,7 @@ import { redactUrlCredentials } from "../core/redact-url.js";
 import { detectSourceType } from "../git-source-url.js";
 import { lockSource } from "../lock.js";
 import { INSTALLED_SKILLS_DIR, INSTALLED_SKILLS_LABEL } from "../paths.js";
-import { copySkillDirectory } from "../skills/copy-skill-directory.js";
+import { copySkillDirectory, projectSkillRelativePath } from "../skills/copy-skill-directory.js";
 import { recordSourceSha } from "../skills/skill-versions.js";
 import { loadState, saveState } from "../state.js";
 import type { AgentBrewState, Source } from "../types.js";
@@ -147,26 +147,37 @@ export async function installFromSource(
   console.log(`\n${ICON_SUCCESS} Skill '${skillName}' installed from ${redactUrlCredentials(source.url)}.`);
 }
 
-/** Updates state sources after a catalog skill is successfully installed. */
-function updateStateAfterSkillInstall(
-  state: NonNullable<ReturnType<typeof loadState>>,
-  source: Source,
-  skillName: string,
-  skillSource: string,
-): void {
-  const tracked = getStateSources(state).find((s) => s.url === skillSource);
+/** Register a copied catalog skill and report persistence failure for protected copies. */
+function registerInstalledSkill(source: Source, skill: CatalogSkill): void {
+  const current = loadState();
+  const registrationError = `Could not register catalog skill '${skill.name}'. Retry the install after fixing agentbrew state.`;
+  if (!current) {
+    if (skill.preserveExisting) throw new Error(registrationError);
+    return;
+  }
+
+  const state = skill.preserveExisting
+    ? {
+        ...current,
+        skillSourceDirs: [...(current.skillSourceDirs ?? [])],
+        sources: current.sources?.map((entry) => ({ ...entry, skillsInstalled: [...entry.skillsInstalled] })),
+      }
+    : current;
+  ensureInstalledSkillsRegistered(state);
+  const tracked = getStateSources(state).find((entry) => entry.url === skill.source);
   if (tracked) {
-    if (!tracked.skillsInstalled.includes(skillName)) {
-      tracked.skillsInstalled.push(skillName);
+    if (!tracked.skillsInstalled.includes(skill.name)) {
+      tracked.skillsInstalled.push(skill.name);
     }
     recordSourceSha(tracked);
   } else {
-    source.skillsInstalled = [skillName];
+    source.skillsInstalled = [skill.name];
     recordSourceSha(source);
     if (!state.sources) state.sources = [];
     state.sources.push(source);
   }
-  saveState(state);
+  const persisted = saveState(state);
+  if (skill.preserveExisting && persisted === false) throw new Error(registrationError);
 }
 
 /** Resolves the source object and cache path for a catalog skill. Returns undefined if resolution fails. */
@@ -305,6 +316,15 @@ export async function installSkill(
     return;
   }
 
+  const destination = localDir
+    ? join(localDir, projectSkillRelativePath(skill.name))
+    : join(installedSkillsPath, skill.name);
+  const keptMessage = `  Kept existing skill '${skill.name}' at ${destination}.`;
+  if (skill.preserveExisting && lstatSync(destination, { throwIfNoEntry: false })) {
+    console.log(keptMessage);
+    return;
+  }
+
   console.log(chalk.bold(`\nInstalling skill: ${skill.name}${localDir ? " (local)" : ""}\n`));
 
   const resolved = resolveSkillSource(skill, installSummary);
@@ -322,17 +342,12 @@ export async function installSkill(
     return;
   }
 
-  const destination = join(installedSkillsPath, skill.name);
-  if (!copySkillDirectory(skillDir, destination, skill.preserveExisting)) {
-    console.log(`  Kept existing skill '${skill.name}' in catalog staging.`);
+  const copied = copySkillDirectory(skillDir, destination, skill.preserveExisting, () => {
+    registerInstalledSkill(resolved.source, skill);
+  });
+  if (!copied) {
+    console.log(keptMessage);
     return;
-  }
-
-  // Update state only after the copy succeeded
-  const state = loadState();
-  if (state) {
-    ensureInstalledSkillsRegistered(state);
-    updateStateAfterSkillInstall(state, resolved.source, skill.name, skill.source);
   }
 
   const lockEntry = lockSource(resolved.source, [skill.name]);

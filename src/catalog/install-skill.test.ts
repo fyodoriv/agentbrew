@@ -11,6 +11,7 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { sync as writeFileAtomic } from "write-file-atomic";
 import { getStateSources } from "../agentfile.js";
 import { INSTALLED_SKILLS_DIR } from "../paths.js";
 import { loadState, saveState } from "../state.js";
@@ -23,8 +24,12 @@ import {
   isInstalledSkillCurrent,
   resetSourceFallbackAnnounced,
 } from "./install-skill.js";
-
 import type { CatalogSkill } from "./types.js";
+
+vi.mock("write-file-atomic", async (importOriginal) => {
+  const original = await importOriginal<typeof import("write-file-atomic")>();
+  return { ...original, sync: vi.fn(original.sync) };
+});
 
 vi.mock("./index-source.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./index-source.js")>()),
@@ -201,7 +206,9 @@ describe("owner-preserving named catalog installs", () => {
     const dest = scope === "staging" ? staged : local;
     mkdirSync(dest, { recursive: true });
     writeFileSync(join(dest, "SKILL.md"), "# Owner guide");
+    vi.mocked(getSourceCachePath).mockReturnValue(undefined);
     await installAt(scope);
+    expect(getSourceCachePath).not.toHaveBeenCalled();
     expect(readFileSync(join(dest, "SKILL.md"), "utf-8")).toBe("# Owner guide");
     expect(saveState).not.toHaveBeenCalled();
     expect(existsSync(join(project, "Agentfile.yaml"))).toBe(false);
@@ -212,7 +219,9 @@ describe("owner-preserving named catalog installs", () => {
     const absent = join(fixture, "absent");
     mkdirSync(join(dest, ".."), { recursive: true });
     symlinkSync(absent, dest, "dir");
+    vi.mocked(getSourceCachePath).mockReturnValue(fixture);
     await installAt(scope);
+    expect(getSourceCachePath).not.toHaveBeenCalled();
     expect(readlinkSync(dest)).toBe(absent);
     expect(existsSync(absent)).toBe(false);
     expect(saveState).not.toHaveBeenCalled();
@@ -224,11 +233,33 @@ describe("owner-preserving named catalog installs", () => {
     await installAt(scope);
     expect(readFileSync(join(dest, "SKILL.md"), "utf-8")).toBe("# Catalog guide");
     if (scope === "staging") {
-      expect(getStateSources(vi.mocked(loadState).mock.results[0].value)[0]?.skillsInstalled).toEqual([skill.name]);
+      expect(getStateSources(vi.mocked(saveState).mock.calls[0][0])[0]?.skillsInstalled).toEqual([skill.name]);
       expect(saveState).toHaveBeenCalledOnce();
     } else {
       expect(readFileSync(join(project, "Agentfile.yaml"), "utf-8")).toContain(skill.name);
       expect(saveState).not.toHaveBeenCalled();
     }
+  });
+  it("retries a fresh staging install after failed persistence", async () => {
+    vi.mocked(saveState).mockReturnValueOnce(false);
+    await expect(installAt("staging")).rejects.toThrow("Could not register");
+    expect(existsSync(staged)).toBe(false);
+    expect(getStateSources(loadState()!)).toEqual([]);
+
+    await installAt("staging");
+    expect(readFileSync(join(staged, "SKILL.md"), "utf-8")).toBe("# Catalog guide");
+    expect(getStateSources(vi.mocked(saveState).mock.calls.at(-1)![0])[0]?.skillsInstalled).toEqual([skill.name]);
+  });
+
+  it("retries a fresh project install after a failed Agentfile write", async () => {
+    vi.mocked(writeFileAtomic).mockImplementationOnce(() => {
+      throw new Error("Agentfile write denied");
+    });
+    await expect(installAt("project")).rejects.toThrow("Agentfile write denied");
+    expect(existsSync(local)).toBe(false);
+
+    await installAt("project");
+    expect(readFileSync(join(local, "SKILL.md"), "utf-8")).toBe("# Catalog guide");
+    expect(readFileSync(join(project, "Agentfile.yaml"), "utf-8")).toContain(skill.name);
   });
 });

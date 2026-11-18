@@ -1,12 +1,22 @@
 import { cpSync, existsSync, lstatSync, mkdirSync, rmSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 
-/** Copy skill files. When preserving, claim a new leaf before writing any files. */
-export function copySkillDirectory(source: string, destination: string, preserveExisting = false): boolean {
+export function projectSkillRelativePath(skillName: string): string {
+  return join(".agentbrew", "skills", skillName);
+}
+
+/** Copy and register skill files. Protected installs own only a new leaf for this invocation. */
+export function copySkillDirectory(
+  source: string,
+  destination: string,
+  preserveExisting = false,
+  register?: () => void,
+): boolean {
   if (!preserveExisting) {
     if (existsSync(destination)) rmSync(destination, { recursive: true, force: true });
     mkdirSync(destination, { recursive: true });
     cpSync(source, destination, { recursive: true });
+    register?.();
     return true;
   }
 
@@ -21,6 +31,7 @@ export function copySkillDirectory(source: string, destination: string, preserve
   const created = lstatSync(destination);
   try {
     cpSync(source, destination, { recursive: true, force: false, errorOnExist: true });
+    register?.();
   } catch (error) {
     const current = lstatSync(destination, { throwIfNoEntry: false });
     if (current?.dev === created.dev && current.ino === created.ino) {

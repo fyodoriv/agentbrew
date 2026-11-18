@@ -316,6 +316,44 @@ describe("selected native signer commit fence", () => {
   });
 });
 
+describe("native signer descriptor checks at publication", () => {
+  it.each([
+    { name: "first selected", boundary: 1, full: false, payload: false },
+    { name: "later selected", boundary: 2, full: false, payload: true },
+    { name: "full certification", boundary: 1, full: true, payload: true },
+  ])("refuses at the $name boundary when the descriptor is lost", async ({ boundary, full, payload }) => {
+    installFacetFixture();
+    const files = nativeFacetPaths();
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    const { withSignerCommitFence: acquire } = await vi.importActual<typeof import("./signer-commit-fence.js")>(
+      "./signer-commit-fence.js",
+    );
+    let checked = 0;
+    vi.mocked(withSignerCommitFence).mockImplementationOnce((registry, action) =>
+      acquire(registry, (path, mode, assertLock) =>
+        action(path, mode, () => {
+          assertLock();
+          checked += 1;
+          if (checked === boundary) throw new Error("Synthetic signer descriptor was lost.");
+        }),
+      ),
+    );
+
+    try {
+      const options = full ? { certifyFullOutput: true } : { modules: ["hooks"] as const };
+      expect(() => emitClaudeNative(options)).toThrow(/Synthetic signer descriptor was lost/u);
+      expect(checked).toBe(boundary);
+      expect(existsSync(files.hooks)).toBe(payload);
+      expect(existsSync(owner)).toBe(payload);
+      expect(existsSync(files.index)).toBe(full);
+      expect(existsSync(files.settings)).toBe(false);
+      expect(existsSync(nativeProofPath())).toBe(false);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+});
+
 describe("selected native destination commit observation", () => {
   it.each(["script", "index"] as const)("refuses when a planned %s appears before the first write", async (target) => {
     installFacetFixture();

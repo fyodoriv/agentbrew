@@ -173,6 +173,9 @@ globalThis.fetch = async (url) => {
   if (process.env.FAKE_CHAT_DELAY) await new Promise((resolve) => setTimeout(resolve, 25));
   if (kind === "metadata") return { ok: true, json: async () => ({ models: [{ name: "qwen3:4b", digest: "a".repeat(64) }] }) };
   generation += 1;
+  if (generation === 1 && process.env.FAKE_CHAT_FIRST_REQUEST_DELAY) {
+    await new Promise((resolve) => setTimeout(resolve, Number(process.env.FAKE_CHAT_FIRST_REQUEST_DELAY)));
+  }
   if (Number(process.env.FAKE_CHAT_FAIL_AT || 0) === generation) throw new Error("synthetic interruption");
   const answers = (process.env.FAKE_CHAT_ANSWERS || "POST,POST,POST,POST").split(",");
   return { ok: true, json: async () => ({ message: { content: answers[generation - 1] } }) };
@@ -324,7 +327,9 @@ test("interrupted attempt blocks retry", () => {
 test("concurrent attempts admit one", async () => {
   const fixture = fakeModelFixture();
   try {
-    const statuses = await Promise.all([runBaselineAsync(fixture), runBaselineAsync(fixture)]);
+    const delay = process.env.CHAT_RULE_FIXTURE_STRESS_DELAY_MS ?? "";
+    const env = { FAKE_CHAT_FIRST_REQUEST_DELAY: delay };
+    const statuses = await Promise.all([runBaselineAsync(fixture, env), runBaselineAsync(fixture, env)]);
     assert.deepEqual(statuses.sort(), [0, 1]);
     const events = readEvents(fixture);
     assert.equal(events.filter((entry) => entry.kind === "generation").length, 4);

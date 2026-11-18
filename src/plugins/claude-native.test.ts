@@ -321,6 +321,11 @@ describe("native publication process loss at output checkpoints", () => {
     try {
       expect(publishFromChild(full, target)).toMatchObject({ status: 77, stdout: "", stderr: "" });
       expect(existsSync(target)).toBe(false);
+      expect(existsSync(paths.hooks)).toBe(key !== "hooks");
+      expect(existsSync(paths.script)).toBe(key !== "hooks");
+      expect(existsSync(nativeProofPath())).toBe(key !== "hooks");
+      expect(existsSync(paths.index)).toBe(full);
+      expect(existsSync(paths.settings)).toBe(false);
       expect(statSync(owner).mode & 0o777).toBe(0o600);
       const roots = [marketplaceDir(), dirname(paths.launcher), dirname(paths.settings), owner];
       const before = roots.map(snapshot);

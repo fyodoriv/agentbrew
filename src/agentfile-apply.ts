@@ -737,6 +737,26 @@ function prepareSelectedAgentfileState(
   };
 }
 
+function prepareSelectedAgentfileDirectories(
+  agentfile: Agentfile,
+  state: AgentBrewState,
+  baseDir: string,
+  prune: boolean,
+  options: ApplyAgentfileOptions | undefined,
+) {
+  const skillsSelected = selectedSyncModule(options, "skills");
+  return {
+    skillDirsChanged: skillsSelected && mergeStateSkillDirectories(agentfile.skillDirectories, state, baseDir, prune),
+    commandDirs: selectedSyncModule(options, "commands")
+      ? mergeAgentfileCommandDirs(agentfile, state, baseDir, prune)
+      : { added: [], changed: false },
+    agentDirs: selectedSyncModule(options, "agents")
+      ? mergeAgentfileAgentDirs(agentfile, state, baseDir, prune)
+      : { added: [], changed: false },
+    skillsToInstall: skillsSelected ? collectAgentfileSkills(agentfile, options?.quiet ?? false) : [],
+  };
+}
+
 function pruneAgentfileSkills(
   agentfile: Agentfile,
   state: AgentBrewState,
@@ -774,12 +794,13 @@ export function applyAgentfile(
 
   const { mcp, hooksUpdated, defaultModelUpdated } = prepareSelectedAgentfileState(agentfile, state, options);
   const sourcesAdded = mergeAgentfileSources(agentfile, state, authoritative, baseDir);
-  const skillDirsChanged = mergeStateSkillDirectories(agentfile.skillDirectories, state, baseDir, pruneOwnedDirs);
-  const commandDirs = mergeAgentfileCommandDirs(agentfile, state, baseDir, pruneOwnedDirs);
-  const agentDirs = mergeAgentfileAgentDirs(agentfile, state, baseDir, pruneOwnedDirs);
-  const commandDirsAdded = commandDirs.added;
-  const agentDirsAdded = agentDirs.added;
-  const skillsToInstall = collectAgentfileSkills(agentfile, quiet);
+  const { skillDirsChanged, commandDirs, agentDirs, skillsToInstall } = prepareSelectedAgentfileDirectories(
+    agentfile,
+    state,
+    baseDir,
+    pruneOwnedDirs,
+    options,
+  );
   const previousRuleOwners = JSON.stringify([state.agentfileRuleOwners, state.agentfileRuleHashes]);
   const rulesUpdated = rulesSelected && mergeAgentfileRules(agentfile, baseDir, dryRun, state);
   const ruleOwnersChanged =
@@ -794,8 +815,8 @@ export function applyAgentfile(
     serversUpdated: mcp.updated,
     serversRemoved: mcp.removed,
     sourcesAdded,
-    commandDirsAdded,
-    agentDirsAdded,
+    commandDirsAdded: commandDirs.added,
+    agentDirsAdded: agentDirs.added,
     skillsToInstall,
     rulesUpdated,
     hooksUpdated,

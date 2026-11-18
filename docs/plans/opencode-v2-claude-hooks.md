@@ -29,3 +29,28 @@ Treat the V1 source as the common implementation. Select the V2 adapter
 only after the CLI reports a supported major. Reuse the existing single
 target, atomic write and manifest ownership check. A missing or unsupported
 version leaves the installed helper in place. Write no OpenCode config.
+
+## Results
+
+- The owned deployment unit test failed on the old V2 output. It saw
+  unchanged V1 bytes. The corrected path installs V2, restores the exact
+  V1 bytes after a downgrade, retains the file for unknown versions,
+  and keeps both the user-edited target and the separate user plugin.
+  The preview test also caught an unconditional standalone manifest
+  write. Preview now leaves the manifest and the bridge alone.
+- The real `agentbrew sync --only instructions` installed the tested
+  artifacts in private scratch homes. OpenCode 1.19.5 loaded the exact
+  V1 source and produced one start and one end. The three OpenCode 2.3.0
+  tool cases each sent one prompt note. Approval wrote one original
+  marker, amendment wrote one changed marker, and denial wrote neither.
+  The two successful tool actions returned one feedback note each.
+  [Both built paths and the guard matrix](https://github.com/fyodoriv/agentbrew/actions/runs/44302297823).
+- An early V2 lifecycle test read the plugin inventory as soon as server
+  health responded. A bounded inventory wait later found the native
+  plugin once. A lifecycle with an explicit workspace produced one start
+  and one end for the same session with zero model requests and no extra
+  records. The named tool cases did not observe a start callback. The
+  lifecycle claim is limited to the verified workspace route.
+  [Deployed V2 lifecycle](https://github.com/fyodoriv/agentbrew/actions/runs/44302539949).
+- Stop, session ownership across restarts, and the separately observed
+  provider timeout remain outside these controls.

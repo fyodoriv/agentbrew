@@ -55,11 +55,11 @@ included), and global rules (`~/.config/opencode/AGENTS.md`).
   have no OpenCode event. Hooks see `CLAUDE_HOOKS_HOST=opencode`. Turn it off
   with `OPENCODE_CLAUDE_HOOKS=0`.
 - **OpenCode 2.x hooks**: Sync uses the same managed file with a native V2
-  adapter. It supports PreToolUse, PostToolUse, UserPromptSubmit,
-  SessionStart, and SessionEnd. The matching start and end use session
-  ownership held by the loaded plugin instance. Stop, PermissionDenied,
-  and PostToolUseFailure are outside V2 coverage. Use the same
-  `OPENCODE_CLAUDE_HOOKS=0` switch as V1.
+  adapter, verified on 2.3.0. It supports PreToolUse, PostToolUse and
+  UserPromptSubmit. An explicit workspace session also runs SessionStart
+  and SessionEnd. That pairing lasts for the loaded plugin instance.
+  Stop, PermissionDenied and PostToolUseFailure are outside V2 coverage.
+  Use the same `OPENCODE_CLAUDE_HOOKS=0` switch as V1.
 - **Model**: agentbrew does not set OpenCode's model. Pick it per run
   (`opencode run -m <provider/model>`) or in the Desktop model picker.
 

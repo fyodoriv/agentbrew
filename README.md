@@ -715,6 +715,14 @@ The job's `PATH` starts with that Node's folder. When `agentbrew fix` rewrites t
 
 `agentbrew status` reports `launchagent` drift for a `com.agentbrew.*` job that runs Node in two cases. The job's Node no longer exists, or the job runs a versioned path while a link that survives upgrades points at the same Node. The repair for the memory job is `agentbrew memory fix`. `agentbrew fix` (the check job) or `agentbrew memory fix` (the memory job, reported as `memory-launchagent` drift) then rewrites the plist, so an existing job moves to the stable path on its next run.
 
+When scheduled memory maintenance stops, check
+`~/.local/share/agentbrew/logs/mcp-memory-maintain.err.log`. Group the fixed
+`stage=` lines by process ID. `upstream`, `backup`, and `success-marker` show
+which step began. `complete` means the command finished the maintenance
+steps. A final stage without a result helps locate an interruption. It
+cannot identify which system condition caused it. Manual runs emit these
+lines only with `AGENTBREW_MEMORY_MAINTENANCE_TRACE=1`.
+
 ### MCP endpoint repair
 
 **Catalog version pins.** The catalog can pin an npm MCP package to an exact version (for example `tasks-mcp@0.10.2`). Then every sync rewrites to that version a floating copy in an agent's config (`tasks-mcp`, `tasks-mcp@latest`) and any exact pin older than the catalog's. An exact pin newer than the catalog's, a range, or a tag stays as you set it. To keep an older version, remove the server from agentbrew and manage it in that agent's own config.

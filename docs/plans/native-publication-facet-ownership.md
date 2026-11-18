@@ -744,3 +744,8 @@ focused controls, 105 compatibility tests, and type checking.
   this case outside the activation evidence.
 - **Anchor**: The signed Git tree reader and selected receipt
   mode checks.
+
+The [hosted control](https://github.com/fyodoriv/agentbrew/actions/runs/44269622494)
+confirmed Git mode 100755 and native mode 0755 before and after
+repair. The receipt stayed unchanged. The run passed 50 focused
+controls, 106 compatibility tests, and type checking.

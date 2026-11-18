@@ -164,7 +164,7 @@ export function verifyMcpServerPublication(server: McpServer, stateAgents: Agent
   let failedTargets = 0;
   if (delegated.length > 0) {
     checkedTargets++;
-    if (!mcpServerConfigEquals(server, readMcpmServer(server.name))) failedTargets++;
+    if (!mcpServerConfigEquals(server, readMcpmServer(server.name), "mcpm-registry")) failedTargets++;
   }
   for (const agent of [...native, ...delegated]) {
     checkedTargets++;
@@ -740,7 +740,7 @@ function bridgeOneServer(server: McpServer, detectedAgents: string[]): "bridged"
     headers: server.headers,
   });
   if (!registerResult.ok) return "failed";
-  if (!mcpServerConfigEquals(server, readMcpmServer(server.name))) return "failed";
+  if (!mcpServerConfigEquals(server, readMcpmServer(server.name), "mcpm-registry")) return "failed";
 
   const editResult = delegateMcpClientEdit({ serverName: server.name, agents: detectedAgents });
   return editResult.ok && editResult.perClient.length > 0 ? "bridged" : "failed";
@@ -777,7 +777,8 @@ function bridgeStateMcpToMcpm(
   // changes a server's backend or transport.
   const unreachable = reconcileIntersectionClientEntries(AGENT_DEFINITIONS, detectedAgents, servers);
   const changed = servers.filter(
-    (server) => unreachable.has(server.name) || !mcpServerConfigEquals(server, readMcpmServer(server.name)),
+    (server) =>
+      unreachable.has(server.name) || !mcpServerConfigEquals(server, readMcpmServer(server.name), "mcpm-registry"),
   );
   if (changed.length === 0) return;
 

@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { addToAgentfile, globalAgentfileDir } from "../agentfile.js";
 import { buildMcpmClientList } from "../core/mcp-agent-map.js";
+import { mcpmStdioEnv } from "../mcp/env-vars.js";
 import { extractEnvVars, isEnvVarResolved } from "../mcp/mcp-setup.js";
 import { getSetupInstructions } from "../mcp/mcp-status.js";
 import { COMMANDS_DIR } from "../paths.js";
@@ -98,8 +99,11 @@ function bridgeCatalogMcpToMcpm(server: CatalogMcpServer): void {
   const { clients } = buildMcpmClientList(detectedAgents);
   if (clients.length === 0) return;
 
-  const installResult = delegateMcpInstall({ serverName: server.name, agents: detectedAgents });
-  if (!installResult.ok) return;
+  const needsInheritedEnv = !server.url && !!server.command && mcpmStdioEnv(server.env) !== server.env;
+  if (!needsInheritedEnv) {
+    const installResult = delegateMcpInstall({ serverName: server.name, agents: detectedAgents });
+    if (!installResult.ok) return;
+  }
 
   // mcpm install exits 0 even when the server isn't in mcpm's public
   // registry — it prints "Error: Server '<name>' not found in registry."
@@ -110,7 +114,7 @@ function bridgeCatalogMcpToMcpm(server: CatalogMcpServer): void {
   // get the server wired. This is what made team-overlay MCPs
   // (registry.npmjs.example.com) invisible to mcpm-delegated clients
   // even though `agentbrew install` reported success.
-  if (!readMcpmServer(server.name)) {
+  if (needsInheritedEnv || !readMcpmServer(server.name)) {
     const newResult = delegateMcpNew({
       serverName: server.name,
       command: server.command,
@@ -123,7 +127,8 @@ function bridgeCatalogMcpToMcpm(server: CatalogMcpServer): void {
       console.log(chalk.yellow(`  ⚠ Could not register ${server.name} with mcpm — intersection clients won't see it.`));
       return;
     }
-    console.log(chalk.dim(`  Registered ${server.name} with mcpm via 'mcpm new' (not in public registry).`));
+    const reason = needsInheritedEnv ? "uses inherited environment" : "not in public registry";
+    console.log(chalk.dim(`  Registered ${server.name} with mcpm via 'mcpm new' (${reason}).`));
   }
 
   const editResult = delegateMcpClientEdit({ serverName: server.name, agents: detectedAgents });

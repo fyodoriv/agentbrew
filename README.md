@@ -716,6 +716,13 @@ The job's `PATH` starts with that Node's folder. When `agentbrew fix` rewrites t
 
 ### MCP endpoint repair
 
+For an Agentbrew-managed stdio server registered with MCPM, a bare
+same-name binding such as `API_ENDPOINT: "${API_ENDPOINT}"` inherits the
+variable from the process that starts MCPM. Set the variable in that
+process's environment. Agentbrew keeps the source declaration and leaves
+the matching variable out of MCPM's overrides.
+
+
 **Catalog version pins.** The catalog can pin an npm MCP package to an exact version (for example `tasks-mcp@0.10.2`). Then every sync rewrites to that version a floating copy in an agent's config (`tasks-mcp`, `tasks-mcp@latest`) and any exact pin older than the catalog's. An exact pin newer than the catalog's, a range, or a tag stays as you set it. To keep an older version, remove the server from agentbrew and manage it in that agent's own config.
 
 Sync changes only agents agentbrew manages (detected). For an agent it does not manage, such as VS Code Copilot without `~/.copilot`, `agentbrew status` prints an `Outdated pin` line with the exact one-line edit, and `status --json` lists it under `unmanagedOutdatedPins`; neither counts as drift.

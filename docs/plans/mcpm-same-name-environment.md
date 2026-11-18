@@ -33,3 +33,11 @@ registration and one client update on the first sync, then zero
 additional calls on the second. Keep the digest unchanged for
 definitions without the projection. Any skipped repair or repeated
 registration rejects the change.
+
+Three baseline controls failed. The prior registry write contained the
+bare override, the readback rejected the intended projection, and the
+catalog route called raw install once. Reusing an old fingerprint
+then skipped the repair entirely. The candidate fixed all four cases.
+The upgrade fixture registered once, edited one client, and skipped
+both on the next sync. All 292 focused tests passed. Four tests that
+need the optional installed MCPM CLI were skipped. TypeScript passed.

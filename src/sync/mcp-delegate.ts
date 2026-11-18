@@ -70,6 +70,7 @@ import { delimiter, join } from "node:path";
 import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
 import { buildMcpmClientList } from "../core/mcp-agent-map.js";
+import { mcpmStdioEnv } from "../mcp/env-vars.js";
 import type { McpServer } from "../types.js";
 
 /** Resolve the mcpm binary at call time so tests can swap it via env.
@@ -127,12 +128,17 @@ function recordsEqual(left: Record<string, string> | undefined, right: Record<st
 }
 
 /** Compare only transport fields that mcpm persists for a server definition. */
-export function mcpServerConfigEquals(left: McpServer, right: McpServer | undefined): boolean {
+export function mcpServerConfigEquals(
+  left: McpServer,
+  right: McpServer | undefined,
+  target?: "mcpm-registry",
+): boolean {
   if (!right) return false;
   if ((left.url ?? "") !== (right.url ?? "")) return false;
   if (!left.url && left.command !== right.command) return false;
   if (JSON.stringify(left.args) !== JSON.stringify(right.args)) return false;
-  return recordsEqual(left.env, right.env) && recordsEqual(left.headers, right.headers);
+  const expectedEnv = target === "mcpm-registry" && !left.url ? mcpmStdioEnv(left.env) : left.env;
+  return recordsEqual(expectedEnv, right.env) && recordsEqual(left.headers, right.headers);
 }
 
 /**
@@ -587,13 +593,9 @@ function buildMcpmNewArgs(opts: DelegateMcpNewOptions): string[] {
     if (args && args.length > 0) {
       argv.push("--args", args.join(" "));
     }
-    if (env && Object.keys(env).length > 0) {
-      argv.push(
-        "--env",
-        Object.entries(env)
-          .map(([k, v]) => `${k}=${v}`)
-          .join(","),
-      );
+    const entries = Object.entries(mcpmStdioEnv(env) ?? {});
+    if (entries.length > 0) {
+      argv.push("--env", entries.map(([key, value]) => `${key}=${value}`).join(","));
     }
   }
   return argv;

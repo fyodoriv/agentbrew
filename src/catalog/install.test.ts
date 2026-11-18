@@ -641,6 +641,37 @@ describe("installMcpServer — bridge to mcpm", () => {
     });
   });
 
+  it("registers the managed catalog source directly when it needs inherited stdio variables", async () => {
+    mockLoadState.mockReturnValue(makeState({ agents: [makeAgent("claude-code", true)] }));
+    mockDelegateMcpNew.mockReturnValueOnce({ ok: true });
+    const { installMcpServer } = await import("./install-other.js");
+    const env = { FIXTURE_ENDPOINT: "${FIXTURE_ENDPOINT}", MODE: "plain" };
+
+    await installMcpServer({
+      name: "fixture-stdio",
+      description: "Synthetic server",
+      category: "utilities",
+      recommended: false,
+      command: "node",
+      args: ["fixture.js"],
+      env,
+    });
+
+    expect(mockDelegateMcpInstall).not.toHaveBeenCalled();
+    expect(mockDelegateMcpNew).toHaveBeenCalledWith(
+      expect.objectContaining({
+        serverName: "fixture-stdio",
+        command: "node",
+        env,
+      }),
+    );
+    expect(mockDelegateMcpClientEdit).toHaveBeenCalledWith({
+      serverName: "fixture-stdio",
+      agents: ["claude-code"],
+    });
+    expect(mockAddMcpServer).toHaveBeenCalledWith("fixture-stdio", "node", ["fixture.js"], env, {});
+  });
+
   it("skips client edit when mcpm install fails (e.g. server not in mcpm catalog)", async () => {
     // mcpm doesn't know about team-overlay servers and custom catalog
     // additions — install fails, so the client-edit step has nothing to

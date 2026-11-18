@@ -1,10 +1,9 @@
 ---
 name: modern-web-guidance
 description: >-
-  Build and modernize browser features with Chrome's web platform guidance.
-  Use for HTML, CSS, client-side JavaScript, browser compatibility, or
-  Manifest V3 extensions. Use a visual design skill or a running-page audit
-  for those tasks alone.
+  Implement browser behavior with HTML, CSS, and JavaScript. Use for dialogs,
+  popovers, native form controls, DOM APIs, and browser support or fallbacks.
+  Scan a codebase for legacy web patterns. Build Chrome extensions with Manifest V3.
 ---
 
 # Modern Web Guidance

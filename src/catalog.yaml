@@ -334,9 +334,9 @@ skills:
 
   - name: modern-web-guidance
     description: >-
-      Build and modernize browser features using Chrome guidance and Baseline compatibility.
-      Covers HTML, CSS, client-side JavaScript, and Chrome extensions.
-      Use the design or audit skill for visual direction or live measurement alone.
+      Implement browser behavior with HTML, CSS, and JavaScript.
+      Use for dialogs, popovers, native form controls, DOM APIs, and browser support or fallbacks.
+      Scan a codebase for legacy web patterns. Build Chrome extensions with Manifest V3.
     source: fyodoriv/agentbrew
     category: development
     recommended: true
@@ -344,7 +344,7 @@ skills:
     rationale: "Use one up-to-date web platform source with browser fallbacks, focused retrieval, and extension references."
 
   - name: hallmark
-    description: "Design skill for new pages that look designed, not generated (MIT, by Together AI): fifty themes, a browser lint for AI tells at eight widths, a fresh-context review, and `/hallmark redesign|audit <path>` for existing pages. The recommended creative-direction skill; replaces frontend-design. Use Modern Web Guidance for browser implementation."
+    description: "Choose the visual direction of a page or app. Use it for art direction, typography, color, composition, and the look and feel of a new design or redesign. The recommended creative-direction skill."
     source: nutlope/hallmark
     category: design
     recommended: true

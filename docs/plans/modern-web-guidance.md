@@ -123,3 +123,14 @@ extensions, landing-page design, single audit, and Next.js matched.
   this wording change as a measured fix. A timeout leaves it inconclusive.
 - **Anchor**: The dated four-of-seven control above and the catalog's
   creative and browser routes.
+
+The original descriptions passed seven of eleven and three of four
+held-back cases. The revised descriptions passed all eleven, including
+all four held-back cases. This measures primary choice from catalog
+descriptions in one local model. The pinned CLI and actual install have
+their own independent controls.
+
+The full skill coverage check initially rejected all seven evaluation
+rows because each had two checks. The repository requires at least three.
+Each row now has three behavior checks, and the focused catalog test
+runs the same validation function as the coverage gate.

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { validateEvals } from "../skills/validate.js";
 import { findSkillDirInCache } from "./index-source.js";
 import { loadBaseCatalog } from "./types.js";
 
@@ -65,6 +66,7 @@ describe("Modern Web Guidance catalog routing", () => {
     const executions = [...skill.matchAll(/npx --yes modern-web-guidance@(\S+)\s/g)];
     expect(executions.map((match) => match[1])).toEqual(["1.0.1", "1.0.1", "1.0.1"]);
     expect(skill).toContain("/blob/64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65/skills/chrome-extensions/SKILL.md");
+    expect(validateEvals(folder)).toEqual([]);
     const cases = JSON.parse(readFileSync(join(folder, "evals", "evals.json"), "utf8"));
     expect(cases.evals.map((entry: { id: number }) => entry.id)).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });

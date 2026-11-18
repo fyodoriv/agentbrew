@@ -75,3 +75,25 @@ failed all five new boundary assertions. The [candidate](https://github.com/fyod
 passed them and the six compatibility files. The dispatcher supplies its
 own normalized module order to all ordinary Agentfile routes. Other
 state preparation, workspace publication and native output remain open.
+
+## A selection with no native facet
+
+Commands, agents, skills, models and instructions have no native Claude
+marketplace output. They still use their ordinary sync engines. Keep the
+existing redaction refresh as a privacy dependency for plugin-backed
+content. Complete the native facet work separately for hooks, MCP and rules.
+
+- **Hypothesis**: A selection with no native facet calls its ordinary
+  engines and never regenerates the marketplace, while default sync and
+  any requested native facet still reach the native publisher.
+- **Measurement**: Use the existing CLI test with fake native publication,
+  lock and engine boundaries. Cover every non-native selection, default
+  sync, each native facet, a mixed selection, and dry-run behavior.
+  Observe the redaction boundary and the exact module names in each case.
+- **Success**: Zero native publications for all five non-native names.
+  All requested native and default controls still publish exactly once.
+  Redaction refresh still runs for real syncs. Preview writes nothing.
+- **Pivot**: A skipped requested facet, changed default, leaked rejection,
+  or removed redaction refresh rejects the change.
+- **Anchor**: `emitClaudeNative`, `runSyncCommand`, and the signed
+  physical selection receipts above.

@@ -470,36 +470,44 @@ describe("scoped native facet publication", () => {
 });
 
 describe("warm native receipt admission", () => {
-  it.each(["missing", "wrong-source", "edited-unselected"] as const)("refuses a %s receipt condition", (condition) => {
-    installFacetFixture();
-    emitClaudeNative({ certifyFullOutput: true });
-    const files = nativeFacetPaths();
-    const receipt = nativeProofPath();
-    rmSync(files.script);
-    if (condition === "missing") {
-      rmSync(receipt);
-    } else if (condition === "wrong-source") {
-      const body = JSON.parse(readFileSync(receipt, "utf8"));
-      body.sourceDigest = "0".repeat(64);
-      writeFileSync(receipt, JSON.stringify(body), { mode: 0o600 });
-    } else {
-      writeFileSync(files.mcp, "Synthetic changed unselected bytes.\n");
-    }
-    const frozen = [
-      files.hooks,
-      files.envelope,
-      files.mcp,
-      files.launcher,
-      files.index,
-      files.settings,
-      receipt,
-    ].filter(existsSync);
-    const before = observeNativeFiles(frozen);
+  it.each(["missing", "wrong-source", "edited-unselected", "omitted-launcher"] as const)(
+    "refuses a %s receipt condition",
+    (condition) => {
+      installFacetFixture();
+      emitClaudeNative({ certifyFullOutput: true });
+      const files = nativeFacetPaths();
+      const receipt = nativeProofPath();
+      rmSync(files.script);
+      if (condition === "missing") {
+        rmSync(receipt);
+      } else if (condition === "wrong-source") {
+        const body = JSON.parse(readFileSync(receipt, "utf8"));
+        body.sourceDigest = "0".repeat(64);
+        writeFileSync(receipt, JSON.stringify(body), { mode: 0o600 });
+      } else if (condition === "omitted-launcher") {
+        const body = JSON.parse(readFileSync(receipt, "utf8"));
+        body.files = body.files.filter(({ path }: { path: string }) => path !== relative(home, files.launcher));
+        writeFileSync(receipt, JSON.stringify(body), { mode: 0o600 });
+        rmSync(files.launcher);
+      } else {
+        writeFileSync(files.mcp, "Synthetic changed unselected bytes.\n");
+      }
+      const frozen = [
+        files.hooks,
+        files.envelope,
+        files.mcp,
+        files.launcher,
+        files.index,
+        files.settings,
+        receipt,
+      ].filter(existsSync);
+      const before = observeNativeFiles(frozen);
 
-    expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/native receipt/u);
-    expect(existsSync(files.script)).toBe(false);
-    expect(observeNativeFiles(frozen)).toEqual(before);
-  });
+      expect(() => emitClaudeNative({ modules: ["hooks"] })).toThrow(/native receipt/u);
+      expect(existsSync(files.script)).toBe(false);
+      expect(observeNativeFiles(frozen)).toEqual(before);
+    },
+  );
 });
 
 describe("emitClaudeNative", () => {

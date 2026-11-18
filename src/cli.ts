@@ -266,7 +266,6 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
   const early = await handleSyncEarlyExits(options);
   if (early) return early === "deployed";
   if (await refuseSyncOnLockDrift()) return false;
-  if (!options.dryRun) await emitNativePluginOutput();
 
   const syncOpts = {
     dryRun: options.dryRun,
@@ -276,8 +275,6 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
     compact: !options.verbose,
   };
 
-  await handleSyncFirstRun(options);
-
   let modules = buildSyncModules(syncOpts);
   if (options.only) {
     const filtered = filterSyncModules(modules, options.only);
@@ -286,6 +283,9 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
   }
 
   const syncModules = options.only === undefined ? undefined : modules.map(({ name }) => name);
+  if (!options.dryRun) await emitNativePluginOutput(syncModules);
+  await handleSyncFirstRun(options);
+
   const installAgentfileItems = shouldInstallAgentfileItems(options.only);
   await handleSyncAgentfile(options, installAgentfileItems, syncModules);
   await handleSyncRecommended(options);
@@ -386,11 +386,13 @@ async function refuseSyncOnLockDrift(): Promise<boolean> {
   return refuseLockDrift(getStateSources(state));
 }
 
-/** Native Claude Code plugin output for v2 plugins, side by side with file rendering (#208 step 8). */
-async function emitNativePluginOutput(): Promise<void> {
+/** Publish the native marketplace when needed. Keep redaction current for every live sync. */
+async function emitNativePluginOutput(syncModules?: readonly string[]): Promise<void> {
   try {
-    const { emitClaudeNative } = await import("./plugins/claude-native.js");
-    emitClaudeNative();
+    if (!syncModules || syncModules.some((name) => name === "hooks" || name === "mcp" || name === "rules")) {
+      const { emitClaudeNative } = await import("./plugins/claude-native.js");
+      emitClaudeNative();
+    }
     const { writeRedactPatterns } = await import("./plugins/leak-audit.js");
     writeRedactPatterns();
   } catch (e) {

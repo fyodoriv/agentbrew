@@ -618,3 +618,11 @@ compares every planned destination before native output begins.
 The cold receipt records its coverage separately from the earlier
 full receipt. Later publication still needs a qualified transition
 from partial coverage to a second selected facet.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44262812630)
+lacked a receipt in all four cases. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44263063423)
+recorded all four inventories, source digests, coverage lists and
+modes exactly. It passed 39 focused controls, 95 compatibility tests,
+the ordinary publication control, and type checking. A subsequent
+selection still needs a qualified transition from partial coverage.

@@ -199,3 +199,23 @@ Configuration and inventory both succeeded. The server was reaped after
 the check. The experiment stayed on loopback and used no model. It
 qualifies the local V2 definition and setup route on Ubuntu 2.3.0.
 Real hook effects and owner-safe deployment remain separate.
+
+## Verify V2 session event identities
+
+- **Hypothesis**: A native V2 plugin receives one creation and one
+  deletion event for the same empty scratch session, using the V2
+  event payload.
+- **Measurement**: Through the verified loopback profile, start one
+  control that subscribes to `session.created` and `session.deleted`.
+  Create one empty session at the verified location and delete that
+  fixture session. Match each event's session ID to the create reply.
+  Report only counts and cleanup status.
+- **Success**: One admitted setup, one matching creation event, one
+  matching deletion event, zero other or ambiguous events, and an owned
+  server reaped. Every observation has a short deadline.
+- **Pivot**: A missing or mismatched event, error or duplicate leaves
+  the lifecycle route unqualified. A successful event observation
+  supplies a payload contract for the bridge, with tool and prompt
+  effects still open.
+- **Anchor**: The pinned [session endpoints](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/protocol/src/groups/session.ts)
+  and [event schema](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/schema/src/session-event.ts).

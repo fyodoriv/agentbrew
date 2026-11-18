@@ -361,7 +361,7 @@ describe("selected Agentfile state fields", () => {
     applyAgentfile(policy, {
       quiet: true,
       authoritative: true,
-      ...(facet === "all" ? {} : { syncModules: [facet] }),
+      ...(facet === "all" ? {} : { syncModules: [facet], scopeAgentfileContent: true }),
     });
     invalidateState();
 
@@ -403,7 +403,7 @@ describe("selected Agentfile source directories", () => {
     applyAgentfile(policy, {
       quiet: true,
       authoritative: true,
-      ...(facet === "all" ? {} : { syncModules: [facet] }),
+      ...(facet === "all" ? {} : { syncModules: [facet], scopeAgentfileContent: true }),
     });
     invalidateState();
 
@@ -440,7 +440,7 @@ describe("selected pull keeps established mixed preparation", () => {
 
     expect(mockUpdate).toHaveBeenCalledOnce();
     expect(prepared?.mcpServers?.map(({ name }) => name)).toContain("fixture-pull");
-    expect(prepared?.hooks?.map(({ command }) => command)).toContain("fixture-pull-hook");
+    expect(prepared?.hooks?.map(({ command }) => command) ?? []).toContain("fixture-pull-hook");
     expect(prepared?.defaultModel).toBe("fixture-pull-model");
     expect(prepared?.commandSourceDirs?.map(({ path }) => path)).toContain(join(config, "fixture-pull-commands"));
   });

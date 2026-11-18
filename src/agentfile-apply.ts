@@ -64,6 +64,8 @@ interface ApplyAgentfileOptions {
   includeSkillInstallReport?: boolean;
   /** Selected sync invocation: defer excluded live rule writes and owned skill cleanup. */
   syncModules?: readonly string[];
+  /** Apply the matching content fields during ordinary selected sync. */
+  scopeAgentfileContent?: boolean;
   /** Stable logical owner for a generated Agentfile read from a temporary file. */
   agentfileBaseDir?: string;
   dryRun?: boolean;
@@ -714,13 +716,17 @@ function selectedSyncModule(options: ApplyAgentfileOptions | undefined, name: st
   return options?.syncModules?.includes(name) ?? true;
 }
 
+function preparesAgentfileContent(options: ApplyAgentfileOptions | undefined, name: string): boolean {
+  return options?.scopeAgentfileContent ? selectedSyncModule(options, name) : true;
+}
+
 function prepareSelectedAgentfileState(
   agentfile: Agentfile,
   state: AgentBrewState,
   options: ApplyAgentfileOptions | undefined,
 ) {
   const quiet = options?.quiet ?? false;
-  const mcpSelected = selectedSyncModule(options, "mcp");
+  const mcpSelected = preparesAgentfileContent(options, "mcp");
   if (mcpSelected && !quiet) {
     for (const warning of validateAgentfileMcp(agentfile)) {
       console.warn(chalk.yellow(`  ⚠ ${warning.message}`));
@@ -732,8 +738,8 @@ function prepareSelectedAgentfileState(
   if (!quiet) printDeclinedMcp(mcp.declined);
   return {
     mcp,
-    hooksUpdated: selectedSyncModule(options, "hooks") && mergeAgentfileHooks(agentfile, state),
-    defaultModelUpdated: selectedSyncModule(options, "models") && mergeAgentfileDefaultModel(agentfile, state),
+    hooksUpdated: preparesAgentfileContent(options, "hooks") && mergeAgentfileHooks(agentfile, state),
+    defaultModelUpdated: preparesAgentfileContent(options, "models") && mergeAgentfileDefaultModel(agentfile, state),
   };
 }
 
@@ -744,13 +750,13 @@ function prepareSelectedAgentfileDirectories(
   prune: boolean,
   options: ApplyAgentfileOptions | undefined,
 ) {
-  const skillsSelected = selectedSyncModule(options, "skills");
+  const skillsSelected = preparesAgentfileContent(options, "skills");
   return {
     skillDirsChanged: skillsSelected && mergeStateSkillDirectories(agentfile.skillDirectories, state, baseDir, prune),
-    commandDirs: selectedSyncModule(options, "commands")
+    commandDirs: preparesAgentfileContent(options, "commands")
       ? mergeAgentfileCommandDirs(agentfile, state, baseDir, prune)
       : { added: [], changed: false },
-    agentDirs: selectedSyncModule(options, "agents")
+    agentDirs: preparesAgentfileContent(options, "agents")
       ? mergeAgentfileAgentDirs(agentfile, state, baseDir, prune)
       : { added: [], changed: false },
     skillsToInstall: skillsSelected ? collectAgentfileSkills(agentfile, options?.quiet ?? false) : [],

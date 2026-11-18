@@ -127,7 +127,7 @@ function applyProjectAgentfile(
       includeSkillInstallReport: installAgentfileItems,
       dryRun,
       stateOverride: virtualState,
-      ...(options?.syncModules && { syncModules: options.syncModules }),
+      ...(options?.syncModules && { syncModules: options.syncModules, scopeAgentfileContent: true }),
     });
   } catch (e) {
     logSkipped("sync-runner/applyAgentfile", e);
@@ -141,7 +141,7 @@ async function prepareSync(options?: SyncRunnerOptions): Promise<PreparedSync> {
   const installAgentfileItems = options?.installAgentfileItems ?? true;
   const dryRun = options?.dryRun ?? false;
   const virtualState = dryRun ? cloneStateForDryRun(loadState()) : undefined;
-  const selection = options?.syncModules && { syncModules: options.syncModules };
+  const selection = options?.syncModules && { syncModules: options.syncModules, scopeAgentfileContent: true };
   // Apply global Agentfile (~/.config/agentbrew/Agentfile) — authoritative
   // Skipped when --agentfile was used (the explicit path already applied as the source of truth)
   const globalDir = expandHome("~/.config/agentbrew");

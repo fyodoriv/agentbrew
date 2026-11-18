@@ -44,3 +44,10 @@ hosts retain the scratch-file controls; unsupported hosts take the closed
 refusal path without creating a symlink. Flag shape alone does not prove OS
 semantics or bounded filesystem latency. The injected flags and opener are
 internal test seams, not authority for untrusted callers.
+
+## Delivery
+
+[PR #997](https://github.com/fyodoriv/agentbrew/pull/997) merged with hosted
+Linux and macOS checks green. The observation runs after the existing fixture
+cleanup. The original hosted timeout's cause remains unknown. Diagnose a
+recurrence only when its receipt shows a closed marker state.

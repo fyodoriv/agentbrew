@@ -108,7 +108,6 @@
   },
   "overrides": {
     "simple-git": "4.0.2",
-    "basic-ftp": "6.2.3",
     "jks-js": "$jks-js"
   }
 }

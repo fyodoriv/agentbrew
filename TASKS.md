@@ -418,19 +418,6 @@
   - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric).
 
 
-- [ ] The updates-landed hook fixture passes when heavy-run pauses its slot
-  - **ID**: updates-landed-fixture-wall-clock-limit
-  - **Tags**: tests, flaky, hooks
-  - **Details**: Test 5 of the `updates-landed.sh` hook fixture ("hung script -> silent within 5s") checks a wall-clock limit. On 2026-11-10 it took 11 s and failed inside `heavy-run npm run verify`, on a branch that does not touch `hooks/`: heavy-run had paused the slot under memory pressure, and the pause counts as test time. A plain rerun passed. Judge the hook by what it does (it stops waiting for the hung script and prints nothing), not by the wall clock of the whole test, or measure only the hook's own timeout.
-  - **Files**: `hooks/checks/updates-landed.test.sh`, `hooks/checks/updates-landed.sh`
-  - **Output**: code
-  - **Acceptance**: the fixture passes when the test process is stopped for 10 s in the middle of Test 5 (`kill -STOP`, then `kill -CONT`), and still fails when the hook waits for the hung script without a limit.
-  - **Hypothesis**: a check that does not count paused time moves the failures of Test 5 under a 10 s pause from 1 of 1 to 0 of 10.
-  - **Measurement**: a test that runs the fixture 10 times with a 10 s `kill -STOP` pause in Test 5, plus one run with the hook's timeout removed.
-  - **Success**: 0 failures in 10 paused runs, and the run without the timeout fails.
-  - **Pivot**: if 1 or more of the 10 paused runs fails, drop the time check and assert only on the hook's output and exit code.
-  - **Anchor**: Luo et al. 2014 (An Empirical Analysis of Flaky Tests: async wait and time are top causes); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
-
 - [ ] The perf gate's catch rate for small slowdowns under load is measured
   - **ID**: perf-gate-marginal-slowdown-detection-under-load
   - **Tags**: perf, tests

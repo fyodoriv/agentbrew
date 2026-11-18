@@ -22,3 +22,14 @@ placeholder from the managed MCPM projection.
   inheritance semantics blocks rollout.
 - **Anchor**: MCPM v2.15.0
   [stdio proxy](https://github.com/pathintegral-institute/mcpm.sh/blob/v2.15.0/src/mcpm/fastmcp_integration/proxy.py).
+
+## Upgrade a saved bridge check
+
+Source review found that the old fingerprint can skip the bridge
+before the new comparison sees a stale literal. Register one saved
+pre-change digest with one stale fixture entry. The existing bridge
+test runs two ordinary syncs with the same manifest. Predict one
+registration and one client update on the first sync, then zero
+additional calls on the second. Keep the digest unchanged for
+definitions without the projection. Any skipped repair or repeated
+registration rejects the change.

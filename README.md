@@ -508,8 +508,10 @@ Every sync creates a timestamped snapshot. Pruning only touches entries agentbre
 
 During a selected sync, Agentfiles defer live rule writes until you select
 `rules`, and defer pruning dropped Agentfile skills until you select `skills`.
-The native Claude marketplace refresh runs when a sync includes hooks, MCP,
-or rules. Live sync also refreshes the privacy redaction patterns.
+For example, `agentbrew sync --only commands` leaves the native Claude
+marketplace unchanged. A selection that includes hooks, MCP, or rules
+refreshes the complete native marketplace. Every live sync refreshes the
+privacy redaction patterns.
 
 When an Agentfile is in effect (`--agentfile`, the global Agentfile, or a project Agentfile), the Agentfile decides the skill set. A plain `sync` installs the catalog recommended set only on a machine with no Agentfile; an Agentfile asks for it with `recommended: true`. A skill you remove from the Agentfile is pruned from its source on the next sync that includes skills.
 

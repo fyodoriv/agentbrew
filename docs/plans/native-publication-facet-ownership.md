@@ -563,3 +563,13 @@ each stopped the repair before any writes.
   admission keeps the prototype out of delivery.
 - **Anchor**: The no-options native emitter, its real lifecycle
   callers and independent review of complete receipt ownership.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44251588464)
+failed the ordinary path on Linux and Windows and admitted the
+incomplete launcher receipt on Linux. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44251849496)
+passed the ordinary path on both systems, 33 signed publication
+checks, 89 compatibility tests, and type checking. Only explicit
+prototype calls enter the experimental path. The lifecycle and
+signer-writer experiments are retained separately. No product
+caller adopts the new receipt or lock in this phase.

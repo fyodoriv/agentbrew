@@ -1,4 +1,5 @@
-import { readFileSync, realpathSync } from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -262,7 +263,23 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
     const { readUpdateSkillRequests } = await import("./update-skill-policy.js");
     if (!readUpdateSkillRequests(options)) return false;
   }
-  if (!options.rollback) await handleSyncWorkspaces(options);
+  let selectedWorkspaceDir: string | undefined;
+  const selectedWorkspacePath = () => {
+    selectedWorkspaceDir = mkdtempSync(join(tmpdir(), "agentbrew-selected-workspace-"));
+    return join(selectedWorkspaceDir, "workspace-Agentfile.yaml");
+  };
+  try {
+    if (!options.rollback) {
+      const outputPath = options.only !== undefined && !options.pull ? selectedWorkspacePath : undefined;
+      await handleSyncWorkspaces(options, outputPath);
+    }
+    return await runPreparedSync(options);
+  } finally {
+    if (selectedWorkspaceDir) rmSync(selectedWorkspaceDir, { recursive: true, force: true });
+  }
+}
+
+async function runPreparedSync(options: SyncCommandOptions): Promise<boolean> {
   const early = await handleSyncEarlyExits(options);
   if (early) return early === "deployed";
   if (await refuseSyncOnLockDrift()) return false;
@@ -309,9 +326,9 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
 }
 
 /** In workspace mode, swap the base Agentfile for one merged with every per-repo Agentfile. */
-async function handleSyncWorkspaces(options: SyncCommandOptions): Promise<void> {
+async function handleSyncWorkspaces(options: SyncCommandOptions, outputPath?: () => string): Promise<void> {
   const { prepareWorkspaceAgentfile } = await import("./core/workspaces.js");
-  const merged = prepareWorkspaceAgentfile(options);
+  const merged = prepareWorkspaceAgentfile(options, outputPath);
   if (merged) options.agentfile = merged;
 }
 

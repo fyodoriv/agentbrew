@@ -707,3 +707,20 @@ folder. The [corrected candidate](https://github.com/fyodoriv/agentbrew/actions/
 allowed existing parents of verified repair paths and passed all
 three repairs, 47 focused controls, 103 compatibility tests, and
 type checking.
+
+## Recheck retained receipt paths before a repair
+
+- **Hypothesis**: An updated unselected artifact or marketplace
+  index causes refusal before a selected repair changes any file.
+- **Measurement**: Start with a full signed receipt and remove
+  the selected hook script. Replace the retained MCP file or
+  index at the exact signer admission boundary. Compare all
+  other paths, the changed file and the still-missing script.
+- **Success**: Both controls refuse with zero publisher writes.
+  All supported cold, partial, and warm checks still pass.
+- **Pivot**: Any restored selected output after a changed
+  dependency, or any write to the retained file, rejects this step.
+- **Anchor**: The signed warm receipt and final destination checks.
+
+This adds the last pre-write observation for retained receipt
+files and the marketplace index.

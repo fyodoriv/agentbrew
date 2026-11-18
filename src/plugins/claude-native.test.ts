@@ -494,6 +494,42 @@ describe("scoped native facet publication", () => {
   });
 });
 
+describe("cold native receipt coverage", () => {
+  const selections = [
+    { facets: ["hooks"], files: ["hooks", "script"] },
+    { facets: ["mcp"], files: ["mcp", "launcher"] },
+    { facets: ["rules"], files: ["hooks"] },
+    { facets: ["hooks", "rules"], files: ["hooks", "script"] },
+  ] as const;
+
+  it.each(selections)("records only the selected cold $facets files", ({ facets, files }) => {
+    installFacetFixture();
+    const paths = nativeFacetPaths();
+
+    emitClaudeNative({ modules: facets });
+
+    const receipt = nativeProofPath();
+    const entry = readLock().plugins?.[0];
+    if (!entry) throw new Error("Synthetic source pin is missing");
+    const digest = (data: string | Buffer) => createHash("sha256").update(data).digest("hex");
+    expect(statSync(receipt).mode & 0o777).toBe(0o600);
+    expect(JSON.parse(readFileSync(receipt, "utf8"))).toEqual({
+      schema: 2,
+      facets,
+      sourceDigest: digest(JSON.stringify(pluginSourceIdentity(entry))),
+      files: (["envelope", ...files] as const)
+        .map((name) => paths[name])
+        .sort()
+        .map((path) => ({
+          path: relative(home, path),
+          mode: statSync(path).mode & 0o777,
+          digest: digest(readFileSync(path)),
+        })),
+    });
+    expect(existsSync(paths.settings)).toBe(false);
+  });
+});
+
 describe("warm native receipt admission", () => {
   it.each([
     "missing",

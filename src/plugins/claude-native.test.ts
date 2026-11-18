@@ -8,13 +8,16 @@ import {
   appendFileSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   statSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { home, previousHome } = vi.hoisted(() => {
@@ -314,15 +317,21 @@ describe("scoped native facet publication", () => {
     expect(observeNativeFiles(Object.values(paths))).toEqual(before);
   });
 
-  it.each([true, false])("preserves a retained launcher reference (overlap: %s)", (overlap) => {
+  it.each(["direct", "physical-alias", "unrelated"] as const)("preserves a retained launcher reference: %s", (kind) => {
+    const overlap = kind !== "unrelated";
     installFacetFixture();
     emitClaudeNative();
     const paths = nativeFacetPaths();
     const retainedRoot = join(marketplaceDir(), "plugins", "fixture-retained");
     const retainedConfig = join(retainedRoot, ".mcp.json");
     const otherCommand = launcherPath("fixture-retained", "other");
-    const command = overlap ? paths.launcher : otherCommand;
+    let command = overlap ? paths.launcher : otherCommand;
     mkdirSync(retainedRoot, { recursive: true });
+    if (kind === "physical-alias") {
+      const alias = join(retainedRoot, "launcher-directory");
+      symlinkSync(dirname(paths.launcher), alias, "dir");
+      command = join(alias, basename(paths.launcher));
+    }
     writeFileSync(retainedConfig, JSON.stringify({ mcpServers: { retained: { command, args: [] } } }));
     if (!overlap) writeFileSync(otherCommand, "Synthetic retained output.\n");
     const registry = JSON.parse(readFileSync(paths.index, "utf8"));
@@ -377,6 +386,22 @@ describe("scoped native facet publication", () => {
     const paths = nativeFacetPaths();
     expect(readFileSync(paths.script, "utf8")).toBe("#!/bin/sh\nexit 0\n");
     expect(existsSync(join(marketplaceDir(), "plugins", "fixture-native", "hooks", "local-notes.txt"))).toBe(false);
+  });
+
+  it("leaves a differently spelled warm hook file unchanged", () => {
+    installFacetFixture();
+    emitClaudeNative();
+    const paths = nativeFacetPaths();
+    const folder = dirname(paths.hooks);
+    const intermediate = join(folder, "fixture-intermediate.json");
+    const alternate = join(folder, "HOOKS.JSON");
+    renameSync(paths.hooks, intermediate);
+    renameSync(intermediate, alternate);
+    const before = observeNativeFiles([alternate, paths.script, paths.mcp, paths.index, paths.settings]);
+
+    expect(() => emitClaudeNative({ modules: ["rules"] })).toThrow(/destination spelling is unknown/u);
+    expect(readdirSync(folder).sort()).toEqual(["HOOKS.JSON", "guard.sh"]);
+    expect(observeNativeFiles([alternate, paths.script, paths.mcp, paths.index, paths.settings])).toEqual(before);
   });
 
   it("preserves unknown warm hook metadata on refusal", () => {

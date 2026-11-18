@@ -127,6 +127,37 @@ afterAll(() => {
   rmSync(home, { recursive: true, force: true });
 });
 
+describe("native publisher admission", () => {
+  const owner = join(home, ".agentbrew-native-publication.lock");
+
+  it.each(["full", "selected"] as const)("refuses %s publication while an owner record exists", (mode) => {
+    installFacetFixture();
+    writeFileSync(owner, "Synthetic held record.\n", { mode: 0o600 });
+    const before = observeNativeFiles([owner]);
+    try {
+      expect(() => emitClaudeNative(mode === "full" ? undefined : { modules: ["hooks"] })).toThrow(
+        /native publication is busy/u,
+      );
+      expect(observeNativeFiles([owner])).toEqual(before);
+      expect(existsSync(marketplaceDir())).toBe(false);
+      expect(existsSync(SETTINGS())).toBe(false);
+    } finally {
+      rmSync(owner);
+    }
+  });
+
+  it("releases the acquired record after success and a plan refusal", () => {
+    installFacetFixture();
+    emitClaudeNative();
+    expect(existsSync(owner)).toBe(false);
+
+    const { hooks } = nativeFacetPaths();
+    writeFileSync(hooks, JSON.stringify({ hooks: {}, ownerNote: "Synthetic note." }));
+    expect(() => emitClaudeNative({ modules: ["rules"] })).toThrow(/unknown hook metadata/u);
+    expect(existsSync(owner)).toBe(false);
+  });
+});
+
 describe("scoped native facet publication", () => {
   const facets = ["hooks", "mcp", "rules"] as const;
 

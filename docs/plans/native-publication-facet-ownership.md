@@ -1078,3 +1078,16 @@ confirmed one index commit followed by one redaction commit in all
 four cases. The build routed selected sync to the prototype only in
 the scratch branch. The live writer and lifecycle coordination remain
 outside that result.
+
+## Shared owner across three built CLI entry points
+
+The [contention baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44312510630)
+held a real synthetic owner. Selected hooks refused. Default sync and
+plugin removal still changed their respective scratch outputs. All three
+kept the distinct owner's record.
+
+The [coordinated scratch build](https://github.com/fyodoriv/agentbrew/actions/runs/44313135866)
+passed three active-owner refusals and three known-state retries after
+normal release. The refused CLI calls made no native or installed-pin
+change. Each test reaped its own holder. Add, update, rollback and live
+activation remain separate controls.

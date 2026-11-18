@@ -82,3 +82,26 @@ reached the update boundary with the hook declaration missing.
 The [corrected candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44242776313)
 treated ordinary apply and pull separately. All ten focused cases
 and 207 compatibility tests passed, along with type checking.
+
+## Source tracking and managed memory registration
+
+Ordinary selected sync already assigns skills and MCP their own
+preparation. The tracked source list supports skill discovery and
+ownership. Managed memory registers an MCP server. Keep source pull
+and full apply behavior. Keep shared exclusions and memory pack
+discovery on the existing path.
+
+- **Hypothesis**: Selecting skills may change tracked sources.
+  Selecting MCP may enable or repair managed memory. Selecting hooks
+  preserves both state fields. A selected ordinary apply leaves old
+  work steps for full apply to remove.
+- **Measurement**: In four fresh homes, exercise skills, MCP, hooks
+  and full apply against a replacement source and disabled managed
+  memory. Reload the saved state. Run an existing mixed pull test at
+  the update boundary.
+- **Success**: All four ordinary controls and the pull control retain
+  every unselected value and apply each owning change.
+- **Pivot**: A source disappearing outside skills, a server appearing
+  outside MCP, or a full or pull behavior change blocks this phase.
+- **Anchor**: Existing source ownership and installed skill pruning in
+  Agentfile application, and the managed memory MCP registration.

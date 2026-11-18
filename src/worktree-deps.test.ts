@@ -72,6 +72,9 @@ mkdir -p node_modules/dep node_modules/leaf
 printf '%s\\n' '${JSON.stringify(depFixture)}' > node_modules/dep/package.json
 printf '%s\\n' '${JSON.stringify(leafFixture)}' > node_modules/leaf/package.json
 touch node_modules/.from-npm-ci
+if [ -n "${"$"}{LINK_STAMP_TO:-}" ]; then
+  ln -s "$LINK_STAMP_TO" node_modules/.worktree-deps-lock.json
+fi
 `,
   );
   chmodSync(npm, 0o755);
@@ -249,6 +252,18 @@ printf '%s\\n' '{"name":"leaf","version":"1.0.0"}' > "$5/leaf/package.json"
     symlinkSync(destination, stamp);
     const result = run();
     expect(result.status).toBe(1);
+    expect(lstatSync(stamp).isSymbolicLink()).toBe(true);
+    expect(readFileSync(destination, "utf8")).toBe("preserve this file");
+  });
+
+  it("refuses a linked readiness stamp created during installation", () => {
+    const { wt, runIn } = setup({ worktreeLock: '{"lock":2}' });
+    const destination = join(wt, "unrelated.txt");
+    const stamp = join(wt, "node_modules", ".worktree-deps-lock.json");
+    writeFileSync(destination, "preserve this file");
+    const result = runIn(wt, { LINK_STAMP_TO: destination });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("the worktree readiness stamp is not a regular file");
     expect(lstatSync(stamp).isSymbolicLink()).toBe(true);
     expect(readFileSync(destination, "utf8")).toBe("preserve this file");
   });

@@ -30,11 +30,11 @@ version evidence.
 
 - **Hypothesis**: Publish a regular stamp atomically from the exact
   lockfile snapshot that the dependency verifier checked.
-- **Measurement**: Run the hosted worktree fixtures. Have the install
-  wrapper create a symlink at the stamp path in one fixture. In another,
-  have the npm wrapper change the lockfile while projecting its data.
+- **Measurement**: Run the hosted worktree fixtures. Seed a symlink at
+  the stamp path, then create one during a separate install. In another
+  fixture, change the lockfile while npm projects its data.
   Check exit, stamp kind, the symlink destination and cleanup.
-- **Success**: Both cases exit 1, leave the linked destination untouched,
+- **Success**: All three cases exit 1, leave the linked destination untouched,
   and publish zero new stamps. A normal matching rerun remains under five
   seconds. The npm override handles install and read-only comparisons.
 - **Pivot**: Any changed external file, unsafe stamp, extra install, or
@@ -43,3 +43,7 @@ version evidence.
 
 The hosted pre-fix fixture returned status 0 in both new controls, which
 expected status 1. See [publication baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44206413141).
+
+The [first candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44206774876)
+passed 17 focused Linux cases, including the original two stamp controls.
+A healthy matching rerun took 500 ms.

@@ -261,15 +261,21 @@ def hold_native_owner(node, repo, loader, work, env, observer):
     holder_env = {
         **env,
         "NATIVE_FIXTURE_HOLDER_READY": str(observer / "holder-ready"),
+        "NATIVE_FIXTURE_HOLDER_RELEASE": str(observer / "holder-release"),
         "NATIVE_FIXTURE_LOCK_MODULE": str(repo / "src/plugins/native-publication-lock.ts"),
     }
     source = """
-import { writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const { withNativePublicationLock } = await import(pathToFileURL(process.env.NATIVE_FIXTURE_LOCK_MODULE).href);
 withNativePublicationLock(() => {
   writeFileSync(process.env.NATIVE_FIXTURE_HOLDER_READY, "ready", { mode: 0o600 });
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20_000);
+  const delay = new Int32Array(new SharedArrayBuffer(4));
+  const deadline = Date.now() + 15_000;
+  while (!existsSync(process.env.NATIVE_FIXTURE_HOLDER_RELEASE)) {
+    if (Date.now() >= deadline) throw new Error("Synthetic owner exceeded its release bound");
+    Atomics.wait(delay, 0, 0, 30);
+  }
 });
 """
     holder = subprocess.Popen([node, "--import", str(loader), "--input-type=module", "-e", source],
@@ -284,13 +290,13 @@ withNativePublicationLock(() => {
                 "The synthetic owner did not reach its barrier")
         yield holder
     finally:
-        if holder.poll() is None:
-            holder.terminate()
+        (observer / "holder-release").write_text("release")
         try:
             holder.wait(timeout=3)
         except subprocess.TimeoutExpired:
             holder.kill()
             holder.wait(timeout=3)
+        require(holder.returncode == 0, "The synthetic owner did not release normally")
 
 
 def owner_receipt(path):
@@ -355,36 +361,45 @@ def main():
                     args += ["--only", "hooks"]
             with hold_native_owner(node, repo, loader, work, env, observer) as holder:
                 before = owner_receipt(owner)
-                result = run(args, work, env)
+                refused = run(args, work, env)
                 retained = holder.poll() is None and before == owner_receipt(owner)
-                outputs = known_output(home, identity)
-                processes = (observer / "processes").read_text().splitlines()
-                emitted = outputs["plugin_envelope"] and outputs["marketplace_index"]
-                pin_kept = installed_pin.read_bytes() == pin_before and checkout.is_dir()
-                pin_removed = not checkout.exists() and identity["name"].encode() not in installed_pin.read_bytes()
-                expected_case = {
-                    "selected": result.returncode == 1 and b"publication is busy" in result.stderr
-                                and not market.exists() and pin_kept,
-                    "default": result.returncode == 0 and emitted and pin_kept and
-                               all(outputs[key] for key in ("declared_hook", "mcp_config", "rule_hook", "enabled")),
-                    "remove": result.returncode == 0 and pin_removed and not market.exists(),
-                }[arm]
-                summary = {
-                    "arm": arm, "exit": result.returncode, "owner_retained": retained,
-                    "native_emitted": emitted, "pin_kept": pin_kept, "pin_removed": pin_removed,
-                    "denied": processes.count("denied"),
-                    "signer_preserved": signer_registry.read_bytes() == signer_before,
-                    "source_preserved": manifest(source) == source_before,
-                    "complete": expected_case and retained,
-                }
-                allowed_package = (default_package_context(install, package_before, manifest(install)) if arm == "default"
-                                   else manifest(install) == package_checkpoint)
-                print(json.dumps(summary, sort_keys=True), flush=True)
-                require(summary["complete"] and summary["denied"] == 0 and summary["signer_preserved"]
-                        and summary["source_preserved"] and allowed_package,
-                        "A registered writer contention control did not qualify")
-                with evidence.open("a", encoding="utf-8") as output:
-                    output.write(json.dumps(summary, sort_keys=True) + "\n")
+                busy_paths_safe = (not market.exists() and not known_output(home, identity)["enabled"] and
+                                   installed_pin.read_bytes() == pin_before and checkout.is_dir() and
+                                   signer_registry.read_bytes() == signer_before and manifest(source) == source_before)
+                busy_denied = (observer / "processes").read_text().splitlines().count("denied")
+                busy = refused.returncode == 1 and b"publication is busy" in refused.stderr
+            released = not owner.exists()
+            retry_env = {**env, "NATIVE_FIXTURE_PROCESS_RECEIPT": str(observer / "retry-processes")}
+            retry = run(args, work, retry_env)
+            outputs = known_output(home, identity)
+            emitted = outputs["plugin_envelope"] and outputs["marketplace_index"]
+            pin_kept = installed_pin.read_bytes() == pin_before and checkout.is_dir()
+            pin_removed = not checkout.exists() and identity["name"].encode() not in installed_pin.read_bytes()
+            retry_case = {
+                "selected": emitted and outputs["declared_hook"] and pin_kept and not outputs["enabled"]
+                            and not outputs["mcp_config"] and not outputs["rule_hook"],
+                "default": emitted and pin_kept and all(outputs[key] for key in
+                           ("declared_hook", "mcp_config", "rule_hook", "enabled")),
+                "remove": pin_removed and not market.exists(),
+            }[arm]
+            denied = busy_denied + (observer / "retry-processes").read_text().splitlines().count("denied")
+            summary = {
+                "arm": arm, "busy_exit": refused.returncode, "busy": busy, "busy_paths_safe": busy_paths_safe,
+                "owner_retained": retained, "released": released, "retry_exit": retry.returncode,
+                "native_emitted": emitted, "pin_kept": pin_kept, "pin_removed": pin_removed,
+                "denied": denied, "signer_preserved": signer_registry.read_bytes() == signer_before,
+                "source_preserved": manifest(source) == source_before,
+                "complete": busy and retained and busy_paths_safe and released and retry.returncode == 0 and
+                            retry_case and not owner.exists(),
+            }
+            allowed_package = (default_package_context(install, package_before, manifest(install)) if arm == "default"
+                               else manifest(install) == package_checkpoint)
+            print(json.dumps(summary, sort_keys=True), flush=True)
+            require(summary["complete"] and summary["denied"] == 0 and summary["signer_preserved"]
+                    and summary["source_preserved"] and allowed_package,
+                    "A registered coordinated writer control did not qualify")
+            with evidence.open("a", encoding="utf-8") as output:
+                output.write(json.dumps(summary, sort_keys=True) + "\n")
     require(digest(bundle) == bundle_digest, "The selected native baseline changed its bundle")
 
 

@@ -415,7 +415,7 @@ async function emitNativePluginOutput(syncModules?: readonly string[]): Promise<
     );
     if (!facets || facets.length > 0) {
       const { emitClaudeNative } = await import("./plugins/claude-native.js");
-      emitClaudeNative(facets ? { modules: facets } : undefined);
+      emitClaudeNative(facets ? { modules: facets } : { certifyFullOutput: true });
     }
     const { writeRedactPatterns } = await import("./plugins/leak-audit.js");
     writeRedactPatterns();

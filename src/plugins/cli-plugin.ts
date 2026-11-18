@@ -9,6 +9,7 @@ import { CapabilityError } from "./capabilities.js";
 import { emitClaudeNative, policyFragment } from "./claude-native.js";
 import { pluginRulesFor } from "./contributions.js";
 import { auditRepo, LeakPatternError } from "./leak-audit.js";
+import { withNativePublicationLock } from "./native-publication-lock.js";
 import { repoIdOf } from "./scope.js";
 import { SignerCommitBusyError } from "./signer-commit-fence.js";
 import { revokeSigner, trustSigner } from "./signers.js";
@@ -249,8 +250,10 @@ export function registerPluginCommands(program: Command): void {
     .description("Delete a plugin and everything it emitted")
     .action((name: string) => {
       try {
-        removePlugin(name);
-        emitClaudeNative();
+        withNativePublicationLock((beginMutation) => {
+          removePlugin(name, beginMutation);
+          emitClaudeNative();
+        });
         console.log(`${ICON_SUCCESS} Plugin ${name} removed`);
       } catch (e) {
         fail(e);

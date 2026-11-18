@@ -339,10 +339,11 @@ export function listPlugins(): PluginLockEntry[] {
 }
 
 /** Delete the checkout and every artifact listed in the lock entry. */
-export function removePlugin(name: string): void {
+export function removePlugin(name: string, beginMutation?: () => void): void {
   const lock = readLock();
   const entry = lock.plugins?.find((p) => p.name === name);
   if (!entry) throw new Error(`Plugin "${name}" is not installed.`);
+  beginMutation?.();
   for (const artifact of entry.artifacts) rmSync(artifact, { recursive: true, force: true });
   rmSync(pluginDir(name), { recursive: true, force: true });
   lock.plugins = (lock.plugins ?? []).filter((p) => p.name !== name);

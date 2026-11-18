@@ -24,3 +24,13 @@ owns the guides. Agentbrew owns the installation, routing, and verification.
 - **Anchor**: [Chrome Modern Web Guidance](https://developer.chrome.com/docs/modern-web-guidance),
   [upstream 1.0.1](https://github.com/GoogleChrome/modern-web-guidance/tree/64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65),
   and the Agentbrew frontend-kit and skill source policies.
+
+The catalog loads one owner-preserving Agentbrew entry. The old interface
+checklist leaves the catalog and the frontend-kit uses Hallmark and the
+broader quality review. The design-system entry stays available for
+distinct defaults. Chrome DevTools remains the existing MCP server.
+
+Focused catalog, bundle, source-discovery, and ownership suites passed
+all 95 tests. The seven routing cases are available as skill evaluations.
+The package review verified the published 1.0.1 integrity and found the
+extension guide and 23 extension references.

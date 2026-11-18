@@ -332,14 +332,19 @@ skills:
     category: development
     recommended: false
 
-  - name: web-design-guidelines
-    description: "Deprecated — core rules absorbed into taste skill. 39-line stub that fetches external URL."
-    source: vercel-labs/agent-skills
-    category: design
-    recommended: false
+  - name: modern-web-guidance
+    description: >-
+      Build and modernize browser features using Chrome guidance and Baseline compatibility.
+      Covers HTML, CSS, client-side JavaScript, and Chrome extensions.
+      Use the design or audit skill for visual direction or live measurement alone.
+    source: fyodoriv/agentbrew
+    category: development
+    recommended: true
+    preserveExisting: true
+    rationale: "Use one up-to-date web platform source with browser fallbacks, focused retrieval, and extension references."
 
   - name: hallmark
-    description: "Design skill for new pages that look designed, not generated (MIT, by Together AI): fifty themes, a browser lint for AI tells at eight widths, a fresh-context review, and `/hallmark redesign|audit <path>` for existing pages. The recommended creative-direction skill; replaces frontend-design. For the technical WCAG/OKLCH/8pt layer, use effective-ui-design."
+    description: "Design skill for new pages that look designed, not generated (MIT, by Together AI): fifty themes, a browser lint for AI tells at eight widths, a fresh-context review, and `/hallmark redesign|audit <path>` for existing pages. The recommended creative-direction skill; replaces frontend-design. Use Modern Web Guidance for browser implementation."
     source: nutlope/hallmark
     category: design
     recommended: true
@@ -915,10 +920,10 @@ skills:
     recommended: false
 
   - name: effective-ui-design
-    description: "Effective UI Design — the technical layer that Anthropic's frontend-design leaves open. WCAG 2.1 AA contrast, OKLCH palettes, light-dark(), 8pt spacing grid, fluid typography with clamp(), container queries, subgrid, form :user-valid/:user-invalid patterns, dark mode + reduced motion, SEO meta + JSON-LD, Core Web Vitals targets, favicon spec. Concrete values, not creative direction."
+    description: "Choose explicit design-system defaults such as spacing, type scale, palette, and icon conventions when the project has none. Use Modern Web Guidance for browser APIs, CSS support, and implementation."
     source: sebastian-software/effective-ui-design-skill
     category: design
-    recommended: true
+    recommended: false
 
   # ── MCP Apps (SEP-1865, stabilized 2026-01-26) ────────────────
   # Tools render interactive UI inside Claude, ChatGPT, VS Code, Goose,
@@ -1974,8 +1979,8 @@ bundles:
     description: "Verification habits: check before claiming done, test first, debug systematically, doubt each decision, and keep code smells out."
     members: [verification-before-completion, test-driven-development, systematic-debugging, doubt-driven-development, code-smells-aware]
   - name: frontend-kit
-    description: "Build and check web UI: design guidance, shadcn components, web design rules, Lighthouse and WCAG audits, Playwright practices, and the Playwright MCP server."
-    members: [frontend-design, shadcn, web-design-guidelines, web-quality-audit, ui-ux-rankings, playwright-best-practices, playwright]
+    description: "Build and verify web UI with creative direction, component guidance, browser compatibility, quality reviews, and browser tests."
+    members: [hallmark, shadcn, modern-web-guidance, ui-ux-rankings, playwright-best-practices, playwright, chrome-devtools]
   - name: mcp-essentials
     description: "Common MCP servers: library docs (context7), browser control (playwright), GitHub, and step-by-step reasoning."
     members: [context7, playwright, github, sequential-thinking]

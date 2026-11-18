@@ -209,6 +209,7 @@ agentbrew works the same way on both. What changes is what a company plugin adds
 
 ```bash
 agentbrew install debug                   # skill from the catalog (every agent)
+agentbrew install modern-web-guidance     # browser compatibility, modernization, and Chrome extensions
 agentbrew install context7                # live library docs MCP (recommended, all agents)
 agentbrew install sourcegraph             # enterprise code search MCP (token + instance URL)
 agentbrew install storybook-screenshot    # catalog CLI command + package binary

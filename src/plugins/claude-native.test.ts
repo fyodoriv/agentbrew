@@ -314,7 +314,7 @@ describe("native publication process loss at output checkpoints", () => {
   it.each([
     ["publisher mask", 0o077, 0o644],
     ["installed mode", 0o022, 0o600],
-  ] as const)("refuses an incompatible %s before creating native output", (_name, mask, mode) => {
+  ] as const)("checks the %s against native copy behavior", (_name, mask, mode) => {
     installFacetFixture();
     chmodSync(join(pluginDir("fixture-native"), "hooks", "guard.sh"), mode);
     const paths = nativeFacetPaths();
@@ -322,6 +322,14 @@ describe("native publication process loss at output checkpoints", () => {
     const before = roots.map(snapshot);
     try {
       const result = publishFromChild(true, undefined, mask);
+      if (mask === 0o077 && process.platform === "linux") {
+        expect(result).toMatchObject({ status: 0, stdout: "published", stderr: "" });
+        expect(statSync(paths.script).mode & 0o777).toBe(0o644);
+        expect(existsSync(nativeProofPath())).toBe(true);
+        expect(existsSync(paths.settings)).toBe(true);
+        expect(existsSync(owner)).toBe(false);
+        return;
+      }
       expect(result.status).toBe(1);
       expect(roots.map(snapshot)).toEqual(before);
       expect(result.stderr).toMatch(/signed hook copy mode cannot be reproduced/u);

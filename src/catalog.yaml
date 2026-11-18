@@ -350,13 +350,13 @@ skills:
     recommended: true
 
   - name: frontend-design
-    description: "Anthropic's official creative design guidance (the Frontend Design plugin, 760k+ installs on the official marketplace) — bold aesthetics for landing pages, artifacts, posters. Not recommended by default: hallmark covers the same job. For dashboard/app UI, use taste instead; for the technical WCAG/OKLCH/8pt layer, use effective-ui-design."
+    description: "Anthropic's Frontend Design guidance for landing pages, artifacts, and posters. Use it when explicitly requested. Hallmark is the default for creative direction."
     source: anthropics/skills
     category: design
     recommended: false
 
   - name: impeccable
-    description: "Chrome DevRel design vocabulary — 23 commands across brand+product modes, optional CLI scanner. Complementary to taste (rule-based) and frontend-design (aesthetic)."
+    description: "Design review commands for brand and product teams. Use Impeccable when the project uses its command set. Choose Hallmark for creative direction."
     source: pbakaus/impeccable
     category: design
     recommended: false
@@ -914,7 +914,7 @@ skills:
     recommended: false
 
   - name: web-quality-audit
-    description: "Measure a web page's UI and UX quality with Lighthouse (performance, accessibility, best practices, SEO), Core Web Vitals and WCAG 2.2, then fix the findings by severity. Use for \"audit my site\", \"UX efficiency\", \"a11y audit\". Don't use for visual design direction (use frontend-design or taste)."
+    description: "Run one live page audit with Lighthouse, Core Web Vitals, or WCAG 2.2. Use Hallmark for creative direction and Modern Web Guidance to implement browser feature and fallback fixes."
     source: addyosmani/web-quality-skills
     category: quality
     recommended: false

@@ -19,7 +19,7 @@ describe("Modern Web Guidance catalog routing", () => {
     );
     expect(catalog.repo_sources?.some((entry) => entry.source.toLowerCase().includes(name)) ?? false).toBe(false);
     expect(catalog.claude_plugins?.some((entry) => entry.repo.toLowerCase().includes(name)) ?? false).toBe(false);
-    expect(findSkillDirInCache(root, name)).toBe(join(root, "skills", name));
+    expect(findSkillDirInCache(root, name)).toBe(join(root, "skill-plugins", "workflow", name));
     for (const path of ["src/sources.yaml", "skill-plugins/workflow/ui-ux-rankings/SKILL.md"]) {
       expect(readFileSync(join(root, path), "utf8")).not.toContain("web-design-guidelines");
     }
@@ -47,8 +47,20 @@ describe("Modern Web Guidance catalog routing", () => {
     }
   });
 
+  it("points catalog alternatives to the selected creative and browser routes", () => {
+    const catalog = loadBaseCatalog();
+    for (const alternative of ["frontend-design", "web-quality-audit"]) {
+      const item = catalog.skills.find((entry) => entry.name === alternative);
+      expect(item?.description).toContain("Hallmark");
+      expect(item?.description).not.toMatch(/\btaste\b|\buse frontend-design\b/iu);
+    }
+    expect(catalog.skills.find((entry) => entry.name === "web-quality-audit")?.description).toContain(
+      "Modern Web Guidance",
+    );
+  });
+
   it("keeps the CLI and extension references fixed and covers the seven routes", () => {
-    const folder = join(root, "skills", name);
+    const folder = join(root, "skill-plugins", "workflow", name);
     const skill = readFileSync(join(folder, "SKILL.md"), "utf8");
     const executions = [...skill.matchAll(/npx --yes modern-web-guidance@(\S+)\s/g)];
     expect(executions.map((match) => match[1])).toEqual(["1.0.1", "1.0.1", "1.0.1"]);

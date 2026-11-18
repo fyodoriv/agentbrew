@@ -82,3 +82,22 @@ A same-name copy now skips source lookup. A failed registration removes
 the copy created by that install, so a later retry can register it.
 The lock uses the same source commit as the saved catalog state. A
 fixture with an older recorded commit checked this after refresh.
+
+### Local route selection control
+
+- **Hypothesis**: A local model chooses the intended primary skill from
+  the catalog descriptions for each of the seven saved requests.
+- **Measurement**: Use qwen3:4b through the loopback Ollama generate API
+  with temperature 0, no thinking output, and a JSON schema with one route.
+  Send one request per case in `skill-plugins/workflow/modern-web-guidance/evals/evals.json`.
+  Offer these catalog entries in lexical order: effective-ui-design,
+  frontend-design, hallmark, impeccable, modern-web-guidance,
+  next-best-practices, shadcn, ui-ux-rankings, web-quality-audit.
+- **Success**: Cases 1 through 4 choose Modern Web Guidance. Cases 5,
+  6 and 7 choose Hallmark, web-quality-audit and next-best-practices.
+  All seven responses contain one allowed route.
+- **Pivot**: One wrong route or invalid response leaves model routing
+  unverified. A timeout is inconclusive. Keep the deterministic catalog
+  assertions and runtime controls separate from this result.
+- **Anchor**: The seven registered evaluation cases, the catalog
+  descriptions, and [Ollama generate](https://docs.ollama.com/api/generate).

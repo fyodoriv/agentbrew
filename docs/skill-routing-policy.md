@@ -219,7 +219,8 @@ review. It pairs Playwright tests with the existing Chrome DevTools MCP
 for live browser diagnostics. Modern Web Guidance replaces the older
 web-design-guidelines checklist in the catalog. A named install leaves an existing same-name
 copy in catalog staging or project storage untouched, including links.
-Agent deployment also preserves copies from other sources.
+Agent deployment also preserves copies from other sources. The catalog
+points optional creative and live audit tools back to the selected routes.
 
 ## When you DO need to extend shared-rules.md
 

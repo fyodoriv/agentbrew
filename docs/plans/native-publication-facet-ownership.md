@@ -730,3 +730,17 @@ accepted both changed input files. The
 [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44268882533)
 refused both before repairing the missing script. It passed 49
 focused controls, 105 compatibility tests, and type checking.
+
+## Qualify executable hooks from the signed Git tree
+
+- **Hypothesis**: A hook declared executable in the signed commit
+  stays executable through selected publication and receipt repair.
+- **Measurement**: Confirm mode 100755 with Git, publish the signed
+  fixture, and compare the script mode and private receipt after
+  deleting and restoring it.
+- **Success**: Git reports 100755 and both emitted copies use
+  mode 0755. The receipt stays unchanged through repair.
+- **Pivot**: A lost executable bit or unproven Git mode keeps
+  this case outside the activation evidence.
+- **Anchor**: The signed Git tree reader and selected receipt
+  mode checks.

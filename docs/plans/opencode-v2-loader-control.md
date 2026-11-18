@@ -75,7 +75,7 @@ finish loading the same explicit local package.
 - **Anchor**: The pinned source and both earlier one-shot receipts.
 
 The [owned-server run](https://github.com/fyodoriv/agentbrew/actions/runs/44291561041)
-queried the location 49 times within its limit. The package was never
+attempted 49 inventory reads within its limit. The package was never
 listed and wrote no marker. The server was reaped. Readiness alone did
 not explain the missing admission in this setup.
 
@@ -102,7 +102,13 @@ that needs no external SDK package resolution.
 - **Anchor**: The pinned module schema and direct legacy rejection.
 
 The [direct-file run](https://github.com/fyodoriv/agentbrew/actions/runs/44292425961)
-queried one owned server 52 times. It found no active control, no setup
+attempted 52 inventory reads against one owned server. It found no active control, no setup
 marker and no classified diagnostic. The server was reaped. This leaves
 V2 admission unverified in the hosted profile. The measured legacy
 rejection still holds.
+
+The persistent controls count attempted reads. They do not separately
+record how many inventory responses succeeded or whether the expected
+configuration document entered the server location. An independent
+server health and configuration observation must establish that boundary
+before another loader test.

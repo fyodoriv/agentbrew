@@ -175,6 +175,50 @@ assert_exit_code "unsupported arguments warn without blocking" 0 \
 if [ ! -s "$TMP/gh.args" ]; then PASS=$((PASS + 1)); else
   FAIL=$((FAIL + 1)); FAIL_DETAILS+=("unsupported arguments made a guessed status query"); fi
 
+# Literal prose must not hide a real preceding PR with a failed check.
+TARGET_PARSER="$(dirname "$SCRIPT")/../lib/pr-command-target.py"
+prose_cases=(
+  'echo "example: gh pr merge 99 --repo other/repo"'
+  'printf "%s\n" "example: gh pr merge 99 --repo other/repo"'
+  'git commit -m "example: gh pr merge 99 --repo other/repo"'
+  $'cat <<\'NOTES\'\ngh pr merge 99 --repo other/repo\nNOTES'
+  $'cat >delivery.md <<"NOTES"\ngh pr merge 99 --repo other/repo\nNOTES'
+)
+for prose in "${prose_cases[@]}"; do
+  transcript="$(mk_transcript prose-only.jsonl "$prose")"
+  if python3 "$TARGET_PARSER" "$transcript" | jq -e '.activity == false and .unavailable == false' >/dev/null; then
+    PASS=$((PASS + 1))
+  else
+    FAIL=$((FAIL + 1)); FAIL_DETAILS+=("literal write alone triggered PR activity")
+  fi
+  transcript="$(mk_transcript prior-pr.jsonl 'gh pr ready 123 --repo octo/repo' "$prose")"
+  if python3 "$TARGET_PARSER" "$transcript" | jq -e '.number == "123" and .repo == "octo/repo"' >/dev/null; then
+    PASS=$((PASS + 1))
+  else
+    FAIL=$((FAIL + 1)); FAIL_DETAILS+=("literal write changed the previous PR number or repository")
+  fi
+  assert_exit_code "literal write preserves the previous failing PR" 2 \
+    "$(run_mocked "$(stop_input "$transcript")" '{"statusCheckRollup":[{"conclusion":"FAILURE"}],"mergeStateStatus":"CLEAN"}')"
+done
+
+# Real executable and unclear forms keep the earlier conservative behavior.
+uncertain_cases=(
+  'printf -v fixture_note "%s" "example: gh pr merge 99 --repo other/repo"'
+  'printf "%b" "example: gh pr merge 99 --repo other/repo"'
+  'echo "$(gh pr merge 99 --repo other/repo)"'
+  $'cat <<NOTES\n$(gh pr merge 99 --repo other/repo)\nNOTES'
+  $'cat <<\'NOTES\'\nexample\nNOTES\ngh pr merge 99 --repo other/repo'
+  $'cat <<\'NOTES\'\ngh pr merge 99 --repo other/repo'
+)
+for possible in "${uncertain_cases[@]}"; do
+  transcript="$(mk_transcript possible.jsonl 'gh pr ready 123 --repo octo/repo' "$possible")"
+  if python3 "$TARGET_PARSER" "$transcript" | jq -e '.activity == true and .number == null' >/dev/null; then
+    PASS=$((PASS + 1))
+  else
+    FAIL=$((FAIL + 1)); FAIL_DETAILS+=("unresolved syntax incorrectly preserved an earlier target")
+  fi
+done
+
 echo ""
 echo "a-pr-is-not-ready.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

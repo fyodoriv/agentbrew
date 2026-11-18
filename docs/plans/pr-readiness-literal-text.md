@@ -22,3 +22,11 @@ The separate proposed pre-merge hook is outside this change.
   rejects this change. Keep the recognized shell syntax narrow.
 - **Anchor**: [issue #1090](https://github.com/fyodoriv/agentbrew/issues/1090),
   the checked-in PR readiness tests, and the Bash manual on heredocs.
+
+The baseline counted all five text writes as PR activity. In each paired
+case it lost PR 123's status lookup and returned 0 instead of blocking with
+exit 2. The correction passed both checks for each shape and kept the exact
+number and repository. Six uncertain variants remained unresolved, including
+variable-assignment and other formatted print modes. The full readiness
+fixture passed 50 checks and all hook fixtures passed. Independent review
+confirmed the narrowed print scope and exact target checks.

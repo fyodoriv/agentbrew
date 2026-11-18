@@ -217,3 +217,27 @@ for (const { id, cli } of cases) {
     expect(observed.denied).toBe(0);
   });
 }
+
+for (const { id, cli } of cases.filter(({ id }) => id !== "selectedPlain")) {
+  it.skipIf(!captureEnabled)(`invalid preflight regression ${id}`, async () => {
+    let exit: number | undefined;
+    if (cli) {
+      const program = buildProgram();
+      program.exitOverride();
+      program.configureOutput({ writeOut: () => {}, writeErr: () => {} });
+      try {
+        await program.parseAsync(["node", "fixture", "sync", ...cli]);
+      } catch (error) {
+        if (!(error instanceof CommanderError)) throw error;
+        exit = error.exitCode;
+      }
+    } else {
+      await update({ only: "" });
+    }
+    expect({ exit: exit ?? Number(process.exitCode ?? 0), calls: observed.calls, denied: observed.denied }).toEqual({
+      exit: 1,
+      calls: [],
+      denied: 0,
+    });
+  });
+}

@@ -69,3 +69,9 @@ semantics, the pull caller, or the publisher.
   default rule, or an existing pull regression rejects the wiring.
 - **Anchor**: `selectedSyncModule` in the existing apply path, the
   hosted signed selected result, and the P1 task's explicit-pull cases.
+
+The [hosted comparison](https://github.com/fyodoriv/agentbrew/actions/runs/44233998486)
+failed all five new boundary assertions. The [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44234251688)
+passed them and the six compatibility files. The dispatcher supplies its
+own normalized module order to all ordinary Agentfile routes. Other
+state preparation, workspace publication and native output remain open.

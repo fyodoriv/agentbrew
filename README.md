@@ -500,7 +500,10 @@ agentbrew sync --rollback       # restore from last pre-sync snapshot
 
 Every sync creates a timestamped snapshot. Pruning only touches entries agentbrew deployed — user-added items are always preserved.
 
-When an Agentfile is in effect (`--agentfile`, the global Agentfile, or a project Agentfile), the Agentfile decides the skill set. A plain `sync` installs the catalog recommended set only on a machine with no Agentfile; an Agentfile asks for it with `recommended: true`. A skill you remove from the Agentfile is pruned from its source on the next sync or `sync --pull`.
+During a selected sync, Agentfiles defer live rule writes until you select
+`rules`, and defer pruning dropped Agentfile skills until you select `skills`.
+
+When an Agentfile is in effect (`--agentfile`, the global Agentfile, or a project Agentfile), the Agentfile decides the skill set. A plain `sync` installs the catalog recommended set only on a machine with no Agentfile; an Agentfile asks for it with `recommended: true`. A skill you remove from the Agentfile is pruned from its source on the next sync that includes skills.
 
 Skills you installed by hand stay. An authoritative sync keeps a source that backs a skill the Agentfile lists, even when `sources:` does not name it.
 

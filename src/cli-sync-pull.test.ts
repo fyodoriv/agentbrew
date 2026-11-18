@@ -40,6 +40,7 @@ vi.mock("./sync-runner.js", async (original) => ({
 vi.mock("./catalog/install.js", () => ({ install: vi.fn() }));
 
 import { applyAgentfile } from "./agentfile.js";
+import { LOCAL_SKILL_DIRECTORY_ORIGIN } from "./agentfile-skill-directories.js";
 import { install as catalogInstall } from "./catalog/install.js";
 import { buildProgram } from "./cli.js";
 import { applyAgentfileAndInstall } from "./commands/cli-install.js";
@@ -308,7 +309,7 @@ describe("selected workspace stable ownership", () => {
     const generated = workspaceAgentfilePath();
     const owner = dirname(generated);
     const rulesPath = join(home, ".config", "agentbrew", "shared-rules.md");
-    const flags = ["--only", "rules", "--no-recommended", "--workspaces", root];
+    const flags = ["--only", "rules,skills", "--no-recommended", "--workspaces", root];
     mkdirSync(repo, { recursive: true });
     expect(existsSync(owner)).toBe(false);
     writeFileSync(policy, "rules: First synthetic team rule.\nskillDirectories: [./owned-skills]\n");
@@ -371,5 +372,47 @@ describe("selected Agentfile state fields", () => {
     ]);
     expect(saved?.hooks?.map(({ command }) => command)).toEqual([applied("hooks") ? "new-fixture" : "old-fixture"]);
     expect(saved?.defaultModel).toBe(applied("models") ? "fixture-new-model" : "fixture-old-model");
+  });
+});
+
+describe("selected Agentfile source directories", () => {
+  it.each(["commands", "agents", "skills", "all"] as const)("updates only the %s directory ownership", (facet) => {
+    const config = join(home, ".config", "agentbrew");
+    const policy = join(config, "Agentfile.yaml");
+    const state = loadState();
+    if (!state) throw new Error("Synthetic state is missing");
+    const entry = (path: string, origin = "agentfile") => ({ path: join(config, path), origin, agentfile: config });
+    const command = entry("old-commands");
+    const agent = entry("old-agents");
+    const skill = entry("old-skills", LOCAL_SKILL_DIRECTORY_ORIGIN);
+    state.commandSourceDirs = [{ ...command, label: "fixture" }];
+    state.agentSourceDirs = [{ ...agent, label: "fixture" }];
+    state.skillSourceDirs = [{ ...skill, label: "fixture" }];
+    saveState(state);
+    invalidateState();
+    writeFileSync(
+      policy,
+      yaml.dump({
+        sources: [STALE_URL],
+        commands: ["./new-commands"],
+        agents: ["./new-agents"],
+        skillDirectories: ["./new-skills"],
+      }),
+    );
+
+    applyAgentfile(policy, {
+      quiet: true,
+      authoritative: true,
+      ...(facet === "all" ? {} : { syncModules: [facet] }),
+    });
+    invalidateState();
+
+    const saved = loadState();
+    const applied = (name: typeof facet) => facet === "all" || facet === name;
+    expect(saved?.commandSourceDirs).toMatchObject([applied("commands") ? entry("new-commands") : command]);
+    expect(saved?.agentSourceDirs).toMatchObject([applied("agents") ? entry("new-agents") : agent]);
+    expect(saved?.skillSourceDirs).toMatchObject([
+      applied("skills") ? entry("new-skills", LOCAL_SKILL_DIRECTORY_ORIGIN) : skill,
+    ]);
   });
 });

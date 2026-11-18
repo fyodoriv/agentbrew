@@ -895,6 +895,10 @@ agentbrew plugin rollback acme                                         # re-pin 
 agentbrew plugin remove acme
 ```
 
+On macOS and Linux, trust and revoke hold the same short signer registry lock
+as Dotfiles. If the registry is busy, the command exits with code 75 and
+leaves it untouched. Run the command again after the other writer finishes.
+
 `agentbrew plugin update` without a name or tag lists installed names and
 installed refs, then makes a bounded, non-interactive lookup for each highest
 version-sorted remote tag. Those tags are unverified hints; install still

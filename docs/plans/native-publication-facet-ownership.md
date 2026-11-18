@@ -403,3 +403,15 @@ to retain the same full source identity and trusted signer.
   conditions still apply before live activation.
 - **Anchor**: The shared signer descriptor, the pinned read and
   the current native output plan.
+
+The [cross-tool scratch run](https://github.com/fyodoriv/agentbrew/actions/runs/44245169949)
+used the actual Dotfiles trust entry point. It refused both writes
+while Agentbrew held the short lock, then succeeded after release.
+Agentbrew's follow-up kept the Dotfiles key and the original lock inode.
+
+The [selected publication baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44245363765)
+failed both new trust controls. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44245571293)
+passed 24 focused and 82 compatibility tests plus type checking.
+This phase guards planned selected writes. It leaves lifecycle changes,
+durable output ownership, interrupted payload recovery and activation open.

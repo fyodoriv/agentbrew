@@ -312,7 +312,11 @@ function planPlugin(
     planHooks(writes, plugin, root, selected, options.rulesHook);
   }
   if (selected.has("mcp")) planMcp(writes, launcherClaims, plugin, root);
-  if (existing || priorWrites === writes.length) return false;
+  if (priorWrites === writes.length) return false;
+  if (existing) {
+    assertWarmNativeReceipt(root, plugin.entry, writes.slice(priorWrites));
+    return false;
+  }
 
   writes.push({ path: envelopePath, body: jsonBytes(envelope) });
   registry.plugins.push(entry);
@@ -342,6 +346,88 @@ const NATIVE_RECEIPT_FILE = ".agentbrew-native-receipt.json";
 
 function digest(body: Buffer | string): string {
   return createHash("sha256").update(body).digest("hex");
+}
+
+interface NativeReceiptFile {
+  path: string;
+  mode: number;
+  digest: string;
+}
+
+function readWarmReceipt(path: string, entry: PluginLockEntry): unknown[] {
+  const content = readOutput(path);
+  if (!content) refuse("native receipt is missing");
+  const stat = lstatSync(path);
+  if (stat.nlink !== 1 || (stat.mode & 0o777) !== 0o600) refuse("native receipt ownership differs");
+  let receipt: { schema?: unknown; sourceDigest?: unknown; files?: unknown } | null;
+  try {
+    receipt = JSON.parse(content.toString("utf8"));
+  } catch {
+    return refuse("native receipt cannot be read");
+  }
+  if (
+    receipt?.schema !== 1 ||
+    receipt.sourceDigest !== digest(JSON.stringify(pluginSourceIdentity(entry))) ||
+    !Array.isArray(receipt.files)
+  ) {
+    refuse("native receipt does not match the source pin");
+  }
+  return receipt.files;
+}
+
+function checkedReceiptFile(raw: unknown): NativeReceiptFile {
+  const file = raw as Partial<NativeReceiptFile> | null;
+  if (
+    typeof file?.path !== "string" ||
+    isAbsolute(file.path) ||
+    normalize(file.path) !== file.path ||
+    typeof file.mode !== "number" ||
+    !Number.isInteger(file.mode) ||
+    file.mode < 0 ||
+    file.mode > 0o777 ||
+    typeof file.digest !== "string" ||
+    !/^[a-f0-9]{64}$/u.test(file.digest)
+  ) {
+    refuse("native receipt has an invalid file record");
+  }
+  return { path: file.path, mode: file.mode, digest: file.digest };
+}
+
+function assertWarmNativeReceipt(root: string, entry: PluginLockEntry, writes: readonly PlannedWrite[]): void {
+  const receiptPath = join(root, NATIVE_RECEIPT_FILE);
+  const launcherRoot = dirname(launcherPath("x", "y"));
+  const pendingWrites = new Map(writes.map((write) => [write.path, write]));
+  const paths = new Set<string>();
+  const present = [receiptPath];
+  for (const raw of readWarmReceipt(receiptPath, entry)) {
+    const file = checkedReceiptFile(raw);
+    const path = join(homedir(), file.path);
+    const insidePlugin = path.startsWith(`${root}${sep}`) && path !== receiptPath;
+    const launcher = dirname(path) === launcherRoot &&
+      basename(path).startsWith(`${entry.name}--`) && basename(path).endsWith(".sh");
+    const key = physicalSpelling(path);
+    if ((!insidePlugin && !launcher) || paths.has(key)) refuse("native receipt has an invalid file path");
+    paths.add(key);
+
+    const content = readOutput(path);
+    if (content) {
+      const stat = lstatSync(path);
+      if (stat.nlink !== 1 || (stat.mode & 0o777) !== file.mode) refuse("native receipt file identity differs");
+      if (insidePlugin) present.push(path);
+    }
+    const write = pendingWrites.get(path);
+    if (write) {
+      if (digest(write.body) !== file.digest || (write.mode !== undefined && write.mode !== file.mode)) {
+        refuse("native receipt does not match the planned change");
+      }
+      write.mode = file.mode;
+      pendingWrites.delete(path);
+    } else if (!content || digest(content) !== file.digest) {
+      refuse("native receipt does not match a retained file");
+    }
+  }
+  if (pendingWrites.size > 0) refuse("native receipt does not cover the planned change");
+  assertNativeTree(root, present);
 }
 
 function expectedFullOutput(active: ActivePlugin, marketplace: string, rulesHook: unknown) {

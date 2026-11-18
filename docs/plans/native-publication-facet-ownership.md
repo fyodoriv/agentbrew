@@ -591,3 +591,11 @@ caller adopts the new receipt or lock in this phase.
 
 The comparison covers the last pre-write observation. The process
 owner coordinates other native prototype invocations.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44260814881)
+accepted both changes. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44261096467)
+refused both before the first write and kept the existing file
+bytes. It passed 35 focused controls, 91 compatibility tests, the
+ordinary publication control, and type checking. The new check
+compares every planned destination before native output begins.

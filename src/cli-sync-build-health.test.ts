@@ -90,6 +90,7 @@ describe("native selection publication gate", () => {
     publish,
     dryRun,
   }) => {
+    health.mockReturnValue([]);
     vi.mocked(loadState).mockReturnValue({
       agents: [{ ...AGENT_DEFINITIONS[0], detected: false }],
       catalogVersion: "synthetic",

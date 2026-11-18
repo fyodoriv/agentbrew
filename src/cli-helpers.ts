@@ -96,10 +96,9 @@ export function matchSyncModules<T extends { name: string }>(
 ): { selected: T[] } | { error: string; hint: string } {
   const validNames = new Set(modules.map((module) => module.name));
   const requested = only.split(",").map((name) => name.trim().toLowerCase());
-  const invalid = requested.filter((name) => !validNames.has(name));
-  if (invalid.length > 0) {
+  if (requested.some((name) => !validNames.has(name))) {
     return {
-      error: only.trim() === "" ? "Specify at least one sync module." : `Unknown sync module(s): ${invalid.join(", ")}`,
+      error: only.trim() === "" ? "Specify at least one sync module." : "Unknown sync module(s).",
       hint: `Valid modules: ${[...validNames].join(", ")}`,
     };
   }

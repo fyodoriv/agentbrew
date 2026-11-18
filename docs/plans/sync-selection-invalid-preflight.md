@@ -42,3 +42,20 @@ Agentfile, pull and build-health test files must also stay green. Use
 production module names with fake handlers in the Agentfile fixture.
 Pivot on any input disclosure, dropped hint or valid-path regression.
 The red and green tests use a synthetic canary.
+
+## Hosted result
+
+The [pre-fix comparison](https://github.com/fyodoriv/agentbrew/actions/runs/44224138277)
+failed all three new guards. The direct update test also rejected the
+earlier result for the empty string. The
+[diagnostic comparison](https://github.com/fyodoriv/agentbrew/actions/runs/44224757586)
+showed the synthetic input in the error and exposed the old fixtures'
+assumptions about available modules and events on invalid input.
+
+The [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44225036095)
+passed the three isolated guards with exit 1, zero recorded effects and
+zero denied actions. Both direct update cases passed. All 141 ordinary
+tests across six files passed, including valid selections, normal
+startup and operational-failure events. The independent diagnostic test
+confirmed that rejection lists valid modules without printing the input.
+Only the newly named cases ran through the dedicated fixture.

@@ -364,8 +364,9 @@ start it again after the edits; never report its result for the new code.
   branch can help identify check names. A watcher that sees only green checks
   can exit before a required check registers. Keep the merge open until each
   required check has registered and passed on the current head and the pull
-  request is up to date with its base. Stop your own watchers after you confirm
-  the merge.
+  request is up to date with its base. Wait for the other reported checks too.
+  A green local test does not clear a pending or failed hosted check. Stop your
+  own watchers after you confirm the merge.
 - A test that fails only on the clean runner has a hidden need: a tool, a
   shell, a config file, or another operating system.
 - Read the job log first. `gh api repos/<o>/<r>/actions/jobs/<id>/logs`

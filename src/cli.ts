@@ -47,7 +47,6 @@ import { ConfigError, errorMessage } from "./core/errors.js";
 import { recordEvent, storyForCommand } from "./core/events.js";
 import { syncGain, targetedAgentCount } from "./core/gains.js";
 import { installOutputRedaction } from "./core/redact-output.js";
-import { redactUrlCredentials } from "./core/redact-url.js";
 import { printMotd } from "./motd.js";
 import { registerPluginCommands } from "./plugins/cli-plugin.js";
 import { autoSync, buildSyncModules, runSyncParallel, runSyncWithErrorCollection } from "./sync-runner.js";
@@ -586,7 +585,7 @@ function refuseInvalidSyncSelection(program: Command, action: Command): void {
   if (only === undefined) return;
   const result = matchSyncModules(buildSyncModules({}), only);
   if ("error" in result) {
-    program.error(redactUrlCredentials(`${result.error}\n${result.hint}`), {
+    program.error(`${result.error}\n${result.hint}`, {
       code: "commander.invalidArgument",
       exitCode: 1,
     });

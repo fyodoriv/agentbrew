@@ -192,3 +192,10 @@ client, so they cannot qualify loader admission.
   admission open. Record the result separately from hook behavior.
 - **Anchor**: The authenticated config receipt and the pinned V2
   module schema above.
+
+The [authenticated loader run](https://github.com/fyodoriv/agentbrew/actions/runs/44294326435)
+listed one native V2 plugin and recorded one exact setup marker.
+Configuration and inventory both succeeded. The server was reaped after
+the check. The experiment stayed on loopback and used no model. It
+qualifies the local V2 definition and setup route on Ubuntu 2.3.0.
+Real hook effects and owner-safe deployment remain separate.

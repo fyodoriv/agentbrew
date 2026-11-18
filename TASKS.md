@@ -367,18 +367,18 @@
   - **Pivot**: If all existing staging writers cannot share a safe coordination boundary, refuse the refresh and retain the prior copy; do not silently prune.
   - **Anchor**: `src/update.ts`, `src/catalog/install-skill.ts`, and the 2026-11-13 managed-skill observation.
 
-- [ ] The task lint rejects a task with no Success line or no ID
-  - **ID**: task-lint-success-and-id-gaps
-  - **Tags**: tasks, lint, measurement
-  - **Details**: A review of the "measure every task" rule (2026-11-10) found two gaps in the lint step `npx @tasks-md/lint --require-prereg TASKS.md`. It accepts an **Acceptance** line in place of **Success**, and it skips a block that has no **ID**. So a task can pass the gate without a numeric keep line. Check both in this repo first (a small test over `TASKS.md`), then report the gap to the tasks.md repo.
-  - **Files**: `src/docs/`, `TASKS.md`, `docs/shared-rules.md`
-  - **Output**: code
-  - **Acceptance**: a task block with no **Success** line, or with no **ID**, fails a test in this repo.
-  - **Hypothesis**: task shapes that pass the gate without a Success line go from 2 known shapes to 0.
-  - **Measurement**: `npx vitest run src/docs/` with two new cases, one per shape, each built from a fixture block.
-  - **Success**: both cases pass, and each is red against a lint that accepts the shape.
-  - **Pivot**: if existing tasks fail in numbers above 10, backfill them in a first PR and turn the check on in a second.
-  - **Anchor**: Munafo et al. 2017 (pre-registration); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+- [ ] Report the required-field check gap to tasks.md
+  - **ID**: task-lint-required-fields-upstream-report
+  - **Tags**: tasks, lint, upstream
+  - **Details**: Agentbrew adds queue checks for an explicit ID and a separate Success field in PR #1053. The pinned tasks.md lint accepts a task without an ID and accepts Acceptance in place of Success. Prepare the exact report with the two synthetic fixtures before requesting publication approval.
+  - **Output**: docs
+  - **Acceptance**: An approved upstream report describes the two cases and points to the local controls.
+  - **Hypothesis**: One upstream report gives the tools maintainers both runnable cases.
+  - **Measurement**: Read the resulting issue and count the two cases with runnable examples.
+  - **Success**: One approved report records both cases.
+  - **Pivot**: If upstream has a matching issue, link it once and retire this task.
+  - **Anchor**: Agentbrew PR #1053 and the tasks.md metadata parser.
+  - **Blocked**: needs-exact-publication-approval — posting the upstream report requires review and approval of its exact text.
 
 - [ ] Old agent worktrees are removed when their branch is merged
   - **ID**: stale-worktrees-cleanup
@@ -700,6 +700,7 @@
   - **Tags**: release, github-actions, npm, human-blocked
   - **Hypothesis**: one owner-run publish brings npm `latest`, the git tag, and `package.json` to the same version (version drift goes to 0).
   - **Measurement**: `npm view agentbrew version`, `node -p "require('./package.json').version"`, and `git describe --tags --abbrev=0`.
+  - **Success**: Zero version differences across npm latest, the Git tag, and the package manifest after the owner publishes.
   - **Pivot**: if the publish fails on auth again, write a reviewed manual release path and close the automation part.
   - **Anchor**: `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`.
   - **Details**: The Auto-release workflow did not run after the merged delivery. `github.com/fyodoriv/agentbrew` is now the only canonical home, and GitHub Actions is disabled there. The documented manual fallback was blocked by `npm whoami` returning `ENEEDAUTH`. The workflow already has a `workflow_dispatch` fallback. Release stays blocked until Actions is enabled on `fyodoriv/agentbrew` (or a reviewed manual release path exists) and npm credentials are available. See `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`.
@@ -756,6 +757,7 @@
   - **Tags**: upstream-contribution, bridle, scout, blocked-explicit-permission, publish-only
   - **Hypothesis**: filing the staged issue gets the OpenCode singular and plural path mismatch fixed or closed upstream, so the next path audit stops flagging it.
   - **Measurement**: `gh issue list --repo neiii/bridle --state all --search opencode` (state of the filed issue).
+  - **Success**: One upstream issue records the verified path discrepancy and links to both official path references.
   - **Pivot**: no maintainer response within 90 days: drop the task (VISION 90-day rule).
   - **Anchor**: `docs/audits/harness-locate-cross-check.md`; VISION "delegate, contribute, absorb".
   - **Details**: Surfaced from the 2026-04-26 `audit-harness-locate-paths` audit (see [`docs/audits/harness-locate-cross-check.md`](docs/audits/harness-locate-cross-check.md)). Bridle's `harness-locate::opencode` returns `~/.config/opencode/skill/` (singular) and `~/.config/opencode/command/` (singular). Per [OpenCode docs](https://opencode.ai/docs/skills) (2026-04-26), the actual paths are plural: `~/.config/opencode/skills/<name>/SKILL.md` and `~/.config/opencode/commands/<name>.md`.
@@ -902,6 +904,7 @@
   - **Tags**: ecosystem, contribution, standards
   - **Hypothesis**: one upstream PR that links the marker spec gets at least one more tool to use the shared format, so marker collisions between tools stay at zero.
   - **Measurement**: the upstream PR state (`gh pr view <url> --json state`) and the tools listed as using the format in `docs/specs/managed-section-markers.md`.
+  - **Success**: At least one upstream submission links to the published marker spec.
   - **Pivot**: no response within 90 days: keep the spec local and close the task.
   - **Anchor**: `docs/specs/managed-section-markers.md`.
   - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
@@ -918,6 +921,7 @@
   - **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission, bug-fix
   - **Hypothesis**: landing the staged fixes upstream builds maintainer trust, so larger delegation asks get reviewed; at least one PR merges.
   - **Measurement**: `gh pr list --repo vercel-labs/skills --author fyodoriv --state merged --json number --jq length`.
+  - **Success**: At least one staged fix merges upstream within 90 days of filing.
   - **Pivot**: no merge within 90 days of filing: stop filing and keep the fixes local where agentbrew needs them.
   - **Anchor**: `docs/competition/vercel-skills-cli-vs-agentbrew.md` § Contribution roadmap.
   - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
@@ -971,6 +975,7 @@
   - **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission, data-safety
   - **Hypothesis**: an RFC comment with agentbrew's classifier taxonomy shapes the upstream fix, so the merged fix preserves user-created skills.
   - **Measurement**: `gh issue view 268 --repo vercel-labs/skills --json state,comments`.
+  - **Success**: The two linked issues each contain one approved comment with the preservation invariant and classifier reference.
   - **Pivot**: if issue #268 closes without a preservation fix, keep agentbrew's own classifier and close this task.
   - **Anchor**: `docs/competition/vercel-skills-cli-vs-agentbrew.md` § Feature 7.
   - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
@@ -1013,10 +1018,10 @@
     - No application needed on a public repo: CodeRabbit and Sourcery free AI review, Sentry for Open Source (includes Seer).
     - **Hypothesis**: once agentbrew passes one threshold, one accepted application removes 6 months of AI subscription cost for the owner.
     - **Measurement**: `gh api repos/fyodoriv/agentbrew -q .stargazers_count` and `gh api repos/fyodoriv/agentbrew/contributors -q length`
-    - **Success**: at least one program accepts and the benefit is active on the owner's account.
     - **Pivot**: if two applications made after a threshold is met are both rejected, close this task and stop applying.
     - **Anchor**: Anthropic Claude for Open Source program terms (https://www.anthropic.com/claude-for-oss-terms); Basili, Caldiera and Rombach (1994), GQM.
   - **Files**: none (owner fills web forms); this task records the outcome
+  - **Success**: At least one program accepts and the benefit is active on the owner's account.
   - **Output**: docs
   - **Acceptance**: the owner has applied to each program whose threshold agentbrew meets, and this task records each answer, or records why no application was made.
   - **Blocked**: needs-traction-and-owner-application — 2026-11-10: agentbrew is below every threshold. Agents never submit applications or forms; the owner applies. Unblock when the measurement shows 50 or more stars or 20 or more contributors, or when the owner chooses to try the discretionary tracks.

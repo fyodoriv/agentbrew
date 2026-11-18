@@ -240,3 +240,22 @@ passed all fourteen scoped cases, compatibility tests and type checking.
   controls.
 - **Anchor**: Exclusive file creation, both calls to the common
   publisher, and the registered interrupted-publication matrix.
+
+## Independent process ownership
+
+- **Hypothesis**: An actual second process cannot enter a publication
+  held by the first. After normal release it can enter. An owner that
+  exits before release leaves a refusal on the next attempt.
+- **Measurement**: Start the same compiled host runtime in a separate
+  process against one synthetic home. Observe its distinct exit status
+  and whether the protected callback ran. Repeat after release and
+  after a separate synthetic interrupt. Compare the on-disk owner
+  record before and after each refusal.
+- **Success**: One cross-process refusal with zero extra callbacks,
+  one success after release, and one refusal that preserves the
+  interrupted owner's record. All subprocess work has a fixed limit.
+- **Pivot**: An unintended callback, leaked ownership record after a
+  normal exit, unexpected takeover, or lost interrupted record rejects
+  the candidate. Pending publication recovery remains separate.
+- **Anchor**: Operating system exclusive file creation and the shared
+  publisher admission outcomes.

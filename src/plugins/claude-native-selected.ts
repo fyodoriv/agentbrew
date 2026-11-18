@@ -175,6 +175,21 @@ function assertMarketplaceRegistry(registry: Marketplace, name: string): void {
   }
 }
 
+function readRetainedCommands(content: Buffer): string[] {
+  const config = JSON.parse(content.toString("utf8")) as { mcpServers?: unknown } | null;
+  const servers = config?.mcpServers;
+  if (!servers || typeof servers !== "object" || Array.isArray(servers)) {
+    refuse("a retained MCP configuration has unknown launcher references");
+  }
+  return (Object.values(servers) as Array<{ command?: unknown } | null>).map((server) => {
+    const command = server?.command;
+    if (typeof command !== "string" || !isAbsolute(command)) {
+      refuse("a retained MCP configuration has unknown launcher references");
+    }
+    return normalize(command).toLowerCase();
+  });
+}
+
 function assertRetainedLauncherClaims(
   marketplace: string,
   registry: Marketplace,
@@ -184,17 +199,8 @@ function assertRetainedLauncherClaims(
   for (const entry of registry.plugins) {
     const content = readOutput(join(marketplace, entry.source, ".mcp.json"));
     if (!content) continue;
-    const config = JSON.parse(content.toString("utf8")) as { mcpServers?: unknown } | null;
-    const servers = config?.mcpServers;
-    if (!servers || typeof servers !== "object" || Array.isArray(servers)) {
-      refuse("a retained MCP configuration has unknown launcher references");
-    }
-    for (const server of Object.values(servers) as Array<{ command?: unknown } | null>) {
-      const command = server?.command;
-      if (typeof command !== "string" || !isAbsolute(command)) {
-        refuse("a retained MCP configuration has unknown launcher references");
-      }
-      const owner = claims.get(normalize(command).toLowerCase());
+    for (const command of readRetainedCommands(content)) {
+      const owner = claims.get(command);
       if (owner !== undefined && owner !== entry.name) refuse("native output paths overlap");
     }
   }
@@ -274,7 +280,8 @@ export function publishSelectedNativePlugins(
   const launcherClaims = new Map<string, string>();
   let changedEntries = false;
   for (const plugin of plugins) {
-    if (planPlugin(writes, launcherClaims, plugin, registry, { marketplace, selected, rulesHook })) changedEntries = true;
+    if (planPlugin(writes, launcherClaims, plugin, registry, { marketplace, selected, rulesHook }))
+      changedEntries = true;
   }
   assertRetainedLauncherClaims(marketplace, registry, launcherClaims);
   if (changedEntries) writes.push({ path, body: jsonBytes(registry) });

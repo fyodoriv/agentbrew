@@ -904,3 +904,11 @@ ordinary publication, and type checking.
 
 This control bounds the last observed settings identity. It covers
 cooperating publication and signer operations plus the planted edits.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44285478575)
+admitted both links and the late settings edit. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44285782892)
+refused the link cases before writing and retained the exact late edit.
+The interrupted case retained its owner record. The candidate passed 57
+focused controls, 113 compatibility tests, ordinary publication, and
+type checking.

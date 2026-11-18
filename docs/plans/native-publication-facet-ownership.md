@@ -724,3 +724,9 @@ type checking.
 
 This adds the last pre-write observation for retained receipt
 files and the marketplace index.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44268465074)
+accepted both changed input files. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44268882533)
+refused both before repairing the missing script. It passed 49
+focused controls, 105 compatibility tests, and type checking.

@@ -309,3 +309,15 @@ tool effects, prompt effects and deployment remain open.
 
 This proof runs one local fixture model response sequence. It keeps live
 provider settings and deployed bridges outside the experiment.
+
+The [before-tool baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44297443309)
+reached the local provider but its first request did not offer the fixture
+tool. There were zero bridge and tool calls. The result does not
+distinguish a title request from a tool selection problem.
+
+The pinned [run command](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/cli/src/commands/commands.ts)
+accepts an explicit session title. Run one fresh named session, with the
+same two-response oracle and no change to time limits. Record only
+whether the request offers the exact tool, a namespaced variant, a
+code-mode tool, another tool, or no tools. If the first request still
+does not offer the exact tool, stop before exercising any callback.

@@ -25,6 +25,7 @@ export default {
     const bridge = await ClaudeHooks({ directory: ctx.location.directory });
     const controller = new AbortController();
     const types = ["session.created", "session.deleted"];
+    const ownedSessions = new Set();
     const events = ctx.event.subscribe({ types, signal: controller.signal })[Symbol.asyncIterator]();
     const first = events.next();
     const path = process.env.AGENTBREW_OC_EVENTS;
@@ -33,12 +34,18 @@ export default {
         const event = current.value;
         const id = event.data?.sessionID;
         const directory = event.location?.directory ?? event.data?.location?.directory;
-        if (typeof id !== "string" || directory !== ctx.location.directory) {
+        const creating = event.type === "session.created";
+        const deleting = event.type === "session.deleted";
+        const ownCreate = creating && directory === ctx.location.directory && !ownedSessions.has(id);
+        const ownDelete = deleting && (directory === undefined || directory === ctx.location.directory) && ownedSessions.has(id);
+        if (typeof id !== "string" || (!ownCreate && !ownDelete)) {
           appendFileSync(path, '{"type":"unknown-scope"}\\n');
           continue;
         }
+        if (ownCreate) ownedSessions.add(id);
+        else ownedSessions.delete(id);
         await bridge.event({ event: { type: event.type, properties: { info: { id } } } });
-        appendFileSync(path, JSON.stringify({ type: event.type, id }) + "\\n");
+        appendFileSync(path, JSON.stringify({ type: event.type, id, remaining: ownedSessions.size }) + "\\n");
       }
     })().catch(() => {
       if (!controller.signal.aborted) appendFileSync(path, '{"type":"error"}\\n');
@@ -219,8 +226,8 @@ appendFileSync(process.env.AGENTBREW_OC_HOOK_LOG, JSON.stringify({ event, id: va
                             if response.status != 204:
                                 raise ValueError("fixture session removal failed")
                         items = await_count(2)
-                        created = items.count({"type": "session.created", "id": session})
-                        deleted = items.count({"type": "session.deleted", "id": session})
+                        created = items.count({"type": "session.created", "id": session, "remaining": 1})
+                        deleted = items.count({"type": "session.deleted", "id": session, "remaining": 0})
                         other = len(items) - created - deleted
                         calls = [json.loads(line) for line in hook_log.read_text().splitlines()] if hook_log.is_file() else []
                         hook_starts = calls.count({"event": "SessionStart", "id": session, "kind": "startup", "ok": True})

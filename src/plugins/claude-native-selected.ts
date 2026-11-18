@@ -3,9 +3,12 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, normalize, posix, relative, sep } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { sync as writeFileSync } from "write-file-atomic";
+import { type PluginLockEntry, readLock } from "../lock.js";
 import type { ActivePlugin } from "./contributions.js";
 import { capabilitiesHash, MANIFEST_FILE, parseManifest } from "./manifest.js";
 import { launcherContent, launcherPath, parsePluginMcpServers, validateMcpServers } from "./mcp-launcher.js";
+import { withSignerCommitFence } from "./signer-commit-fence.js";
+import { allowedSignersPath, readSigners } from "./signers.js";
 import { readPinnedPluginFiles } from "./store.js";
 
 export type NativeFacet = "hooks" | "mcp" | "rules";
@@ -281,6 +284,28 @@ function planPlugin(
   return true;
 }
 
+function sourceIdentity(entry: PluginLockEntry) {
+  const { name, version, source, ref, commit, tree, capabilitiesHash, signer } = entry;
+  return { name, version, source, ref, commit, tree, capabilitiesHash, signer };
+}
+
+function assertCurrentNativeSources(planned: readonly PluginLockEntry[]): void {
+  const current = readLock().plugins ?? [];
+  const signers = readSigners();
+  for (const entry of planned) {
+    const matches = current.filter(({ name }) => name === entry.name);
+    if (
+      matches.length !== 1 ||
+      !isDeepStrictEqual(sourceIdentity(matches[0] as PluginLockEntry), sourceIdentity(entry))
+    ) {
+      refuse("the planned plugin source pin changed");
+    }
+    if (!signers.some(({ principal, key }) => principal === entry.name && key === entry.signer)) {
+      refuse("the planned plugin signer trust changed");
+    }
+  }
+}
+
 /** Publish only proven payloads. Activation is outside this writer. */
 export function publishSelectedNativePlugins(
   plugins: readonly ActivePlugin[],
@@ -299,18 +324,25 @@ export function publishSelectedNativePlugins(
 
   const selected = new Set(modules);
   const writes: PlannedWrite[] = [];
+  const planned: PluginLockEntry[] = [];
   const launcherClaims = new Map<string, string>();
   let changedEntries = false;
   for (const plugin of plugins) {
+    const before = writes.length;
     if (planPlugin(writes, launcherClaims, plugin, registry, { marketplace, selected, rulesHook }))
       changedEntries = true;
+    if (writes.length > before) planned.push(plugin.entry);
   }
   assertRetainedLauncherClaims(marketplace, registry, launcherClaims);
   if (changedEntries) writes.push({ path, body: jsonBytes(registry) });
   if (new Set(writes.map((write) => write.path)).size !== writes.length) refuse("native output paths overlap");
 
-  for (const { path: destination, body, mode } of writes) {
-    mkdirSync(dirname(destination), { recursive: true });
-    writeFileSync(destination, body, { mode });
-  }
+  if (writes.length === 0) return;
+  withSignerCommitFence(allowedSignersPath(), () => {
+    assertCurrentNativeSources(planned);
+    for (const { path: destination, body, mode } of writes) {
+      mkdirSync(dirname(destination), { recursive: true });
+      writeFileSync(destination, body, { mode });
+    }
+  });
 }

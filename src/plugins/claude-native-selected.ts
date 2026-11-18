@@ -561,13 +561,17 @@ function planPartialExtension(
   receipt: ObservedNativeReceipt,
   writes: readonly PlannedWrite[],
   { selected, rulesHook }: { selected: ReadonlySet<NativeFacet>; rulesHook: unknown },
-): SelectedNativeReceiptPlan {
+): SelectedNativeReceiptPlan | undefined {
   const earlier = receipt.facets ?? [];
   if (declaredNativeFacets(plugin, earlier).length !== earlier.length)
     refuse("native receipt coverage does not match the signed manifest");
   const previous = expectedPartialOutput(plugin, root, earlier, rulesHook);
-  assertWarmNativeReceipt(root, receipt.files, [], previous);
   const facets = [...new Set([...earlier, ...selected])].sort();
+  if (facets.length === earlier.length) {
+    assertWarmNativeReceipt(root, receipt.files, writes, previous);
+    return undefined;
+  }
+  assertWarmNativeReceipt(root, receipt.files, [], previous);
   const files = expectedPartialOutput(plugin, root, facets, rulesHook);
   assertPartialExtension(previous, files, writes);
   return { root, facets, files, entry: plugin.entry, before: receipt.before };

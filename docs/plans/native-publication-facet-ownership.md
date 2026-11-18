@@ -1114,3 +1114,23 @@ sync and plugin removal still made their registered changes.
   ordinary behavior regression blocks promotion.
 - **Anchor**: The real writer baseline and exact publisher receipts.
   Add, update, rollback and production policy remain separate.
+
+## Qualify add, update and rollback against the shared owner
+
+- **Hypothesis**: The three remaining real CLI lifecycle routes can
+  refuse a competing output owner before changing an installed pin.
+  A normal retry applies exactly the verified source.
+- **Measurement**: Keep the same isolated CLI and fixed process policy.
+  Use two signed tags from one disposable Git source. Begin with no
+  installed plugin for add, the first tag for update, and the second
+  tag plus its prior pin for rollback. Exercise one owner-held attempt
+  and one released-owner retry for each operation.
+- **Success**: Three busy refusals with source, installed state,
+  marketplace, settings and signer records intact. Three retries have
+  the expected exact commit pin and one matching native index.
+  Zero stray staging directories, unknown child calls or holders.
+- **Pivot**: A busy mutation, a retry on a moved or untrusted source,
+  an unreaped stage or an unqualified source command stops the proof.
+  Do not treat scratch admission as a production release.
+- **Anchor**: Previous signed lifecycle unit controls and the real
+  three-writer observation.

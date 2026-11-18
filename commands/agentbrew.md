@@ -11,6 +11,7 @@ Then, answer first:
 2. Each `Next:` and `Then:` item: say in plain words what the command does and what changes for the user. Run it only after the user says yes:
    - `agentbrew init`: first setup. It detects agents, installs the recommended set (downloads), and schedules drift repair.
    - `agentbrew install --recommended`: installs the recommended skills and MCP servers (downloads).
+   - `agentbrew install modern-web-guidance`: adds Chrome guidance for browser features and extensions.
    - `agentbrew sync`: deploys skills, MCP servers, rules, and commands to every agent and repairs drift. Show `agentbrew sync --dry-run` before you ask.
    - `agentbrew auto-sync install`: starts the background drift-repair job. If the user does not want it, run `agentbrew config set autoRepair off`, and nothing proposes it again.
    - `agentbrew status --fix`: repairs drift and reinstalls the drift-repair job when it points at an old path.

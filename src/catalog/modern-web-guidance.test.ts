@@ -20,6 +20,9 @@ describe("Modern Web Guidance catalog routing", () => {
     expect(catalog.repo_sources?.some((entry) => entry.source.toLowerCase().includes(name)) ?? false).toBe(false);
     expect(catalog.claude_plugins?.some((entry) => entry.repo.toLowerCase().includes(name)) ?? false).toBe(false);
     expect(findSkillDirInCache(root, name)).toBe(join(root, "skills", name));
+    for (const path of ["commands/agentbrew.md", "skill-plugins/dev/agentbrew-status/SKILL.md"]) {
+      expect(readFileSync(join(root, path), "utf8")).toContain(`agentbrew install ${name}`);
+    }
   });
 
   it("keeps one default route for implementation, visual direction, and broad audits", () => {

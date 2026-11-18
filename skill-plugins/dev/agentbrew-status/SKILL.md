@@ -23,6 +23,7 @@ agentbrew status --fix     # detect drift and AUTO-REPAIR it
 Use plain `status` to check without repairing, or `status --ci` for CI gates (exit 1 on drift, no color).
 
 See Setup Overview below for runtime checks.
+For browser compatibility or Chrome extension guidance, use `agentbrew install modern-web-guidance`.
 
 ## Drill Into Subsystems
 

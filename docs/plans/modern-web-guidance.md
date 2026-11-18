@@ -34,3 +34,10 @@ Focused catalog, bundle, source-discovery, and ownership suites passed
 all 95 tests. The seven routing cases are available as skill evaluations.
 The package review verified the published 1.0.1 integrity and found the
 extension guide and 23 extension references.
+
+The [Ubuntu isolated runtime control](https://github.com/fyodoriv/agentbrew/actions/runs/44337981125)
+ran release 1.0.1 after verifying its published digest. Search found
+the light-dismiss dialog guide, retrieval returned the guide, and
+the scanner found the seeded textarea pattern. The extension side
+panel reference was present. All three commands ran without network
+access after download.

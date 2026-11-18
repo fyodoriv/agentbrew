@@ -433,3 +433,28 @@ durable output ownership, interrupted payload recovery and activation open.
   or losing a supported warm repair rejects the candidate.
 - **Anchor**: Native destination ownership checks and independent
   feedback on physical launcher reference resolution.
+
+## Admit plugin lifecycle changes before editing installed state
+
+Add, update, rollback and remove currently edit the installed checkout
+and lock before entering the native publisher. Let the same long
+publication owner admit the approved apply and final output together.
+Keep interactive prompts and staged network fetches ahead of admission
+when those operations already stage separately. Discard a staged plan
+if admission refuses. A signer-only revoke remains a short operation.
+
+- **Hypothesis**: With an existing long owner, each of the four
+  plugin commands refuses before installing or changing a plugin.
+- **Measurement**: Use the existing signed lifecycle scratch fixture.
+  Hold a synthetic owner record before each command. Compare current
+  pin, installed checkout, native manifest bytes and staging folder.
+  Keep the ordinary full lifecycle chain and the separate revocation
+  and selected publisher controls.
+- **Success**: Four refusals with unchanged installed state, zero
+  orphaned per-command staging paths, and an unchanged held record.
+  The ordinary add/update/rollback/remove chain still passes.
+- **Pivot**: A partial apply before admission, blocked signer
+  revocation, a leaked staging checkout or an existing route failure
+  blocks release.
+- **Anchor**: Existing plugin command mutation and publisher call
+  sites and the independent lifecycle review.

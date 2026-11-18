@@ -86,11 +86,6 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 
 ## Gotchas
 
-- **OpenCode hooks.** Keep the V1 source usable on its own. The deployer
-  joins the V2 adapter to that source for OpenCode 2 so both use one
-  owned destination and one set of hook verdicts. Test the installed CLI
-  in a scratch home. V2 can answer 503 before authenticated readiness.
-
 - Test rule [rewrite/removal order](docs/plans/trusted-rule-rewrite-provenance.md).
 - [Hosts](docs/support-matrix.md), [owners](docs/skill-directories.md), [headless](docs/shared-memory-research.md#headless-session-save).
 
@@ -114,7 +109,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - `gh auth token` returns an env `GITHUB_TOKEN`/`GH_TOKEN` before its keyring; `resolveEnvVar` strips both so the keyring wins. Tests stub `gh` on `PATH`.
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
 - Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`.
-- opencode.json rejects unknown keys; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins the bootstrap shape. Refresh it from https://opencode.ai/config.json.
+- [OpenCode](docs/hook-protocol.md#opencode-hooks) can admit sessions before V2 hooks load. Bootstrap settings use a schema fixture.
 - Fast gate order: `git diff --check "$base"`, then the `@tasks-md/lint` check. Fix schema, whitespace and conflict errors first.
 
 ## Delivery

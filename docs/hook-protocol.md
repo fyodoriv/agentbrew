@@ -410,3 +410,13 @@ limits are in
 [support-matrix.md](support-matrix.md#opencode-boundaries). A hook can check
 `CLAUDE_HOOKS_HOST=opencode` when it needs to act differently there. Tests:
 `src/opencode-hooks/claude-hooks.test.ts`.
+
+
+Keep the V1 template usable on its own. Sync appends the V2 adapter to it.
+Test the installed CLI in a scratch home. A V2 server can return 503
+before authenticated health, then admit sessions before the plugin appears
+in its inventory. Wait for the plugin ID before testing SessionStart.
+
+`opencode.json` rejects unknown keys. The bootstrap fixture at
+`src/mcp/fixtures/opencode-config-schema.trimmed.json` pins its shape.
+Refresh it from the [OpenCode schema](https://opencode.ai/config.json).

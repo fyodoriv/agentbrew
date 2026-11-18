@@ -54,3 +54,8 @@ version leaves the installed helper in place. Write no OpenCode config.
   [Deployed V2 lifecycle](https://github.com/fyodoriv/agentbrew/actions/runs/44302539949).
 - Stop, session ownership across restarts, and the separately observed
   provider timeout remain outside these controls.
+
+The [registered cold and warm comparison](https://github.com/fyodoriv/agentbrew/actions/runs/44303400336)
+held the runtime, artifact and fixture tool constant. Both cases approved
+once. The case that waited for plugin inventory ran one start callback.
+The case that waited only for authenticated health ran none.

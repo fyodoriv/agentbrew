@@ -435,6 +435,7 @@ describe("installed dependency cache admission", () => {
     writeFileSync(ignore, `${readFileSync(ignore, "utf8")}=fixture.log\n`);
     writeFileSync(join(repo, "plan.txt"), "lint-artifacts bash scripts/lint-repo-artifacts.sh\n");
     expect(run().status).toBe(0);
+    writeFileSync(join(repo, "notes.md"), "Independent docs change\n");
     expect(run().stdout).toContain("lint-artifacts: cached");
 
     writeFileSync(join(repo, "=fixture.log"), "fixture only\n");
@@ -443,5 +444,88 @@ describe("installed dependency cache admission", () => {
     expect(result.status).toBe(1);
     expect(result.stdout).not.toContain("lint-artifacts: cached");
     expect(result.stderr).toContain("=fixture.log");
+  });
+
+  it("does not reuse an artifact lint pass after checkout line endings change", () => {
+    const { repo, run } = scratchRepo();
+    const relative = "scripts/lint-repo-artifacts.sh";
+    const path = join(repo, relative);
+    const source = "if true; then\n  echo lint-ran\nfi\n";
+    writeFileSync(join(repo, ".gitattributes"), `${relative} text eol=lf\n`);
+    writeFileSync(join(repo, "plan.txt"), `lint-artifacts bash ${relative}\n`);
+    writeFileSync(path, source);
+    expect(run().status).toBe(0);
+    expect(run().stdout).toContain("lint-artifacts: cached");
+    const normalized = () => execFileSync("git", ["hash-object", relative], { cwd: repo, env: gitEnv }).toString();
+    const before = normalized();
+    writeFileSync(path, source.replaceAll("\n", "\r\n"));
+    expect(normalized()).toBe(before);
+    const result = run();
+    expect(run({ NO_CACHE: "1" }).status).not.toBe(0);
+    expect(result.status).not.toBe(0);
+    expect(result.stdout).not.toContain("lint-artifacts: cached");
+  });
+
+  it("runs the real task lint when its untracked queue is ignored", () => {
+    const { repo, run } = scratchRepo();
+    copyFileSync(
+      resolve(import.meta.dirname, "../../scripts/lint-tasks-stability.mjs"),
+      join(repo, "scripts/lint-tasks-stability.mjs"),
+    );
+    writeFileSync(join(repo, "plan.txt"), "lint-tasks node scripts/lint-tasks-stability.mjs TASKS.md\n");
+    writeFileSync(join(repo, ".gitignore"), ".metrics/\nTASKS.md\n");
+    const queue = join(repo, "TASKS.md");
+    const body = "\n\n- [ ] Fixture\n  - **ID**: fixture\n  - **Tags**: stability\n";
+    writeFileSync(queue, `## P1${body}`);
+    expect(run().status).toBe(0);
+    writeFileSync(queue, `## P2${body}`);
+    const result = run();
+    expect(run({ NO_CACHE: "1" }).status).toBe(1);
+    expect(result.status).toBe(1);
+    expect(result.stdout).not.toContain("lint-tasks: cached");
+  });
+
+  it("rechecks a lint script replaced by a link to the same bytes with a different module type", () => {
+    const { repo, run } = scratchRepo();
+    const script = join(repo, "scripts/lint-tasks-stability.mjs");
+    const source = 'import { readFileSync } from "node:fs";\nreadFileSync("TASKS.md", "utf8");\n';
+    writeFileSync(script, source);
+    writeFileSync(join(repo, "TASKS.md"), "## P1\n");
+    writeFileSync(join(repo, "plan.txt"), "lint-tasks node scripts/lint-tasks-stability.mjs TASKS.md\n");
+    expect(run().status).toBe(0);
+    expect(run().stdout).toContain("lint-tasks: cached");
+    writeFileSync(join(repo, "scripts/target.cjs"), source);
+    rmSync(script);
+    symlinkSync("target.cjs", script);
+    const result = run();
+    expect(run({ NO_CACHE: "1" }).status).toBe(1);
+    expect(result.status).toBe(1);
+    expect(result.stdout).not.toContain("lint-tasks: cached");
+  });
+
+  it("reuses task stability across a docs change and rechecks the allowlist", () => {
+    const { repo, run } = scratchRepo();
+    copyFileSync(
+      resolve(import.meta.dirname, "../../scripts/lint-tasks-stability.mjs"),
+      join(repo, "scripts/lint-tasks-stability.mjs"),
+    );
+    writeFileSync(join(repo, "plan.txt"), "lint-tasks node scripts/lint-tasks-stability.mjs TASKS.md\n");
+    writeFileSync(join(repo, "TASKS.md"), "## P2\n\n- [ ] Fixture\n  - **ID**: fixture\n  - **Tags**: stability\n");
+    const allow = join(repo, ".tasks-stability-allowlist");
+    writeFileSync(allow, "fixture\n");
+    expect(run().status).toBe(0);
+    writeFileSync(join(repo, "notes.md"), "Independent docs change\n");
+    expect(run().stdout).toContain("lint-tasks: cached");
+
+    writeFileSync(allow, "");
+    const rejected = run();
+    expect(rejected.status).toBe(1);
+    expect(rejected.stdout).not.toContain("lint-tasks: cached");
+
+    rmSync(allow);
+    mkdirSync(allow);
+    const invalidAllowlist = run();
+    expect(invalidAllowlist.status).not.toBe(0);
+    expect(invalidAllowlist.stdout).not.toContain("lint-tasks: cached");
   });
 });

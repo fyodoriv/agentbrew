@@ -345,12 +345,17 @@ test("concurrent attempts admit one", async () => {
   const claim = join(fixture.root, "claim-reached");
   const release = join(fixture.root, "claim-release");
   const watchdogMs = 15000;
-  const winner = runBaselineAsync(fixture, {
-    FAKE_CHAT_CLAIM_SIGNAL: claim,
-    FAKE_CHAT_CLAIM_RELEASE: release,
-    FAKE_CHAT_FIRST_REQUEST_DELAY: process.env.CHAT_RULE_FIXTURE_STRESS_DELAY_MS ?? "",
-  }, watchdogMs).catch((error) => ({ error }));
+  const winner = runBaselineAsync(
+    fixture,
+    {
+      FAKE_CHAT_CLAIM_SIGNAL: claim,
+      FAKE_CHAT_CLAIM_RELEASE: release,
+      FAKE_CHAT_FIRST_REQUEST_DELAY: process.env.CHAT_RULE_FIXTURE_STRESS_DELAY_MS ?? "",
+    },
+    watchdogMs,
+  ).catch((error) => ({ error }));
   try {
+    let winnerResult;
     try {
       const deadline = Date.now() + 10000;
       while ((!existsSync(claim) || readFileSync(claim, "utf8") !== "claim reached") && Date.now() < deadline) {
@@ -366,11 +371,11 @@ test("concurrent attempts admit one", async () => {
       try {
         writeFileSync(release, "release");
       } finally {
-        const result = await winner;
-        if (result.error) throw result.error;
-        assert.equal(result.status, 0);
+        winnerResult = await winner;
       }
     }
+    if (winnerResult.error) throw winnerResult.error;
+    assert.equal(winnerResult.status, 0);
     const events = readEvents(fixture);
     assert.equal(events.filter((entry) => entry.kind === "generation").length, 4);
     assert.equal(events.filter((entry) => entry.kind === "metadata").length, 2);

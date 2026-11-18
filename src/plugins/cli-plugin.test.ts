@@ -40,6 +40,7 @@ import { marketplaceDir } from "./claude-native.js";
 import { registerPluginCommands } from "./cli-plugin.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, applyAdd, planAdd, pluginDir, pluginsRoot } from "./store.js";
+import { applyUpdate, planUpdate } from "./update.js";
 
 const KEY = fixtureKey();
 const ID = ["-c", "user.name=t", "-c", "user.email=t@example.com"];
@@ -183,6 +184,35 @@ describe("planAdd and applyAdd", () => {
 
     expect(staging()).toEqual([`.staging-${process.pid}-1`]);
     rmSync(join(pluginsRoot(), `.staging-${process.pid}-1`), { recursive: true });
+  });
+});
+
+describe("approved plugin update revalidation", () => {
+  const approved = { yes: true, capabilityApproved: false };
+
+  it("refuses a staged signer that was revoked before apply", () => {
+    const original = addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub });
+    f.release("v2.0.0", { "README.md": "second fixture version\n" });
+    const plan = planUpdate("acme", "v2.0.0");
+    revokeSigner("acme", KEY.pub);
+
+    expect(() => applyUpdate(plan, approved)).toThrow(/signer is no longer trusted/u);
+    expect(readLock().plugins).toEqual([original]);
+    expect(fixtureGit(pluginDir("acme"), "rev-parse", "HEAD")).toBe(original.commit);
+    expect(staging()).toEqual([]);
+  });
+
+  it("refuses an approval for an installed pin replaced by a later update", () => {
+    addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub });
+    f.release("v2.0.0", { "README.md": "second fixture version\n" });
+    f.release("v3.0.0", { "README.md": "third fixture version\n" });
+    const earlier = planUpdate("acme", "v2.0.0");
+    const later = applyUpdate(planUpdate("acme", "v3.0.0"), approved);
+
+    expect(() => applyUpdate(earlier, approved)).toThrow(/installed plugin pin changed/u);
+    expect(readLock().plugins).toEqual([later]);
+    expect(fixtureGit(pluginDir("acme"), "rev-parse", "HEAD")).toBe(later.commit);
+    expect(staging()).toEqual([]);
   });
 });
 

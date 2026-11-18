@@ -57,6 +57,7 @@ if (expected) {
 
 class FixtureProvider(BaseHTTPRequestHandler):
     outcomes = []
+    offer = "unseen"
 
     def log_message(self, *_):
         pass
@@ -70,7 +71,15 @@ class FixtureProvider(BaseHTTPRequestHandler):
             if query.get("model") != "probe" or query.get("stream") is not True:
                 raise ValueError
             if len(self.outcomes) == 0:
-                exposed = [entry.get("function", {}).get("name") for entry in query.get("tools", [])]
+                exposed = [entry.get("function", {}).get("name", "") for entry in query.get("tools", [])]
+                if tool_name in exposed:
+                    type(self).offer = "exact"
+                elif any(name.endswith("_" + tool_name) for name in exposed):
+                    type(self).offer = "namespaced"
+                elif any("code" in name.lower() for name in exposed):
+                    type(self).offer = "code"
+                else:
+                    type(self).offer = "other" if exposed else "none"
                 if tool_name not in exposed:
                     self.outcomes.append("tool-missing")
                     self.send_error(400)
@@ -180,7 +189,7 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
                         pass
                     time.sleep(0.2)
                 if health == 200:
-                    args = ["--server", endpoint, "run", "--model", "fixture/probe", "--archived", "Run the synthetic fixture tool."]
+                    args = ["--server", endpoint, "run", "--model", "fixture/probe", "--archived", "--title", "Synthetic tool control", "Run the synthetic fixture tool."]
                     try:
                         result = subprocess.run([str(binary), *args], **common, capture_output=True, timeout=35)
                         run_exit = result.returncode
@@ -203,7 +212,7 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
     setup, hook, tool = rows(marker), rows(hook_log), rows(tool_log)
     print(
         f"version=2.3.0 health={health} exit={run_exit} done={int(output)} setup={setup.count('setup')} "
-        f"requests={len(FixtureProvider.outcomes)} model-path={','.join(FixtureProvider.outcomes) or 'none'} "
+        f"requests={len(FixtureProvider.outcomes)} model-path={','.join(FixtureProvider.outcomes) or 'none'} offered={FixtureProvider.offer} "
         f"hook-original={hook.count('original')} tool-amended={tool.count('amended')} "
         f"tool-original={tool.count('original')} reaped=1 fixture-stopped={int(not fixture.is_alive())}"
     )

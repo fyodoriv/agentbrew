@@ -624,12 +624,12 @@ describe("prepareSync and Agentfile handling", () => {
     expect(mockApplyAgentfile).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining(dryRun ? "fixture-Agentfile.yaml" : ".config/agentbrew"),
-      expect.objectContaining({ dryRun, syncModules: ["hooks"] }),
+      expect.objectContaining({ dryRun, syncModules: ["hooks"], scopeAgentfileContent: true }),
     );
     expect(mockApplyAgentfile).toHaveBeenNthCalledWith(
       2,
       process.cwd(),
-      expect.objectContaining({ dryRun, syncModules: ["hooks"] }),
+      expect.objectContaining({ dryRun, syncModules: ["hooks"], scopeAgentfileContent: true }),
     );
   });
 

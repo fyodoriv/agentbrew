@@ -39,10 +39,13 @@ vi.mock("./sync-runner.js", async (original) => ({
 }));
 vi.mock("./catalog/install.js", () => ({ install: vi.fn() }));
 
+import { applyAgentfile } from "./agentfile.js";
+import { LOCAL_SKILL_DIRECTORY_ORIGIN } from "./agentfile-skill-directories.js";
 import { install as catalogInstall } from "./catalog/install.js";
 import { buildProgram } from "./cli.js";
 import { applyAgentfileAndInstall } from "./commands/cli-install.js";
 import { workspaceAgentfilePath } from "./core/workspaces.js";
+import { MEMORY_MANAGED_SERVER_NAME, MEMORY_MANAGED_SOURCE } from "./memory/constants.js";
 import { invalidateState, loadState, saveState } from "./state.js";
 import { pruneStaleAgentfileArtifacts } from "./sync/stale-agentfile-artifacts.js";
 import type { Source } from "./types.js";
@@ -307,7 +310,7 @@ describe("selected workspace stable ownership", () => {
     const generated = workspaceAgentfilePath();
     const owner = dirname(generated);
     const rulesPath = join(home, ".config", "agentbrew", "shared-rules.md");
-    const flags = ["--only", "rules", "--no-recommended", "--workspaces", root];
+    const flags = ["--only", "rules,skills", "--no-recommended", "--workspaces", root];
     mkdirSync(repo, { recursive: true });
     expect(existsSync(owner)).toBe(false);
     writeFileSync(policy, "rules: First synthetic team rule.\nskillDirectories: [./owned-skills]\n");
@@ -332,5 +335,148 @@ describe("selected workspace stable ownership", () => {
     expect(existsSync(owner)).toBe(true);
     expect(existsSync(generated)).toBe(false);
     expect(pruneStaleAgentfileArtifacts(state, rules)).toEqual({ content: rules, changed: false });
+  });
+});
+
+describe("selected Agentfile state fields", () => {
+  it.each(["mcp", "hooks", "models", "all"] as const)("persists only the %s preparation fields", (facet) => {
+    const config = join(home, ".config", "agentbrew");
+    const policy = join(config, "Agentfile.yaml");
+    const state = loadState();
+    if (!state) throw new Error("Synthetic state is missing");
+    state.mcpServers = [{ name: "fixture-old", command: "node", args: [], env: {}, source: "agentfile" }];
+    state.hooks = [{ event: "PreToolUse", type: "command", command: "old-fixture", source: "agentfile" }];
+    state.defaultModel = "fixture-old-model";
+    saveState(state);
+    invalidateState();
+    writeFileSync(
+      policy,
+      yaml.dump({
+        sources: [STALE_URL],
+        mcp: [{ name: "fixture-new", command: "node", args: [] }],
+        hooks: [{ event: "PreToolUse", command: "new-fixture" }],
+        defaultModel: "fixture-new-model",
+      }),
+    );
+
+    applyAgentfile(policy, {
+      quiet: true,
+      authoritative: true,
+      ...(facet === "all" ? {} : { syncModules: [facet], scopeAgentfileContent: true }),
+    });
+    invalidateState();
+
+    const saved = loadState();
+    const applied = (name: typeof facet) => facet === "all" || facet === name;
+    expect(saved?.mcpServers?.filter(({ name }) => name.startsWith("fixture-")).map(({ name }) => name)).toEqual([
+      applied("mcp") ? "fixture-new" : "fixture-old",
+    ]);
+    expect(saved?.hooks?.map(({ command }) => command)).toEqual([applied("hooks") ? "new-fixture" : "old-fixture"]);
+    expect(saved?.defaultModel).toBe(applied("models") ? "fixture-new-model" : "fixture-old-model");
+  });
+});
+
+describe("selected Agentfile source directories", () => {
+  it.each(["commands", "agents", "skills", "all"] as const)("updates only the %s directory ownership", (facet) => {
+    const config = join(home, ".config", "agentbrew");
+    const policy = join(config, "Agentfile.yaml");
+    const state = loadState();
+    if (!state) throw new Error("Synthetic state is missing");
+    const entry = (path: string, origin = "agentfile") => ({ path: join(config, path), origin, agentfile: config });
+    const command = entry("old-commands");
+    const agent = entry("old-agents");
+    const skill = entry("old-skills", LOCAL_SKILL_DIRECTORY_ORIGIN);
+    state.commandSourceDirs = [{ ...command, label: "fixture" }];
+    state.agentSourceDirs = [{ ...agent, label: "fixture" }];
+    state.skillSourceDirs = [{ ...skill, label: "fixture" }];
+    saveState(state);
+    invalidateState();
+    writeFileSync(
+      policy,
+      yaml.dump({
+        sources: [STALE_URL],
+        commands: ["./new-commands"],
+        agents: ["./new-agents"],
+        skillDirectories: ["./new-skills"],
+      }),
+    );
+
+    applyAgentfile(policy, {
+      quiet: true,
+      authoritative: true,
+      ...(facet === "all" ? {} : { syncModules: [facet], scopeAgentfileContent: true }),
+    });
+    invalidateState();
+
+    const saved = loadState();
+    const applied = (name: typeof facet) => facet === "all" || facet === name;
+    expect(saved?.commandSourceDirs).toMatchObject([applied("commands") ? entry("new-commands") : command]);
+    expect(saved?.agentSourceDirs).toMatchObject([applied("agents") ? entry("new-agents") : agent]);
+    expect(saved?.skillSourceDirs).toMatchObject([
+      applied("skills") ? entry("new-skills", LOCAL_SKILL_DIRECTORY_ORIGIN) : skill,
+    ]);
+  });
+});
+
+describe("selected Agentfile source and memory state", () => {
+  it.each(["skills", "mcp", "hooks", "all"] as const)("keeps state within %s preparation", (facet) => {
+    const policy = join(home, ".config", "agentbrew", "Agentfile.yaml");
+    writeFileSync(policy, yaml.dump({ sources: [FIXED_URL], memory: { enabled: true } }));
+    const state = loadState();
+    if (!state) throw new Error("Synthetic state is missing");
+    state.workSteps = ["synthetic migration marker"];
+    saveState(state);
+    invalidateState();
+
+    applyAgentfile(policy, {
+      quiet: true,
+      authoritative: true,
+      ...(facet === "all" ? {} : { syncModules: [facet], scopeAgentfileContent: true }),
+    });
+    invalidateState();
+
+    const saved = loadState();
+    const sourcesSelected = facet === "skills" || facet === "all";
+    const memorySelected = facet === "mcp" || facet === "all";
+    expect(seenFixtureUrls()).toEqual([sourcesSelected ? FIXED_URL : STALE_URL]);
+    expect(saved?.memory?.enabled === true).toBe(memorySelected);
+    expect(
+      saved?.mcpServers?.some(
+        ({ name, source }) => name === MEMORY_MANAGED_SERVER_NAME && source === MEMORY_MANAGED_SOURCE,
+      ) ?? false,
+    ).toBe(memorySelected);
+    expect(saved?.workSteps).toEqual(facet === "all" ? undefined : ["synthetic migration marker"]);
+  });
+});
+
+describe("selected pull keeps established mixed preparation", () => {
+  it("applies its mixed Agentfile before an MCP-only pull dispatch", async () => {
+    const config = join(home, ".config", "agentbrew");
+    writeFileSync(
+      join(config, "Agentfile.yaml"),
+      yaml.dump({
+        sources: [FIXED_URL],
+        mcp: [{ name: "fixture-pull", command: "node", args: [] }],
+        hooks: [{ event: "PreToolUse", command: "fixture-pull-hook" }],
+        defaultModel: "fixture-pull-model",
+        memory: { enabled: true },
+        commands: ["./fixture-pull-commands"],
+      }),
+    );
+    let prepared: ReturnType<typeof loadState> | undefined;
+    mockUpdate.mockImplementationOnce(async () => {
+      invalidateState();
+      prepared = loadState();
+    });
+
+    await runSync("--pull", "--only", "mcp");
+
+    expect(mockUpdate).toHaveBeenCalledOnce();
+    expect(prepared?.mcpServers?.map(({ name }) => name)).toContain("fixture-pull");
+    expect(prepared?.hooks?.map(({ command }) => command) ?? []).toContain("fixture-pull-hook");
+    expect(prepared?.defaultModel).toBe("fixture-pull-model");
+    expect(prepared?.memory?.enabled).toBe(true);
+    expect(prepared?.sources?.map(({ url }) => url)).toContain(FIXED_URL);
+    expect(prepared?.commandSourceDirs?.map(({ path }) => path)).toContain(join(config, "fixture-pull-commands"));
   });
 });

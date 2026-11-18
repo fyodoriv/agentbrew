@@ -30,7 +30,7 @@ export async function applyAgentfileAndInstall(
     authoritative: options?.authoritative ?? true,
     includeSkillInstallReport: installRequestedItems,
     dryRun,
-    ...(options?.syncModules && { syncModules: options.syncModules }),
+    ...(options?.syncModules && { syncModules: options.syncModules, scopeAgentfileContent: true }),
     ...(options?.agentfileBaseDir && { agentfileBaseDir: options.agentfileBaseDir }),
   });
   if (!result) {

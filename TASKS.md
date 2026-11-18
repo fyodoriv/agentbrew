@@ -339,8 +339,8 @@
   - **Prior implementation evidence**: needs-time — 2026-10-18: the hook is on for the owner's Mac (dotfiles #160 owner overlay, `agentbrew sync` done; it fired live on a test loop). The original follow-up was due on or after 2026-10-25.
   - **Research**: 2026-11-01: the original `until <arg>` key is absent; absence is not zero. The agentbrew `for heavy-run --status` category alone is 680.07 s/day across 10 calls, but that is whole-loop wall time outside the hint's until/while scope. No comparable timeout-rate result exists. The old alias cannot decide Success or Pivot.
   - **Preparation**: the installed recorder, parser, and reporter match the reviewed source. An isolated synthetic attempt and completion produced one paired timing record without copying the marker. Prediction commits 88a830b and f4661d6 precede the new fixtures and source. The [observation procedure](docs/plans/sleep-loop-measurement-preparation.md#verified-observation-window) uses the verified start recorded privately.
-  - **Next experiment**: after a full seven-day cohort, replay the exact first window with the pinned report clock. Keep the original thresholds and report unknown timing, mode, and correlation. Unavailable timeout-cause evidence cannot satisfy the no-rise guard.
-  - **Blocked**: needs-field-window — wait for a full seven-day cohort. Fixture accuracy, metadata coverage, an absent alias, or a partial cohort cannot close the task.
+  - **Field review**: the exact first seven-day replay is complete and independently checked. Every observed loop syntax row paired with a timed tool call. The old report label was absent. The current data leaves background duration, unknown execution mode, timeout cause, and comparison with the prior measurement unresolved. The aggregate report stays private.
+  - **Blocked**: needs-comparable-field-evidence — register a comparable polling measurement and timeout baseline before applying the original thresholds. The existing syntax and tool-call evidence leaves Success and Pivot undecided.
 
 ## P2
 

@@ -681,3 +681,21 @@ accepted the unowned launcher. The
 left it untouched and refused before creating the native directory.
 All 44 focused controls, 100 compatibility tests, and type checking
 passed.
+
+## Repair a missing file within an already covered facet
+
+- **Hypothesis**: A selection can restore a recorded missing file
+  to its exact bytes and mode without changing the partial receipt.
+- **Measurement**: Publish each of hooks, MCP, and rules separately
+  in a cold home. Remove its script, launcher, or generated hook
+  and repeat the same selection. Compare the previous bytes, mode,
+  receipts, and neighboring paths.
+- **Success**: All three repairs restore their recorded file and
+  keep the index, receipt, envelope, and state of other facets.
+- **Pivot**: A missing, extra, or differently owned file, or a
+  changed receipt fails the candidate.
+- **Anchor**: The existing warm full-receipt repair controls and
+  the independently verified partial inventory.
+
+This repair reuses prior coverage. An expanded selection still
+requires all earlier payloads to be present and verified.

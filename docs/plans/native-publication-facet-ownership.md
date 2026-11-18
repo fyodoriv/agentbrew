@@ -415,3 +415,21 @@ failed both new trust controls. The
 passed 24 focused and 82 compatibility tests plus type checking.
 This phase guards planned selected writes. It leaves lifecycle changes,
 durable output ownership, interrupted payload recovery and activation open.
+
+## Existing destination spelling and physical launcher paths
+
+- **Hypothesis**: A warm selected write refuses an alternate spelling
+  of its destination or a retained launcher reference that resolves
+  to the same physical file.
+- **Measurement**: In one scratch marketplace, give the existing
+  hooks JSON only an alternate-case name. In another, give a retained
+  server a launcher reference through a known directory alias. Run the
+  real selected emitter and compare files, directory entry names,
+  modes and modification times. Keep the existing unrelated-reference
+  and valid warm repair controls.
+- **Success**: Both ambiguous cases refuse with zero native writes.
+  The unrelated reference and supported repairs pass.
+- **Pivot**: Changing a differently named file, accepting an alias,
+  or losing a supported warm repair rejects the candidate.
+- **Anchor**: Native destination ownership checks and independent
+  feedback on physical launcher reference resolution.

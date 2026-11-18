@@ -820,3 +820,31 @@ ordinary publication, and type checking.
 
 This control covers a valid owned settings file in the scratch fixture.
 Settings path ownership and activation remain separate.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44282217325)
+changed the explicit false to true. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44282475637)
+preserved the disabled setting and all three unrelated values. It passed
+53 focused controls, 109 compatibility tests, ordinary publication,
+and type checking.
+
+## Keep settings unchanged if certification fails
+
+- **Hypothesis**: An opted-in publication that cannot certify its signed
+  output retains the caller's settings bytes exactly.
+- **Measurement**: Seed an unrelated owner settings file and an extra
+  working-copy payload in the existing signed fixture. Verify the
+  failure, the exact settings bytes, the retained owner record and
+  the missing receipt. Check the default enabled state on a clean
+  certified fixture.
+- **Success**: The rejected publication changes zero settings bytes
+  and creates zero certificates. The good fixture records proof and
+  retains its expected default activation state. All ordinary publisher
+  and interruption controls pass.
+- **Pivot**: Reject a settings change before successful certification,
+  premature owner release, or ordinary publisher behavior change.
+- **Anchor**: The full signed artifact inventory and the retained
+  ownership and disabled-setting tests above.
+
+This control covers relative write order. Artifact certification and
+settings activation still need a shared verified trust boundary.

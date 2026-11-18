@@ -198,6 +198,30 @@ That's an 92% reduction. The rules are still ALL available — they're now loade
 on-demand when the agent recognizes the relevant topic, rather than burning
 context every session.
 
+## Web development sources
+
+Install `modern-web-guidance` for decisions about browser APIs, HTML, CSS,
+client-side JavaScript, and Manifest V3. The Agentbrew skill routes to
+Chrome's pinned release and the project's browser support policy.
+
+| Work | Source |
+| --- | --- |
+| Choose a visual direction | Hallmark |
+| Use a shadcn component | shadcn |
+| Implement a browser feature or fallback | Modern Web Guidance |
+| Update existing design tokens | The project's design system. Use effective-ui-design for requested defaults when the project lacks them. |
+| Run one live page audit | web-quality-audit |
+| Run a broader quality review | ui-ux-rankings |
+| Decide framework architecture | The appropriate framework skill |
+
+The frontend-kit includes one implementation guide and one broad quality
+review. It pairs Playwright tests with the existing Chrome DevTools MCP
+for live browser diagnostics. Modern Web Guidance replaces the older
+web-design-guidelines checklist in the catalog. A named install leaves an existing same-name
+copy in catalog staging or project storage untouched, including links.
+Agent deployment also preserves copies from other sources. The catalog
+points optional creative and live audit tools back to the selected routes.
+
 ## When you DO need to extend shared-rules.md
 
 These additions are legitimately always-on:

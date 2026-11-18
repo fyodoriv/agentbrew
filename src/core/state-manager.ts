@@ -17,7 +17,7 @@ export const CURRENT_SCHEMA_VERSION = 1;
 export interface StateManager {
   load(): AgentBrewState | undefined;
   require(options?: { quiet?: boolean }): AgentBrewState | undefined;
-  save(state: AgentBrewState): void;
+  save(state: AgentBrewState): false | undefined;
   update(fn: (state: AgentBrewState) => void): void;
   invalidate(): void;
   agents(): AgentConfig[];
@@ -27,7 +27,7 @@ export interface StateManager {
 
 export interface StateIO {
   read(): AgentBrewState | undefined;
-  write(state: AgentBrewState): void;
+  write(state: AgentBrewState): false | undefined;
 }
 
 /** Validate loaded state for common misconfigurations.
@@ -209,7 +209,7 @@ export function createStateManager(io: StateIO): StateManager {
 
     save(state: AgentBrewState) {
       state.schemaVersion = CURRENT_SCHEMA_VERSION;
-      io.write(state);
+      if (io.write(state) === false) return false;
       cached = state;
       loaded = true;
     },
@@ -268,8 +268,7 @@ export function createInMemoryStateManager(
       return inner.require({ quiet: true, ...options });
     },
     save(state: AgentBrewState) {
-      inner.save(state);
-      manager.current = state;
+      return inner.save(state);
     },
     update(fn: (state: AgentBrewState) => void) {
       inner.invalidate();

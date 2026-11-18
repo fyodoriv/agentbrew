@@ -115,3 +115,15 @@ installer records in the lock.
   on-disk full source identity and live activation open.
 - **Anchor**: Native marketplace entry and launcher naming in
   `src/plugins/claude-native.ts` and `src/plugins/mcp-launcher.ts`.
+
+The [test-first run](https://github.com/fyodoriv/agentbrew/actions/runs/44237899247)
+failed the two empty selections and the existing duplicate launcher.
+The [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44238056862)
+passed all eleven scoped controls, ordinary publisher and launcher tests,
+and type checking. A matching file still counts as a launcher claim.
+
+This proof covers claims from the selected launcher declarations. Before
+activation, cover collisions against retained marketplace references and
+hook paths that alias by case, normalization or file type. A full-source
+receipt must describe verified output even when a legacy publisher used
+working-copy files. An existing eight-digit display version is insufficient.

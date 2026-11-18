@@ -209,6 +209,7 @@ agentbrew works the same way on both. What changes is what a company plugin adds
 
 ```bash
 agentbrew install debug                   # skill from the catalog (every agent)
+agentbrew install modern-web-guidance     # browser compatibility, modernization, and Chrome extensions
 agentbrew install context7                # live library docs MCP (recommended, all agents)
 agentbrew install sourcegraph             # enterprise code search MCP (token + instance URL)
 agentbrew install storybook-screenshot    # catalog CLI command + package binary
@@ -631,6 +632,7 @@ configuration.
 A background scheduler (LaunchAgent / systemd / cron) runs `agentbrew fix` every 30 minutes. If an agent update or manual edit breaks your config, it auto-repairs. The same tick does these MCP checks:
 
 - It probes stdio and URL MCP servers through initialization plus `tools/list`. Each distinct server spec starts once, however many agents list it.
+  The stdio probe replies to `roots/list` with an empty list and answers `ping`.
 - It uses catalog-defined read-only `smokeCall` metadata, except for entries marked `probe: fast`, to avoid side-effectful scheduler probes.
 - It attempts registered heal actions for common failures.
 - It does not try futile heals on catalog-documented known-broken failures, but keeps them visible in `~/.cache/agentbrew/mcp-health.json`.
@@ -713,6 +715,14 @@ So your real jobs are untouched. Read-only checks such as `crontab -l` and `laun
 The job's `PATH` starts with that Node's folder. When `agentbrew fix` rewrites the plist from inside the job itself, it does not unload the running job (that would kill it before the reload). It writes the plist, and a detached shell reloads the job after the run ends. An unchanged plist is not reloaded.
 
 `agentbrew status` reports `launchagent` drift for a `com.agentbrew.*` job that runs Node in two cases. The job's Node no longer exists, or the job runs a versioned path while a link that survives upgrades points at the same Node. The repair for the memory job is `agentbrew memory fix`. `agentbrew fix` (the check job) or `agentbrew memory fix` (the memory job, reported as `memory-launchagent` drift) then rewrites the plist, so an existing job moves to the stable path on its next run.
+
+When scheduled memory maintenance stops, check
+`~/.local/share/agentbrew/logs/mcp-memory-maintain.err.log`. Group the fixed
+`stage=` lines by process ID. `upstream`, `backup`, and `success-marker` show
+which step began. `complete` means the command finished the maintenance
+steps. A final stage without a result helps locate an interruption. It
+cannot identify which system condition caused it. Manual runs emit these
+lines only with `AGENTBREW_MEMORY_MAINTENANCE_TRACE=1`.
 
 ### MCP endpoint repair
 

@@ -1,4 +1,4 @@
-import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
 import { registerSkillSourceDir } from "../add-source.js";
@@ -8,6 +8,7 @@ import { redactUrlCredentials } from "../core/redact-url.js";
 import { detectSourceType } from "../git-source-url.js";
 import { lockSource } from "../lock.js";
 import { INSTALLED_SKILLS_DIR, INSTALLED_SKILLS_LABEL } from "../paths.js";
+import { copySkillDirectory, projectSkillRelativePath } from "../skills/copy-skill-directory.js";
 import { recordSourceSha } from "../skills/skill-versions.js";
 import { loadState, saveState } from "../state.js";
 import type { AgentBrewState, Source } from "../types.js";
@@ -50,13 +51,7 @@ export function copySkillFromCache(cachePath: string, skillName: string): string
 
   const destination = join(installedSkillsPath, skillName);
 
-  // Remove stale copy before refresh so we don't accumulate old files
-  if (existsSync(destination)) {
-    rmSync(destination, { recursive: true, force: true });
-  }
-
-  mkdirSync(destination, { recursive: true });
-  cpSync(skillDir, destination, { recursive: true });
+  copySkillDirectory(skillDir, destination);
   return destination;
 }
 
@@ -152,26 +147,38 @@ export async function installFromSource(
   console.log(`\n${ICON_SUCCESS} Skill '${skillName}' installed from ${redactUrlCredentials(source.url)}.`);
 }
 
-/** Updates state sources after a catalog skill is successfully installed. */
-function updateStateAfterSkillInstall(
-  state: NonNullable<ReturnType<typeof loadState>>,
-  source: Source,
-  skillName: string,
-  skillSource: string,
-): void {
-  const tracked = getStateSources(state).find((s) => s.url === skillSource);
+/** Register a copied catalog skill and report persistence failure for protected copies. */
+function registerInstalledSkill(source: Source, skill: CatalogSkill): Source {
+  const current = loadState();
+  const registrationError = `Could not register catalog skill '${skill.name}'. Retry the install after fixing agentbrew state.`;
+  if (!current) {
+    if (skill.preserveExisting) throw new Error(registrationError);
+    return source;
+  }
+
+  const state = skill.preserveExisting
+    ? {
+        ...current,
+        skillSourceDirs: [...(current.skillSourceDirs ?? [])],
+        sources: current.sources?.map((entry) => ({ ...entry, skillsInstalled: [...entry.skillsInstalled] })),
+      }
+    : current;
+  ensureInstalledSkillsRegistered(state);
+  const tracked = getStateSources(state).find((entry) => entry.url === skill.source);
   if (tracked) {
-    if (!tracked.skillsInstalled.includes(skillName)) {
-      tracked.skillsInstalled.push(skillName);
+    if (!tracked.skillsInstalled.includes(skill.name)) {
+      tracked.skillsInstalled.push(skill.name);
     }
     recordSourceSha(tracked);
   } else {
-    source.skillsInstalled = [skillName];
+    source.skillsInstalled = [skill.name];
     recordSourceSha(source);
     if (!state.sources) state.sources = [];
     state.sources.push(source);
   }
-  saveState(state);
+  const persisted = saveState(state);
+  if (skill.preserveExisting && persisted === false) throw new Error(registrationError);
+  return tracked ?? source;
 }
 
 /** Resolves the source object and cache path for a catalog skill. Returns undefined if resolution fails. */
@@ -206,11 +213,6 @@ function resolveSkillSource(
   }
 
   return { source, cachePath };
-}
-
-/** Finds the skill directory in the cache, including nested plugin layouts. */
-function findSkillInCache(cachePath: string, skillName: string): string | undefined {
-  return findSkillDirInCache(cachePath, skillName);
 }
 
 /**
@@ -315,37 +317,42 @@ export async function installSkill(
     return;
   }
 
+  const destination = localDir
+    ? join(localDir, projectSkillRelativePath(skill.name))
+    : join(installedSkillsPath, skill.name);
+  const keptMessage = `  Kept existing skill '${skill.name}' at ${destination}.`;
+  if (skill.preserveExisting && lstatSync(destination, { throwIfNoEntry: false })) {
+    console.log(keptMessage);
+    return;
+  }
+
   console.log(chalk.bold(`\nInstalling skill: ${skill.name}${localDir ? " (local)" : ""}\n`));
 
   const resolved = resolveSkillSource(skill, installSummary);
   if (!resolved) return;
 
-  // For local installs, copy to project directory instead of global staging
-  if (localDir) {
-    const skillDir = findSkillInCache(resolved.cachePath, skill.name);
-    if (!skillDir) {
-      cliNotFound(skill.name, `in ${skill.source}`, "Run `agentbrew sync --pull` to refresh the source index.");
-      return;
-    }
-    installSkillToProject(localDir, skill.name, skillDir);
-    return;
-  }
-
-  const destination = copySkillFromCache(resolved.cachePath, skill.name);
-  if (!destination) {
-    if (trySourceFallback(resolved.cachePath, skill.source, skill.name)) return;
+  const skillDir = findSkillDirInCache(resolved.cachePath, skill.name);
+  if (!skillDir) {
+    if (!localDir && trySourceFallback(resolved.cachePath, skill.source, skill.name)) return;
     cliNotFound(skill.name, `in ${skill.source}`, "Run `agentbrew sync --pull` to refresh the source index.");
     return;
   }
 
-  // Update state only after the copy succeeded
-  const state = loadState();
-  if (state) {
-    ensureInstalledSkillsRegistered(state);
-    updateStateAfterSkillInstall(state, resolved.source, skill.name, skill.source);
+  if (localDir) {
+    installSkillToProject(localDir, skill.name, skillDir, skill.preserveExisting);
+    return;
   }
 
-  const lockEntry = lockSource(resolved.source, [skill.name]);
+  let installedSource = resolved.source;
+  const copied = copySkillDirectory(skillDir, destination, skill.preserveExisting, () => {
+    installedSource = registerInstalledSkill(resolved.source, skill);
+  });
+  if (!copied) {
+    console.log(keptMessage);
+    return;
+  }
+
+  const lockEntry = lockSource(installedSource, [skill.name]);
   if (lockEntry) {
     console.log(chalk.dim(`  Locked ${skill.source} @${lockEntry.sha.slice(0, 8)}`));
   }

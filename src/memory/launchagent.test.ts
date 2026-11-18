@@ -115,6 +115,11 @@ describe("memory LaunchAgents under a scratch HOME", () => {
 });
 
 describe("memory maintenance plist Node (#456)", () => {
+  it("enables fixed stderr milestones for scheduled maintenance", () => {
+    const plist = buildMaintainPlist("/Users/test", "/usr/bin:/bin", "/Users/test/logs");
+    expect(plist.match(/<key>AGENTBREW_MEMORY_MAINTENANCE_TRACE<\/key>\s*<string>1<\/string>/gu)).toHaveLength(1);
+  });
+
   it("runs the Node link that survives upgrades, not the versioned process.execPath", () => {
     const plist = buildMaintainPlist("/Users/test", "/usr/bin:/bin", "/Users/test/logs");
     const program = /<key>ProgramArguments<\/key>\s*<array>\s*<string>([^<]*)<\/string>/u.exec(plist)?.[1];

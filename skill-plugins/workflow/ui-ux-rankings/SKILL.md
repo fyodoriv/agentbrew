@@ -14,8 +14,8 @@ description: >
 # UI and UX rankings
 
 Turn "is this page good?" into numbers, fix the worst ranking, re-measure, repeat. Built on the
-third-party audits it wraps (axe-core, Lighthouse via `web-quality-audit`, the Vercel guidelines via
-`web-design-guidelines`) and adds what they miss: touch targets and selected-state contrast in both
+third-party audits it wraps (axe-core, Lighthouse via `web-quality-audit`, and Vercel's audit
+checklist) and adds touch targets and selected-state contrast in both
 themes, focus hidden under sticky bars, Reduce motion, phone readability, task time, behavior at
 real scale, and a design rating.
 

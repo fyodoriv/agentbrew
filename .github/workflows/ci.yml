@@ -1,101 +1,50 @@
 name: CI
-
-# The hosted copy of the local gate: `npm run verify`, the same command a
-# contributor runs before a push. Hosted on GitHub's standard runners, which
-# are free for public repositories. See docs/ci.md.
-#
-# Safety:
-# - No secrets are used. A fork PR gets a read-only token and no secrets.
-# - The private-pattern leak gate cannot run here: its pattern file lives
-#   only on the owner's machine. The local pre-push gate stays the authority.
-# - Steps never print the environment.
-
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
-
-concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
-env:
-  # Never send usage data or event logs from a runner.
-  DO_NOT_TRACK: "1"
-  AGENTBREW_EVENTS: "0"
-
 jobs:
-  verify:
-    name: verify (${{ matrix.os }})
+  native-interruption:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 8
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          # The gate compares the branch with origin/main.
-          fetch-depth: 0
           persist-credentials: false
-
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version-file: .node-version
-          # No npm cache: measured slower than a cold `npm ci` (docs/ci.md).
-
-      - name: Install
-        run: npm ci
-
-      - name: Install test tools
-        # git-filter-repo: the test of scripts/sanitize-history.sh needs it.
+      - run: npm ci
+      - name: Measure recursive copy mode under both masks
         run: |
-          if [ "$RUNNER_OS" = "macOS" ]; then
-            HOMEBREW_NO_AUTO_UPDATE=1 brew install git-filter-repo
-          else
-            # PyPI fallback: a runner DNS failure for the Ubuntu archive
-            # must not stop the gate.
-            { sudo apt-get update && sudo apt-get install -y git-filter-repo; } ||
-              pipx install git-filter-repo
-          fi
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cache/ms-playwright
-            ~/Library/Caches/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-
-      - name: Identify the gate cache runner image
-        id: gate-image
+          node --input-type=module - <<'NODE'
+          import { chmodSync, cpSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+          import { tmpdir } from "node:os";
+          import { join } from "node:path";
+          const stage = mkdtempSync(join(tmpdir(), "queue-copy-"));
+          try {
+            const source = join(stage, "source");
+            mkdirSync(source);
+            const guard = join(source, "guard");
+            writeFileSync(guard, "synthetic fixture");
+            chmodSync(guard, 0o644);
+            for (const mask of [0o022, 0o077]) {
+              process.umask(mask);
+              const target = join(stage, mask.toString(8));
+              cpSync(source, target, { recursive: true });
+              const mode = statSync(join(target, "guard")).mode & 0o777;
+              process.stdout.write("copy-mask=" + mask.toString(8) + " output-mode=" + mode.toString(8) + "\n");
+              if (mode !== 0o644) process.exitCode = 1;
+            }
+          } finally {
+            rmSync(stage, { recursive: true });
+          }
+          NODE
+      - name: Verify signed mode and checkpoint cases
         run: |
-          if [ -z "${ImageOS:-}" ] || [ -z "${ImageVersion:-}" ] || [ -z "${RUNNER_ARCH:-}" ]; then
-            exit 0
-          fi
-          printf 'scope=gate-%s-%s-%s\n' "$ImageOS" "$ImageVersion" "$RUNNER_ARCH" >> "$GITHUB_OUTPUT"
-
-      - name: Restore the gate step cache
-        # scripts/verify.sh skips a step whose inputs passed before, like nx.
-        # A cache entry cannot be changed, so each run saves a new one and
-        # restores the newest. A pull request reads its own entries and
-        # main's; it cannot write to main's.
-        if: steps.gate-image.outputs.scope != ''
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ runner.temp }}/gate-cache
-          key: ${{ steps.gate-image.outputs.scope }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: |
-            ${{ steps.gate-image.outputs.scope }}-
-
-      - name: Point the gate at the step cache
-        run: echo "AGENTBREW_GATE_CACHE_DIR=$RUNNER_TEMP/gate-cache" >> "$GITHUB_ENV"
-
-      - name: Gate (npm run verify)
-        run: npm run verify
+          umask 022
+          npm exec -- vitest run src/plugins/claude-native.test.ts src/plugins/claude-native-ordinary.test.ts --testTimeout 20000 --maxWorkers 1

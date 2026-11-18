@@ -441,6 +441,7 @@ describe("wrap-up open-work.sh", () => {
 
 type FetchCase = "W01" | "W02" | "W03" | "W04";
 type Checkout = "first" | "second";
+type FetchPhase = "setup" | "git-setup" | "routing" | "caller" | "readback";
 interface FetchReceipt {
   id: FetchCase;
   exit: number;
@@ -483,7 +484,7 @@ function receiptDecision(samples: readonly unknown[], id: FetchCase): string {
   return item.offFixture === 0 ? "accepted" : "off-fixture";
 }
 
-function observeFetchCaller(id: FetchCase): FetchReceipt {
+function observeFetchCaller(id: FetchCase, enter: (phase: FetchPhase) => void): FetchReceipt {
   const root = mkdtempSync(join(realpathSync(tmpdir()), "wrap-fetch-"));
   try {
     const first = join(root, "first");
@@ -519,6 +520,7 @@ function observeFetchCaller(id: FetchCase): FetchReceipt {
       GIT_CONFIG_KEY_2: "core.hooksPath",
       GIT_CONFIG_VALUE_2: "/dev/null",
     };
+    enter("git-setup");
     const realGit = execFileSync("/bin/bash", ["-c", "command -v git"], {
       cwd: root,
       env: fixtureEnv,
@@ -550,15 +552,14 @@ function observeFetchCaller(id: FetchCase): FetchReceipt {
         throw new Error("fixture checkout not clean and pushed");
       }
     }
-    if (
-      spawnSync(realGit, ["-C", plain, "rev-parse", "--show-toplevel"], {
-        cwd: root,
-        env: fixtureEnv,
-        stdio: "ignore",
-        timeout: 5000,
-      }).status !== 128
-    )
-      throw new Error("fixture noncheckout not isolated");
+    const plainProbe = spawnSync(realGit, ["-C", plain, "rev-parse", "--show-toplevel"], {
+      cwd: root,
+      env: fixtureEnv,
+      stdio: "ignore",
+      timeout: 5000,
+    });
+    if (plainProbe.error) throw plainProbe.error;
+    if (plainProbe.status !== 128) throw new Error("fixture noncheckout not isolated");
 
     writeFileSync(trace, "");
     const deny = '#!/bin/bash\nprintf "off-fixture\\n" >> "$FETCH_TRACE"\nexit 97\n';
@@ -621,6 +622,7 @@ exec "$FETCH_REAL_GIT" "$@"
       FETCH_CASE: id,
       FETCH_REAL_GIT: realGit,
     };
+    enter("routing");
     const commands = ["git", "gh", "ssh", "curl"];
     const resolved = execFileSync(
       "/bin/bash",
@@ -638,6 +640,7 @@ exec "$FETCH_REAL_GIT" "$@"
     if (resolved.some((path, index) => path !== join(bin, commands[index])) || resolved.length !== commands.length) {
       throw new Error("fixture command routing mismatch");
     }
+    enter("caller");
     const run = spawnSync("/bin/bash", [openWork, ...(id === "W04" ? [plain, second] : [first, second])], {
       cwd: root,
       env: runEnv,
@@ -645,7 +648,9 @@ exec "$FETCH_REAL_GIT" "$@"
       timeout: 20_000,
       maxBuffer: 64 * 1024,
     });
-    if (run.error || run.signal || run.status === null) throw new Error("fixture caller incomplete");
+    if (run.error) throw run.error;
+    if (run.signal || run.status === null) throw new Error("fixture caller incomplete");
+    enter("readback");
     const events = readFileSync(trace, "utf8").trim().split("\n");
     const visited: Checkout[] = [];
     const stale: Checkout[] = [];
@@ -714,11 +719,15 @@ describe("registered fetch caller observations", () => {
     { id: "W04", exit: 2, attempted: ["second"], visited: ["second"], stale: [] },
   ] as const)("$id observes the real wrap-up caller", ({ id, exit, attempted, visited, stale }) => {
     let receipt: FetchReceipt;
+    let phase: FetchPhase = "setup";
     try {
-      receipt = observeFetchCaller(id);
-    } catch {
-      console.info(`FETCH_CALLER_OBSERVATION ${JSON.stringify({ id, status: "inconclusive" })}`);
-      throw new Error(`${id} fixture did not complete`);
+      receipt = observeFetchCaller(id, (next) => {
+        phase = next;
+      });
+    } catch (error) {
+      const reason = error instanceof Error && "code" in error && error.code === "ETIMEDOUT" ? "timeout" : "failed";
+      console.info(`FETCH_CALLER_OBSERVATION ${JSON.stringify({ id, status: "inconclusive", phase, reason })}`);
+      throw new Error(`${id} fixture did not complete (${phase}: ${reason})`);
     }
     console.info(`FETCH_CALLER_OBSERVATION ${JSON.stringify(receipt)}`);
     expect(receiptDecision([receipt], id)).toBe("accepted");

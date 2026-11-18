@@ -54,13 +54,14 @@ function writePackageFiles(): void {
   );
 }
 
-function runGuard(mode: string): ReturnType<typeof spawnSync> {
+function runGuard(mode: string, extra: NodeJS.ProcessEnv = {}): ReturnType<typeof spawnSync> {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     AGENTBREW_REPO_ROOT: testDir,
     npm_config_audit: "false",
     npm_config_fund: "false",
     npm_config_offline: "true",
+    ...extra,
   };
   delete env.BASH_ENV;
   delete env.ENV;
@@ -222,6 +223,10 @@ interface CommandObservation {
   error: "spawn-error" | null;
   stdout: string;
   stderr: string;
+}
+
+interface GuardNpmObservation extends CommandObservation {
+  args: string[];
 }
 
 interface PackageObservation {
@@ -476,7 +481,7 @@ function observationFixtureState(fixture: GuardFixture) {
 
 function writeObservationNpmPort(cli: string, mode: ToolMode): { bin: string; capture: string } {
   const bin = join(testDir, "observation-bin");
-  const capture = join(testDir, "guard-npm-response.json");
+  const capture = join(testDir, "guard-npm-responses.jsonl");
   mkdirSync(bin);
   const finite =
     mode === "failed"
@@ -492,27 +497,35 @@ const output = {exit:result.status, signal:result.signal, error:result.error ? "
       : `const output = {...${JSON.stringify(finite)}, signal:null, error:null};`;
   writeFileSync(
     join(bin, "npm"),
-    `#!${process.execPath}\n${body}\nrequire("node:fs").writeFileSync(${JSON.stringify(capture)}, JSON.stringify(output), {mode:0o600});\nprocess.stdout.write(output.stdout);\nprocess.stderr.write(output.stderr);\nprocess.exit(output.exit ?? 126);\n`,
+    `#!${process.execPath}\n${body}\nrequire("node:fs").appendFileSync(${JSON.stringify(capture)}, JSON.stringify({...output, args:process.argv.slice(2)}) + "\\n", {mode:0o600});\nprocess.stdout.write(output.stdout);\nprocess.stderr.write(output.stderr);\nprocess.exit(output.exit ?? 126);\n`,
     { mode: 0o755 },
   );
   return { bin, capture };
 }
 
-function readObservationCapture(path: string): CommandObservation | null {
+function readObservationCapture(path: string): GuardNpmObservation[] {
   try {
-    const value = observationJson(readFileSync(path, "utf8"));
-    if (
-      !observationObject(value) ||
-      !(value.exit === null || Number.isInteger(value.exit)) ||
-      !(value.signal === null || typeof value.signal === "string") ||
-      !(value.error === null || value.error === "spawn-error") ||
-      typeof value.stdout !== "string" ||
-      typeof value.stderr !== "string"
-    )
-      return null;
-    return value as unknown as CommandObservation;
+    return readFileSync(path, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => {
+        const value = observationJson(line);
+        if (
+          !observationObject(value) ||
+          !(value.exit === null || Number.isInteger(value.exit)) ||
+          !(value.signal === null || typeof value.signal === "string") ||
+          !(value.error === null || value.error === "spawn-error") ||
+          typeof value.stdout !== "string" ||
+          typeof value.stderr !== "string" ||
+          !Array.isArray(value.args) ||
+          !value.args.every((arg: unknown) => typeof arg === "string")
+        ) {
+          throw new Error("Malformed npm observation record");
+        }
+        return value as unknown as GuardNpmObservation;
+      });
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -550,13 +563,42 @@ function completeLogicalTree(value: unknown): boolean {
   return observationObject(leaf) && typeof leaf.version === "string" && /^1\.0\.[01]$/u.test(leaf.version);
 }
 
-function guardEvidenceState(command: CommandObservation | null): EvidenceState {
-  if (!command || command.error || command.signal || command.exit !== 0) return "failed";
-  const data = observationJson(command.stdout);
-  if (!data) return "malformed";
-  if (!observationObject(data) || !observationObject(data.dependencies)) return "missing";
-  const parent = data.dependencies["fixture-parent"];
-  return observationObject(parent) && parent.version === "1.0.0" ? "complete" : "missing";
+function guardEvidenceState(commands: GuardNpmObservation[]): EvidenceState {
+  for (const [index, command] of commands.entries()) {
+    if (command.error || command.signal || command.exit !== 0) return "failed";
+    const data = observationJson(command.stdout);
+    if (data === null) return "malformed";
+    if (index === 0) {
+      if (!observationObject(data) || !observationObject(data.dependencies)) return "missing";
+      const parent = data.dependencies["fixture-parent"];
+      if (!observationObject(parent) || parent.version !== "1.0.0") return "missing";
+    } else if (!completeQueryRows(data)) {
+      return "missing";
+    }
+  }
+  return commands.length === 3 ? "complete" : "missing";
+}
+
+function completeGuardNpmSequence(commands: GuardNpmObservation[], mode: ToolMode): boolean {
+  const expected = [
+    ["ls", "--depth=0", "--loglevel=error", "--package-lock-only=false"],
+    ["query", "*", "--package-lock-only=false"],
+    ["query", "*", "--package-lock-only=true"],
+  ];
+  const expectedCount = { real: 3, failed: 1, missing: 2, malformed: 1 }[mode];
+  const prefix = ["--prefix", realpathSync(testDir), "--offline"];
+  return (
+    commands.length === expectedCount &&
+    commands.every(
+      (command, index) =>
+        !command.error &&
+        !command.signal &&
+        command.exit !== null &&
+        command.exit >= 0 &&
+        command.exit <= 255 &&
+        JSON.stringify(command.args) === JSON.stringify([...prefix, ...expected[index], "--json"]),
+    )
+  );
 }
 
 describe.skipIf(process.env.LOCKED_INSTALL_OBSERVATION !== "1")(
@@ -595,7 +637,7 @@ describe.skipIf(process.env.LOCKED_INSTALL_OBSERVATION !== "1")(
         ...observationEnv(),
         PATH: `${port.bin}:${process.env.PATH ?? ""}`,
       });
-      const npmResponse = readObservationCapture(port.capture);
+      const npmResponses = readObservationCapture(port.capture);
       const capability = {
         physicalQuery: observeCommand(process.execPath, [tool.cli, "query", "*", "--json"]),
         lockQuery: observeCommand(process.execPath, [tool.cli, "query", "*", "--package-lock-only", "--json"]),
@@ -620,23 +662,15 @@ describe.skipIf(process.env.LOCKED_INSTALL_OBSERVATION !== "1")(
       const readiness = guard.stdout
         .split(/\r?\n/u)
         .includes("Build pipeline guard: npm dependencies match package-lock.json");
-      const responseComplete =
-        npmResponse !== null &&
-        npmResponse.error === null &&
-        npmResponse.signal === null &&
-        Number.isInteger(npmResponse.exit) &&
-        npmResponse.exit !== null &&
-        npmResponse.exit >= 0 &&
-        npmResponse.exit <= 255;
       const complete =
         before.valid &&
         after.valid &&
         !guard.error &&
         !guard.signal &&
         guard.exit !== null &&
-        responseComplete &&
+        completeGuardNpmSequence(npmResponses, mode) &&
         capabilityComplete;
-      const evidence = guardEvidenceState(npmResponse);
+      const evidence = guardEvidenceState(npmResponses);
       const classification = classifyGuardObservation({
         observationComplete: complete,
         exit: guard.exit,
@@ -644,19 +678,38 @@ describe.skipIf(process.env.LOCKED_INSTALL_OBSERVATION !== "1")(
         evidence,
         fixtureMatches: after.matchesLock,
       });
+      const refusal = {
+        failed: "npm supplied missing, failed or invalid comparison data",
+        missing: "npm comparison data is not a package list",
+        malformed: "npm supplied missing, failed or invalid comparison data",
+      };
+      const meetsRequiredDecision =
+        scenario === "N1"
+          ? guard.exit === 1 &&
+            classification === "refused" &&
+            evidence === "complete" &&
+            !after.matchesLock &&
+            guard.stderr.includes("an installed package differs from the selected lockfile version")
+          : mode !== "real"
+            ? guard.exit === 1 &&
+              classification === "refused" &&
+              evidence === mode &&
+              guard.stderr.includes(refusal[mode])
+            : classification === "supported";
       const summary = {
         scenario,
         variant: mode,
         boundary: "guard",
         guardExit: guard.exit,
         readiness,
-        npmExit: npmResponse?.exit ?? null,
+        npmExits: npmResponses.map((command) => command.exit),
         physicalLeaf: after.leaf.version,
         hiddenLockUnchanged: after.hiddenUnchanged,
         stampMatches: after.stampMatches,
         comparisonEvidence: evidence,
         complete,
         classification,
+        meetsRequiredDecision,
         capabilityExits: Object.fromEntries(Object.entries(capability).map(([name, command]) => [name, command.exit])),
       };
       console.info(
@@ -681,7 +734,7 @@ describe.skipIf(process.env.LOCKED_INSTALL_OBSERVATION !== "1")(
           boundary: "guard",
           toolVersion: tool.version,
           guard,
-          npmResponse,
+          npmResponses,
           capability,
         }),
       );
@@ -689,3 +742,50 @@ describe.skipIf(process.env.LOCKED_INSTALL_OBSERVATION !== "1")(
     }, 60_000);
   },
 );
+
+describe("exact build guard comparison", () => {
+  it("refuses a stale transitive version that still satisfies its range", () => {
+    createObservationFixture("N1");
+    const result = runGuard("--deps-only");
+    expect(result.status).toBe(1);
+    expect(result.stdout).not.toContain("dependencies match package-lock.json");
+  });
+
+  it.each(["failed", "missing", "malformed", "partial"] as const)("refuses %s npm evidence", (variant) => {
+    createObservationFixture("P1");
+    const bin = join(testDir, "fixture-bin");
+    mkdirSync(bin);
+    const npm = join(bin, "npm");
+    const response = {
+      failed: "exit 5\n",
+      missing: "exit 0\n",
+      malformed: "echo not-json\n",
+      partial: `if [[ "$*" == *" ls "* ]]; then
+  printf '%s\\n' '{"name":"fixture-root","version":"1.0.0"}'
+else
+  printf '%s\\n' '[{"name":"fixture-root","version":"1.0.0","location":""}]'
+fi
+`,
+    }[variant];
+    writeFileSync(npm, `#!/bin/bash\n${response}`, { mode: 0o700 });
+    const result = runGuard("--deps-only", { PATH: `${bin}:${process.env.PATH}` });
+    expect(result.status).toBe(1);
+    expect(result.stdout).not.toContain("dependencies match package-lock.json");
+  });
+
+  it("refuses a required transitive package missing from disk", () => {
+    createObservationFixture("P1");
+    rmSync(join(testDir, "node_modules", "fixture-leaf"), { recursive: true });
+    const result = runGuard("--deps-only");
+    expect(result.status).toBe(1);
+    expect(result.stdout).not.toContain("dependencies match package-lock.json");
+  });
+
+  it.each(["P1", "P3", "P4"] as const)("accepts supported installation %s", (scenario) => {
+    const fixture = createObservationFixture(scenario);
+    const result = runGuard("--deps-only");
+    expect(result.status, String(result.stderr)).toBe(0);
+    expect(result.stdout).toContain("dependencies match package-lock.json");
+    expect(observationFixtureState(fixture).valid).toBe(true);
+  });
+});

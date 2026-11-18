@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import yaml from "js-yaml";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -33,11 +33,18 @@ vi.mock("./commands/cli-ops.js", () => ({ registerOpsCommands: vi.fn() }));
 vi.mock("./commands/cli-sync-subcommands.js", () => ({ registerSyncSubcommands: vi.fn() }));
 vi.mock("./motd.js", () => ({ printMotd: vi.fn() }));
 vi.mock("./update.js", () => ({ update: vi.fn() }));
+vi.mock("./sync-runner.js", async (original) => ({
+  ...(await original<typeof import("./sync-runner.js")>()),
+  runSyncParallel: vi.fn(),
+}));
 vi.mock("./catalog/install.js", () => ({ install: vi.fn() }));
 
 import { install as catalogInstall } from "./catalog/install.js";
 import { buildProgram } from "./cli.js";
+import { applyAgentfileAndInstall } from "./commands/cli-install.js";
+import { workspaceAgentfilePath } from "./core/workspaces.js";
 import { invalidateState, loadState, saveState } from "./state.js";
+import { pruneStaleAgentfileArtifacts } from "./sync/stale-agentfile-artifacts.js";
 import type { Source } from "./types.js";
 import { update } from "./update.js";
 
@@ -285,5 +292,45 @@ describe("sync --pull installs Agentfile-requested skills in the same run", () =
     await runSync("--pull", "--dry-run");
 
     expect(mockCatalogInstall).not.toHaveBeenCalled();
+  });
+});
+
+describe("selected workspace stable ownership", () => {
+  it("keeps one owner for real rules and skill declarations after two cold-home applies", async () => {
+    const actual = await vi.importActual<typeof import("./commands/cli-install.js")>("./commands/cli-install.js");
+    vi.mocked(applyAgentfileAndInstall)
+      .mockImplementationOnce(actual.applyAgentfileAndInstall)
+      .mockImplementationOnce(actual.applyAgentfileAndInstall);
+    const root = join(home, "workspace");
+    const repo = join(root, "fixture");
+    const policy = join(repo, "Agentfile.yaml");
+    const generated = workspaceAgentfilePath();
+    const owner = dirname(generated);
+    const rulesPath = join(home, ".config", "agentbrew", "shared-rules.md");
+    const flags = ["--only", "rules", "--no-recommended", "--workspaces", root];
+    mkdirSync(repo, { recursive: true });
+    expect(existsSync(owner)).toBe(false);
+    writeFileSync(policy, "rules: First synthetic team rule.\nskillDirectories: [./owned-skills]\n");
+
+    await runSync(...flags);
+    invalidateState();
+    const firstOwners = loadState()?.agentfileRuleOwners;
+    writeFileSync(policy, "rules: Second synthetic team rule.\nskillDirectories: [./owned-skills]\n");
+    await runSync(...flags);
+    invalidateState();
+
+    const state = loadState();
+    if (!state) throw new Error("Synthetic state is missing");
+    const rules = readFileSync(rulesPath, "utf8");
+    expect(firstOwners).toEqual({ generated: owner });
+    expect(state.agentfileRuleOwners).toEqual({ generated: owner });
+    expect(state.skillSourceDirs?.filter((entry) => entry.path === join(repo, "owned-skills"))).toEqual([
+      expect.objectContaining({ agentfile: owner }),
+    ]);
+    expect(rules).toContain("Second synthetic team rule.");
+    expect(rules).not.toContain("First synthetic team rule.");
+    expect(existsSync(owner)).toBe(true);
+    expect(existsSync(generated)).toBe(false);
+    expect(pruneStaleAgentfileArtifacts(state, rules)).toEqual({ content: rules, changed: false });
   });
 });

@@ -1,10 +1,21 @@
 import childProcess from "node:child_process";
-import { appendFileSync, lstatSync, realpathSync } from "node:fs";
+import fs, { appendFileSync, lstatSync, realpathSync } from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import { basename, dirname, join } from "node:path";
 
 const receipts = process.env.NATIVE_FIXTURE_PROCESS_RECEIPT;
 appendFileSync(receipts, "preload\n");
+const syntheticCommits = new Map([
+  [join(process.env.HOME, ".local/share/agentbrew/claude-marketplace/.claude-plugin/marketplace.json"), "commit-index"],
+  [join(process.env.HOME, ".local/state/agentbrew/redact-patterns.txt"), "commit-redaction"],
+]);
+const rename = fs.renameSync;
+fs.renameSync = (from, to) => {
+  rename(from, to);
+  const event = syntheticCommits.get(to);
+  if (event) appendFileSync(receipts, `${event}\n`);
+};
+
 const gitDirectories = JSON.parse(process.env.NATIVE_FIXTURE_GIT_ROOTS);
 const bashFiles = new Set(JSON.parse(process.env.NATIVE_FIXTURE_BASH_FILES));
 const missingRenderer = process.env.NATIVE_FIXTURE_ABSENT_RENDERER;

@@ -365,6 +365,7 @@ for (const attempt of [
             lock_and_signer_unchanged = all(before.get(key) is not None and before.get(key) == after.get(key)
                                             for key in protected)
             processes = (observer / "processes").read_text().splitlines()
+            commits = [entry for entry in processes if entry.startswith("commit-")]
             outputs = known_output(home, identity)
             fallback_qualified = default_fallback_outputs(home, install, tmp_path, tmp_before)
             required = {
@@ -389,6 +390,7 @@ for (const attempt of [
                  processes.count("renderer-absent") == 0) and
                 lock_attempts == (0 if facet == "default" else 1) and
                 settings_preserved and publication_owner_missing and
+                commits == ["commit-index", "commit-redaction"] and
                 all(not outputs[field] for field in unwanted) and
                 identity_before == manifest(checkout) and source_before == manifest(source) and
                 work_before == manifest(work) and all(outputs[field] for field in required) and
@@ -405,6 +407,7 @@ for (const attempt of [
                 "renderer_absent_calls": processes.count("renderer-absent"),
                 "fallback_outputs": fallback_qualified, "selected_settings_preserved": settings_preserved,
                 "signer_descriptor_calls": lock_attempts, "owner_released": publication_owner_missing,
+                "publication_order": commits,
             }
             package_delta = {
                 str(key): public_record(package_after[key], install, key)

@@ -382,6 +382,28 @@ describe("full native output proof", () => {
     expect(statSync(nativeProofPath()).mode & 0o777).toBe(0o600);
   });
 
+  it("preserves an explicitly disabled plugin during full certification", () => {
+    installFacetFixture();
+    const existing = {
+      enabledPlugins: { "fixture-native@agentbrew-plugins": false, "other@owner": true },
+      extraKnownMarketplaces: { owner: { source: { source: "directory", path: "fixture-owner" } } },
+      ownerSetting: ["keep"],
+    };
+    mkdirSync(dirname(SETTINGS()), { recursive: true });
+    writeFileSync(SETTINGS(), JSON.stringify(existing));
+
+    emitClaudeNative({ certifyFullOutput: true });
+
+    expect(settings()).toEqual({
+      ...existing,
+      extraKnownMarketplaces: {
+        ...existing.extraKnownMarketplaces,
+        "agentbrew-plugins": { source: { source: "directory", path: marketplaceDir() } },
+      },
+    });
+    expect(existsSync(nativeProofPath())).toBe(true);
+  });
+
   it("leaves the ordinary full writer on its current output path", () => {
     installFacetFixture();
 

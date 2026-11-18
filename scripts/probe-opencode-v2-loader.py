@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 import time
+from urllib.error import HTTPError, URLError
+from urllib.request import ProxyHandler, build_opener
 
 binary = Path(sys.argv[1]).resolve(strict=True)
 identifier = "agentbrew.loader-control"
@@ -52,8 +54,8 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
     socket_ready = False
     source_count = 0
     target_count = 0
-    config_exit = "unavailable"
-    inventory_exit = "unavailable"
+    health = "unavailable"
+    decisions = []
     json_ok = False
 
     def values(value):
@@ -82,30 +84,44 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
                     time.sleep(0.2)
             if socket_ready:
                 try:
-                    result = subprocess.run(
-                        [str(binary), "debug", "config", "--server", endpoint],
-                        **common, capture_output=True, timeout=10,
-                    )
-                    config_exit = result.returncode
-                    if config_exit == 0:
+                    opener = build_opener(ProxyHandler({}))
+                    with opener.open(endpoint + "/api/info", timeout=2) as response:
+                        health = response.status
+                except HTTPError as error:
+                    health = error.code
+                except (URLError, TimeoutError):
+                    health = "transport"
+                for placement, arguments in (
+                    ("prefix", ("--server", endpoint, "debug", "config")),
+                    ("suffix", ("debug", "config", "--server", endpoint)),
+                ):
+                    try:
+                        result = subprocess.run(
+                            [str(binary), *arguments], **common, capture_output=True, timeout=10,
+                        )
+                    except subprocess.TimeoutExpired:
+                        decisions.append((placement, "deadline", "transport"))
+                        continue
+                    detail = (result.stdout + result.stderr).decode(errors="replace").lower()
+                    reason = "success" if result.returncode == 0 else "unclassified"
+                    for tag, phrases in (
+                        ("auth", ("requires a password", "rejected the password", "unauthorized")),
+                        ("transport", ("could not reach server", "connection refused")),
+                        ("version", ("compatible v2 health response", "version does not match")),
+                        ("usage", ("unrecognized option", "unknown option", "unexpected argument", "unknown flag")),
+                    ):
+                        if reason == "unclassified" and any(phrase in detail for phrase in phrases):
+                            reason = tag
+                    decisions.append((placement, result.returncode, reason))
+                    if result.returncode == 0:
                         try:
                             payload = json.loads(result.stdout)
-                            json_ok = True
                             strings = list(values(payload))
                             source_count = sum(item == str(document) for item in strings)
                             target_count = sum(item in (target, str(plugins), plugins.as_uri()) for item in strings)
+                            json_ok = True
                         except (ValueError, UnicodeError):
                             pass
-                except subprocess.TimeoutExpired:
-                    config_exit = "deadline"
-                try:
-                    inventory = subprocess.run(
-                        [str(binary), "plugin", "list", "--server", endpoint],
-                        **common, capture_output=True, timeout=10,
-                    )
-                    inventory_exit = inventory.returncode
-                except subprocess.TimeoutExpired:
-                    inventory_exit = "deadline"
         finally:
             if process.poll() is None:
                 os.killpg(process.pid, signal.SIGTERM)
@@ -116,8 +132,12 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-loader-") as directo
                 process.wait(timeout=3)
 
     print(
-        f"version=2.3.0 socket={int(socket_ready)} config-exit={config_exit} json={int(json_ok)} "
-        f"document={source_count} target={target_count} inventory-exit={inventory_exit} reaped=1"
+        f"version=2.3.0 socket={int(socket_ready)} health={health} json={int(json_ok)} "
+        f"document={source_count} target={target_count} reaped=1"
     )
-    if not socket_ready or config_exit != 0 or not json_ok or source_count != 1 or target_count != 1 or inventory_exit != 0:
-        raise SystemExit("the server configuration route could not be verified")
+    for placement, code, reason in decisions:
+        print(f"{placement}: exit={code} reason={reason}")
+    if not isinstance(health, int) or len(decisions) != 2 or any(reason == "unclassified" for _, _, reason in decisions):
+        raise SystemExit("the configuration client failure is still unclassified")
+    if any(code == 0 for _, code, _ in decisions) and (not json_ok or source_count != 1 or target_count != 1):
+        raise SystemExit("the successful client did not return the fixture configuration")

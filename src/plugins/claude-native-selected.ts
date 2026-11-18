@@ -1,6 +1,6 @@
-import { lstatSync, mkdirSync, readFileSync } from "node:fs";
+import { lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, join, normalize, posix, relative, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, normalize, posix, relative, sep } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { sync as writeFileSync } from "write-file-atomic";
 import { type PluginLockEntry, readLock } from "../lock.js";
@@ -34,6 +34,19 @@ function refuse(reason: string): never {
   throw new Error(`Selected native output was refused: ${reason}`);
 }
 
+function physicalSpelling(path: string): string {
+  return path.normalize("NFC").toLowerCase();
+}
+
+function destinationEntry(parent: string, name: string) {
+  const path = join(parent, name);
+  const entries = readdirSync(parent);
+  const stats = lstatSync(path, { throwIfNoEntry: false });
+  const alternate = entries.some((entry) => entry !== name && physicalSpelling(entry) === physicalSpelling(name));
+  if (alternate || (stats && !entries.includes(name))) refuse("destination spelling is unknown");
+  return { path, stats };
+}
+
 /** Check each existing component before reading the output. */
 function existingOwnedPath(path: string, kind: "file" | "directory"): boolean {
   const home = homedir();
@@ -41,8 +54,8 @@ function existingOwnedPath(path: string, kind: "file" | "directory"): boolean {
   if (parts[0] === ".." || parts[0] === "") refuse("destination is outside the native home");
   let current = home;
   for (const [index, part] of parts.entries()) {
-    current = join(current, part);
-    const stats = lstatSync(current, { throwIfNoEntry: false });
+    const { path, stats } = destinationEntry(current, part);
+    current = path;
     if (!stats) return false;
     const directory = index < parts.length - 1 || kind === "directory";
     if ((directory ? !stats.isDirectory() : !stats.isFile()) || stats.uid !== process.getuid?.()) {
@@ -167,7 +180,8 @@ function planMcp(writes: PlannedWrite[], claims: Map<string, string>, plugin: Ac
   if (servers.length === 0) return;
   const entries = servers.map((server) => {
     const command = launcherPath(plugin.entry.name, server.name);
-    const claim = command.toLowerCase();
+    const home = homedir();
+    const claim = physicalSpelling(join(realpathSync.native(home), relative(home, command)));
     if (claims.has(claim)) refuse("native output paths overlap");
     claims.set(claim, plugin.entry.name);
     planMissingFile(writes, command, Buffer.from(launcherContent(server)), 0o755);
@@ -211,7 +225,9 @@ function readRetainedCommands(content: Buffer): string[] {
     if (typeof command !== "string" || !isAbsolute(command)) {
       refuse("a retained MCP configuration has unknown launcher references");
     }
-    return normalize(command).toLowerCase();
+    const path = normalize(command);
+    const actual = join(realpathSync.native(dirname(path)), basename(path));
+    return physicalSpelling(lstatSync(actual, { throwIfNoEntry: false }) ? realpathSync.native(actual) : actual);
   });
 }
 

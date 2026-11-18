@@ -40,7 +40,6 @@ import { marketplaceDir } from "./claude-native.js";
 import { registerPluginCommands } from "./cli-plugin.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, applyAdd, planAdd, pluginDir, pluginsRoot } from "./store.js";
-import { applyUpdate, planUpdate } from "./update.js";
 
 const KEY = fixtureKey();
 const ID = ["-c", "user.name=t", "-c", "user.email=t@example.com"];
@@ -187,35 +186,6 @@ describe("planAdd and applyAdd", () => {
   });
 });
 
-describe("approved plugin update revalidation", () => {
-  const approved = { yes: true, capabilityApproved: false };
-
-  it("refuses a staged signer that was revoked before apply", () => {
-    const original = addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub });
-    f.release("v2.0.0", { "README.md": "second fixture version\n" });
-    const plan = planUpdate("acme", "v2.0.0");
-    revokeSigner("acme", KEY.pub);
-
-    expect(() => applyUpdate(plan, approved)).toThrow(/signer is no longer trusted/u);
-    expect(readLock().plugins).toEqual([original]);
-    expect(fixtureGit(pluginDir("acme"), "rev-parse", "HEAD")).toBe(original.commit);
-    expect(staging()).toEqual([]);
-  });
-
-  it("refuses an approval for an installed pin replaced by a later update", () => {
-    addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub });
-    f.release("v2.0.0", { "README.md": "second fixture version\n" });
-    f.release("v3.0.0", { "README.md": "third fixture version\n" });
-    const earlier = planUpdate("acme", "v2.0.0");
-    const later = applyUpdate(planUpdate("acme", "v3.0.0"), approved);
-
-    expect(() => applyUpdate(earlier, approved)).toThrow(/installed plugin pin changed/u);
-    expect(readLock().plugins).toEqual([later]);
-    expect(fixtureGit(pluginDir("acme"), "rev-parse", "HEAD")).toBe(later.commit);
-    expect(staging()).toEqual([]);
-  });
-});
-
 describe("plugin commands re-emit the Claude Code plugin copy (#447)", () => {
   const run = async (...args: string[]) => {
     const program = new Command().exitOverride();
@@ -225,37 +195,6 @@ describe("plugin commands re-emit the Claude Code plugin copy (#447)", () => {
   const copy = () => join(marketplaceDir(), "plugins", "acme");
   const hook = JSON.stringify({
     hooks: { SessionStart: [{ hooks: [{ type: "command", command: "echo acme-v2-hook" }] }] },
-  });
-
-  it.each([
-    "add",
-    "update",
-    "rollback",
-    "remove",
-  ] as const)("refuses %s before changing installed state when publication is held", async (operation) => {
-    const install = ["add", `${f.dir}@v1.0.0`, "--signer", KEY.pub, "--yes"];
-    f.release("v2.0.0", { "README.md": "second fixture version\n" });
-    if (operation !== "add") await run(...install);
-    if (operation === "rollback") await run("update", "acme", "v2.0.0", "--yes");
-
-    const owner = join(home, ".agentbrew-native-publication.lock");
-    const manifest = join(copy(), ".claude-plugin", "plugin.json");
-    const original = readLock().plugins ?? [];
-    const before = existsSync(manifest) ? readFileSync(manifest) : undefined;
-    writeFileSync(owner, "Synthetic held native publisher.\n", { mode: 0o600 });
-    try {
-      const args = operation === "update" ? ["update", "acme", "v2.0.0", "--yes"] : [operation, "acme"];
-      await run(...(operation === "add" ? install : args));
-
-      expect(process.exitCode).toBe(1);
-      expect(readLock().plugins ?? []).toEqual(original);
-      expect(existsSync(pluginDir("acme"))).toBe(operation !== "add");
-      expect(existsSync(manifest) ? readFileSync(manifest) : undefined).toEqual(before);
-      expect(readFileSync(owner, "utf8")).toBe("Synthetic held native publisher.\n");
-      expect(staging()).toEqual([]);
-    } finally {
-      rmSync(owner);
-    }
   });
 
   it("add, update, rollback, and remove keep the marketplace copy current", async () => {

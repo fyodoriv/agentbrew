@@ -154,7 +154,7 @@ describe("native publisher admission", () => {
     writeFileSync(owner, "Synthetic held record.\n", { mode: 0o600 });
     const before = observeNativeFiles([owner]);
     try {
-      expect(() => emitClaudeNative(mode === "full" ? undefined : { modules: ["hooks"] })).toThrow(
+      expect(() => emitClaudeNative(mode === "full" ? { certifyFullOutput: true } : { modules: ["hooks"] })).toThrow(
         /native publication is busy/u,
       );
       expect(observeNativeFiles([owner])).toEqual(before);

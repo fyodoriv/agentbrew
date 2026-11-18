@@ -314,7 +314,8 @@ function planPlugin(
   if (selected.has("mcp")) planMcp(writes, launcherClaims, plugin, root);
   if (priorWrites === writes.length) return false;
   if (existing) {
-    assertWarmNativeReceipt(root, plugin.entry, writes.slice(priorWrites));
+    const expected = expectedFullOutput(plugin, options.marketplace, options.rulesHook);
+    assertWarmNativeReceipt(root, plugin.entry, writes.slice(priorWrites), expected.files);
     return false;
   }
 
@@ -393,9 +394,14 @@ function checkedReceiptFile(raw: unknown): NativeReceiptFile {
   return { path: file.path, mode: file.mode, digest: file.digest };
 }
 
-function assertWarmNativeReceipt(root: string, entry: PluginLockEntry, writes: readonly PlannedWrite[]): void {
+function assertWarmNativeReceipt(
+  root: string,
+  entry: PluginLockEntry,
+  writes: readonly PlannedWrite[],
+  expected: readonly PlannedWrite[],
+): void {
   const receiptPath = join(root, NATIVE_RECEIPT_FILE);
-  const launcherRoot = dirname(launcherPath("x", "y"));
+  const signedFiles = new Map(expected.map((file) => [file.path, file]));
   const pendingWrites = new Map(writes.map((write) => [write.path, write]));
   const paths = new Set<string>();
   const present = [receiptPath];
@@ -403,10 +409,12 @@ function assertWarmNativeReceipt(root: string, entry: PluginLockEntry, writes: r
     const file = checkedReceiptFile(raw);
     const path = join(homedir(), file.path);
     const insidePlugin = path.startsWith(`${root}${sep}`) && path !== receiptPath;
-    const launcher = dirname(path) === launcherRoot &&
-      basename(path).startsWith(`${entry.name}--`) && basename(path).endsWith(".sh");
+    const signed = signedFiles.get(path);
     const key = physicalSpelling(path);
-    if ((!insidePlugin && !launcher) || paths.has(key)) refuse("native receipt has an invalid file path");
+    if (!signed || paths.has(key)) refuse("native receipt has an invalid file path");
+    if (digest(signed.body) !== file.digest || (signed.mode !== undefined && signed.mode !== file.mode)) {
+      refuse("native receipt does not match the signed inventory");
+    }
     paths.add(key);
 
     const content = readOutput(path);
@@ -426,6 +434,7 @@ function assertWarmNativeReceipt(root: string, entry: PluginLockEntry, writes: r
       refuse("native receipt does not match a retained file");
     }
   }
+  if (paths.size !== signedFiles.size) refuse("native receipt does not cover the signed inventory");
   if (pendingWrites.size > 0) refuse("native receipt does not cover the planned change");
   assertNativeTree(root, present);
 }

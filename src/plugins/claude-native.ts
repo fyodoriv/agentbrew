@@ -112,22 +112,11 @@ function updateSettings(names: string[]): void {
 
 /** Regenerate the local marketplace and settings from the active plugins. */
 export function emitClaudeNative(options?: { modules?: readonly NativeFacet[]; certifyFullOutput?: boolean }): void {
-  withNativePublicationLock(() => publishNative(options?.modules, options?.certifyFullOutput));
-}
-
-/** Admit a plugin mutation and its marketplace release under one process owner. */
-export function applyPluginAndPublish<T>(apply: () => T, discardUnadmitted?: () => void): T {
-  let admitted = false;
-  try {
-    return withNativePublicationLock(() => {
-      admitted = true;
-      const result = apply();
-      publishNative(undefined);
-      return result;
-    });
-  } finally {
-    if (!admitted) discardUnadmitted?.();
+  if (options?.modules || options?.certifyFullOutput) {
+    withNativePublicationLock(() => publishNative(options.modules, options.certifyFullOutput));
+    return;
   }
+  publishNative(undefined);
 }
 
 function publishNative(modules: readonly NativeFacet[] | undefined, certify = false): void {

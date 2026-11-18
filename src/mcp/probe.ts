@@ -71,9 +71,18 @@ export function isBrowserLaunchingSpec(spec: McpProbeSpec): boolean {
  * the frame handlers and to type-check `result` / `error` access.
  */
 interface JsonRpcFrame {
-  id?: number;
+  id?: number | string;
+  method?: string;
   error?: { message?: string };
   result?: { tools?: unknown[]; content?: Array<{ type?: string; text?: string }>; isError?: boolean };
+}
+
+function probeServerRequestReply({ id, method }: JsonRpcFrame) {
+  if (typeof id !== "string" && !(typeof id === "number" && Number.isInteger(id))) return undefined;
+  const base = { jsonrpc: "2.0", id };
+  if (method === "roots/list") return { ...base, result: { roots: [] } };
+  if (method === "ping") return { ...base, result: {} };
+  return { ...base, error: { code: -32601, message: "Method not found" } };
 }
 
 /** Default total timeout per server probe. Cold Python servers (uvx, pipx) can
@@ -394,6 +403,16 @@ export async function probeMcpServer(
       });
     });
 
+    child.stdin?.on("error", (err) => {
+      cleanup({
+        name,
+        agent,
+        status: initOk ? "tools_list_failed" : "launch_failed",
+        latencyMs: Date.now() - t0,
+        error: err.message,
+      });
+    });
+
     child.stderr?.on("data", (d) => {
       // Keep the last 200 chars of stderr — enough for an error message snippet,
       // not so much that we hold a server's full log noise in memory.
@@ -519,11 +538,20 @@ export async function probeMcpServer(
       return { lines, rest };
     };
 
-    /** Dispatch a single parsed frame to the appropriate handler. */
+    const responseHandlers = new Map<number | string, (message: JsonRpcFrame) => void>([
+      [INIT_ID, handleInitFrame],
+      [TOOLS_LIST_ID, handleToolsListFrame],
+    ]);
+    if (options.deep) responseHandlers.set(SMOKE_CALL_ID, handleSmokeCallFrame);
+
     const dispatchFrame = (m: JsonRpcFrame): void => {
-      if (m.id === INIT_ID) handleInitFrame(m);
-      else if (m.id === TOOLS_LIST_ID) handleToolsListFrame(m);
-      else if (m.id === SMOKE_CALL_ID && options.deep) handleSmokeCallFrame(m);
+      if (resolved) return;
+      if (typeof m.method === "string") {
+        const reply = probeServerRequestReply(m);
+        if (reply) child.stdin?.write(`${JSON.stringify(reply)}\n`);
+        return;
+      }
+      if (m.id !== undefined) responseHandlers.get(m.id)?.(m);
     };
 
     child.stdout?.on("data", (d) => {
@@ -546,7 +574,7 @@ export async function probeMcpServer(
             method: "initialize",
             params: {
               protocolVersion: "2024-11-05",
-              capabilities: {},
+              capabilities: { roots: { listChanged: false } },
               clientInfo: { name: "agentbrew-probe", version: "1.0.0" },
             },
           })}\n`,

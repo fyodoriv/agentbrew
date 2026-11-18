@@ -136,6 +136,61 @@ describe("probeMcpServer", () => {
     expect(r.error).toBeUndefined();
   });
 
+  it.each([false, true])("answers server requests with colliding probe IDs = %s", async (colliding) => {
+    const source = `
+      const assert = require("node:assert/strict");
+      const input = require("node:readline").createInterface({ input: process.stdin });
+      const send = (frame) => process.stdout.write(JSON.stringify({ jsonrpc: "2.0", ...frame }) + "\\n");
+      const requests = [
+        { method: "roots/list", id: "fixture-roots", result: { roots: [] } },
+        { method: "ping", id: ${colliding ? 1 : 91}, result: {} },
+        { method: "fixture/unsupported", id: ${colliding ? 2 : 92}, error: { code: -32601, message: "Method not found" } },
+      ];
+      let listed;
+      let rootsAdvertised;
+      const replied = new Set();
+      input.on("line", (line) => {
+        const frame = JSON.parse(line);
+        if (frame.method === "initialize") {
+          rootsAdvertised = Object.hasOwn(frame.params.capabilities, "roots");
+          send({ id: frame.id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} } } });
+          return;
+        }
+        if (frame.method === "notifications/initialized") return;
+        if (frame.method === "tools/list") {
+          if (listed !== undefined) {
+            send({ id: frame.id, error: { code: -32603, message: "unexpected duplicate list" } });
+            return;
+          }
+          listed = frame.id;
+          send({ method: "notifications/message", params: { level: "info", data: "fixture" } });
+          for (const { method, id } of requests) send({ method, id });
+          return;
+        }
+        const request = requests.find(({ id }) => id === frame.id);
+        assert.ok(request);
+        assert.ok(!replied.has(frame.id));
+        const { method, ...expected } = request;
+        assert.deepEqual(frame, { jsonrpc: "2.0", ...expected });
+        replied.add(frame.id);
+        if (replied.size === requests.length) {
+          assert.ok(rootsAdvertised);
+          send({ id: listed, result: { tools: [{ name: "fixture" }] } });
+        }
+      });
+    `;
+    const result = await probeMcpServer(
+      "fixture",
+      "test-agent",
+      {
+        command: process.execPath,
+        args: ["-e", source],
+      },
+      { timeoutMs: LOADED_COLD_START_BUDGET_MS },
+    );
+    expect(result).toMatchObject({ status: "ok", toolsCount: 1 });
+  });
+
   it("reports init_error when the server returns a JSON-RPC error on initialize", async () => {
     const r = await probeMcpServer("fake", "test-agent", {
       command: process.execPath,

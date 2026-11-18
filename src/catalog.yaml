@@ -332,26 +332,31 @@ skills:
     category: development
     recommended: false
 
-  - name: web-design-guidelines
-    description: "Deprecated — core rules absorbed into taste skill. 39-line stub that fetches external URL."
-    source: vercel-labs/agent-skills
-    category: design
-    recommended: false
+  - name: modern-web-guidance
+    description: >-
+      Implement browser behavior with HTML, CSS, and JavaScript.
+      Use for dialogs, popovers, native form controls, DOM APIs, and browser support or fallbacks.
+      Scan a codebase for legacy web patterns. Build Chrome extensions with Manifest V3.
+    source: fyodoriv/agentbrew
+    category: development
+    recommended: true
+    preserveExisting: true
+    rationale: "Use one up-to-date web platform source with browser fallbacks, focused retrieval, and extension references."
 
   - name: hallmark
-    description: "Design skill for new pages that look designed, not generated (MIT, by Together AI): fifty themes, a browser lint for AI tells at eight widths, a fresh-context review, and `/hallmark redesign|audit <path>` for existing pages. The recommended creative-direction skill; replaces frontend-design. For the technical WCAG/OKLCH/8pt layer, use effective-ui-design."
+    description: "Choose the visual direction of a page or app. Use it for art direction, typography, color, composition, and the look and feel of a new design or redesign. The recommended creative-direction skill."
     source: nutlope/hallmark
     category: design
     recommended: true
 
   - name: frontend-design
-    description: "Anthropic's official creative design guidance (the Frontend Design plugin, 760k+ installs on the official marketplace) — bold aesthetics for landing pages, artifacts, posters. Not recommended by default: hallmark covers the same job. For dashboard/app UI, use taste instead; for the technical WCAG/OKLCH/8pt layer, use effective-ui-design."
+    description: "Anthropic's Frontend Design guidance for landing pages, artifacts, and posters. Use it when explicitly requested. Hallmark is the default for creative direction."
     source: anthropics/skills
     category: design
     recommended: false
 
   - name: impeccable
-    description: "Chrome DevRel design vocabulary — 23 commands across brand+product modes, optional CLI scanner. Complementary to taste (rule-based) and frontend-design (aesthetic)."
+    description: "Design review commands for brand and product teams. Use Impeccable when the project uses its command set. Choose Hallmark for creative direction."
     source: pbakaus/impeccable
     category: design
     recommended: false
@@ -909,16 +914,16 @@ skills:
     recommended: false
 
   - name: web-quality-audit
-    description: "Measure a web page's UI and UX quality with Lighthouse (performance, accessibility, best practices, SEO), Core Web Vitals and WCAG 2.2, then fix the findings by severity. Use for \"audit my site\", \"UX efficiency\", \"a11y audit\". Don't use for visual design direction (use frontend-design or taste)."
+    description: "Run one live page audit with Lighthouse, Core Web Vitals, or WCAG 2.2. Use Hallmark for creative direction and Modern Web Guidance to implement browser feature and fallback fixes."
     source: addyosmani/web-quality-skills
     category: quality
     recommended: false
 
   - name: effective-ui-design
-    description: "Effective UI Design — the technical layer that Anthropic's frontend-design leaves open. WCAG 2.1 AA contrast, OKLCH palettes, light-dark(), 8pt spacing grid, fluid typography with clamp(), container queries, subgrid, form :user-valid/:user-invalid patterns, dark mode + reduced motion, SEO meta + JSON-LD, Core Web Vitals targets, favicon spec. Concrete values, not creative direction."
+    description: "Choose explicit design-system defaults such as spacing, type scale, palette, and icon conventions when the project has none. Use Modern Web Guidance for browser APIs, CSS support, and implementation."
     source: sebastian-software/effective-ui-design-skill
     category: design
-    recommended: true
+    recommended: false
 
   # ── MCP Apps (SEP-1865, stabilized 2026-01-26) ────────────────
   # Tools render interactive UI inside Claude, ChatGPT, VS Code, Goose,
@@ -1974,8 +1979,8 @@ bundles:
     description: "Verification habits: check before claiming done, test first, debug systematically, doubt each decision, and keep code smells out."
     members: [verification-before-completion, test-driven-development, systematic-debugging, doubt-driven-development, code-smells-aware]
   - name: frontend-kit
-    description: "Build and check web UI: design guidance, shadcn components, web design rules, Lighthouse and WCAG audits, Playwright practices, and the Playwright MCP server."
-    members: [frontend-design, shadcn, web-design-guidelines, web-quality-audit, ui-ux-rankings, playwright-best-practices, playwright]
+    description: "Build and verify web UI with creative direction, component guidance, browser compatibility, quality reviews, and browser tests."
+    members: [hallmark, shadcn, modern-web-guidance, ui-ux-rankings, playwright-best-practices, playwright, chrome-devtools]
   - name: mcp-essentials
     description: "Common MCP servers: library docs (context7), browser control (playwright), GitHub, and step-by-step reasoning."
     members: [context7, playwright, github, sequential-thinking]

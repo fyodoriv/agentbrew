@@ -1,4 +1,4 @@
-import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import chalk from "chalk";
@@ -65,7 +65,7 @@ const diskIO: StateIO = {
     return outcome.kind === "loaded" ? (outcome.value as AgentBrewState) : undefined;
   },
 
-  write(state: AgentBrewState): void {
+  write(state: AgentBrewState): false | undefined {
     try {
       mkdirSync(dirname(STATE_FILE), { recursive: true });
       if (existsSync(STATE_FILE)) {
@@ -81,14 +81,14 @@ const diskIO: StateIO = {
         noRefs: true,
         sortKeys: false,
       });
-      writeFileSync(STATE_FILE, content, "utf-8");
-      chmodSync(STATE_FILE, 0o600);
+      writeFileSync(STATE_FILE, content, { encoding: "utf-8", mode: 0o600 });
     } catch (error) {
       const reason = errorMessage(error);
       console.error(chalk.red(`\n✗ Failed to write state.yaml: ${reason}`));
       console.error(chalk.dim(`  File: ${STATE_FILE}`));
       console.error(chalk.dim(`  Check disk space and file permissions.\n`));
       process.exitCode = 1;
+      return false;
     }
   },
 };
@@ -113,8 +113,8 @@ export function requireState(options?: { quiet?: boolean }): AgentBrewState | un
   return ensureSingleton().require(options);
 }
 
-export function saveState(state: AgentBrewState): void {
-  ensureSingleton().save(state);
+export function saveState(state: AgentBrewState): false | undefined {
+  return ensureSingleton().save(state);
 }
 
 export function invalidateState(): void {

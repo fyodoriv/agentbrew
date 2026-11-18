@@ -112,3 +112,21 @@ record how many inventory responses succeeded or whether the expected
 configuration document entered the server location. An independent
 server health and configuration observation must establish that boundary
 before another loader test.
+
+## Verify the server configuration route independently
+
+- **Hypothesis**: The explicit loopback endpoint answers a config request
+  and returns the fixture's global configuration document.
+- **Measurement**: Start one fresh pinned server with the known scratch
+  home and loopback boundary. Wait at most ten seconds for its socket.
+  Run `debug config --server` for the same scratch project and validate
+  the resulting JSON. Count the known fixture configuration and plugin
+  target in the response without printing it. Attempt one inventory
+  read and report its exit result separately. Reap the server.
+- **Success**: Socket ready, successful JSON config read with one known
+  global config document and its chosen local target, one successful
+  inventory read and an owned server reaped.
+- **Pivot**: A missing config or failed client path rejects this setup
+  as a loader experiment, regardless of the inventory list.
+- **Anchor**: The pinned [debug config handler](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/cli/src/commands/handlers/debug/config.ts)
+  and [server connection resolver](https://github.com/anomalyco/opencode/blob/a6b15d33daf6ab7d35569f6d711fdb630b9f04e7/packages/cli/src/services/server-connection.ts).

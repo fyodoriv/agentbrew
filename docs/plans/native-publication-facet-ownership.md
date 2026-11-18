@@ -90,3 +90,28 @@ work open before the live entry point.
   rejects the read path. The selected emitter remains unwired.
 - **Anchor**: The verified plugin pin in `store.ts`, the existing signed
   source fixture and the first payload comparison.
+
+The [test-first run](https://github.com/fyodoriv/agentbrew/actions/runs/44236662826)
+failed both new controls. The [pinned-tree candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44237671388)
+passed all eight scoped controls, the ordinary native and launcher files,
+and type checking. It compares the same capability declarations the
+installer records in the lock.
+
+## Destination claims and empty selections
+
+- **Hypothesis**: A selected publisher creates no envelope when the
+  plugin contributes none of the requested payloads. It refuses ambiguous
+  launcher ownership before any output changes.
+- **Measurement**: Select MCP and rules against a signed hooks-only
+  plugin. Compare the complete scratch marketplace and launcher paths.
+  Then select MCP for a signed fixture with two identical declarations
+  of one server and a matching pre-existing launcher. Check the
+  refusal and all existing outputs by bytes, mode and modification time.
+- **Success**: Zero paths created for each empty selection, one explicit
+  refusal for the ambiguous claim, zero changed outputs on refusal, and
+  all current payload and full-publisher controls pass.
+- **Pivot**: An empty envelope, shared destination, missing existing
+  output or unexpected write rejects the candidate. This phase leaves
+  on-disk full source identity and live activation open.
+- **Anchor**: Native marketplace entry and launcher naming in
+  `src/plugins/claude-native.ts` and `src/plugins/mcp-launcher.ts`.

@@ -1062,3 +1062,19 @@ After applying the mask forecast only on the Mac, the
 [hosted Linux run](https://github.com/fyodoriv/agentbrew/actions/runs/44311661340)
 kept the mode-0644 guard under 077 and passed both native suites.
 The local Mac passed all five mode and interruption cases.
+
+## Signed CLI selection and privacy order results
+
+The [packaged scratch build](https://github.com/fyodoriv/agentbrew/actions/runs/44311066942)
+passed the hooks, MCP, rules and default controls. Each selected run
+published its expected facet and made no native activation change.
+Default published all facets. Every run kept its signed source and
+signer registry. The three selected runs held the signer descriptor
+once and released their process owners. There were no denied calls or
+unclassified paths.
+
+The [physical commit observer](https://github.com/fyodoriv/agentbrew/actions/runs/44311831668)
+confirmed one index commit followed by one redaction commit in all
+four cases. The build routed selected sync to the prototype only in
+the scratch branch. The live writer and lifecycle coordination remain
+outside that result.

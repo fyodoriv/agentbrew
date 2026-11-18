@@ -4,6 +4,7 @@
  * file rendering. Plus `agentbrew plugin policy`.
  */
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   appendFileSync,
   existsSync,
@@ -17,7 +18,7 @@ import {
   utimesSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { home, previousHome } = vi.hoisted(() => {
@@ -37,12 +38,14 @@ vi.mock("./store.js", async (original) => {
   return { ...store, readPinnedPluginFiles: vi.fn(store.readPinnedPluginFiles) };
 });
 
+import { readLock } from "../lock.js";
 import { fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { emitClaudeNative, MARKETPLACE_NAME, marketplaceDir, policyFragment } from "./claude-native.js";
 import { launcherPath } from "./mcp-launcher.js";
 import { withNativePublicationLock } from "./native-publication-lock.js";
 import { withSignerCommitFence } from "./signer-commit-fence.js";
 import { allowedSignersPath, revokeSigner, signersFor } from "./signers.js";
+import { pluginSourceIdentity } from "./source-identity.js";
 import { addPlugin, pluginDir, readPinnedPluginFiles, removePlugin } from "./store.js";
 
 const KEY = fixtureKey();
@@ -236,6 +239,52 @@ describe("selected native signer commit fence", () => {
     expect(existsSync(marketplaceDir())).toBe(false);
     expect(existsSync(SETTINGS())).toBe(false);
     expect(signersFor("fixture-native")).toEqual([]);
+  });
+});
+
+describe("full native output proof", () => {
+  const proof = () => join(marketplaceDir(), "plugins", "fixture-native", ".agentbrew-native-receipt.json");
+  const digest = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
+
+  it("records the pinned identity and five independently verified output files", () => {
+    installFacetFixture();
+    const pin = readLock().plugins?.[0];
+    if (!pin) throw new Error("signed fixture pin is missing");
+
+    emitClaudeNative({ certifyFullOutput: true });
+
+    const receipt = JSON.parse(readFileSync(proof(), "utf8"));
+    const { envelope, hooks, script, mcp, launcher } = nativeFacetPaths();
+    const targets = [envelope, hooks, script, mcp, launcher].sort();
+    expect(receipt).toEqual({
+      schema: 1,
+      sourceDigest: digest(JSON.stringify(pluginSourceIdentity(pin))),
+      files: targets.map((path) => ({
+        path: relative(home, path),
+        mode: statSync(path).mode & 0o777,
+        digest: digest(readFileSync(path)),
+      })),
+    });
+    expect(statSync(proof()).mode & 0o777).toBe(0o600);
+  });
+
+  it("leaves the ordinary full writer on its current output path", () => {
+    installFacetFixture();
+
+    emitClaudeNative();
+
+    expect(existsSync(nativeFacetPaths().hooks)).toBe(true);
+    expect(existsSync(proof())).toBe(false);
+  });
+
+  it("refuses to certify an extra native file from the working copy", () => {
+    installFacetFixture();
+    const source = pluginDir("fixture-native");
+    appendFileSync(join(source, ".git", "info", "exclude"), "\n/hooks/certification-note.txt\n");
+    writeFileSync(join(source, "hooks", "certification-note.txt"), "Synthetic local note.\n");
+
+    expect(() => emitClaudeNative({ certifyFullOutput: true })).toThrow(/full native output inventory differs/u);
+    expect(existsSync(proof())).toBe(false);
   });
 });
 

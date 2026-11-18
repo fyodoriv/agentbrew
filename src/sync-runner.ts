@@ -35,6 +35,7 @@ interface SyncRunnerOptions {
   installAgentfileItems?: boolean;
   dryRun?: boolean;
   agentfilePath?: string;
+  agentfileBaseDir?: string;
   /** False when `--no-prune` is set: the explicit Agentfile preview must not prune state. */
   authoritative?: boolean;
   syncModules?: readonly string[];
@@ -153,6 +154,7 @@ async function prepareSync(options?: SyncRunnerOptions): Promise<PreparedSync> {
         includeSkillInstallReport: installAgentfileItems,
         dryRun,
         stateOverride: virtualState,
+        agentfileBaseDir: options.agentfileBaseDir,
         ...selection,
       });
     } catch (e) {

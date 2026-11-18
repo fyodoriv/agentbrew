@@ -13,7 +13,7 @@ import type { AgentConfig, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { expandHome } from "../utils.js";
 import type { HelperScriptResult } from "./helper-scripts.js";
-import { OPENCODE_PLUGIN_DIR, OPENCODE_PLUGIN_SOURCES, syncHelperScripts } from "./helper-scripts.js";
+import { syncHelperScripts, syncOpenCodePlugin } from "./helper-scripts.js";
 import {
   DEFAULT_TOKEN_WARNING_THRESHOLD,
   estimateTokens,
@@ -338,19 +338,9 @@ function syncAndReportHelperScripts(
   log: Logger,
   options: HelperScriptReportOptions,
 ): { summaryParts: string[]; errors: number } {
-  const results = syncHelperScripts({ projectRoot: resolveProjectRoot(), manifest, dryRun: options.dryRun });
-  // OpenCode installed: deploy its plugins (claude-hooks runs Claude Code hooks there).
-  if (existsSync(dirname(expandHome(OPENCODE_PLUGIN_DIR)))) {
-    results.push(
-      ...syncHelperScripts({
-        projectRoot: resolveProjectRoot(),
-        manifest,
-        dryRun: options.dryRun,
-        targetDir: expandHome(OPENCODE_PLUGIN_DIR),
-        sources: OPENCODE_PLUGIN_SOURCES,
-      }),
-    );
-  }
+  const projectRoot = resolveProjectRoot();
+  const results = syncHelperScripts({ projectRoot, manifest, dryRun: options.dryRun });
+  results.push(...syncOpenCodePlugin(projectRoot, manifest, options.dryRun));
   for (const result of results) {
     const line = describeHelperScript(result, log, options);
     if (line && !options.quiet) log.log(line);
@@ -423,9 +413,7 @@ function getInstructionsTargets(): Array<Omit<AgentConfig, "detected">> {
 
 /** Deploy AGENTS.md to all agent instruction files, generate context files, and install the helper scripts AGENTS.md calls. */
 export async function syncInstructions(options?: SyncOptions, ctx?: Partial<Context>): Promise<InstructionsSyncResult> {
-  const quiet = options?.quiet ?? false;
-  const verbose = options?.verbose ?? false;
-  const dryRun = options?.dryRun ?? false;
+  const { quiet = false, verbose = false, dryRun = false } = options ?? {};
   const log = ctx?.logger ?? createContext({ quiet, compact: options?.compact }).logger;
 
   const content = loadInstructions();
@@ -476,7 +464,7 @@ export async function syncInstructions(options?: SyncOptions, ctx?: Partial<Cont
   });
   const scriptReport = syncAndReportHelperScripts(manifest, log, { quiet, verbose, dryRun });
 
-  if (!sharedManifest) saveManifest(manifest);
+  if (!sharedManifest && !dryRun) saveManifest(manifest);
 
   if (!quiet) {
     const totalErrors = agentReport.errors + contextReport.errors + scriptReport.errors;

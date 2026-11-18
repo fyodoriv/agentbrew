@@ -647,3 +647,10 @@ selection still needs a qualified transition from partial coverage.
 
 This phase covers repeated selected output on the same installed
 pin. Interrupted publication and activation need separate evidence.
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44264526308)
+refused all three supported transitions. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44265123576)
+preserved the retained files and recorded the three coverage unions.
+An edited retained script still caused refusal. The run passed 43
+focused controls, 99 compatibility tests, and type checking.

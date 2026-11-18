@@ -197,6 +197,37 @@ describe("plugin commands re-emit the Claude Code plugin copy (#447)", () => {
     hooks: { SessionStart: [{ hooks: [{ type: "command", command: "echo acme-v2-hook" }] }] },
   });
 
+  it.each([
+    "add",
+    "update",
+    "rollback",
+    "remove",
+  ] as const)("refuses %s before changing installed state when publication is held", async (operation) => {
+    const install = ["add", `${f.dir}@v1.0.0`, "--signer", KEY.pub, "--yes"];
+    f.release("v2.0.0", { "README.md": "second fixture version\n" });
+    if (operation !== "add") await run(...install);
+    if (operation === "rollback") await run("update", "acme", "v2.0.0", "--yes");
+
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    const manifest = join(copy(), ".claude-plugin", "plugin.json");
+    const original = readLock().plugins ?? [];
+    const before = existsSync(manifest) ? readFileSync(manifest) : undefined;
+    writeFileSync(owner, "Synthetic held native publisher.\n", { mode: 0o600 });
+    try {
+      const args = operation === "update" ? ["update", "acme", "v2.0.0", "--yes"] : [operation, "acme"];
+      await run(...(operation === "add" ? install : args));
+
+      expect(process.exitCode).toBe(1);
+      expect(readLock().plugins ?? []).toEqual(original);
+      expect(existsSync(pluginDir("acme"))).toBe(operation !== "add");
+      expect(existsSync(manifest) ? readFileSync(manifest) : undefined).toEqual(before);
+      expect(readFileSync(owner, "utf8")).toBe("Synthetic held native publisher.\n");
+      expect(staging()).toEqual([]);
+    } finally {
+      rmSync(owner);
+    }
+  });
+
   it("add, update, rollback, and remove keep the marketplace copy current", async () => {
     await run("add", `${f.dir}@v1.0.0`, "--signer", KEY.pub, "--yes");
     expect(existsSync(copy())).toBe(true);

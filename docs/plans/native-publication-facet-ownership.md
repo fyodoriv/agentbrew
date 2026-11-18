@@ -801,3 +801,22 @@ owner. The [candidate](https://github.com/fyodoriv/agentbrew/actions/runs/442815
 kept the owner and exact envelope, and a retry refused before any write.
 The candidate passed 52 focused controls, 108 compatibility tests,
 ordinary publication, and type checking.
+
+## Preserve a disabled plugin during opt-in certification
+
+- **Hypothesis**: An opted-in full publication preserves an explicit
+  disabled setting for a plugin it continues to publish.
+- **Measurement**: Seed scratch settings with the signed fixture
+  disabled, one unrelated enabled plugin, one unrelated marketplace,
+  and a separate owner setting. Run full certification and compare all
+  four values. Confirm that missing settings use the existing defaults.
+- **Success**: The known false value and all three unrelated values
+  survive. Certification records the signed artifact inventory. The
+  ordinary publisher and the earlier interruption controls remain green.
+- **Pivot**: Reject any lost disabled setting, changed unrelated value,
+  guessed path ownership, or ordinary publisher behavior change.
+- **Anchor**: The ordinary settings projection and the deferred native
+  activation ownership work above.
+
+This control covers a valid owned settings file in the scratch fixture.
+Settings path ownership and activation remain separate.

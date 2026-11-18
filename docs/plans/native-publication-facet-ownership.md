@@ -1003,3 +1003,23 @@ with its parent mask unchanged. The child returned 77 before each
 target write. Each replacement returned 75 and preserved the complete
 observed output snapshot. This includes the completed earlier files
 and receipts at the marketplace and settings boundaries.
+
+## Refuse an incompatible copy mode before certification writes
+
+- **Hypothesis**: Certified full publication can identify a mode it
+  cannot reproduce before creating payload, index, or settings.
+  The guarded write still accepts the verified 022 control.
+- **Measurement**: Use the signed checkpoint fixture and a real child
+  process. Compare strict 077 against 022 with an installed 0644 guard.
+  For the strict case snapshot all output roots and the owner record.
+  Separately change only the installed synthetic guard to 0600 while
+  the publishing child stays at 022, then repeat the strict snapshot.
+- **Success**: Each incompatible input stops before its first output
+  write and leaves no new process owner. The normal full writer still
+  certifies the original signed modes and passes all prior controls.
+- **Pivot**: An output change, a retained owner before mutation, an
+  ordinary default regression, or a masked source that looks
+  certified stops the candidate. Preserve strict-mask refusal while
+  a compatible ownership contract is evaluated.
+- **Anchor**: The verified mode-mismatch result, recursive Node copy
+  behavior, and the certified writer's receipt of exact file modes.

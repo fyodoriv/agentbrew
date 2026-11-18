@@ -26,10 +26,17 @@ jobs:
           status=0
           npx vitest run src/worktree-deps.test.ts -t 'N[23] records physical content' --maxWorkers=1 --retry=0 --reporter=default --silent=false > "$RUNNER_TEMP/locked-install-observations.log" 2>&1 || status=$?
           python3 - "$RUNNER_TEMP/locked-install-observations.log" "$status" <<'PYCONTROL'
-          import json,pathlib,sys
+          import json,pathlib,re,sys
           marker="LOCKED_INSTALL_OBSERVATION "
-          lines=pathlib.Path(sys.argv[1]).read_text().splitlines()
+          lines=re.sub(r"\x1b\[[0-9;]*[A-Za-z]","",pathlib.Path(sys.argv[1]).read_text()).splitlines()
           rows=[json.loads(line.split(marker,1)[1]) for line in lines if marker in line and line.split(marker,1)[1].startswith("{")]
+          for line in lines:
+              if re.match(r"^\s*(?:Test Files|Tests)\s+",line):
+                  print(line.strip())
+              elif "SyntaxError:" in line or "ReferenceError:" in line or "TypeError:" in line or "RangeError:" in line:
+                  if not any(token in line for token in ("LOCKED_INSTALL_", " /", " at ")):
+                      print(re.sub(r"[^a-zA-Z0-9 :._()'-]+"," ",line)[:180])
+          print(f"Selected test exit: {sys.argv[2]}")
           assert len(rows)==2, f"expected two helper observations, found {len(rows)}"
           for row in rows:
               print(f"{row['scenario']}: {row['classification']}, complete={row['complete']}, exit={row.get('actualExit')}")

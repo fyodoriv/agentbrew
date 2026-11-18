@@ -100,3 +100,9 @@ that needs no external SDK package resolution.
   the exact pinned loader contract and a separate proof before porting
   any hook behavior.
 - **Anchor**: The pinned module schema and direct legacy rejection.
+
+The [direct-file run](https://github.com/fyodoriv/agentbrew/actions/runs/44292425961)
+queried one owned server 52 times. It found no active control, no setup
+marker and no classified diagnostic. The server was reaped. This leaves
+V2 admission unverified in the hosted profile. The measured legacy
+rejection still holds.

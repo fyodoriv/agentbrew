@@ -25,3 +25,18 @@ The worktree helper checks the result before writing the readiness stamp.
 A stale existing stamped target is preserved and reports the explicit
 reinstall action. Both the limits and the result apply to dependency
 version evidence.
+
+## Stamp publication controls
+
+- **Hypothesis**: Publish a regular stamp atomically from the exact
+  lockfile snapshot that the dependency verifier checked.
+- **Measurement**: Run the hosted worktree fixtures. Have the install
+  wrapper create a symlink at the stamp path in one fixture. In another,
+  have the npm wrapper change the lockfile while projecting its data.
+  Check exit, stamp kind, the symlink destination and cleanup.
+- **Success**: Both cases exit 1, leave the linked destination untouched,
+  and publish zero new stamps. A normal matching rerun remains under five
+  seconds. The npm override handles install and read-only comparisons.
+- **Pivot**: Any changed external file, unsafe stamp, extra install, or
+  healthy regression rejects the publication method.
+- **Anchor**: Review of N2/N3 readiness publication in this plan.

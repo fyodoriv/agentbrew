@@ -287,3 +287,25 @@ empty V2 session. There were zero other hook calls and no retained
 scratch session ID. The server was reaped. The result covers one
 plugin instance and its own observed session. Restart continuity,
 tool effects, prompt effects and deployment remain open.
+
+## Exercise a real V2 before-tool hook on a harmless tool
+
+- **Hypothesis**: A real V2 tool call reaches the existing Claude
+  before-tool handler. Its approved input change reaches the tool.
+- **Measurement**: Use the verified isolated OpenCode 2.3.0 server. A
+  local protocol fixture returns two fixed chat responses: one call to
+  the scratch write-marker tool, then ordinary text. Register the tool
+  and the V2 before-tool adapter in the scratch plugin. The existing
+  Claude handler receives one argument and replaces it with a distinct
+  fixture value. Read only the fixed invocation count and final marker.
+- **Success**: The scratch provider receives two requests. The Claude
+  hook sees the first value exactly once. The tool sees the amended
+  value exactly once and never sees the original. One session completes
+  and the owned server and protocol fixture stop within their bounds.
+- **Pivot**: A missing callback, original-input write, unexpected tool
+  or model call, or incomplete session leaves the adapter unqualified.
+- **Anchor**: The verified V2 setup route, the existing Claude
+  `tool.execute.before` handler and [OpenCode tool hooks](https://opencode.ai/docs/build/plugins/server#tools-1).
+
+This proof runs one local fixture model response sequence. It keeps live
+provider settings and deployed bridges outside the experiment.

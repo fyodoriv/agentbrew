@@ -1,6 +1,6 @@
-import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Node version guard — checked before any other setup so the message is always
@@ -269,17 +269,15 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
     return join(selectedWorkspaceDir, "workspace-Agentfile.yaml");
   };
   try {
-    if (!options.rollback) {
-      const outputPath = options.only !== undefined && !options.pull ? selectedWorkspacePath : undefined;
-      await handleSyncWorkspaces(options, outputPath);
-    }
-    return await runPreparedSync(options);
+    const outputPath = options.only !== undefined && !options.pull ? selectedWorkspacePath : undefined;
+    const agentfileBaseDir = options.rollback ? undefined : await handleSyncWorkspaces(options, outputPath);
+    return await runPreparedSync(options, agentfileBaseDir);
   } finally {
     if (selectedWorkspaceDir) rmSync(selectedWorkspaceDir, { recursive: true, force: true });
   }
 }
 
-async function runPreparedSync(options: SyncCommandOptions): Promise<boolean> {
+async function runPreparedSync(options: SyncCommandOptions, agentfileBaseDir?: string): Promise<boolean> {
   const early = await handleSyncEarlyExits(options);
   if (early) return early === "deployed";
   if (await refuseSyncOnLockDrift()) return false;
@@ -304,7 +302,7 @@ async function runPreparedSync(options: SyncCommandOptions): Promise<boolean> {
   await handleSyncFirstRun(options);
 
   const installAgentfileItems = shouldInstallAgentfileItems(options.only);
-  await handleSyncAgentfile(options, installAgentfileItems, syncModules);
+  await handleSyncAgentfile(options, installAgentfileItems, syncModules, agentfileBaseDir);
   await handleSyncRecommended(options);
 
   const runnerOpts = {
@@ -313,6 +311,7 @@ async function runPreparedSync(options: SyncCommandOptions): Promise<boolean> {
     installAgentfileItems,
     dryRun: options.dryRun,
     agentfilePath: options.agentfile,
+    ...(agentfileBaseDir && { agentfileBaseDir }),
     authoritative: options.prune !== false,
     ...(syncModules && { syncModules }),
   };
@@ -326,10 +325,18 @@ async function runPreparedSync(options: SyncCommandOptions): Promise<boolean> {
 }
 
 /** In workspace mode, swap the base Agentfile for one merged with every per-repo Agentfile. */
-async function handleSyncWorkspaces(options: SyncCommandOptions, outputPath?: () => string): Promise<void> {
-  const { prepareWorkspaceAgentfile } = await import("./core/workspaces.js");
+async function handleSyncWorkspaces(
+  options: SyncCommandOptions,
+  outputPath?: () => string,
+): Promise<string | undefined> {
+  const { prepareWorkspaceAgentfile, workspaceAgentfilePath } = await import("./core/workspaces.js");
   const merged = prepareWorkspaceAgentfile(options, outputPath);
-  if (merged) options.agentfile = merged;
+  if (!merged) return undefined;
+  options.agentfile = merged;
+  if (!outputPath) return undefined;
+  const ownerDir = dirname(workspaceAgentfilePath());
+  if (!options.dryRun) mkdirSync(ownerDir, { recursive: true, mode: 0o700 });
+  return ownerDir;
 }
 
 /** "deployed": a pull ran its deploy step. "stopped": the run ended with no deploy (a rollback, an unknown `--only` name). */
@@ -432,6 +439,7 @@ async function handleSyncAgentfile(
   options: SyncCommandOptions,
   installAgentfileItems: boolean,
   syncModules?: readonly string[],
+  agentfileBaseDir?: string,
 ): Promise<void> {
   if (!options.agentfile) return;
   await applyAgentfileAndInstall(options.agentfile, {
@@ -440,6 +448,7 @@ async function handleSyncAgentfile(
     // `--no-prune` must also stop the Agentfile apply from pruning state-backed lists.
     authoritative: options.prune !== false,
     ...(syncModules && { syncModules }),
+    ...(agentfileBaseDir && { agentfileBaseDir }),
   });
 }
 

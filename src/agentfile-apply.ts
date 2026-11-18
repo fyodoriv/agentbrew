@@ -64,6 +64,8 @@ interface ApplyAgentfileOptions {
   includeSkillInstallReport?: boolean;
   /** Selected sync invocation: defer excluded live rule writes and owned skill cleanup. */
   syncModules?: readonly string[];
+  /** Stable logical owner for a generated Agentfile read from a temporary file. */
+  agentfileBaseDir?: string;
   dryRun?: boolean;
   stateOverride?: AgentBrewState;
 }
@@ -667,15 +669,16 @@ function saveAndReportAgentfileResult(
 /** Load and validate Agentfile + state. Returns undefined if not ready. */
 function loadAgentfileAndState(
   directoryOrPath: string,
-  quiet: boolean,
-  stateOverride?: AgentBrewState,
+  options?: ApplyAgentfileOptions,
 ): { agentfile: Agentfile; state: AgentBrewState; baseDir: string } | undefined {
+  const quiet = options?.quiet ?? false;
+  warnIfLegacyAgentbrewYamlPresent(options?.agentfileBaseDir ?? directoryOrPath, quiet);
   const isFile = directoryOrPath.endsWith(".yaml") || directoryOrPath.endsWith(".yml");
   const agentfile = isFile ? loadAgentfileFromPath(directoryOrPath) : loadAgentfile(directoryOrPath);
   if (!agentfile) return undefined;
 
-  const baseDir = isFile ? dirname(directoryOrPath) : directoryOrPath;
-  const state = stateOverride ?? loadState();
+  const baseDir = options?.agentfileBaseDir ?? (isFile ? dirname(directoryOrPath) : directoryOrPath);
+  const state = options?.stateOverride ?? loadState();
   if (!state) {
     if (!quiet) {
       console.error(chalk.yellow("  ⚠ Agentfile found but agentbrew is not initialized."));
@@ -740,9 +743,7 @@ export function applyAgentfile(
   const dryRun = options?.dryRun ?? false;
   const rulesSelected = selectedSyncModule(options, "rules");
 
-  warnIfLegacyAgentbrewYamlPresent(directoryOrPath, quiet);
-
-  const loaded = loadAgentfileAndState(directoryOrPath, quiet, options?.stateOverride);
+  const loaded = loadAgentfileAndState(directoryOrPath, options);
   if (!loaded) return undefined;
 
   const { agentfile, baseDir } = loaded;

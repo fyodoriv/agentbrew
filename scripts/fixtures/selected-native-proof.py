@@ -183,6 +183,7 @@ def main():
             "Wrong native fixture build revision")
     bundle_digest = digest(bundle)
     print(f"Native fixture candidate {candidate} bundle sha256 {bundle_digest}", flush=True)
+    evidence = Path(scratch) / "public-native-observations.ndjson"
     with tempfile.TemporaryDirectory(dir=scratch) as tmp:
         root = Path(tmp)
         archives = list(Path(scratch).glob("agentbrew-*.tgz"))
@@ -256,7 +257,7 @@ for (const attempt of [
             snapshots[facet] = (after, manifest(observer))
             changed = sorted((k for k in before.keys() | after.keys() if before.get(k) != after.get(k)), key=str)
             known = [k for k in changed if admitted_path(str(k))]
-            require(len(known) <= 100, "Native fixture report exceeds the output bound")
+            require(len(known) <= 1_024, "Native fixture report exceeds the entry bound")
             delta = {
                 str(key): [public_record(before.get(key), fixture, key), public_record(after.get(key), fixture, key)]
                 for key in known
@@ -285,14 +286,18 @@ for (const attempt of [
                 len(known) == len(changed) and lock_and_signer_unchanged
             )
             all_complete = all_complete and complete
-            print(json.dumps({
+            summary = {
                 "facet": facet, "exit": result.returncode, "complete": complete, "outputs": outputs,
                 "changed_entries": len(changed), "unclassified_entries": len(changed) - len(known),
                 "git_reads": processes.count("local-git-success"), "git_errors": processes.count("local-git-error"),
                 "bash_syntax_checks": processes.count("packaged-bash-parse"),
                 "denied": processes.count("denied"), "lock_and_signer_unchanged": lock_and_signer_unchanged,
-                "changes": delta,
-            }, sort_keys=True), flush=True)
+            }
+            record = json.dumps({**summary, "signed_fixture": identity, "changes": delta}, sort_keys=True)
+            require(len(record.encode()) <= 1024 * 1024, "Native fixture report exceeds the byte bound")
+            with evidence.open("a", encoding="utf-8") as output:
+                output.write(record + "\n")
+            print(json.dumps(summary, sort_keys=True), flush=True)
         require(all_complete, "The selected native baseline contains incomplete cases")
     require(digest(bundle) == bundle_digest, "The selected native baseline changed its bundle")
 

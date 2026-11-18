@@ -30,14 +30,23 @@ jobs:
           npm ci
           npm run build
       - name: Measure signed native output in synthetic homes
+        id: native
         run: |
           node="$(command -v node)"
           outside_net="$(readlink /proc/self/ns/net)"
           runner_uid="$(id -u)"
           runner_gid="$(id -g)"
           stage="$(mktemp -d "${RUNNER_TEMP}/sync-proof.XXXXXXXX")"
+          printf 'report=%s\n' "$stage/public-native-observations.ndjson" >> "$GITHUB_OUTPUT"
           npm pack --ignore-scripts --pack-destination "$stage" --silent >/dev/null
           sudo unshare --net --setuid "$runner_uid" --setgid "$runner_gid" \
             /usr/bin/env -i PATH=/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 python3 \
             scripts/fixtures/selected-native-proof.py "$node" "$PWD" "$outside_net" \
             "$runner_uid" "$(git rev-parse HEAD)" 3655a0bca7d245dabfa50ac6ac05e5ef573b938c "$stage"
+      - name: Save synthetic change receipts
+        if: ${{ always() && steps.native.outputs.report != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: public-native-observations
+          path: ${{ steps.native.outputs.report }}
+          if-no-files-found: ignore

@@ -243,3 +243,22 @@ V2 event stream. It leaves the existing Claude hook adapter unported.
   and leaves that event mapping unqualified.
 - **Anchor**: The current `claude-hooks.js` lifecycle handlers and the
   verified V2 identity control above.
+
+The [first bridge reuse run](https://github.com/fyodoriv/agentbrew/actions/runs/44295777453)
+ran one correct start hook. The deletion fell outside the required
+workspace scope, so the adapter ran no end hook. The source deletion
+event carries the ID, with no required location in its payload.
+
+- **Hypothesis**: An admitted creation can bind an ID to its known
+  directory for one later deletion in the same plugin instance.
+- **Measurement**: Keep an instance-owned set of exact session IDs
+  observed at the matching workspace. Accept one deletion with a known
+  ID and either no location or the matching location. Consume the
+  entry before calling the existing handler. Use the same hosted fixture.
+- **Success**: One correct start, one correct end, zero other calls
+  and zero unused IDs in the scratch plugin after deletion.
+- **Pivot**: An unknown ID, conflicting location or duplicate record
+  must not dispatch a hook. A missing mapping after a restart remains
+  unqualified and needs separate evidence.
+- **Anchor**: The pinned deletion schema and the rejected workspace
+  control above.

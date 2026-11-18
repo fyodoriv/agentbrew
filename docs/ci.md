@@ -20,6 +20,11 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 - **Tools the runner lacks.** The runner has no `ai-rules` CLI and no agent CLIs. Tests that need them accept the documented skip there. A change to delegated rule sync (`src/sync/rules-delegate.ts`) still needs `npm run verify:changed` on a machine with `ai-rules`.
 - **Linux image.** The Linux job uses `ubuntu-latest`. Keep the pinned Playwright version compatible with the runner image.
 
+The build preflight compares installed package versions with the tracked
+lockfile before running the build. It refuses missing or incomplete npm
+comparison data. A declared optional package can be absent, and checked-in
+local package links must still point to their recorded targets.
+
 ## Step cache (like nx)
 
 `scripts/verify.sh` records steps that pass, keyed on their inputs. Reuse in

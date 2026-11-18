@@ -97,3 +97,11 @@ content. Complete the native facet work separately for hooks, MCP and rules.
   or removed redaction refresh rejects the change.
 - **Anchor**: `emitClaudeNative`, `runSyncCommand`, and the signed
   physical selection receipts above.
+
+The [hosted baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44235036116)
+reported one unwanted publication in each of the five non-native modes.
+The other six controls passed. The
+[candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44235254674)
+passed all eleven controls and all six compatibility files. This compares
+calls to the real dispatcher through instrumented publication boundaries.
+Scoped native output for hooks, MCP and rules still needs its own proof.

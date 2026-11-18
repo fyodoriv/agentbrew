@@ -14,6 +14,37 @@ import sys
 PUNCTUATION = ";&|<>()\n"
 
 
+# These are complete command shapes. Do not remove substrings from shell code.
+LITERAL_WORD = r"""(?:'[^']*'|"(?:[^"\\$`]|\\[^\r\n])*"|[A-Za-z0-9_./:%=-]+)"""
+PRINT_FORMAT = r"""(?:'%s(?:\\n)?'|"%s(?:\\n)?")"""
+LITERAL_NOTE = re.compile(
+    rf"[ \t]*(?:echo(?:[ \t]+{LITERAL_WORD})+|"
+    rf"printf[ \t]+{PRINT_FORMAT}(?:[ \t]+{LITERAL_WORD})+|"
+    rf"git[ \t]+commit[ \t]+(?:-m|--message)[ \t]+{LITERAL_WORD})[ \t]*\n?"
+)
+TEXT_REDIRECT = r"[ \t]+>>?[ \t]*[A-Za-z0-9_./-]+\.(?:md|txt|json)"
+QUOTED_HEREDOC = re.compile(
+    rf"""[ \t]*cat(?P<prior>{TEXT_REDIRECT})?[ \t]+<<[ \t]*(?P<quote>['"])"""
+    rf"(?P<delimiter>[A-Za-z_][A-Za-z0-9_]*)(?P=quote)(?P<later>{TEXT_REDIRECT})?[ \t]*"
+)
+
+
+def is_literal_note(command):
+    if len(command) > 65536 or "\0" in command:
+        return False
+    if LITERAL_NOTE.fullmatch(command):
+        return True
+    header, separator, body = command.partition("\n")
+    if not separator:
+        return False
+    doc = QUOTED_HEREDOC.fullmatch(header)
+    if not doc or (doc["prior"] and doc["later"]):
+        return False
+    delimiter = doc["delimiter"]
+    lines = body.removesuffix("\n").split("\n")
+    return lines[-1] == delimiter and delimiter not in lines[:-1]
+
+
 def command_words(command):
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=PUNCTUATION)
@@ -110,10 +141,15 @@ def main():
                         words[i + 2] for i in range(len(words) - 2)
                         if os.path.basename(words[i]) == "gh" and words[i + 1] == "pr"
                     ]
+                    mentions_pr = (words is not None and "pr" in words) or re.search(
+                        r"\bpr\s+(create|ready|merge|view|edit)\b", command
+                    )
+                    if (not actions and not mentions_pr) or is_literal_note(command):
+                        continue
                     if actions:
                         activity = activity or any(action in ("create", "ready", "merge") for action in actions)
                         latest = target(command, words)
-                    elif (words is not None and "pr" in words) or re.search(r"\bpr\s+(create|ready|merge|view|edit)\b", command):
+                    else:
                         activity = True
                         latest = None
     except (OSError, UnicodeError, IndexError):

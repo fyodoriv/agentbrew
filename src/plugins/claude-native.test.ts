@@ -589,6 +589,33 @@ describe("partial native receipt progression", () => {
   });
 });
 
+describe("partial native receipt repair", () => {
+  const repairs = [
+    { facet: "hooks", asset: "script" },
+    { facet: "mcp", asset: "launcher" },
+    { facet: "rules", asset: "hooks" },
+  ] as const;
+
+  it.each(repairs)("restores a missing $asset without changing the $facet receipt", ({ facet, asset }) => {
+    installFacetFixture();
+    const paths = nativeFacetPaths();
+    emitClaudeNative({ modules: [facet] });
+    const frozen = [paths.index, paths.envelope, nativeProofPath()];
+    const previous = observeNativeFiles(frozen);
+    const missing = paths[asset];
+    const content = readFileSync(missing);
+    const mode = statSync(missing).mode;
+    rmSync(missing);
+
+    emitClaudeNative({ modules: [facet] });
+
+    expect(readFileSync(missing)).toEqual(content);
+    expect(statSync(missing).mode).toBe(mode);
+    expect(observeNativeFiles(frozen)).toEqual(previous);
+    expect(existsSync(paths.settings)).toBe(false);
+  });
+});
+
 describe("warm native receipt admission", () => {
   it.each([
     "missing",

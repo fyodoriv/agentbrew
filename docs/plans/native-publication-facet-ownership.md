@@ -952,3 +952,23 @@ without writing a receipt or index. Full certification kept its owner
 without writing settings or a receipt. The candidate passed 60 focused
 controls, 117 compatibility tests, ordinary publication, and type
 checking.
+
+## Test process loss at three output checkpoints
+
+- **Hypothesis**: If the opt-in native publisher loses its process
+  before payload, marketplace index or activation settings, a separate
+  replacement process refuses entry and preserves every new byte.
+- **Measurement**: Install a signed synthetic plugin in a new scratch
+  home for each checkpoint. Run the real selected or certified full
+  writer in a child. Stop that child at the exact next atomic write,
+  before it mutates that path. Use a separate child to retry the same
+  route. Record file count, type, mode and digest below the scratch
+  output roots and the process owner byte identity.
+- **Success**: Three identified checkpoint exits, three retained
+  owner records, three refused replacement processes, no new writes
+  after refusal, and the target checkpoint path remains untouched.
+- **Pivot**: A wrong checkpoint, changed post-loss output, an unsafe
+  takeover, or a missing control prevents use of the interruption
+  evidence. No live activation or automated recovery follows.
+- **Anchor**: The interrupted-publication matrix, and the earlier
+  real single-writer and in-process partial-write controls.

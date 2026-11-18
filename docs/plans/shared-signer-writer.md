@@ -59,3 +59,21 @@ Revoke may remove the exact row. The Agentbrew signature verifier
 must not read restricted rows as unrestricted trust. The restricted
 control fails qualification on a duplicate row, an accepted broad
 trust entry, or a lost unrelated field.
+
+## Refuse changed registry state before replacement
+
+- **Hypothesis**: If a registry changes while Agentbrew stages a
+  replacement, trust refuses and leaves the newer contents in place.
+- **Measurement**: Use a synchronous synthetic filesystem observation
+  at the staging boundary. Record the changed registry, error result
+  and whether another registry or its permissions moved.
+- **Success**: The changed file remains byte-for-byte intact and
+  the write refuses. All five existing signer controls still pass.
+- **Pivot**: A staged older view replaces the newer file, the lock
+  inode changes, or an unrelated row moves.
+- **Anchor**: The no-follow observation and pre-replace check in
+  Dotfiles' signer writer.
+
+This check covers detected changes before the final rename. It does
+not establish exclusion against another program that ignores the
+lock during that rename.

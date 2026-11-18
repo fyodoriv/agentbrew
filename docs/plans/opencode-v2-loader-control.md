@@ -26,3 +26,26 @@ entrypoint before adapting the existing command hooks.
 
 This is a loader control. The bridge itself still needs exact V2 input and
 output contracts, separate V1 and V2 hook controls, and owner-safe deployment.
+
+## Explicit package discovery
+
+The [first valid version run](https://github.com/fyodoriv/agentbrew/actions/runs/44290357012)
+confirmed the legacy rejection. The V2 list exited zero but showed no
+active control and wrote no setup marker. This leaves V2 admission
+unverified. The earlier setup run stopped at a version parser that did
+not accept the documented V2 prefix.
+
+- **Hypothesis**: An explicitly configured local package and the matching
+  installed SDK let the current V2 loader list the control and run its
+  one setup callback.
+- **Measurement**: Reuse only the V2 control in a fresh hosted scratch
+  home, configure its directory explicitly, and install the published
+  `@opencode/plugin@2.3.0` before restricting the network to loopback.
+  Record version, process status, active-list match, setup count and
+  fixed diagnostic classes.
+- **Success**: One known V2 plugin is listed and writes the exact setup
+  marker once. The invocation exits zero within 60 seconds.
+- **Pivot**: Another missing marker or explicit rejection leaves the
+  loader open. Preserve the independently observed legacy result.
+- **Anchor**: [OpenCode plugin discovery](https://opencode.ai/docs/plugins/)
+  and the first version-verified result above.

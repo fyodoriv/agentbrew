@@ -26,7 +26,7 @@ describe("Modern Web Guidance catalog routing", () => {
     }
     const command = readFileSync(join(root, "commands/agentbrew.md"), "utf8");
     expect(command).toMatch(/^When the user asks .*agentbrew install modern-web-guidance/mu);
-    for (const path of ["commands/agentbrew.md", "skill-plugins/dev/agentbrew-status/SKILL.md"]) {
+    for (const path of ["commands/agentbrew.md", "skill-plugins/dev/agentbrew-status/references/setup-overview.md"]) {
       expect(readFileSync(join(root, path), "utf8")).toContain(`agentbrew install ${name}`);
     }
   });

@@ -134,3 +134,8 @@ The full skill coverage check initially rejected all seven evaluation
 rows because each had two checks. The repository requires at least three.
 Each row now has three behavior checks, and the focused catalog test
 runs the same validation function as the coverage gate.
+
+The setup command also appears in the status skill's setup reference.
+That placement preserves the loaded status skill's exact wording and
+size budget. The status, skill placement, size budget, and catalog
+tests passed together. The workflow skill coverage check passed.

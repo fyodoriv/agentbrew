@@ -9,17 +9,20 @@ description: >
 
 ## What You Do
 
-Run health checks and explain what's deployed.
+Run health checks and report what's deployed. Interpret output — don't just
+dump raw command output at the user.
 
 ## Quick Status
 
 ```bash
-agentbrew status       # Show agents, MCP servers, sources, and drift
-agentbrew status --fix # Repair drift
-agentbrew status --ci  # Exit 1 on drift, without color
+agentbrew status    # agents, MCP servers, skill sources — high-level overview
+agentbrew status --fix     # detect drift and AUTO-REPAIR it
 ```
 
-For browser and Chrome extension guidance, use `agentbrew install modern-web-guidance`.
+`status` shows what's configured. `status --fix` detects drift and fixes it in place.
+Use plain `status` to check without repairing, or `status --ci` for CI gates (exit 1 on drift, no color).
+
+See Setup Overview below for runtime checks.
 
 ## Drill Into Subsystems
 

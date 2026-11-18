@@ -1089,3 +1089,28 @@ publishing under the incompatible mask.
   This comparison does not enable any writer.
 - **Anchor**: The signed CLI and atomic order receipts, and the current
   separate lifecycle and native publication functions.
+
+## Admit the three proven writers through the same scratch owner
+
+The [real CLI baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44312510630)
+confirmed that selected hooks refused under an active owner. Default
+sync and plugin removal still made their registered changes.
+
+- **Hypothesis**: The existing process-owner primitive can reject all
+  three CLI entry points at the same bound. The fixture's only
+  admitted default and remove operations still succeed after release.
+- **Measurement**: In the scratch CLI build, use certified publication
+  for default sync. Make removal enter the same owner before changing its
+  source pin. Use the same three signed homes and a real holder. For
+  each case compare the active-owner refusal with a fresh retry after
+  the holder releases normally. Check native output, settings, source
+  and signer state, ownership evidence and allowed child calls.
+- **Success**: Three active-owner refusals with zero native, pin or
+  signer changes, then three exact positive outcomes after release.
+  Keep selected activation unchanged. Bound each child and retire
+  all owned processes.
+- **Pivot**: A busy path that changes output or installed state, an
+  incorrect retry, a lost stable owner, an undisclosed process or an
+  ordinary behavior regression blocks promotion.
+- **Anchor**: The real writer baseline and exact publisher receipts.
+  Add, update, rollback and production policy remain separate.

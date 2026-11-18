@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, chownSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -59,6 +59,20 @@ it("keeps a restricted signer row out of unrestricted trust and lets revoke remo
   expect(signersFor("fixture")).toEqual([]);
   revokeSigner("fixture", ORIGINAL_KEY);
   expect(readFileSync(registry, "utf8")).toBe(REGISTRY_COMMENT + OTHER_ROW);
+});
+
+const alternateGroup = process.getgroups?.().find((group) => group !== process.getgid?.());
+it.skipIf(!SUPPORTED || alternateGroup === undefined)("preserves the existing registry group", () => {
+  if (alternateGroup === undefined) throw new Error("Synthetic secondary group is unavailable");
+  const owner = statSync(registry).uid;
+  chownSync(registry, owner, alternateGroup);
+  chmodSync(registry, 0o640);
+
+  trustSigner("fixture", NEXT_KEY);
+
+  const saved = statSync(registry);
+  expect(saved.gid).toBe(alternateGroup);
+  expect(saved.mode & 0o777).toBe(0o640);
 });
 
 describe.skipIf(!SUPPORTED)("shared signer CLI writer", () => {

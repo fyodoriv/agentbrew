@@ -47,3 +47,17 @@ expected status 1. See [publication baseline](https://github.com/fyodoriv/agentb
 The [first candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44206774876)
 passed 17 focused Linux cases, including the original two stamp controls.
 A healthy matching rerun took 500 ms.
+
+## Platform measurements
+
+The [final Linux fixture](https://github.com/fyodoriv/agentbrew/actions/runs/44207160288)
+passed 18 cases, with eight unselected or platform-specific cases skipped.
+The [macOS fixture](https://github.com/fyodoriv/agentbrew/actions/runs/44207888465)
+passed 23 cases, with three unselected observation cases skipped. It exercised
+the real APFS clone and the fallback copy. A healthy matching rerun took
+508 ms on Linux and 1,169 ms on macOS, both under the five-second bound.
+
+Both hosts refused the linked-stamp fixtures and the lockfile change during
+verification. These focused runs qualify the changed helper and tests. The
+full gate and the combined frozen observation are still required before
+closing the parent task.

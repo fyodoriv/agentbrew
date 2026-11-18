@@ -695,6 +695,53 @@ describe("validateState", () => {
       warnSpy.mockRestore();
     });
 
+    function stateWithUnownedSkillCache(label: string) {
+      return makeState({
+        skillSourceDirs: [{ label, path: join(homedir(), ".cache", "agentbrew", "sources", label) }],
+      });
+    }
+
+    it("reports one source ownership warning across six identical reloads", () => {
+      const warn = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const io = mockIO(stateWithUnownedSkillCache("synthetic-stale"));
+        const read = vi.spyOn(io, "read");
+        const manager = createStateManager(io);
+        for (let index = 0; index < 6; index++) {
+          manager.invalidate();
+          expect(manager.load()?.skillSourceDirs?.[0]?.label).toBe("synthetic-stale");
+        }
+        expect(read).toHaveBeenCalledTimes(6);
+        expect(io.written).toEqual([]);
+        expect(warn).toHaveBeenCalledExactlyOnceWith(expect.stringContaining("no tracked source owns it"));
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    it("reports a different ownership warning and one that returns after clearing", () => {
+      const warn = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const stale = stateWithUnownedSkillCache("synthetic-stale");
+        const io = mockIO(stale);
+        const manager = createStateManager(io);
+        manager.load();
+        for (const state of [stateWithUnownedSkillCache("synthetic-other"), makeState(), stale]) {
+          io.write(state);
+          manager.invalidate();
+          expect(manager.load()).toBe(state);
+        }
+        expect(warn.mock.calls.map(([line]) => line)).toEqual([
+          expect.stringContaining("synthetic-stale"),
+          expect.stringContaining("synthetic-other"),
+          expect.stringContaining("synthetic-stale"),
+        ]);
+        expect(io.written).toHaveLength(3);
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
     it("still returns the state even with validation warnings", () => {
       vi.spyOn(console, "error").mockImplementation(() => {});
       const state = makeState({

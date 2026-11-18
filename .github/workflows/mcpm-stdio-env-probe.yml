@@ -68,7 +68,9 @@ jobs:
           assert.deepEqual(readMcpmServer(managed)?.env, {});
           const stored = readFileSync(join(homedir(), ".config", "mcpm", "servers.json"), "utf8");
           assert.equal(stored.includes(marker), false);
-          for (const [name, expected] of [[oldName, 0], [managed, 1]]) {
+          const explicit = "agentbrew-fixture-explicit";
+          execFileSync(bin, ["new", explicit, "--force", "--type", "stdio", "--command", command, "--args", fixture, "--env", "FIXTURE_ENDPOINT=" + marker], { stdio: "pipe", timeout: 15000 });
+          for (const [name, expected] of [[oldName, 0], [managed, 0], [explicit, 1]]) {
             const result = await probeMcpServer(name, "fixture", { command: bin, args: ["run", name] }, { timeoutMs: 10000 });
             console.log(JSON.stringify({ case: name, probeStatus: result.status, tools: result.toolsCount }));
             assert.deepEqual({ status: result.status, tools: result.toolsCount }, { status: "ok", tools: expected });

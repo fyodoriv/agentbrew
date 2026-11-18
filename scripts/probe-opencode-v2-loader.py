@@ -20,7 +20,7 @@ binary = Path(sys.argv[1]).resolve(strict=True)
 identifier = "agentbrew.loader-control"
 tool_name = "agentbrew_fixture"
 case = sys.argv[2]
-if case not in ("approve", "amend", "deny"):
+if case not in ("approve", "amend", "deny", "lifecycle"):
     raise SystemExit("unknown registered fixture case")
 denial_marker = b"agentbrew synthetic refusal"
 plugin = """import { appendFileSync } from "node:fs";
@@ -63,9 +63,9 @@ if (input.hook_event_name === "UserPromptSubmit" && input.prompt === "Run the sy
   appendFileSync(path, "after\\n");
   reply({ additionalContext: "agentbrew fixture tool note" });
 } else if (input.hook_event_name === "SessionStart") {
-  appendFileSync(path, "start\\n");
+  appendFileSync(path, "start" + (process.env.AGENTBREW_OC_DECISION === "lifecycle" ? ":" + input.session_id : "") + "\\n");
 } else if (input.hook_event_name === "SessionEnd") {
-  appendFileSync(path, "end\\n");
+  appendFileSync(path, "end" + (process.env.AGENTBREW_OC_DECISION === "lifecycle" ? ":" + input.session_id : "") + "\\n");
 } else {
   appendFileSync(path, "unexpected\\n");
 }
@@ -198,6 +198,7 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
     output = False
     cli_denial = False
     run_exit = "unavailable"
+    created = removed = start = end = False
     with ThreadingHTTPServer(("127.0.0.1", 0), FixtureProvider) as provider:
         fixture = Thread(target=provider.serve_forever, kwargs={"poll_interval": 0.1}, daemon=True)
         fixture.start()
@@ -232,7 +233,34 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
                     except (URLError, TimeoutError):
                         pass
                     time.sleep(0.2)
-                if health == 200:
+                if health == 200 and case == "lifecycle":
+                    inventory = subprocess.run(
+                        [str(binary), "--server", endpoint, "plugin", "list"],
+                        **common, capture_output=True, timeout=10,
+                    )
+                    if inventory.returncode or inventory.stdout.count(b"agentbrew.claude-hooks") != 1:
+                        raise SystemExit("the managed bridge was missing from the native inventory")
+                    headers = {"Authorization": f"Basic {auth}", "Content-Type": "application/json"}
+                    payload = {"title": "Synthetic lifecycle control", "location": {"directory": str(workspace)}}
+                    request = Request(endpoint + "/api/session", data=json.dumps(payload).encode(), headers=headers, method="POST")
+                    with open_local.open(request, timeout=5) as response:
+                        session = json.load(response)["data"]["id"]
+                    created = isinstance(session, str) and bool(re.fullmatch(r"ses_[a-zA-Z0-9]+", session))
+                    if created:
+                        def wait_for_hook(expected):
+                            deadline = time.monotonic() + 4
+                            while time.monotonic() < deadline:
+                                if hook_log.is_file() and hook_log.read_text().splitlines() == expected:
+                                    return True
+                                time.sleep(0.1)
+                            return False
+
+                        start = wait_for_hook(["start:" + session])
+                        request = Request(endpoint + "/api/session/" + session, headers=headers, method="DELETE")
+                        with open_local.open(request, timeout=5) as response:
+                            removed = response.status == 204
+                        end = wait_for_hook(["start:" + session, "end:" + session])
+                elif health == 200:
                     args = ["--server", endpoint, "run", "--model", "fixture/probe", "--archived", "--title", "Synthetic tool control", "Run the synthetic fixture tool."]
                     try:
                         result = subprocess.run([str(binary), *args], **common, capture_output=True, timeout=35)
@@ -255,6 +283,14 @@ with tempfile.TemporaryDirectory(prefix="agentbrew-opencode-tool-") as directory
     def rows(path):
         return path.read_text().splitlines() if path.is_file() else []
     setup, hook, tool = rows(marker), rows(hook_log), rows(tool_log)
+    if case == "lifecycle":
+        print(f"case=lifecycle version=2.3.0 health={health} created={int(created)} deleted={int(removed)} "
+              f"hook-start={int(start)} hook-end={int(end)} marker-count={len(hook)} "
+              f"requests={len(FixtureProvider.outcomes)} reaped=1 fixture-stopped={int(not fixture.is_alive())}")
+        if health != 200 or not all((created, removed, start, end)) or len(hook) != 2 or FixtureProvider.outcomes or fixture.is_alive():
+            raise SystemExit("the managed V2 lifecycle control did not pass")
+        raise SystemExit(0)
+
     print(
         f"case={case} version=2.3.0 health={health} exit={run_exit} done={int(output)} setup={setup.count('setup')} "
         f"requests={len(FixtureProvider.outcomes)} model-path={','.join(FixtureProvider.outcomes) or 'none'} offered={FixtureProvider.offer} "

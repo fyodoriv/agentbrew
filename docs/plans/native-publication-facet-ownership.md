@@ -60,3 +60,33 @@ controls.
 
 Workspace preparation, full Agentfile state scope, and source pulls
 have separate ownership and write boundaries.
+
+## Initial payload result
+
+The [baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44235758606)
+failed all six cold and warm cases. The [prototype](https://github.com/fyodoriv/agentbrew/actions/runs/44236338161)
+passed them, the ordinary plugin and launcher files, and type checking.
+The prototype remains separate from the live CLI. The existing envelope's
+version ends with only eight commit digits. It cannot prove full source
+identity. Keep full identity, lifecycle coordination, retry and activation
+work open before the live entry point.
+
+## Source and shared hook ownership controls
+
+- **Hypothesis**: Reading from the exact pinned Git tree copies no local
+  files outside signed content. The shared hook preflight leaves unknown
+  warm metadata untouched and refuses the selected write.
+- **Measurement**: Plant one benign ignored text file in the synthetic
+  checkout's hook folder and compare output against the actual signed
+  tree. Add an independent warm case with an extra metadata field in its
+  hooks JSON. Observe output paths and file bytes before and after. Run
+  the existing six cold/warm and ordinary publisher controls.
+- **Success**: The signed files still publish. The ignored file appears
+  zero times in native output. Unknown metadata yields an explicit
+  refusal with zero destination changes. Six existing payload cases and
+  ordinary compatibility stay green.
+- **Pivot**: An unreadable Git identity, unknown blob mode, escaped path,
+  altered unknown field, missed signed path or existing regression
+  rejects the read path. The selected emitter remains unwired.
+- **Anchor**: The verified plugin pin in `store.ts`, the existing signed
+  source fixture and the first payload comparison.

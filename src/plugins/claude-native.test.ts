@@ -3,7 +3,7 @@
  * plugin per company plugin, enabled in user settings, side by side with
  * file rendering. Plus `agentbrew plugin policy`.
  */
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -21,6 +21,7 @@ const { home, previousHome } = vi.hoisted(() => {
 
 import { fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { emitClaudeNative, MARKETPLACE_NAME, marketplaceDir, policyFragment } from "./claude-native.js";
+import { launcherPath } from "./mcp-launcher.js";
 import { addPlugin, removePlugin } from "./store.js";
 
 const KEY = fixtureKey();
@@ -43,6 +44,49 @@ function install(): void {
   addPlugin(`${f.dir}@v1`, { yes: true, signer: KEY.pub });
 }
 
+function installFacetFixture(): void {
+  const f = pluginFixture({
+    schema: 1,
+    name: "fixture-native",
+    version: "1.0.0",
+    capabilities: {
+      agents: ["claude"],
+      hooks: ["PreToolUse:Bash"],
+      mcp_servers: ["fixture-server"],
+      repos: { include: ["fixture.example/**"] },
+    },
+    contributes: { hooks: "hooks/hooks.json", mcp_servers: "mcp/servers.yaml", rules: "rules/" },
+  });
+  f.release("v1.0.0", {
+    "hooks/hooks.json": HOOKS,
+    "hooks/guard.sh": "#!/bin/sh\nexit 0\n",
+    "mcp/servers.yaml": "- name: fixture-server\n  command: node\n  args: [server.mjs]\n",
+    "mcp/server.mjs": "process.exitCode = 0;\n",
+    "rules/fixture.md": "Synthetic rule.\n",
+  });
+  addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub });
+}
+
+function nativeFacetPaths() {
+  const root = join(marketplaceDir(), "plugins", "fixture-native");
+  return {
+    hooks: join(root, "hooks", "hooks.json"),
+    script: join(root, "hooks", "guard.sh"),
+    mcp: join(root, ".mcp.json"),
+    launcher: launcherPath("fixture-native", "fixture-server"),
+    envelope: join(root, ".claude-plugin", "plugin.json"),
+    index: join(marketplaceDir(), ".claude-plugin", "marketplace.json"),
+    settings: SETTINGS(),
+  };
+}
+
+function observeNativeFiles(paths: readonly string[]) {
+  return paths.map((path) => {
+    const info = statSync(path);
+    return { path, bytes: readFileSync(path), mode: info.mode, modifiedAt: info.mtimeMs };
+  });
+}
+
 function settings(): Record<string, any> {
   return JSON.parse(readFileSync(SETTINGS(), "utf-8"));
 }
@@ -55,6 +99,53 @@ beforeEach(() => {
 afterAll(() => {
   process.env.HOME = previousHome;
   rmSync(home, { recursive: true, force: true });
+});
+
+describe("scoped native facet publication", () => {
+  const facets = ["hooks", "mcp", "rules"] as const;
+
+  it.each(facets)("publishes only the requested cold %s facet", (facet) => {
+    installFacetFixture();
+    const paths = nativeFacetPaths();
+
+    emitClaudeNative({ modules: [facet] });
+
+    const hooks = existsSync(paths.hooks) ? JSON.parse(readFileSync(paths.hooks, "utf8")).hooks : {};
+    expect(Boolean(hooks.PreToolUse)).toBe(facet === "hooks");
+    expect(Boolean(hooks.SessionStart)).toBe(facet === "rules");
+    expect(existsSync(paths.script)).toBe(facet === "hooks");
+    expect(existsSync(paths.mcp)).toBe(facet === "mcp");
+    expect(existsSync(paths.launcher)).toBe(facet === "mcp");
+    expect(existsSync(paths.envelope)).toBe(true);
+    expect(existsSync(paths.index)).toBe(true);
+  });
+
+  it.each(facets)("repairs the requested warm %s facet and preserves its neighbors", (facet) => {
+    installFacetFixture();
+    emitClaudeNative();
+    const paths = nativeFacetPaths();
+    const hooksBefore = JSON.parse(readFileSync(paths.hooks, "utf8")).hooks;
+    const frozen = [paths.envelope, paths.index, paths.settings];
+    if (facet === "hooks") {
+      rmSync(paths.script);
+      frozen.push(paths.hooks, paths.mcp, paths.launcher);
+    } else if (facet === "mcp") {
+      rmSync(paths.launcher);
+      frozen.push(paths.hooks, paths.script);
+    } else {
+      writeFileSync(paths.hooks, JSON.stringify({ hooks: { PreToolUse: hooksBefore.PreToolUse } }));
+      frozen.push(paths.script, paths.mcp, paths.launcher);
+    }
+    for (const path of frozen) utimesSync(path, 1, 1);
+    const before = observeNativeFiles(frozen);
+
+    emitClaudeNative({ modules: [facet] });
+
+    expect(readFileSync(paths.script, "utf8")).toBe("#!/bin/sh\nexit 0\n");
+    expect(JSON.parse(readFileSync(paths.hooks, "utf8")).hooks).toEqual(hooksBefore);
+    expect(statSync(paths.launcher).mode & 0o777).toBe(0o755);
+    expect(observeNativeFiles(frozen)).toEqual(before);
+  });
 });
 
 describe("emitClaudeNative", () => {

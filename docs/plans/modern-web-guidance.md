@@ -101,3 +101,25 @@ fixture with an older recorded commit checked this after refresh.
   assertions and runtime controls separate from this result.
 - **Anchor**: The seven registered evaluation cases, the catalog
   descriptions, and [Ollama generate](https://docs.ollama.com/api/generate).
+
+The initial catalog control matched four of seven. Hallmark was selected
+for the CSS dialog, popover, and broad modernization cases. Chrome
+extensions, landing-page design, single audit, and Next.js matched.
+
+### Separate design selection from browser implementation
+
+- **Hypothesis**: Positive, specific descriptions for both choices
+  prevent creative design from absorbing browser implementation requests.
+- **Measurement**: Keep the local model, prompt, schema, option order,
+  and seven saved cases fixed. Add four held-back requests: use browser
+  form controls with graceful fallback, identify outdated DOM patterns,
+  make an art direction for a restaurant homepage, run a single live
+  accessibility audit. Compare the existing descriptions with the new
+  pair on these four and report both distributions.
+- **Success**: Seven of seven saved requests and four of four held-back
+  requests choose the intended primary skill. At least one wrong browser
+  route in the original descriptions becomes correct.
+- **Pivot**: Any incorrect or invalid selection in the candidate rejects
+  this wording change as a measured fix. A timeout leaves it inconclusive.
+- **Anchor**: The dated four-of-seven control above and the catalog's
+  creative and browser routes.

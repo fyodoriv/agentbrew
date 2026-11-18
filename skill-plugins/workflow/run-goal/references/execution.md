@@ -424,8 +424,9 @@ start it again after the edits; never report its result for the new code.
 Keep a merge criterion open while a required approval is missing. Check the
 current review requirement and name the pending reviewer or approval rule.
 An independent agent review can find defects. The repository still needs
-each required approval from an eligible reviewer. Finish other authorized
-work while you wait, and record the merge only after it happens.
+each required approval from an eligible reviewer. Use one quiet live wait
+for that review during this run. Finish other authorized work while you wait,
+and record the merge only after it happens.
 
 ## Proof inputs and decided measurements
 

@@ -31,3 +31,24 @@ passed against its current base. Replacing one locked location's hash with
 a hash already known at a second location also exited 1. So did replacing
 the hashed record with a local link to the same named version. Malformed roots,
 unresolved local links, and invalid UTF-8 each exited 2.
+
+## Hosted baseline correction
+
+Ubuntu run `44569804661` reached the integrity step and install, then
+failed the workflow safety assertion at `src/docs/ci-workflows.test.ts:42`.
+The assertion rejects GitHub event expressions used outside job controls.
+
+- **Hypothesis:** Deriving the PR baseline from the first parent of the
+  verified checkout keeps it exact and removes the workflow expression.
+  A push can read its previous commit from the runner's event file after
+  validating the commit IDs and checking the current head.
+- **Measurement:** Replay the same workflow safety test on the old and new
+  sources. Run a two-parent PR merge and a multi-commit push in scratch
+  Git. Reject a mismatched head and invalid push data.
+- **Success:** The existing assertion passes without a change to its rule.
+  The PR uses parent one, the push uses its before commit, and all invalid
+  controls exit 2. The hosted integrity step still runs before install.
+- **Pivot:** Reject this approach if either event admits an unverified head
+  or the comparison silently falls back to a moving branch.
+- **Anchor:** Run `44569804661` checked out the GitHub PR merge ref. The
+  existing workflow safety test protects the boundary.

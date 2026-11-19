@@ -1,6 +1,6 @@
 # Practices from the owner's repos
 
-Surveyed 2026-10-16: minsky, agentbrew, dotfiles, taskgrind, tasks.md (all
+Surveyed 2026-10-16: minsky, agentbrew, dotfiles, tasks.md (all
 public on github.com/fyodoriv), plus two private personal apps, cited here
 only as "a private app". Each adopted rule names the file that proved it and
 where the template enforces it. `check-setup.sh` tags each check with its

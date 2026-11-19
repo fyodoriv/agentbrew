@@ -409,7 +409,7 @@ describe("manifestEntryToManagedHook", () => {
       matcher: undefined,
       type: "command",
       command: "bash /tmp/deployed-hooks/verify-before-completion.sh",
-      timeout: 5,
+      timeout: 15,
       agents: ["claude-code"],
       source: "agentbrew-hooks-manifest",
     });

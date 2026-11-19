@@ -134,6 +134,14 @@ Code shape is:
 Scripts must tolerate missing fields and unknown extra fields because agent hook
 schemas evolve independently.
 
+Use Bash parameter expansion for startup paths and `read_hook_stdin` for
+the JSON payload. This saves external launches on hosts with slow process
+startup. Run Python helpers through `hook_python` in `stdin-json.sh`.
+It uses an explicit `HOOK_PYTHON` override first, then an installed macOS
+developer toolchain, then Python on `PATH`. It passes `-I` in each case.
+The managed command hook default is 15 seconds. Codex SessionEnd and
+Interrupt keep their three-second limit.
+
 Hooks that check `gh pr` commands use `hooks/lib/gh-pr-body-from-command.sh`.
 `gh_in_command_position` matches `gh pr create` only where a command starts
 (line start, after `;`, `&`, `|`, `(`, or `$(`, with optional `VAR=value`

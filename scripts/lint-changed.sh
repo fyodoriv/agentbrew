@@ -14,6 +14,7 @@
 # LINT_CHANGED_BASE overrides the base ref (default origin/main).
 set -euo pipefail
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 cd "$(git rev-parse --show-toplevel)"
 biome="node_modules/.bin/biome"
 if [[ ! -x "$biome" ]]; then
@@ -34,7 +35,7 @@ done < <(
   } | grep -E '^(src|scripts|real-e2e)/.*\.(ts|tsx|js|jsx|mjs|cjs)$' | LC_ALL=C sort -u
 )
 if "$has_source_changes"; then
-  node scripts/check-orphan-tests.mjs
+  node "$script_dir/check-orphan-tests.mjs"
 fi
 if [[ "${#files[@]}" == 0 ]]; then
   echo "lint:changed: no changed source files"

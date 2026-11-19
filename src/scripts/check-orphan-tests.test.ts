@@ -113,7 +113,6 @@ it("rejects a conflicting star export and accepts an explicit selection", (t) =>
 it("runs import lint when deleting the only changed source file", (t) => {
   const { cwd, git, runChangedLint, write } = fixture(t);
   write("check.test.mjs", 'import { present } from "./source.js";');
-  symlinkSync(check, join(cwd, "scripts/check-orphan-tests.mjs"));
   symlinkSync(dependencies, join(cwd, "node_modules"), "dir");
   git("add", "--", "scripts", "package.json");
   git("commit", "--quiet", "-m", "test: create deletion fixture");

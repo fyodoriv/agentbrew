@@ -71,3 +71,9 @@ repository with one deleted module and one unchanged importing test,
 the first entry point exited zero before running the checker. The repair
 exits one and prints the missing module. Biome still receives only files
 that exist.
+
+The first Linux gate passed the five new cases and failed two existing
+lint caller controls at `src/lint-changed.test.ts:72` and `:85`. Each
+expected exit zero and received one. The wrapper looked for its checker
+inside the caller's scratch repository. Resolve the companion script
+beside the wrapper, while scanning the caller's Git checkout.

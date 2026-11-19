@@ -1,0 +1,59 @@
+{
+  "skill_name": "split-roles",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add a CSV export to the orders page: users click Export and get a CSV with id, date, total. Subagents are available.",
+      "expected_output": "Writes a numbered spec first, then spawns a fresh tester that gets only the spec and the public interface and writes failing tests before any source change.",
+      "expectations": [
+        "Writes numbered acceptance criteria, including failure cases such as no orders, before writing code",
+        "Spawns a fresh tester subagent instead of writing the acceptance tests itself",
+        "Gives the tester only the spec and the public interface, not the implementation or a plan",
+        "Commits the red tests before the source change and records the tests commit"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm the builder. The tester's test expects totals with two decimals, but I think one decimal is fine. The test fails. Should I just change the assertion?",
+      "expected_output": "Does not edit the assertion; writes a dispute in builder.md with the test, the reason, and evidence, and leaves the decision to the judge.",
+      "expectations": [
+        "Does not change, skip, or loosen the tester's assertion",
+        "Writes a dispute naming the test, why it may be wrong, and evidence such as the spec line",
+        "States that the judge decides the dispute",
+        "Continues with the other failing tests meanwhile"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Act as the judge. Spec has criteria C1 to C4. Tests cover C1, C2 and C4. All tests pass and the test files are unchanged since the tests commit.",
+      "expected_output": "Returns FAIL because C3 has no test, lists it as an open defect, and blocks the merge despite green tests.",
+      "expectations": [
+        "Maps each criterion to tests and finds that C3 has none",
+        "Returns FAIL, not PASS, even though every test passes",
+        "Lists the missing C3 test as an open defect",
+        "States that the merge stays blocked until the defect is closed"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Fix the typo 'recieve' in the README.",
+      "expected_output": "Does not run the three-role split; just fixes the typo.",
+      "expectations": [
+        "Does not write a spec, spawn a tester, or spawn a judge",
+        "Fixes the typo directly",
+        "Keeps the change to the typo only"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Here is my tester brief: spec.md, the function signature, and src/export.ts so the tester knows how it works. Send it.",
+      "expected_output": "Removes src/export.ts from the brief before sending, because the tester must see only the spec and the public interface.",
+      "expectations": [
+        "Flags that the brief includes the implementation file",
+        "Removes src/export.ts and any plan text from the brief",
+        "Sends only the spec and the public interface to the fresh tester",
+        "Explains that tests written from the implementation copy its mistakes"
+      ]
+    }
+  ]
+}

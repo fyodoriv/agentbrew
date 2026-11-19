@@ -41,13 +41,13 @@ Where this ledger and minsky `absorbed.md` disagree, this ledger wins. For examp
 | vision #1 Don't reinvent the wheel | ALREADY-THERE | agentbrew/docs/shared-rules.md "## Reuse before implementation"; dotfiles/docs/constitution.md rule 0 (GET, don't IMPLEMENT) |
 | vision #2 Every dependency behind an interface | ALREADY-THERE | agentbrew/docs/shared-rules.md "## Reuse before implementation" (adapters); global CLAUDE.md "Keep new code behind adapters" |
 | vision #3 Test-first, metric-first, doc-first | ALREADY-THERE | agentbrew/docs/shared-rules.md "## Verification" (red/green TDD); test-driven-development + spec-driven-development skills |
-| vision #4 Everything measurable, everything visible | ALREADY-THERE | agentbrew/AGENTS.md + shared-rules (observability/telemetry); tooling telemetry live |
+| vision #4 Everything measurable, everything visible | ALREADY-THERE + PORT | agentbrew/AGENTS.md + shared-rules (observability/telemetry); tooling telemetry live. One event per top-level operation → new-project `templates/docs/observability.md` and owner practices |
 | vision #5 Theoretical grounding (CS anchor per term) | ALREADY-THERE | `Anchor` field required on every task (agentbrew shared-rules "## Task queues"; dotfiles constitution rule 11) |
 | vision #6 Stay alive (let it crash, supervisor) | DROP | Daemon/supervisor resilience for the minsky loop; no long-running orchestrator in targets |
-| vision #7 Chaos engineering | PORT (partial) | Per-failure-mode chaos tests are orchestrator-only (drop). "Silent retry that hides failure" → shared-rules Verification "No silent retries" |
+| vision #7 Chaos engineering | PORT | The failure-mode table method (steady state, blast radius, escape hatch, one tested row per fault) is now the `failure-modes` workflow skill (agentbrew/skill-plugins/workflow/failure-modes). "Silent retry that hides failure" stays in shared-rules Verification "No silent retries" |
 | vision #8 Pattern conformance (row per artifact) | DROP | Heavy minsky-only bookkeeping; no target uses it; Anchor field covers the useful part |
-| vision #9 Pre-registered hypothesis (iron) | ALREADY-THERE + PORT | Core: global CLAUDE.md, shared-rules "## Task queues", dotfiles constitution rule 11. NEEDS-CLARIFICATION inventory → shared-rules Task queues "Clarify first" |
-| vision #10 Deterministic enforcement | ALREADY-THERE + PORT | hooks-over-agents-md.md, editing-rules.md, hooks/manifest.yaml. Ratchet sub-rule → shared-rules "Agent rule/skill changes" "Ratchet" |
+| vision #9 Pre-registered hypothesis (iron) | ALREADY-THERE + PORT | Core: global CLAUDE.md, shared-rules "## Task queues", dotfiles constitution rule 11. NEEDS-CLARIFICATION inventory → shared-rules Task queues "Clarify first". Procedure, self-grade, and quality checker → agentbrew/skill-plugins/workflow/pre-register |
+| vision #10 Deterministic enforcement | ALREADY-THERE + PORT | hooks-over-agents-md.md, editing-rules.md, hooks/manifest.yaml. Ratchet sub-rule → shared-rules "Agent rule/skill changes" "Ratchet". Prose-to-check procedure → agentbrew/skill-plugins/workflow/rule-to-lint |
 | vision #11 No flaky metric is load-bearing | ALREADY-THERE | agentbrew/docs/ci.md "## Flake detection thresholds" (10% same-SHA) |
 | vision #12 Scope discipline (stability before new scope) | ALREADY-THERE | agentbrew/docs/shared-rules.md "## Scope discipline"; global CLAUDE.md "Surgical changes" |
 | vision #13 Security & privacy (8-item bar) | PORT (partial) | Secrets/PII/supply chain already in shared-rules "## Security and secrets" + secret-scan. Missing item 4: add to agentbrew/docs/shared-rules.md "## Security and secrets": "A local web UI or dashboard binds to 127.0.0.1 by default. Binding 0.0.0.0 needs an explicit opt-in flag and a doc note." Threat-model/cloud-audit items DROP (minsky packages). |
@@ -114,7 +114,7 @@ Total rows: 61
 | .claude/skills/competitor-research | ALREADY-THERE | agentbrew/skill-plugins/dev/competitor-spot-check + workflow/companion-competitor-watch; M1.10 scorecard is minsky-specific |
 | .claude/skills/diagnose | PORT | catalog systematic-debugging tests one hypothesis at a time; the feedback-loop ladder and 3-5 ranked falsifiable hypotheses are task `diagnose-loop-ladder-and-ranked-hypotheses` |
 | .claude/skills/doubt-driven-development | ALREADY-THERE | catalog doubt-driven-development (addyosmani) |
-| .claude/skills/experiment-validate | PORT | tasks.md/packages/lint/src/rule9.ts: today only checks field presence. Add opt-in quality checks from minsky's three lints: Measurement must contain a runnable command (backticked), Success and Pivot thresholds must differ (a margin, not the same number), Anchor must name a citation (author+year or URL) |
+| .claude/skills/experiment-validate | PORT | tasks.md/packages/lint/src/rule9.ts: today only checks field presence. Add opt-in quality checks from minsky's three lints: Measurement must contain a runnable command (backticked), Success and Pivot thresholds must differ (a margin, not the same number), Anchor must name a citation (author+year or URL). The skill itself (procedure, self-grade, quality checker) → agentbrew/skill-plugins/workflow/pre-register |
 | .claude/skills/grill-task | ALREADY-THERE | catalog grill-with-docs (mattpocock) |
 | .claude/skills/improve-codebase-architecture | ALREADY-THERE | catalog improve-codebase-architecture |
 | .claude/skills/incremental-implementation | ALREADY-THERE | catalog executing-plans + test-driven-development + verification-before-completion |
@@ -165,7 +165,7 @@ Total rows: 61
 | docs/experiment-runner.md | DROP | per-PR runner; quality lint idea captured under experiment-validate PORT |
 | docs/experiment-tracker.md | PORT | `docs/shared-rules.md` Task queues: re-check at +7 and +30 days, regression only after two misses in a row; the replay scheduler itself is minsky-only |
 | docs/heal-class-coverage-matrix.md | DROP | generated daemon report |
-| docs/host-transformation-checklist.md | DROP | "make host follow minsky" checklist; new-project scorer covers |
+| docs/host-transformation-checklist.md | PORT (partial) | Empty-queue gap audit (tests, telemetry, failure modes, pre-registration) → project-audit Step 5b "Quality gaps"; adapter and pattern-index disciplines stay dropped |
 | docs/language-strategy.md | DROP | minsky language decision |
 | docs/local-llm-fallback.md | ALREADY-THERE | agentbrew/skill-plugins/local-llm-warmup/SKILL.md |
 | docs/machine-budget.md | ALREADY-THERE | dotfiles heavy-run queue + global rules |
@@ -257,7 +257,7 @@ Total rows: 61
 | novel/adapters/* | DROP | runtime adapters (ollama, sandbox, a2a, notifier) for the orchestrator |
 | novel/experiment-record (schema.json, spec) | ALREADY-THERE | rule-#9 fields now in tasks.md rule9 + shared-rules |
 | novel/mape-k-loop, tick-loop, observer, human-loop, sidecar-bootstrap, budget-guard, cross-repo-runner, bridges, handoff-spec, claude-handoff-spec, dashboard-web, competitive-benchmark | DROP | orchestrator internals; handoff is covered by the handoff skill |
-| novel/personas/*.md | DROP | minsky worker prompts; agentbrew has agent definitions |
+| novel/personas/*.md | PORT (partial) | Developer, QA, and reviewer role split → agentbrew/skill-plugins/workflow/split-roles; researcher and planner prompts and the A2A pipeline stay dropped |
 | bin/check-budget.sh | ALREADY-THERE | dotfiles agent-usage-guard |
 | bin/minsky*, minsky-ollama | DROP | orchestrator CLI; dotfiles local-models covers Ollama |
 | user-stories/ | DROP | empty |

@@ -445,7 +445,7 @@ export function catalogRuleDrift(rules: CatalogRule[]): { kept: string[]; refres
 }
 
 /** Install a rule set from the catalog into shared-rules.md. */
-export function installRule(rule: CatalogRule): void {
+export function installRule(rule: CatalogRule): RuleAddStatus {
   console.log(chalk.bold(`\nInstalling rule set: ${rule.name}\n`));
 
   const status = addRuleToSharedRules(rule);
@@ -459,6 +459,7 @@ export function installRule(rule: CatalogRule): void {
     console.error(chalk.yellow("  No shared rules file found. Run `agentbrew rules init` first,"));
     console.error(chalk.yellow("  or create ~/.config/agentbrew/shared-rules.md manually."));
   }
+  return status;
 }
 
 /** Resolves the source directory for CLI tool command files.

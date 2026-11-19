@@ -328,7 +328,10 @@ async function installFromCatalog(
   const rule = catalog.rules.find((r) => r.name === name);
   if (rule) {
     warnIfDeprecated(name, "rule", rule);
-    installRule(rule);
+    if (installRule(rule) === "no-rules-file") {
+      process.exitCode = 1;
+      return;
+    }
     if (isBuiltInSkill(name)) {
       console.log(
         chalk.dim(`  ${name} is also a built-in skill; agentbrew always deploys it, so only the rule was installed.`),
@@ -423,7 +426,10 @@ export async function install(
 ): Promise<void> {
   resetInstallSummary();
   const state = requireState();
-  if (!state) return;
+  if (!state) {
+    process.exitCode = 1;
+    return;
+  }
 
   const catalog = loadCatalog();
 

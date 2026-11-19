@@ -20,6 +20,10 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 - **Tools the runner lacks.** The runner has no `ai-rules` CLI and no agent CLIs. Tests that need them accept the documented skip there. A change to delegated rule sync (`src/sync/rules-delegate.ts`) still needs `npm run verify:changed` on a machine with `ai-rules`.
 - **Linux image.** The Linux job uses `ubuntu-latest`. Keep the pinned Playwright version compatible with the runner image.
 
+The pre-push hook runs `npm run check:oss`. Its tracked-file scan reports
+literal user home paths in Markdown, shell scripts, and JavaScript or
+TypeScript source. Use `~/` or `$HOME` for portable paths.
+
 The build preflight compares installed package versions with the tracked
 lockfile before running the build. It refuses missing or incomplete npm
 comparison data. A declared optional package can be absent, and checked-in

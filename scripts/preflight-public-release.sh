@@ -104,6 +104,13 @@ main() {
   check_public_repo_access
   check_npm_auth
 
+  if npm --prefix "$repo_root" run check:oss; then
+    echo "✓ Public release privacy check passed"
+  else
+    echo "ERROR: Public release privacy check failed. Install dependencies with npm ci, then rerun npm run check:oss."
+    failures=1
+  fi
+
   if [[ -x "$repo_root/scripts/validate-public-release.sh" ]]; then
     echo "✓ Public release validator is present: scripts/validate-public-release.sh"
     echo "  Run the strict publish scrub before release: scripts/validate-public-release.sh --strict-publish"

@@ -37,8 +37,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run no-internal-refs vitest
-        run: npx vitest run src/oss/no-internal-refs.test.ts
+      - name: Run public release privacy checks
+        run: npm run check:oss
 
       - name: Block private emails in branch history
         # When a private overlay configures a private-email pattern, no

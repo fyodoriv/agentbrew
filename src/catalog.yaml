@@ -2187,6 +2187,7 @@ rules:
     rationale: "Agents posting as the user without approval causes real confusion and real harm. Approval must be per-action, not per-session, and never carries over between sessions."
     content: |
       No public posts/comments/reviews as the user without per-action approval; `gh pr create`/`gh pr edit` require it, except `/ship-it` for approved tooling/oncall delivery. Approved PRs need a why-needed rationale and `agent-attribution-footer`.
+      Request only named reviewers. Use the approved delivery workflow to check automatic review assignments before opening a non-draft PR or marking one ready. Keep the PR in draft if a team could receive a request or the rules are unclear. Preserve existing review requests and requirements.
 
   - name: load-project-context
     description: "On entering any repo, scan for and load canonical project docs (vision, architecture, roadmap, user stories, competitors) into working context."

@@ -38,8 +38,9 @@ TRANSCRIPT="$(json_get "${INPUT:-{\}}" '.transcript_path')"
 # Only the tail matters; a long session transcript can be large.
 REASON="$(tail -n 2000 "$TRANSCRIPT" | hook_jq -rs '
   def text: if type == "string" then . elif type == "array" then map(.text? // "") | join(" ") else "" end;
-  def safe_name:
-    (strings | select(test("\\A[A-Za-z_][A-Za-z0-9_.:-]{0,127}\\z"))) // "unnamed tool";
+  def valid_tool_name: (strings | test("\\A[A-Za-z_][A-Za-z0-9_.:-]{0,127}\\z")) // false;
+  def safe_name: if valid_tool_name then . else "unnamed tool" end;
+  def unique_by_id: group_by(.id) | map(select(length == 1) | .[0]) | INDEX(.id);
   [ .[] | select(type == "object") ] as $rows
   | ([ $rows | to_entries[]
        | select(.value.type == "user" and (.value.isMeta // false | not))
@@ -49,18 +50,21 @@ REASON="$(tail -n 2000 "$TRANSCRIPT" | hook_jq -rs '
        | .key ] | last // -1) as $start
   | select($start >= 0)
   | [ $rows[($start + 1):][] | .message.content? | arrays | .[] ] as $blocks
-  | [ $blocks[] | select(.type == "tool_use") ] as $calls
-  | [ $blocks[] | select(.type == "tool_result")
+  | [ $blocks[] | select(.type == "tool_use") | select(.id | strings | length > 0) ] as $calls
+  | [ $blocks[] | select(.type == "tool_result") | select(.tool_use_id | strings | length > 0)
       | . as $r | ($r.content | text) as $t
       | { id: $r.tool_use_id,
           denied: ($t | test("\\buser (?:doesn.t want to proceed|denied)\\b|\\btool use was rejected by the user\\b"; "i")),
           failed: (($r.is_error // false) or ($t | test("not connected|timed out|ECONNREFUSED|connection refused"; "i"))) } ] as $results
+  | ($calls | unique_by_id) as $unique_calls
+  | ($results | unique_by_id) as $unique_results
   | [ $calls | to_entries[] | .key as $i | .value as $c
-      | ($results | map(select(.id == $c.id)) | first) as $r
+      | select($unique_calls[$c.id] != null)
+      | $unique_results[$c.id] as $r
       | select($r != null) | { i: $i, name: $c.name, input: $c.input, failed: $r.failed, denied: $r.denied } ] as $done
   | [ $done[] | select(.failed and (.denied | not)) | . as $f
       | select(any($done[];
-          .i > $f.i and .name == $f.name
+          .i > $f.i and .name == $f.name and (.name | valid_tool_name)
           and ($f.input | type == "object") and (.input | type == "object")
           and .input == $f.input and (.denied or (.failed | not))) | not) ]
   | if length == 0 then empty else

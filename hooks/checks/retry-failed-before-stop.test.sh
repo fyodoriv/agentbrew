@@ -172,6 +172,39 @@ T14="$TMP/invalid-label.jsonl"
 OUT="$(run_hook "$T14" false)"
 check "Test 14 malformed label uses the safe placeholder" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("unnamed tool") and (contains("\n")|not))' >/dev/null 2>&1 && echo 0 || echo 1)"
 
+T15="$TMP/unknown-tool-identity.jsonl"
+{
+  user "check an outcome"
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"l1","input":{"value":"first"}}]}}'
+  result l1 true "connection refused"
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"l2","input":{"value":"first"}}]}}'
+  result l2 false "ok"
+} >"$T15"
+OUT="$(run_hook "$T15" false)"
+check "Test 15 missing names cannot prove identical tools" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("unnamed tool"))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+T16="$TMP/missing-call-id.jsonl"
+{
+  user "check an outcome"
+  call '' Query '{}'
+  result '' true "connection refused"
+} >"$T16"
+OUT="$(run_hook "$T16" false)"
+check "Test 16 missing IDs cannot correlate a call and result" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
+T17="$TMP/duplicate-ids.jsonl"
+{
+  user "check an outcome"
+  call m1 Query '{}'
+  result m1 true "connection refused"
+  result m1 false "ok"
+  call m2 Query '{}'
+  call m2 Read '{}'
+  result m2 true "connection refused"
+} >"$T17"
+OUT="$(run_hook "$T17" false)"
+check "Test 17 duplicate calls or results do not establish an outcome" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
 echo ""
 echo "retry-failed-before-stop.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

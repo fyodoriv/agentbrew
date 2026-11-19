@@ -20,3 +20,7 @@ The deployed-layout check refused four registered discard cases and three
 more with quoted, escaped, or special path arguments. It passed five
 registered allowed cases and four command-boundary controls. The fake Git
 recorded zero calls.
+
+The first Ubuntu run found an old manifest count of 21. The new hook
+made the correct count 22. The fixture now checks the new ID and still
+requires all Bash hooks to be off by default.

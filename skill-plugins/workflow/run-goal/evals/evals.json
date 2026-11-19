@@ -3982,6 +3982,18 @@
         "Parks the archive until the user says yes",
         "Appends new eval cases instead of editing hash-pinned ones"
       ]
+    },
+    {
+      "id": 348,
+      "prompt": "/goal absorb everything useful from tool T into repos A, B, C so T can be archived (another session is absorbing tool U into the same repos at the same time)",
+      "expected_output": "The disposition ledger is checked by a script over tracked files, with specific rows above catch-alls and the catch-all count reported; worktrees are created at absolute paths; before merge each PR is rebased onto the other session's merged changes and conflicts in shared lists keep both removals; the archive runs only after every target PR is merged and a fresh search of the merged default branches finds no runtime dependency on T.",
+      "expectations": [
+        "Proves 0 undisposed items with a checker script, and reports how many items fall to catch-all rows instead of claiming per-item coverage",
+        "Creates worktrees with absolute paths, since `git -C <repo> worktree add <relative>` resolves against the repo, not the current folder",
+        "Resolves conflicts in shared repo lists by keeping both sessions' removals",
+        "Searches the merged default branches, not the PR branches, before archiving, and lists the intentional guard hits it keeps",
+        "Runs the archive only after all target PRs are merged and the user approved archiving"
+      ]
     }
   ]
 }

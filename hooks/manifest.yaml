@@ -572,6 +572,17 @@ hooks:
     agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
+  - id: retry-failed-before-stop
+    description: Remind the agent once to check unresolved tool failures and repeat only authorized actions that are safe to repeat
+    event: Stop
+    script: checks/retry-failed-before-stop.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: HOOK_BYPASS_RETRY_FAILED_BEFORE_STOP
+    sourceRule: 'docs/hook-protocol.md "Retry failed calls before stop"'
+    agents: ["claude-code"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
+
   - id: poll-loop-hint
     description: Hint, never block, when a Bash call polls with an until/while loop that sleeps; name background runs and blocking waits instead
     event: PreToolUse

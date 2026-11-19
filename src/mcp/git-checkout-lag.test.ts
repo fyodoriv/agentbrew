@@ -1,5 +1,14 @@
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
@@ -22,7 +31,11 @@ it("reports only a known behind checkout and leaves its contents and refs alone"
   const git = (cwd: string, ...args: string[]) =>
     execFileSync("git", args, { cwd, env, encoding: "utf8", stdio: "pipe" }).trim();
 
-  function checkout(parent: string, name: string, position: "behind" | "current" | "diverged" | "detached" | "untracked") {
+  function checkout(
+    parent: string,
+    name: string,
+    position: "behind" | "current" | "diverged" | "detached" | "untracked",
+  ) {
     const dir = join(parent, name);
     mkdirSync(dir);
     git(dir, "init", "--template=", "-b", "main", "--quiet");

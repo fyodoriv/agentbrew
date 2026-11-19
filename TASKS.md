@@ -330,14 +330,26 @@
   - **Field review**: the exact first seven-day replay is complete and independently checked. Every observed loop syntax row paired with a timed tool call. The old report label was absent. The current data leaves background duration, unknown execution mode, timeout cause, and comparison with the prior measurement unresolved. The aggregate report stays private.
   - **Blocked**: needs-comparable-field-evidence — register a comparable polling measurement and timeout baseline before applying the original thresholds. The existing syntax and tool-call evidence leaves Success and Pivot undecided.
 
+- [ ] PR bodies and new task blocks pass the pre-register checker in CI
+  - **ID**: preregistration-ci-gate
+  - **Tags**: quality, ci, pre-registration, from-minsky
+  - **Details**: The new `pre-register` skill ships `scripts/check-preregistration.mjs`, but nothing runs it. On 2026-11-19 it reported all five fields missing in the bodies of the last five merged agentbrew PRs, although AGENTS.md Delivery asks for a hypothesis block, and it reported 58 findings across existing TASKS.md blocks (mostly a Measurement with no backticked command). Run it in CI on the PR body (an `Exempt: <gate>` line passes) and on TASKS.md blocks that the PR adds or changes, as a ratchet that leaves untouched blocks alone.
+  - **Files**: the PR-body check workflow or `scripts/check-pr-vision-trace.mjs`, `scripts/verify-changed.sh`, a ratchet helper and its test, AGENTS.md Delivery.
+  - **Acceptance**: a PR body with no hypothesis block and no `Exempt:` line fails the check; a PR that adds a task block with a manual measurement fails; an untouched old block never fails.
+  - **Hypothesis**: merged PRs with no pre-registration go from 5 of the last 5 to 0 of the next 10.
+  - **Measurement**: `for n in $(gh pr list --state merged --limit 10 --json number --jq '.[].number'); do gh pr view $n --json body --jq .body | node skill-plugins/workflow/pre-register/scripts/check-preregistration.mjs - >/dev/null || echo "fail $n"; done`
+  - **Success**: 0 failing bodies among the next 10 merged PRs.
+  - **Pivot**: more than 2 false blocks in the next 20 PRs.
+  - **Anchor**: Munafò et al. 2017 (A manifesto for reproducible science, Nature Human Behaviour).
+
 ## P2
 
 - [ ] Three strangers reach a first run from the README alone
   - **ID**: readme-human-first-run-test
   - **Tags**: readme, new-project, usability, from-minsky
-  - **Details**: Port minsky `docs/user-tests/README.md` and `template.md` into the `readme` skill (and point to it from new-project owner practices). Protocol: 3 people who have never seen the project follow only the README with no help, on a clean machine or account; log time to first successful run and every point of friction with its time. Any friction over 5 minutes becomes a P1 README task. Automated stranger-install tests (dotfiles `tests/stranger-readiness.bats`) stay; this adds the human check they cannot do.
-  - **Files**: `skill-plugins/workflow/readme/references/human-first-run-test.md`, `skill-plugins/workflow/readme/SKILL.md`, `skill-plugins/workflow/new-project/references/owner-practices.md`, a readme eval.
-  - **Acceptance**: the readme skill links the protocol and template; an eval asks for a usability check and the agent proposes the 3-stranger protocol with the 5-minute bar.
+  - **Details**: Run the README skill's first-run protocol on Agentbrew and Dotfiles. Recruit 3 people per project who have never used it. Give each a clean environment and only the README link. Record the first result, elapsed time and friction. Turn any friction over 5 minutes into a P1 README task.
+  - **Files**: `skill-plugins/workflow/readme/references/human-first-run-test.md` and private session records.
+  - **Acceptance**: three verified unassisted first runs per project. Record the median and scrubbed findings.
   - **Hypothesis**: README gaps that block first-time users are found before release instead of from issues.
   - **Measurement**: median time to first run across the 3 sessions, recorded in the template.
   - **Success**: median at or under 5 minutes for agentbrew and dotfiles.
@@ -380,17 +392,53 @@
   - **Pivot**: more than 1 false block per week in hook observation logs.
   - **Anchor**: Reason 1990 (Human Error, defenses in depth).
 
-- [ ] README size cannot creep back up
-  - **ID**: readme-byte-budget
-  - **Tags**: readme, docs, from-minsky
-  - **Details**: Port minsky `scripts/check-readme-byte-budget.mjs` into the readme skill checker: fail when README.md grows past its recorded baseline plus a headroom percentage, with an explicit way to raise the baseline.
-  - **Files**: `skill-plugins/workflow/readme/scripts/check-readme.py` and its test.
-  - **Acceptance**: a README 20% over baseline fails the check; one within headroom passes.
-  - **Hypothesis**: README bloat in owned repos is caught at commit time instead of in periodic cleanups.
-  - **Measurement**: `python3 skill-plugins/workflow/readme/scripts/check-readme.py --budget README.md; echo exit=$?`.
-  - **Success**: agentbrew, dotfiles and careerbrew READMEs pass at their baselines.
-  - **Pivot**: more than 1 legitimate README change per month needs a baseline bump.
-  - **Anchor**: Sweller 1988 (cognitive load theory).
+- [ ] Git calls from scripts and sh -c pass the same safety blocks
+  - **ID**: git-path-shim
+  - **Tags**: hooks, git, from-minsky
+  - **Details**: Port minsky `.claude/shims/git` (see the archived repo): a `git` wrapper put first on the agent PATH that applies the dangerous-git blocks to the real argv, so `sh -c`, scripts and aliases cannot bypass the Bash-text hook. Opt-in via the hook manifest; pass through to the real git otherwise.
+  - **Files**: `hooks/shims/git`, its fixture test, `hooks/manifest.yaml`.
+  - **Acceptance**: a blocked git call wrapped in `sh -c` is blocked under the shim; `git status` passes through unchanged.
+  - **Hypothesis**: destructive git calls hidden inside scripts go from unblocked to blocked.
+  - **Measurement**: `bats tests/hooks/git-shim.bats` on 10 blocked and 10 allowed fixtures.
+  - **Success**: 10/10 blocked and 10/10 allowed.
+  - **Pivot**: any allowed fixture blocked, or added latency over 20 ms per git call.
+  - **Anchor**: Reason 1990 (Human Error, defenses in depth).
+
+- [ ] Editing TASKS.md lints it right away
+  - **ID**: tasks-md-lint-on-edit
+  - **Tags**: hooks, tasks-md, from-minsky
+  - **Details**: Port the TASKS.md branch of minsky `.claude/hooks/post-edit.sh`: after an Edit or Write to `TASKS.md`, run `@tasks-md/lint` (including rule 9 fields and quality warnings) and block the next turn with the errors until fixed.
+  - **Files**: `hooks/checks/tasks-md-lint-on-edit.sh`, its fixture test, `hooks/manifest.yaml`.
+  - **Acceptance**: an edit that drops a task's Pivot is reported in the same turn; a valid edit is silent.
+  - **Hypothesis**: TASKS.md lint failures found in CI drop to near zero because the edit hook catches them first.
+  - **Measurement**: count TASKS.md lint failures in hosted CI over 30 days before and after (`gh run list` plus a log grep).
+  - **Success**: at least 80% fewer CI TASKS.md lint failures.
+  - **Pivot**: under 30% fewer, or hook runtime over 2 s.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (Accelerate, shift-left testing).
+
+- [ ] Tests only import exports that exist
+  - **ID**: check-tests-import-only-existing-exports
+  - **Tags**: lint, tests, from-minsky
+  - **Details**: Port minsky `scripts/check-orphan-tests.mjs`: every named symbol a `.mjs`/`.js` test imports from a source file must exist as a named export there, catching source/test API drift that `tsc` does not see. Add it to `lint-changed.sh`.
+  - **Files**: `scripts/check-orphan-tests.mjs`, its test, `scripts/lint-changed.sh`.
+  - **Acceptance**: a fixture test importing a removed export fails with file and symbol; the current tree passes.
+  - **Hypothesis**: orphaned test imports are caught at lint time instead of at test run.
+  - **Measurement**: `node scripts/check-orphan-tests.mjs; echo exit=$?` on the fixture and the tree.
+  - **Success**: fixture exits 1, tree exits 0.
+  - **Pivot**: more than 2 false positives on the tree.
+  - **Anchor**: Meszaros 2007 (xUnit Test Patterns, obsolete tests).
+
+- [ ] Closing a superseded PR proves nothing is lost
+  - **ID**: lossless-pr-close
+  - **Tags**: ship-it, watch-issues, git, from-minsky
+  - **Details**: Port minsky `scripts/verify-pr-closure-is-lossless.mjs`: before closing a PR as superseded or duplicate, apply its patch onto the surviving branch with `git apply --3way --check` and refuse the close if any hunk is left over. Call it from ship-it and watch-issues; this is the mechanical proof the "Merge means merge" rule asks for.
+  - **Files**: `scripts/verify-pr-closure-is-lossless.mjs`, its test, ship-it and watch-issues docs.
+  - **Acceptance**: a fixture PR with one unique hunk is refused and the hunk named; a true duplicate passes.
+  - **Hypothesis**: PR closes that drop unique work go from unchecked to zero.
+  - **Measurement**: `node scripts/verify-pr-closure-is-lossless.mjs --closed <n> --survivor <m>; echo exit=$?` on fixtures and the last 10 closed PRs.
+  - **Success**: fixtures correct; 0 false refusals on true duplicates.
+  - **Pivot**: more than 1 false refusal in 10 real closes.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (Accelerate, change failure rate).
 
 - [ ] wrap-up fetch-caller tests W03 and W04 time out under load
   - **ID**: wrap-up-fetch-caller-timeout
@@ -704,6 +752,30 @@
   - **Files**: `.github/workflows/auto-publish.yml`, `scripts/publish-latest.sh`, `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
+
+- [ ] Count guard stops reading a time span as an agent count
+  - **ID**: volatile-count-time-units
+  - **Tags**: quality, docs-guard
+  - **Details**: `src/docs/volatile-count-scan.ts` flags a number, up to three words, then an inventory noun. So a time span before such a noun reads as a count. On 2026-11-19 a TASKS.md acceptance line with a 15-minute timebox, followed by "makes the agent", failed hosted CI and cost one full CI cycle. Exempt a match whose first word after the number is a time unit (ms, second, minute, hour, day, week), next to the existing threshold exemption.
+  - **Files**: `src/docs/volatile-count-scan.ts`, `src/docs/volatile-count-claims.test.ts`
+  - **Acceptance**: a fixture line with a time span before "the agent" passes; a fixture with a real inventory count of agents still fails.
+  - **Hypothesis**: CI failures from a time span read as a count drop from 1 this week to 0 over the next 30 days, with no real count missed.
+  - **Measurement**: `npx vitest run src/docs/volatile-count-claims.test.ts` with the new time-span and real-count fixtures.
+  - **Success**: the time-span fixture passes and 100% of the existing violation fixtures still fail.
+  - **Pivot**: more than 1 real-count fixture passes; then drop the exemption and reword prose instead.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
+
+- [ ] Skill eval cases can be run for a pass rate
+  - **ID**: skill-eval-pass-rate
+  - **Tags**: quality, skills, measurement
+  - **Details**: Task blocks measure skill changes with `npx agentbrew eval <skill>`, but that command does not exist. `agentbrew skills` has only `coverage` and `validate`, which check that `evals/evals.json` cases exist, not that they pass. On 2026-11-19 a reviewer found the command in the `diagnose` block and in the blocks filed for the runner-rule skills, so those Measurement lines could never run. Either add a runner (for example `agentbrew skills eval <name>`, reusing the skill-creator grader) or change the convention to a runnable proxy. Then fix the `diagnose` block.
+  - **Files**: `src/commands/` (a new `skills eval` subcommand) or `docs/task-backend-contract.md`; the `diagnose` block in TASKS.md.
+  - **Acceptance**: the Measurement of every open TASKS.md block names a command that exists; a new runner, if built, prints a pass rate for one skill's eval cases.
+  - **Hypothesis**: open task blocks whose Measurement names a missing command drop from 1 to 0 and stay at 0.
+  - **Measurement**: `grep -c "npx agentbrew eval" TASKS.md`
+  - **Success**: 0 matches, and a new runner, if built, prints a pass rate for one skill.
+  - **Pivot**: grading a single skill run costs more than 1 US dollar; then keep the proxy convention and drop the runner.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
 
 ## P3
 

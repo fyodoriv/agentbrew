@@ -122,7 +122,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
    `bash -c 'source ~/.config/oss-readiness/oss-readiness.env; git diff origin/main | grep -icE -- "$OSS_READINESS_INTERNAL_PATTERN"'` must print `0`.
 4. Commit with a conventional header and the pre-registered hypothesis in the body.
 5. Push and open a PR. The body has `## Summary`, `## Details`, `## Docs`, a hypothesis block, and `## Visual proof` (a pasted terminal transcript).
-6. When every hosted check is green, squash-merge. Remove the worktree and branch.
+6. When every hosted check is green, squash-merge. Run the [file coverage check](docs/ci.md#check-a-squash-merge) from `/ship-it` after each merge. Verify its result before removing the worktree and branch.
 
 ## Docs upkeep
 

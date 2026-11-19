@@ -1,0 +1,3 @@
+Use only the chat destination and actions the user authorized. Hold if approval is pending or the authorized place cannot be written to.
+If your own message is still the latest in that exact channel, direct conversation, or thread and is under 24 hours old, edit it to include the follow-up when editing is available. If it cannot be edited, hold. Delete and replace it only when the user explicitly approves both actions for that message.
+Post once in the authorized place when you have no message there, when another author sent a later message there, or when your latest message there is at least 24 hours old.

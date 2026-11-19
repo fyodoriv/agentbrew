@@ -126,7 +126,7 @@ already does it), drop (with reason).
 
 | File | Verdict | Home or reason |
 |---|---|---|
-| `Makefile` (lint, test, check, audit) | covered | agentbrew `npm run verify`, cached-run |
+| `Makefile` (lint, test, check, audit) | covered | agentbrew `npm run verify` + `verify:changed`; dotfiles `bin/cached-run` |
 | `scripts/validate-skills.py` | covered | agentbrew skill evals + agent-bloat-lint |
 | `scripts/install-shellcheck.sh` | covered | dotfiles CI installs shellcheck (`.github/workflows/ci.yml`); doctor modules check it locally |
 | `install.sh`, `INSTALL.md` | drop | runner install; formula removed (homebrew-tap#2) |

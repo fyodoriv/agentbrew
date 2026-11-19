@@ -15,8 +15,9 @@ const INLINE = new RegExp(
 const HEADING = new RegExp(`^#{1,6}\\s+(${NAMES})\\s*:?\\s*$`, "i");
 const ANY_HEADING = /^#{1,6}\s/;
 const TASK_LINE = /^- \[[ xX]\] /;
-const TASK_FIELD = /^\s+- \*\*\w[^*]*\*\*:/;
-const EXEMPT = /^\s*(?:[-*+]\s+)?(?:\*\*)?Exempt(?:\*\*)?\s*:(?:\*\*)?\s*\S/im;
+// A task field is an indented "**ID**:" or pre-registration field, with or without a list dash.
+const TASK_FIELD = new RegExp(`^\\s+(?:[-*+]\\s+)?\\*\\*(?:ID|${FIELDS.join("|")})\\*\\*:`, "i");
+const EXEMPT = /^\s*(?:[-*+]\s+)?(?:\*\*)?Exempt(?:\*\*)?\s*:(?:\*\*)?\s*(\S.*)$/im;
 const PLACEHOLDER = /^(tbd|todo|n\/a|na|none|-|—|\.\.\.)$/i;
 const MANUAL = /(?<!no )\b(manual|manually|eyeball|eyeballing|visually check|by hand)\b/i;
 const COMMAND_START =
@@ -24,6 +25,10 @@ const COMMAND_START =
 const TRIVIAL_COMMAND = /^\s*(true|:|exit 0|echo\b.*)\s*;?\s*$/;
 // A threshold is a number or a zero-tolerance quantifier ("any X rejects", "no eval separates").
 const QUANTIFIER = /\d|\b(zero|none|no|any|all|every|half|never)\b/i;
+// Phrases that use those words without stating a threshold.
+const NOT_A_THRESHOLD = /\b(?:not at all|at all|no longer|any more|anymore|anyway|all the)\b/gi;
+// A placeholder in angle brackets: <reason>, <exact command>. Not "a < b" and not <https://...>.
+const ANGLE_PLACEHOLDER = /<[a-z][a-z0-9 _-]*>/i;
 const ANCHOR_SOURCE = /\b(19|20)\d{2}\b|doi\.org|\b10\.\d{4,9}\/|arxiv|https?:\/\//i;
 const WEAK_ANCHOR = /\bblog\b|medium\.com|best practice/i;
 const VANITY =
@@ -54,15 +59,30 @@ function readInput(file) {
   }
 }
 
+// Task style needs a pre-registration field indented under a checkbox line, so a PR
+// checklist with nested notes stays one document.
+function isTaskStyle(lines) {
+  let inTask = false;
+  for (const line of lines) {
+    if (TASK_LINE.test(line)) inTask = true;
+    else if (/^\S/.test(line)) inTask = false;
+    else if (inTask && TASK_FIELD.test(line)) return true;
+  }
+  return false;
+}
+
 function splitBlocks(text) {
   const lines = text.split(/\r?\n/);
-  const taskStyle = lines.some((line) => TASK_FIELD.test(line)) && lines.some((line) => TASK_LINE.test(line));
-  if (!taskStyle) return [{ label: "document", lines }];
+  if (!isTaskStyle(lines)) return [{ label: "document", lines }];
   const blocks = [];
+  const preamble = [];
   for (const line of lines) {
     if (TASK_LINE.test(line)) blocks.push({ label: line.replace(TASK_LINE, "").slice(0, 60), lines: [line] });
     else if (blocks.length > 0) blocks[blocks.length - 1].lines.push(line);
+    else preamble.push(line);
   }
+  // Keep fields written before the first task (a PR body's Hypothesis section).
+  if (Object.keys(extractFields(preamble)).length > 0) blocks.unshift({ label: "document", lines: preamble });
   for (const block of blocks) {
     const id = block.lines.map((line) => line.match(/\*\*ID\*\*:\s*(\S+)/)).find(Boolean);
     if (id) block.label = id[1];
@@ -103,7 +123,8 @@ function withoutCode(value) {
 
 function isPlaceholder(value) {
   const bare = value.replace(/[*_]/g, "").trim();
-  return PLACEHOLDER.test(bare) || /\b(TBD|TODO)\b/.test(value) || /<[^>]+>/.test(withoutCode(value));
+  const prose = withoutCode(value);
+  return PLACEHOLDER.test(bare) || /^\s*(TBD|TODO)\b/.test(prose) || ANGLE_PLACEHOLDER.test(prose);
 }
 
 function measurementProblems(value) {
@@ -137,7 +158,9 @@ function presenceProblems(fields, required) {
 function thresholdProblems(fields, has) {
   const problems = [];
   for (const name of ["Success", "Pivot"]) {
-    if (has(name) && !QUANTIFIER.test(fields[name])) problems.push([name, "no numeric threshold"]);
+    if (has(name) && !QUANTIFIER.test(fields[name].replace(NOT_A_THRESHOLD, ""))) {
+      problems.push([name, "no numeric threshold"]);
+    }
   }
   if (has("Success") && has("Pivot") && normalized(fields.Success) === normalized(fields.Pivot)) {
     problems.push(["Pivot", "same as Success; leave a margin (the gap is the inconclusive zone)"]);
@@ -174,8 +197,14 @@ function main() {
   let failed = false;
   for (const block of blocks) {
     const text = block.lines.join("\n");
-    if (EXEMPT.test(text)) {
-      console.log(`${block.label}: exempt (${text.match(EXEMPT)[0].trim()})`);
+    const exempt = text.match(EXEMPT);
+    if (exempt && isPlaceholder(exempt[1])) {
+      console.error(`${block.label}: Exempt: placeholder text; name the gate that is the metric`);
+      failed = true;
+      continue;
+    }
+    if (exempt) {
+      console.log(`${block.label}: exempt (${exempt[0].trim()})`);
       continue;
     }
     const fields = extractFields(block.lines);

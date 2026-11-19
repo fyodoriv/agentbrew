@@ -15,8 +15,24 @@ const ALLOWED = new Map([
   ["graceful degrade", "degrade gracefully"],
 ]);
 const FORBIDDEN = /retry silently|silent(ly)? retr|\bignore|log and continue/;
-const TEST_FILE = /\.(test|spec)\.|_test\.|(^|\/)test_/;
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build"]);
+const TEST_FILE = /\.(test|spec)\.|_test\.|(^|\/)test_|\.bats$/;
+// Dependency, build, and sibling-worktree folders: a match there is not this repo's test.
+const SKIP_DIRS = new Set([
+  "node_modules",
+  ".git",
+  "dist",
+  "build",
+  "target",
+  "vendor",
+  "coverage",
+  ".venv",
+  "venv",
+  "__pycache__",
+  ".tox",
+  ".worktrees",
+  ".wt",
+  "wt.noindex",
+]);
 const PATH_LIKE = /\.(test|spec)\.[cm]?[jt]sx?$|\.(ts|tsx|js|jsx|mjs|cjs|py|sh|bats|go|rs|rb)$/;
 
 function usage(message) {
@@ -52,14 +68,18 @@ function parseArgs(argv) {
   return { file, repo };
 }
 
-// Returns the lines under the first "failure modes" heading, outside code fences.
-function findSection(lines) {
+// Returns the lines under the first "failure modes" heading. Fenced lines become
+// blank, so an example table inside a code fence does not count.
+function findSection(rawLines) {
   let inFence = false;
+  const lines = rawLines.map((line) => {
+    const fence = /^\s*(```|~~~)/.test(line);
+    if (fence) inFence = !inFence;
+    return fence || inFence ? "" : line;
+  });
   let start = -1;
   let level = 0;
   for (let i = 0; i < lines.length; i += 1) {
-    if (/^\s*(```|~~~)/.test(lines[i])) inFence = !inFence;
-    if (inFence) continue;
     const heading = /^(#{1,6})\s+(.*)$/.exec(lines[i]);
     if (!heading) continue;
     if (start === -1 && /failure modes/i.test(heading[2])) {
@@ -73,6 +93,8 @@ function findSection(lines) {
 }
 
 const strip = (text) => text.replace(/[*_`]/g, "").trim();
+// Test names keep underscores (tests/test_sync.py); only bold and code marks go.
+const stripTest = (text) => text.replace(/[*`]/g, "").trim();
 const isStructural = (line) => /^\s*(#{1,6}\s|\|)/.test(line) || LABELS.some((l) => labelMatch(line, l));
 
 function labelMatch(line, label) {
@@ -114,7 +136,7 @@ const cells = (line) =>
 
 function findTable(section) {
   for (let i = 0; i + 1 < section.length; i += 1) {
-    if (!section[i].trim().startsWith("|") || !/^\s*\|?\s*:?-{3,}/.test(section[i + 1])) continue;
+    if (!section[i].includes("|") || !/^\s*\|?\s*:?-{3,}\s*:?\s*\|/.test(section[i + 1])) continue;
     const header = cells(section[i]).map((cell) => strip(cell).toLowerCase());
     const column = (name) => header.indexOf(name);
     const cols = {
@@ -125,7 +147,7 @@ function findTable(section) {
     };
     if (Object.values(cols).some((index) => index === -1)) continue;
     const rows = [];
-    for (let j = i + 2; j < section.length && section[j].trim().startsWith("|"); j += 1) rows.push(cells(section[j]));
+    for (let j = i + 2; j < section.length && section[j].includes("|"); j += 1) rows.push(cells(section[j]));
     return { cols, rows };
   }
   return null;
@@ -136,7 +158,13 @@ function listTestFiles(root) {
   if (testFiles) return testFiles;
   testFiles = [];
   const walk = (dir) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return; // An unreadable folder is skipped, not a failed check.
+    }
+    for (const entry of entries) {
       if (entry.isDirectory()) {
         if (!SKIP_DIRS.has(entry.name)) walk(join(dir, entry.name));
       } else if (TEST_FILE.test(basename(entry.name))) {
@@ -148,9 +176,23 @@ function listTestFiles(root) {
   return testFiles;
 }
 
+function readOrEmpty(file) {
+  try {
+    return readFileSync(file, "utf8");
+  } catch {
+    return "";
+  }
+}
+
 function testExists(token, root) {
+  // A pytest node id: tests/test_sync.py::test_disk_full (or ::Class::test).
+  const [path, ...names] = token.split("::");
+  if (names.length > 0) {
+    const name = names[names.length - 1];
+    return existsSync(join(root, path)) && readOrEmpty(join(root, path)).includes(name);
+  }
   if (token.includes("/") || PATH_LIKE.test(token)) return existsSync(join(root, token));
-  return listTestFiles(root).some((file) => readFileSync(file, "utf8").includes(token));
+  return listTestFiles(root).some((file) => readOrEmpty(file).includes(token));
 }
 
 function checkExpected(name, cell, errors) {
@@ -163,13 +205,13 @@ function checkExpected(name, cell, errors) {
 }
 
 function checkTest(name, cell, repo, errors) {
-  if (!strip(cell)) {
+  if (!stripTest(cell)) {
     errors.push(`${name}: Test is empty`);
     return;
   }
   if (!repo) return;
   const tokens = [...cell.matchAll(/`([^`]+)`/g)].map((match) => match[1].trim());
-  for (const token of tokens.length ? tokens : [strip(cell)]) {
+  for (const token of tokens.length ? tokens : [stripTest(cell)]) {
     if (!testExists(token, repo)) errors.push(`${name}: test "${token}" not found under ${repo}`);
   }
 }

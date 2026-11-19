@@ -94,7 +94,15 @@ Rule in prose: "Never put a home path in docs."
 2. Point: pre-commit for staged `*.md`, plus a CI lint for the whole repo.
 3. Red fixture: `docs/setup.md` with a real home path (the macOS users folder, then a user name). The check exits 1.
 4. Allowed fixture: `~/apps/tool` and a `<you>` placeholder in place of the user name. The check exits 0.
-5. Check: `grep -nE '/(Users|home)/[a-z][a-z0-9_-]+/' $(git diff --cached --name-only -- '*.md')`.
+5. Check (exits 1 on a match, 0 when clean or when no Markdown is staged):
+
+   ```sh
+   files=$(git diff --cached --name-only -- '*.md')
+   [ -z "$files" ] && exit 0
+   ! grep -nE '/(Users|home)/[a-z][a-z0-9_-]+/' $files
+   ```
+
+   `grep` alone exits 0 on a match, so the `!` turns a match into a failure.
    Message: `docs/setup.md:12: home path; write ~/ instead`.
 6. Wire: add it to the pre-commit config and the CI lint job; commit the red fixture once to see it block.
 7. Shrink: the AGENTS.md paragraph becomes `No home paths in docs — enforced by scripts/check-home-paths.sh`.

@@ -121,6 +121,42 @@ describe("pre-register checker", () => {
     expect(run.out).not.toContain("good-task:");
   });
 
+  it("checks every task in the project-audit format (fields with no list dash)", () => {
+    const fields = Object.entries(GOOD_FIELDS).map(([k, v]) => `  **${k}**: ${v}`);
+    const text = `- [ ] Task one\n  **ID**: one\n${fields.join("\n")}\n\n- [ ] Task two\n  **ID**: two\n  **Details**: none.\n`;
+    const run = check(text);
+    expect(run.status, run.out).toBe(1);
+    expect(run.out).toContain("two: Hypothesis: missing");
+    expect(run.out).not.toContain("one:");
+  });
+
+  it("keeps a PR body with a nested checklist as one document", () => {
+    const text = `${body(GOOD_FIELDS)}\n## Checklist\n\n- [x] npm test passes\n  - **Result**: green\n`;
+    const run = check(text);
+    expect(run.status, run.out).toBe(0);
+  });
+
+  it("does not read comparisons, code, or autolinks as placeholders", () => {
+    const run = check(
+      body({
+        ...GOOD_FIELDS,
+        Hypothesis: "p99 < 200 ms and errors > 0.1% after the cache lands.",
+        Measurement: "`rg -c TODO src | wc -l`",
+        Anchor: "<https://doi.org/10.1017/example> (2019)",
+      }),
+    );
+    expect(run.status, run.out).toBe(0);
+    expect(check(body({ ...GOOD_FIELDS, Pivot: "<threshold>" })).out).toContain("Pivot: placeholder text");
+  });
+
+  it("rejects a placeholder Exempt line and a pivot that says 'at all'", () => {
+    const exempt = check("Some text.\n\nExempt: <reason>\n");
+    expect(exempt.status, exempt.out).toBe(1);
+    expect(exempt.out).toContain("Exempt: placeholder text");
+    const vague = check(body({ ...GOOD_FIELDS, Pivot: "if it does not help at all." }));
+    expect(vague.out).toContain("Pivot: no numeric threshold");
+  });
+
   it("reads stdin when the file is -", () => {
     const run = spawnSync(process.execPath, [script, "-"], { input: body(GOOD_FIELDS), encoding: "utf8" });
     expect(run.status, `${run.stdout}${run.stderr}`).toBe(0);

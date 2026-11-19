@@ -73,8 +73,10 @@ With no subagent tool, build normally and run `review-pr` after the fact.
 - The judge checks that every criterion has at least one test.
 - The judge runs the tests itself. It does not trust pasted output.
 - The judge runs `git diff <tests-commit>..HEAD -- <test files>`.
-  The result must be empty, or every change must match an approved dispute.
+  The result must be empty, or every change must be a tester commit for an approved dispute.
 - The judge decides each dispute: approve (the test changes) or reject (the code changes).
+- For an approved dispute, the tester (a fresh subagent) makes the test change in its own
+  commit. The judge then reviews that commit before it can pass the change.
 - The judge writes `judge.md`: PASS or FAIL, plus the list of open defects.
 - Any open defect is FAIL. FAIL blocks the merge.
 

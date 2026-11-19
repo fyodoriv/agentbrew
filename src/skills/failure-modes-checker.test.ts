@@ -144,6 +144,50 @@ describe("check-failure-modes.mjs", () => {
     );
   });
 
+  it("finds underscore paths, pytest node ids, and bats tests", () => {
+    const table = [
+      HEADER,
+      "| Disk full | fill tmp | crash loudly | tests/test_sync.py |",
+      "| Disk full twice | fill tmp | crash loudly | `tests/test_sync.py::test_disk_full` |",
+      "| Network drop | cut net | circuit-break and notify | `network drop fails loudly` |",
+    ].join("\n");
+    withRepo(
+      {
+        "README.md": section({ table }),
+        "tests/test_sync.py": "def test_disk_full():\n    pass\n",
+        "tests/net.bats": '@test "network drop fails loudly" {\n  run true\n}\n',
+      },
+      (root, run) => {
+        const result = run("README.md", "--repo", root);
+        expect(result.stderr).toBe("");
+        expect(result.status).toBe(0);
+      },
+    );
+  });
+
+  it("ignores test names found only in dependency folders", () => {
+    const table = `${HEADER}\n| Dep | x | crash loudly | \`test_only_in_venv\` |`;
+    withRepo(
+      { "README.md": section({ table }), ".venv/lib/tests/test_dep.py": "def test_only_in_venv():\n    pass\n" },
+      (root, run) => {
+        const result = run("README.md", "--repo", root);
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain('test "test_only_in_venv" not found');
+      },
+    );
+  });
+
+  it("ignores a table inside a code fence and accepts one with no leading pipe", () => {
+    const fenced = `\`\`\`markdown\n${HEADER}\n| X | y | crash loudly | t |\n\`\`\``;
+    withRepo({ "README.md": section({ table: fenced }) }, (_root, run) => {
+      expect(run("README.md").stderr).toContain("no table with Mode, Trigger, Expected, and Test columns");
+    });
+    const bare = "Mode | Trigger | Expected | Test\n--- | --- | --- | ---\nX | y | crash loudly | t";
+    withRepo({ "README.md": section({ table: bare }) }, (_root, run) => {
+      expect(run("README.md").status).toBe(0);
+    });
+  });
+
   it("rejects a file with no failure modes section", () => {
     withRepo({ "README.md": "# Tool\n\nNo section.\n" }, (_root, run) => {
       const result = run("README.md");

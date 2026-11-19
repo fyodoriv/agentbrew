@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { baseline } from "./eval-chat-followup-821.mjs";
 
-const model = "31d9857b5705086d352d4d6db04e86c5d0f6a2b5d59a4dc7ce5cdb271ccf9141";
+const model = "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7";
 const runner = new URL("eval-chat-followup-821.mjs", import.meta.url);
 const digest = createHash("sha256").update(readFileSync(runner)).digest("hex");
 
@@ -21,6 +21,7 @@ test("finalizes one private six-case receipt before reporting a score", async (t
   const actions = ["EDIT", "EDIT", "POST", "POST", "HOLD", "EDIT"];
   let lookups = 0;
   const prompts = [];
+  const stages = [];
   const result = await baseline(
     path,
     digest,
@@ -32,6 +33,7 @@ test("finalizes one private six-case receipt before reporting a score", async (t
       prompts.push(prompt);
       return actions[prompts.length - 1];
     },
+    (stage) => stages.push(stage),
   );
   const receipt = JSON.parse(readFileSync(path, "utf8"));
   assert.deepEqual(result, { correct: 5, total: 6 });
@@ -43,7 +45,8 @@ test("finalizes one private six-case receipt before reporting a score", async (t
     actions,
   );
   assert.equal(receipt.runnerDigest, digest);
-  assert.ok(prompts.every((prompt) => !prompt.includes('"expected"') && !prompt.includes("aurora-thread")));
+  assert.ok(prompts.every((prompt) => !prompt.includes('"expected"') && !prompt.includes("observatory-handoff")));
+  assert.deepEqual(stages, ["reserve", "model-before", "decision", "model-after", "receipt"]);
 });
 
 test("invalid decisions keep an incomplete reservation and prevent any retry", async (t) => {

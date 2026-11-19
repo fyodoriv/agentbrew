@@ -3,11 +3,11 @@ import { closeSync, fsyncSync, openSync, readFileSync, writeFileSync } from "nod
 import { request } from "node:http";
 import { fileURLToPath } from "node:url";
 
-const MODEL_DIGEST = "31d9857b5705086d352d4d6db04e86c5d0f6a2b5d59a4dc7ce5cdb271ccf9141";
-const CASES_DIGEST = "ce8183d0cd5ed1b6c38564c7c1d023dd6eba55a7319f3c36ef1c8e20ea6561f6";
+const MODEL_DIGEST = "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7";
+const CASES_DIGEST = "27f3e62c1c74606dbdca3131035ceb3900c9f3bc9058b61cfec28916e4daceba";
 const PROTOCOL_DIGEST = "6aa8a467e6c406f9ff52c3f0bd21c07169428ebb71cf7bc84f5aa46c675ac6f9";
 const METADATA_HELPER_DIGEST = "612adc6581b6d96a09f0cc21fa6a49c1824e8e9e32ae953029b9285bf1fcddf3";
-const CASES_FILE = new URL("chat-followup-cases-821.json", import.meta.url);
+const CASES_FILE = new URL("chat-followup-served-cases-821.json", import.meta.url);
 const PROTOCOL_FILE = new URL("chat-rule-schema-protocol.mjs", import.meta.url);
 const METADATA_HELPER_FILE = new URL("eval-chat-message-rule-821.mjs", import.meta.url);
 const METADATA_URL = "http://127.0.0.1:11434/api/tags";
@@ -45,7 +45,7 @@ async function localTransport(url, options) {
   });
 }
 
-export async function baseline(receiptPath, runnerDigest, readModelDigest, decide) {
+export async function baseline(receiptPath, runnerDigest, readModelDigest, decide, onStage = () => undefined) {
   const casesBytes = readFileSync(CASES_FILE);
   if (
     !/^[a-f0-9]{64}$/.test(runnerDigest) ||
@@ -58,10 +58,13 @@ export async function baseline(receiptPath, runnerDigest, readModelDigest, decid
   }
 
   const cases = JSON.parse(casesBytes);
+  onStage("reserve");
   const receipt = openSync(receiptPath, "wx", 0o600);
   try {
+    onStage("model-before");
     if ((await readModelDigest()) !== MODEL_DIGEST) throw new Error("Model digest changed");
     const records = [];
+    onStage("decision");
     for (const item of cases) {
       const prompt = [
         "You are choosing how to add a follow-up in a chat.",
@@ -72,6 +75,7 @@ export async function baseline(receiptPath, runnerDigest, readModelDigest, decid
       if (!["EDIT", "POST", "HOLD"].includes(actual)) throw new Error("Invalid decision");
       records.push({ id: item.id, expected: item.expected, actual });
     }
+    onStage("model-after");
     if ((await readModelDigest()) !== MODEL_DIGEST) throw new Error("Model digest changed");
     const correct = records.filter(({ actual, expected }) => actual === expected).length;
     const result = {
@@ -84,6 +88,7 @@ export async function baseline(receiptPath, runnerDigest, readModelDigest, decid
       correct,
       records,
     };
+    onStage("receipt");
     writeFileSync(receipt, `${JSON.stringify(result)}\n`);
     fsyncSync(receipt);
     return { correct, total: records.length };
@@ -93,6 +98,7 @@ export async function baseline(receiptPath, runnerDigest, readModelDigest, decid
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  let stage = "inputs";
   try {
     const [receipt, runnerDigest] = process.argv.slice(2);
     if (process.argv.length !== 4 || !receipt) throw new Error("Expected receipt and runner digest");
@@ -101,10 +107,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       runnerDigest,
       async () => (await import(METADATA_HELPER_FILE.href)).modelDigest(localTransport),
       async (prompt) => (await import(PROTOCOL_FILE.href)).requestDecision(prompt, localTransport),
+      (current) => {
+        stage = current;
+      },
     );
     console.log(JSON.stringify(result));
   } catch {
-    console.error("Chat follow-up baseline unavailable. Keep its receipt.");
+    console.error(`Chat follow-up baseline unavailable at ${stage}. Keep its receipt.`);
     process.exitCode = 1;
   }
 }

@@ -5,7 +5,7 @@ local service uses a different model digest from the manifest on disk.
 This separate cohort checks the model the service actually presents and
 uses six other cases selected by an independent reviewer.
 
-- **Hypothesis**: In the admitted six-case cohort, the no-rule baseline makes at least one error. A separately registered rule can reach 6 of 6, improve on the baseline by at least one decision, and respect both cases where the user must approve a change first.
+- **Hypothesis**: In the admitted six-case cohort, the no-rule baseline makes at least one error. A separately registered rule can reach 6 of 6, improve on the baseline by at least one decision, and respect both cases where the allowed action is HOLD.
 - **Measurement**: Freeze the fixture, both protocol dependencies, runner, and the digest from the loopback service before requesting a decision. Reserve one unused private receipt. Request each of six actions in fixture order with the same no-rule prompt. Check the model digest immediately before and after generation.
 - **Success**: Six valid scores and zero model drift qualify the baseline. A result below 6 of 6 permits one registered candidate. The candidate must reach 6 of 6 and improve by at least one.
 - **Pivot**: A baseline of 6 of 6 permits no candidate because there is no gain to measure. Any incomplete or invalid run ends this cohort. Preserve the receipt. Do not retry this cohort or either earlier cohort. Any candidate error rejects the rule.
@@ -20,3 +20,18 @@ only the enum action, case ID and digests on success. Record only a fixed
 failure stage when a request cannot be accepted. No real chat is read or sent.
 
 The frozen independent fixture has SHA-256 27f3e62c1c74606dbdca3131035ceb3900c9f3bc9058b61cfec28916e4daceba.
+
+## Baseline invocation
+
+Use a new predesignated file in a private output folder and leave the other
+receipts in place. The rule is absent from the prompt.
+
+```sh
+HEAVY_RUN_EXCLUSIVE_WAIT=2400 heavy-run --exclusive gtimeout 390 node \
+  scripts/eval-chat-followup-821.mjs "$CHAT_FOLLOWUP_SERVED_RECEIPT" \
+  105c568b5da28f1fe751c0877930631d85236633b104d5ba8eed8e42baabef1d
+```
+
+The frozen runner reports only one of six failure stages. It retains the
+exclusive receipt after any admitted abort. The prior code remains available
+at the recorded first-cohort commit.

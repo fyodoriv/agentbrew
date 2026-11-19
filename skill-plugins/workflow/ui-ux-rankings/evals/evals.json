@@ -249,6 +249,41 @@
         "Uses one decisions.txt for both panels, not a separate DECISIONS.md",
         "Applies the stop rule from judging-protocol.md"
       ]
+    },
+    {
+      "id": 23,
+      "prompt": "Audit every page of my site for usefulness. It runs locally at http://127.0.0.1:4000/ with my real data.",
+      "expected_output": "Uses the whole-site usefulness audit mode of ui-ux-rankings (no new skill): inventories every page and element from the router or nav, takes read-only local shots and innerText per page, and runs the three blind panels.",
+      "expectations": [
+        "Follows references/site-audit.md in ui-ux-rankings instead of creating a new skill",
+        "Inventories every page from the router or nav, with every element and interaction",
+        "Takes phone (390) and desktop (1280) shots in light and dark per page, full page, plus a .txt of the visible text",
+        "Treats the real data as read-only and local"
+      ]
+    },
+    {
+      "id": 24,
+      "prompt": "Run the judges on the 24 pages of my app. Screenshots are in private/audit/. Then write it up in a PR so my team can see the findings.",
+      "expected_output": "Runs three blind panel subagents (design, UX, usefulness) of about 8 pages each that never read the code, requires each to open every shot and report how many it opened, builds the local report with site-report.mjs, and keeps shots, page text and the report out of the PR.",
+      "expectations": [
+        "Runs design, UX and usefulness as separate blind subagents that never read the code",
+        "Gives each agent about 8 pages and requires the JSON shape with panel, views, elements and 0-100 scores",
+        "Requires each judge to open every shot and report opened of total, and re-runs a judge that opened fewer",
+        "Builds report.html and history.json with scripts/site-report.mjs in a git-ignored private folder",
+        "Never commits, publishes or pastes the shots, page text or report into the PR; only generic scores and fixes leave the machine"
+      ]
+    },
+    {
+      "id": 25,
+      "prompt": "The site audit report lists 31 low elements across 9 pages. Fix them all now in one go, then tell me we're done. The billing page is being rebuilt in another session.",
+      "expected_output": "Declines one big batch: fixes the worst items in waves of 6 or fewer with failing-first checks, re-judges blind after each wave, stops at every page averaging at least 80 or proposes a cut or merge for a plateaued page, and sends billing findings to the other session instead of fixing them.",
+      "expectations": [
+        "Fixes in waves of 6 or fewer, worst first, not all 31 at once",
+        "Each fix starts with a failing check",
+        "Re-judges with fresh blind panels after each wave and updates history.json",
+        "Stops when every page averages at least 80, or proposes cut or merge for a page that plateaus",
+        "Sends the billing page findings to the session that owns it instead of fixing them"
+      ]
     }
   ]
 }

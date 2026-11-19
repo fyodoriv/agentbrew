@@ -31,8 +31,6 @@ Install once: `agentbrew install run-goal`. Then type a goal in Claude Code:
 The second example is a bug fix, the most common kind of goal: it names the
 end state, asks for a failing test first, and approves the PR. The third is a
 web app feature: what users can do, what comes with it (tests, docs), a PR.
-`/goal deliver` alone takes this session's work to merged, live, and proved,
-wherever you are: [shorthand goals](references/goal-intake.md#shorthand-goals).
 
 What you will see:
 
@@ -42,8 +40,8 @@ What you will see:
 4. It works alone and prints a `Goal check` line per criterion.
 5. It ends with a published Artifact report, a retro, and updates to the skills it used.
 
-Tips: name an end state, not an activity. Add "and ship it" if a PR is
-approved. A filled-in example: [references/goal-contract.md](references/goal-contract.md).
+Tips: name an end state, not an activity. Add "and ship it" if a PR is approved. A filled-in example: [references/goal-contract.md](references/goal-contract.md).
+`/goal deliver` alone takes this session's work to merged, live, and proved, wherever you are: [shorthand goals](references/goal-intake.md#shorthand-goals).
 
 ## Order of work
 

@@ -26,7 +26,7 @@ describe("run-goal /goal deliver shorthand", () => {
     expect(section).toMatch(/fresh-context reviewer/);
     expect(section).toMatch(/cited approval/);
     expect(section).toMatch(/`agentbrew\s+sync`/);
-    expect(section).toMatch(/byte-equal to the merged source/);
+    expect(section).toMatch(/byte-equal to the\s+merged source/);
     expect(section).toMatch(/baseline taken before the merge/);
     expect(section).toMatch(/before\/after table/);
     expect(section).toMatch(/never merges, closes, or\s+force-pushes work this session did not create/);

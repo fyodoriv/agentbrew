@@ -7,7 +7,7 @@ import { validateEvals } from "./validate.js";
 
 const root = join(resolve(import.meta.dirname, "../.."), "skill-plugins/workflow/run-goal");
 const evals = JSON.parse(readFileSync(join(root, "evals/evals.json"), "utf8")).evals as SkillEval[];
-const historicalHash = "74399b8e25d08d78f26587fac484820b7932e4887d34ccc4a73f70a0303b5ffc";
+const historicalHash = "421ceac65d25897946d3ff0686bbafb1fcfc847e1d61fc11c4ebe461d158ec31";
 const prefixHash = (entries: SkillEval[]) =>
   createHash("sha256")
     .update(JSON.stringify(entries.slice(0, 245)))

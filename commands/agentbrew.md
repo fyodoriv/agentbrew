@@ -34,6 +34,8 @@ When the user asks what agentbrew sends, or wants telemetry on or off ("does age
 
 When the user asks how much agentbrew helps ("how much time does agentbrew save me?", "is agentbrew worth it?"): run `agentbrew metrics --days 30` and show the "Estimated time saved" line. Say that it is an estimate (3 seconds per detected agent for each sync, 5 seconds per drift item a repair fixed), modelled with the Keystroke-Level Model and not timed with people.
 
+When the user wants Claude to catch incomplete task entries during an edit, use the [task edit hook](https://github.com/fyodoriv/agentbrew/blob/main/docs/hook-protocol.md#check-task-files-after-an-edit). Preview the opted-in hook with `agentbrew sync --dry-run`, then apply the approved setup with `agentbrew sync`.
+
 If agentbrew fails, surprises you, or could clearly work better, offer once to report it (CONTRIBUTING.md "Report problems and ideas"). Show the user the exact text, and post only after they say yes.
 
 

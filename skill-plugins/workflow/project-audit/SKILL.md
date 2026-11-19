@@ -1,18 +1,21 @@
 ---
 name: project-audit
 description: >
-  Deep audit of any project across four lenses: no-brainer fixes, stability gaps, dependency
-  modernization, and documentation drift. Produces actionable tasks in TASKS.md.
+  Deep audit of any project across five lenses: no-brainer fixes, stability gaps, dependency
+  modernization, documentation drift, and quality gaps (untested code, silent operations,
+  untested failure behavior, unmeasured tasks). Produces actionable tasks in TASKS.md.
   Auto-detects repo tooling and adapts to any language/framework. Use when asked to "find work",
-  "audit the project", "what should we improve", or "look for tasks". Works in any repo.
+  "audit the project", "what should we improve", or "look for tasks", and when the task queue
+  is empty. Works in any repo.
   Don't use for implementing fixes (use writing-plans), reviewing a specific PR (use requesting-code-review),
   or evaluating architecture direction and strategic fit (use strategic-review).
 ---
 
 ## When to invoke
 
-**Yes:** find work / audit the project / what should we improve; whole-repo sweeps across
-no-brainer, stability, dependency, and documentation lenses unless scope is narrowed.
+**Yes:** find work / audit the project / what should we improve / the queue is empty; whole-repo
+sweeps across no-brainer, stability, dependency, documentation, and quality-gap lenses unless
+scope is narrowed. When the queue is empty, file quality gaps before feature ideas.
 
 **No:** implementing fixes (`writing-plans`); reviewing a single PR (`requesting-code-review`); strategic
 direction / pivot analysis (`strategic-review`); visual-only multi-page design audit
@@ -51,7 +54,7 @@ This skill audits **code quality and correctness across the whole repo** — bug
 - Skip the unrequested sweep steps entirely
 - Mention at the top of your output which lenses you're running
 
-Default (no restriction): run all four lenses (Steps 2–5).
+Default (no restriction): run all five lenses (Steps 2–5b).
 
 ## Scope Calibration
 

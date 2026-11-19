@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "Audit this repo and find the highest-value work we should queue next.",
-      "expected_output": "A whole-repo audit across the four lenses that files complete TASKS.md entries rather than implementing fixes.",
+      "expected_output": "A whole-repo audit across the five lenses that files complete TASKS.md entries rather than implementing fixes.",
       "expectations": [
         "Reads TASKS.md and VISION.md before auditing to avoid duplicate or off-strategy findings",
         "Runs or records detected health checks before treating findings as actionable",
@@ -73,7 +73,7 @@
     {
       "id": 7,
       "prompt": "audit a TypeScript Node.js project to find bugs, stale docs, and missing tests",
-      "expected_output": "A comprehensive audit report with four lenses (no-brainer fixes, stability gaps, dependency modernization, documentation drift) producing actionable TASKS.md entries.",
+      "expected_output": "A comprehensive audit report with five lenses (no-brainer fixes, stability gaps, dependency modernization, documentation drift, quality gaps) producing actionable TASKS.md entries.",
       "expectations": [
         "Runs git-diagnose-codebase first to identify high-risk files, then focuses audit on those files",
         "Executes all health checks (typecheck, lint, tests, security audit) and fixes failures before continuing",
@@ -134,6 +134,18 @@
         "Skips documentation and dependency modernization sweeps",
         "Still reads TASKS.md/VISION.md and runs health checks",
         "Does not drift into strategic-review or PR-diff review"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "The TASKS.md queue is empty. Audit the repo and find the next work. It has a nightly sync job with no failure handling notes and several recently changed modules with no tests. I also have a few feature ideas.",
+      "expected_output": "Runs the quality-gaps lens first and files the gaps as measured tasks above any feature idea.",
+      "expectations": [
+        "Runs the quality-gaps lens because the queue is empty",
+        "Files a test-gap task for the recently changed modules that no test imports",
+        "Files a stability task for the nightly sync job that points at the failure-modes skill",
+        "Gives every filed task Hypothesis, Measurement, Success, Pivot, and Anchor",
+        "Puts the feature ideas below the quality gaps (P2 or P3) unless the user asked for features"
       ]
     }
   ]

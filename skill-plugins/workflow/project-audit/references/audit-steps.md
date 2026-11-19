@@ -256,6 +256,29 @@ Check that all docs tell the same story:
 - **Contradictions**: flag places where one doc says X and another says Y
 - **Missing cross-links**: AGENTS.md should link to VISION.md and vice versa. User stories should link to relevant code.
 
+## Step 5b — Sweep: Quality gaps
+
+"What lets a bug ship without anyone noticing?" Adapted from minsky's host checklist: when
+its queue was empty, the runner closed one of these gaps before it added a feature.
+
+When the queue has no open P0 or P1 task, run this lens first. File its gaps above any
+feature idea. A feature idea from this audit goes in P2 or P3 unless the user asked for features.
+
+File one task per gap kind per module:
+
+1. **Untested code.** A source file or exported function changed in the last 90 days, and no
+   test imports it. Start from `git log --since=90.days --name-only --format= -- <src-dir> | sort -u`,
+   then look for the matching test. Tag `test-gap`.
+2. **Silent operations.** A top-level operation (CLI command, request handler, scheduled job)
+   that emits no event, span, or structured log line with its name, outcome (`ok`, `error`,
+   or `degraded`), and duration. Tag `observability`.
+3. **Untested failure behavior.** A component that does I/O, runs unattended, calls a network
+   service, an LLM, or an external CLI, or holds state, and has no `## Failure modes` table or
+   no fault-injection test. Point the task at the `failure-modes` skill. Tag `stability`.
+4. **Unmeasured tasks.** An open task block with no Hypothesis, Measurement, Success, Pivot, or
+   Anchor, or with a manual measurement. Point the task at the `pre-register` skill and its
+   checker. Tag `pre-registration`.
+
 ## Step 6 — Write Tasks
 
 For every finding, write a task to `TASKS.md` under the appropriate priority heading. Match the repo's existing task format exactly — read the existing entries and mirror them.
@@ -265,11 +288,19 @@ For every finding, write a task to `TASKS.md` under the appropriate priority hea
 ```markdown
 - [ ] Concise title — one-line summary
   **ID**: kebab-case-id
-  **Tags**: stability | no-brainer-fix | resilience | resource-leak | security | code-quality
+  **Tags**: stability | no-brainer-fix | resilience | resource-leak | security | code-quality | test-gap | observability | pre-registration
   **Details**: 2-3 sentences. What exists today (file path + line number). What's missing or broken. How to fix it, including which existing pattern to follow.
   **Files**: `path/to/file.ts`
   **Acceptance**: Testable criterion. `<exact test command>` and `<exact typecheck command>` must pass.
+  **Hypothesis**: Which observable behavior improves, by how much, and why.
+  **Measurement**: `<exact runnable command that reads real output>`
+  **Success**: Numeric threshold to keep the change.
+  **Pivot**: Numeric threshold below which the approach is abandoned.
+  **Anchor**: Primary source for the metric (author, year, title).
 ```
+
+Every task carries the five fields from Hypothesis to Anchor, at every priority. Check a task with
+the `pre-register` skill's checker when it is installed.
 
 **Multi-step findings** — when a fix requires distinct sequential steps (e.g., add timeout to 5 call sites, or move several call sites from the old pattern to the new), include a `**Plan**:` section:
 

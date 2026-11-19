@@ -330,89 +330,17 @@
   - **Field review**: the exact first seven-day replay is complete and independently checked. Every observed loop syntax row paired with a timed tool call. The old report label was absent. The current data leaves background duration, unknown execution mode, timeout cause, and comparison with the prior measurement unresolved. The aggregate report stays private.
   - **Blocked**: needs-comparable-field-evidence — register a comparable polling measurement and timeout baseline before applying the original thresholds. The existing syntax and tool-call evidence leaves Success and Pivot undecided.
 
-- [ ] Agents pre-register every non-trivial change and grade it afterwards
-  - **ID**: pre-register-skill
-  - **Tags**: skills, quality, from-minsky
-  - **Details**: The pre-registration iron rule is prose only. Minsky's runner enforced it with `experiment-validate`, `check-pr-self-grade` and four rule-9 lints (measurement reads real output, pivot differs from success, anchor is a primary source, no vanity metric). Add a `pre-register` workflow skill: write the five fields, take a baseline, commit the prediction, then write Predicted / Observed / Match / Lesson. Ship a dependency-free checker for PR bodies and task blocks.
-  - **Files**: `skill-plugins/workflow/pre-register/` (SKILL.md, `scripts/check-preregistration.mjs`, evals), its test, `src/catalog.yaml`, `skill-plugins/workflow/SOURCES.md`.
-  - **Acceptance**: the checker exits 1 on a manual measurement, a pivot equal to success, an anchor with no year or link, a vanity metric, and a missing self-grade field when asked for one; it exits 0 on a good PR body.
-  - **Hypothesis**: weak pre-registrations (manual measurement, no margin, no primary anchor) that reach a PR go from unchecked to caught before review.
-  - **Measurement**: `npx vitest run src/skills/pre-register-checker.test.ts`.
-  - **Success**: every bad fixture exits 1 naming its field, and the good fixture exits 0.
-  - **Pivot**: the checker flags more than 2 of the last 10 merged agentbrew PR bodies that a reader judges fine.
+- [ ] PR bodies and new task blocks pass the pre-register checker in CI
+  - **ID**: preregistration-ci-gate
+  - **Tags**: quality, ci, pre-registration, from-minsky
+  - **Details**: The new `pre-register` skill ships `scripts/check-preregistration.mjs`, but nothing runs it. On 2026-11-19 it reported all five fields missing in the bodies of the last five merged agentbrew PRs, although AGENTS.md Delivery asks for a hypothesis block, and it reported 58 findings across existing TASKS.md blocks (mostly a Measurement with no backticked command). Run it in CI on the PR body (an `Exempt: <gate>` line passes) and on TASKS.md blocks that the PR adds or changes, as a ratchet that leaves untouched blocks alone.
+  - **Files**: the PR-body check workflow or `scripts/check-pr-vision-trace.mjs`, `scripts/verify-changed.sh`, a ratchet helper and its test, AGENTS.md Delivery.
+  - **Acceptance**: a PR body with no hypothesis block and no `Exempt:` line fails the check; a PR that adds a task block with a manual measurement fails; an untouched old block never fails.
+  - **Hypothesis**: merged PRs with no pre-registration go from 5 of the last 5 to 0 of the next 10.
+  - **Measurement**: `for n in $(gh pr list --state merged --limit 10 --json number --jq '.[].number'); do gh pr view $n --json body --jq .body | node skill-plugins/workflow/pre-register/scripts/check-preregistration.mjs - >/dev/null || echo "fail $n"; done`
+  - **Success**: 0 failing bodies among the next 10 merged PRs.
+  - **Pivot**: more than 2 false blocks in the next 20 PRs.
   - **Anchor**: Munafò et al. 2017 (A manifesto for reproducible science, Nature Human Behaviour).
-
-- [ ] Code, tests and the grade come from separate agent contexts
-  - **ID**: split-roles-skill
-  - **Tags**: skills, quality, testing, from-minsky
-  - **Details**: Minsky's developer, QA and reviewer personas split one change across three contexts: the QA persona wrote tests from the spec and could not edit production code, and the reviewer halted the pipeline on any open defect. Today a fresh reviewer runs only after the fact, so tests that mirror the implementation pass review. Add a `split-roles` workflow skill: spec first, a fresh tester writes failing tests from the spec only, the builder may not weaken them, and a fresh judge blocks the merge on any open defect.
-  - **Files**: `skill-plugins/workflow/split-roles/` (SKILL.md, evals), `src/catalog.yaml`, `skill-plugins/workflow/SOURCES.md`.
-  - **Acceptance**: an eval where the builder wants to change a failing assertion makes the agent record a dispute for the judge instead of editing the test.
-  - **Hypothesis**: changes whose tests were written by the same context as the code drop from the default to the exception when the skill is used.
-  - **Measurement**: `npx agentbrew eval split-roles` pass rate on its evals.
-  - **Success**: all split-roles evals pass with the skill and at least 1 fails without it.
-  - **Pivot**: no eval separates with-skill from without-skill runs.
-  - **Anchor**: Myers 1979 (The Art of Software Testing, a programmer should avoid testing their own program).
-
-- [ ] New components ship with a tested failure-mode table
-  - **ID**: failure-modes-skill
-  - **Tags**: skills, stability, testing, from-minsky
-  - **Details**: Minsky's chaos rule (vision #7) made every component carry a failure-mode table: steady state, blast radius, escape hatch, and one row per fault with the expected behavior (crash loudly, circuit-break and notify, or degrade) and the test that reproduces it. The deep harvest kept only "no silent retries" because the minsky scripts linted minsky's own layout, but the method fits every app. Add a `failure-modes` workflow skill with a checker that verifies the table and that each named test exists.
-  - **Files**: `skill-plugins/workflow/failure-modes/` (SKILL.md, `scripts/check-failure-modes.mjs`, evals), its test, `src/catalog.yaml`, `skill-plugins/workflow/SOURCES.md`, `docs/research/minsky-deep-harvest.md`.
-  - **Acceptance**: the checker exits 1 on a missing escape hatch, an expected behavior of "retry silently", and a row whose test is not in the repo; it exits 0 on a complete table.
-  - **Hypothesis**: unattended or I/O components that ship with no tested failure behavior drop from common to rare in repos that install the skill.
-  - **Measurement**: `npx vitest run src/skills/failure-modes-checker.test.ts`.
-  - **Success**: every bad fixture exits 1 naming its problem, and the good fixture exits 0.
-  - **Pivot**: the table takes more than 20 minutes for a typical component in 3 real uses.
-  - **Anchor**: Basiri et al. 2016 (Chaos Engineering, IEEE Software).
-
-- [ ] A broken prose rule becomes a check instead of more prose
-  - **ID**: rule-to-lint-skill
-  - **Tags**: skills, rules, context-budget, from-minsky
-  - **Details**: Minsky rule #10 said every rule is a CI lint, not a hope, and no LLM is the only merge gate. Our shared rules are long and always loaded, and each rule an agent breaks tends to get another paragraph. Add a `rule-to-lint` workflow skill: decide if a script can judge the rule, pick the earliest enforcement point, write a failing fixture from a real violation plus an allowed fixture, wire the check, then shrink the prose to one line that names the check.
-  - **Files**: `skill-plugins/workflow/rule-to-lint/` (SKILL.md, evals), `src/catalog.yaml`, `skill-plugins/workflow/SOURCES.md`.
-  - **Acceptance**: an eval with a judgment-only rule keeps it as prose; an eval with a decidable rule ends with a red-then-green fixture and a one-line pointer.
-  - **Hypothesis**: rules that move from prose to a check stop being broken and stop costing always-loaded context.
-  - **Measurement**: `npx agentbrew eval rule-to-lint` pass rate on its evals.
-  - **Success**: all rule-to-lint evals pass with the skill and at least 1 fails without it.
-  - **Pivot**: no eval separates with-skill from without-skill runs.
-  - **Anchor**: Bessey et al. 2010 (A few billion lines of code later, Communications of the ACM).
-
-- [ ] project-audit finds quality gaps when the queue is empty
-  - **ID**: project-audit-quality-gaps
-  - **Tags**: skills, audit, from-minsky
-  - **Details**: Minsky's host checklist told the runner what to do when a queue emptied: close a quality gap, not add a feature. Its gaps were code without tests, operations without telemetry, unattended components without a failure-mode table, and tasks without the pre-registration fields. project-audit's lenses cover none of them. Add a quality-gaps lens that files one task per gap.
-  - **Files**: `skill-plugins/workflow/project-audit/SKILL.md` and its evals.
-  - **Acceptance**: an eval on a repo with untested code and an unattended job without a failure table files both gaps as tasks before any feature idea.
-  - **Hypothesis**: empty-queue audits file quality gaps before new features.
-  - **Measurement**: `npx agentbrew eval project-audit` pass rate on its evals.
-  - **Success**: the new eval passes with the skill and fails without the lens.
-  - **Pivot**: the lens files more than 30% duplicate or no-value tasks in 3 real audits.
-  - **Anchor**: Cunningham 1992 (The WyCash portfolio management system, technical debt).
-
-- [ ] Long work slices get split before they stall
-  - **ID**: commit-or-split-timebox
-  - **Tags**: skills, throughput, from-minsky
-  - **Details**: In minsky's overnight runs, telling workers to commit a green step within 15 minutes or split the slice raised throughput. iterate and grind have no such timebox, so a stuck slice can burn an hour with nothing committed. Add the rule to both skills.
-  - **Files**: `skill-plugins/workflow/iterate/SKILL.md`, `skill-plugins/workflow/grind/SKILL.md`, and their evals.
-  - **Acceptance**: an eval where a slice is still red after 15 minutes makes the agent split it and commit the smaller green part.
-  - **Hypothesis**: slices that run past 30 minutes with no commit drop from common to rare in grind runs.
-  - **Measurement**: `npx agentbrew eval iterate` and `npx agentbrew eval grind` pass rates.
-  - **Success**: the new evals pass with the skill text and fail without it.
-  - **Pivot**: the split rule creates more broken intermediate commits than it saves in 3 real runs.
-  - **Anchor**: Beck 2000 (Extreme Programming Explained, small releases and continuous integration).
-
-- [ ] New projects emit one event per operation from day one
-  - **ID**: new-project-telemetry-per-operation
-  - **Tags**: skills, observability, new-project, from-minsky
-  - **Details**: Minsky's OTEL rule (vision #4) made every top-level operation emit one span with its name, outcome (ok, error, or degraded), duration, and an input shape or hash with no personal data. Projects started with new-project get metrics but no rule for per-operation events, so failures stay silent until a user reports them. Add the rule to new-project's owner practices and scaffold guidance.
-  - **Files**: `skill-plugins/workflow/new-project/` (SKILL.md or references), its evals.
-  - **Acceptance**: an eval that scaffolds a tool makes the agent add per-operation events with outcome and duration and no personal data.
-  - **Hypothesis**: new projects start with an event per operation instead of adding telemetry after the first silent failure.
-  - **Measurement**: `npx agentbrew eval new-project` pass rate on its evals.
-  - **Success**: the new eval passes with the skill and fails without the rule.
-  - **Pivot**: the rule adds more than 30 minutes to a new-project run.
-  - **Anchor**: Sigelman et al. 2010 (Dapper, a large-scale distributed systems tracing infrastructure).
 
 ## P2
 

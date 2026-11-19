@@ -382,11 +382,11 @@ skills:
     recommended: false
 
   - name: code-smells-aware
-    description: "Write TS/React code that passes the code-smells static-analysis tool's 50+ audits across 8 categories (Component Health, Render Performance, Coupling, Type Safety, Security & Dependencies, Accessibility, Test Quality, Maintainability). Inlines audit thresholds with research-backed rationale and the verify command (`npx code-smells`). Auto-detects TS/React applicability — non-JS repos skip silently. Don't use for non-JS repos, pure styling work (use fix-styles), or PR review (use review)."
-    source: fyodoriv/code-smells
+    description: "Write TS/React code that passes the code-smells static-analysis tool's 50+ audits across 8 categories (Component Health, Render Performance, Coupling, Type Safety, Security & Dependencies, Accessibility, Test Quality, Maintainability). Inlines audit thresholds with research-backed rationale and the verify command (`npx code-smells@0.2.11`). Auto-detects TS/React applicability — non-JS repos skip silently. Don't use for non-JS repos, pure styling work (use ui-ux-rankings), or PR review (use requesting-code-review)."
+    source: fyodoriv/agentbrew
     category: quality
     recommended: true
-    rationale: "Every TS/React change risks regressing one of 50+ research-backed audits (LOC/function, cognitive complexity, hook overload, inline JSX props, fan-out coupling, type coverage, a11y, testing-library patterns). Inlining the thresholds plus a one-command verify gate (`npx code-smells`) means agents catch their own regressions before commit instead of waiting for CI or a reviewer."
+    rationale: "Every TS/React change risks regressing one of 50+ research-backed audits (LOC/function, cognitive complexity, hook overload, inline JSX props, fan-out coupling, type coverage, a11y, testing-library patterns). Inlining the thresholds plus a one-command verify gate (`npx code-smells@0.2.11`) means agents catch their own regressions before commit instead of waiting for CI or a reviewer."
 
   - name: actionbook
     description: "Pre-verified browser action manuals with DOM selectors — 10x faster site automation. Complements agent-browser with per-site knowledge."
@@ -2187,6 +2187,7 @@ rules:
     rationale: "Agents posting as the user without approval causes real confusion and real harm. Approval must be per-action, not per-session, and never carries over between sessions."
     content: |
       No public posts/comments/reviews as the user without per-action approval; `gh pr create`/`gh pr edit` require it, except `/ship-it` for approved tooling/oncall delivery. Approved PRs need a why-needed rationale and `agent-attribution-footer`.
+      Request only named reviewers. Use the approved delivery workflow to check automatic review assignments before opening a non-draft PR or marking one ready. Keep the PR in draft if a team could receive a request or the rules are unclear. Preserve existing review requests and requirements.
 
   - name: load-project-context
     description: "On entering any repo, scan for and load canonical project docs (vision, architecture, roadmap, user stories, competitors) into working context."

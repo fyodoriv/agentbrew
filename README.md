@@ -237,6 +237,8 @@ agentbrew skills coverage --builtins      # require in-repo skill eval coverage
 agentbrew skills validate                 # check SKILL.md frontmatter and body (exit 1 on errors)
 ```
 
+If a catalog install reports that setup is missing, it exits with status 1. Run `agentbrew init` before you retry. If a rule install reports that shared rules are missing, run `agentbrew rules init` first.
+
 **A removed MCP server stays removed.** `agentbrew remove <server>` records the name in `declinedMcpServers` in `state.yaml`. The recommended set and project Agentfiles (a repo's `Agentfile.yaml`, applied when you sync from that repo) skip it. Your global Agentfile, an explicit `--agentfile`, or `agentbrew install <server>` adds it back.
 
 `remove` records the name only when the server is in agentbrew's registry; a server that is only in an agent config is not recorded. So remove it from that config, or `agentbrew install` it and then `agentbrew remove` it.

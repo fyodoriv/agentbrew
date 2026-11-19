@@ -1237,6 +1237,24 @@ describe("installSkill — state tracking for new source", () => {
   });
 });
 
+describe("catalog install without state", () => {
+  it.each([false, true])("fails before catalog reads or writes (dry run: %s)", async (dryRun) => {
+    mockLoadState.mockReturnValue(undefined);
+    const previousExitCode = process.exitCode;
+    process.exitCode = 0;
+    try {
+      await install("conventional-commits", { dryRun });
+      expect(process.exitCode).toBe(1);
+      expect(mockLoadCatalog).not.toHaveBeenCalled();
+      expect(mockSaveState).not.toHaveBeenCalled();
+      const { saveSharedRules } = await import("../sync/rules-sync.js");
+      expect(saveSharedRules).not.toHaveBeenCalled();
+    } finally {
+      process.exitCode = previousExitCode;
+    }
+  });
+});
+
 // ── install — not-found suggestion paths ────────────────────────────────────
 
 describe("install — not-found fallback messages", () => {
@@ -2221,19 +2239,21 @@ describe("concurrent installs — parallel Promise.all", () => {
 // ── installRule — no shared-rules.md (lines 349-351) ────────────────────────
 
 describe("installRule — no shared-rules.md path", () => {
-  it("shows raw rule content and instructions when no shared-rules.md exists", async () => {
+  it("fails with setup instructions when no shared-rules.md exists", async () => {
     mockLoadState.mockReturnValue(makeState());
-    const { loadSharedRules } = await import("../sync/rules-sync.js");
+    const { loadSharedRules, saveSharedRules } = await import("../sync/rules-sync.js");
     vi.mocked(loadSharedRules).mockReturnValue(undefined);
-    await install("conventional-commits");
-    const logs = [
-      ...(console.log as ReturnType<typeof vi.fn>).mock.calls,
-      ...(console.error as ReturnType<typeof vi.fn>).mock.calls,
-    ]
-      .flat()
-      .join(" ");
-    expect(logs).toContain("No shared rules file found");
-    expect(logs).toContain("agentbrew rules init");
+    const previousExitCode = process.exitCode;
+    process.exitCode = 0;
+    try {
+      await install("conventional-commits");
+      expect(process.exitCode).toBe(1);
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("No shared rules file found"));
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("agentbrew rules init"));
+      expect(saveSharedRules).not.toHaveBeenCalled();
+    } finally {
+      process.exitCode = previousExitCode;
+    }
   });
 
   it("adds rule separator and content when shared-rules.md exists but rule is absent", async () => {

@@ -205,6 +205,7 @@ perf-gate node scripts/perf-gate.mjs
 typecheck npx tsc --noEmit
 biome npx biome check src scripts real-e2e --error-on-warnings
 lint-security bash scripts/lint-security.sh
+lint-vitest-timeouts node scripts/check-vitest-timeouts.mjs
 leak-audit npx tsx src/cli.ts plugin leak-audit
 lint-artifacts bash scripts/lint-repo-artifacts.sh
 hook-fixtures bash scripts/run-hook-fixtures.sh

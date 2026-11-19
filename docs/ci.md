@@ -89,18 +89,54 @@ Re-measure after a lockfile or workflow change; drop a cache whose warm median i
 A flaky gate trains people to ignore it. Detect flakes from run history, not
 by feel.
 
-- Read the last 100 runs of a workflow. Find same-SHA pairs where a job failed,
-  then passed.
+- Read up to 100 completed CI runs. Compare repeated attempts of the same run,
+  using the same named job and source SHA. In each job's history, compare
+  consecutive observations where both results are failures or successes.
+  Cancelled or ambiguous observations break the pair.
 - Report a job when its flake rate is at least 10% over at least 5 same-SHA
   pairs. 10% is the empirical mark where a team learns to ignore a gate
   (Memon et al., 2017; Forsgren, Humble, Kim, *Accelerate*, 2018). Under 5
   pairs, a high rate is noise.
 - Keep both numbers as named constants so a test can pin them.
-- Run the detector as a non-blocking job. A detector that fails the build on
-  every hit becomes a flaky gate itself.
+- Run **CI flake report** from GitHub Actions or use
+  `node scripts/gh-actions-flake-tracker.mjs --repo OWNER/REPO`. The report
+  shows the sample size and each job's denominator. `eligible: false` means
+  the sample is too small. Missing attempt history gives an unavailable
+  result. The manual workflow reads Actions metadata outside the merge gate.
 - For each hit, write a task block with the fix hypothesis. If the root cause
   takes more than a day, downgrade the job to non-blocking and file a
   follow-up.
+
+## Test timeout check
+
+The gate runs `node scripts/check-vitest-timeouts.mjs` against the
+`origin/main` merge base. Pass a different base ref for another branch.
+Use a named constant for a new numeric timeout in a Vitest `it` or `test`
+call. The check compares deadline values within changed Git hunks and their
+enclosing suites. It also catches a test that becomes a Vitest case after
+an import change. It keeps established deadlines, Git-detected file renames,
+and global defaults.
+Its scope is ordinary source test cases. Shell, subprocess, polling, fixture
+and separately scheduled tests retain their own timeout controls.
+
+**Hypothesis.** A syntax-based check can flag new inline deadlines in Vitest
+test calls while preserving existing deadlines and unrelated fixture values.
+
+**Measurement.** Run the timeout lint fixtures and compare change-base results
+for positional, options-object, and parameterized test cases. Use the
+repository gate after checking a named constant and an unchanged legacy deadline.
+
+**Success.** Flag all three inline-deadline forms and zero normal controls.
+Preserve both global 30-second defaults. A title-only edit must keep an
+existing deadline. A same-titled test in a different suite cannot inherit
+that deadline. A .prep.test.ts filename alone does not exempt a test. Fail
+when the change base or source cannot be read.
+
+**Pivot.** Any false block on an unrelated edit or an eligible existing
+deadline rejects the gate design.
+
+**Anchor.** [Vitest test API](https://vitest.dev/api/test) and the existing
+flake tracker task's one seeded literal control.
 
 ## Merge rule
 

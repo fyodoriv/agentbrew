@@ -287,6 +287,17 @@ hooks:
     sourceRule: shared-rules.md:1063 "Pending Internal Work Must Be Tracked (IRON LAW)"
     agents: ["claude-code"]
 
+  - id: tasks-md-lint-on-edit
+    description: Check a root TASKS.md after an edit and prompt the agent to fix invalid fields
+    event: PostToolUse
+    matcher: Write|Edit
+    script: checks/tasks-md-lint-on-edit.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md "Task queues"
+    agents: ["claude-code"]
+    defaultEnabled: false
+
   - id: tests-adapt-to-production
     description: Block diff that adds test-accommodation wrappers (*ForTest, __test*, lookup*Spy) in production code
     event: PostToolUse

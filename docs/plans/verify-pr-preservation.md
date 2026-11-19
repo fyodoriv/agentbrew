@@ -13,3 +13,14 @@ Success: zero accepted unique changes, zero refused true duplicates, and zero ch
 Pivot: any false approval, more than one false refusal in ten verifiable cases, uncertain GitHub identity, changed external revision, or a failed required check rejects the candidate. A case without a verified replacement is inconclusive.
 
 Anchor: Minsky's `scripts/verify-pr-closure-is-lossless.mjs`, Agentbrew task `lossless-pr-close`, and Forsgren, Humble and Kim (2018), *Accelerate*.
+
+## Live identity control
+
+The ten latest closed, unmerged Agentbrew PRs carry no explicit replacement
+in the checked bodies and comments. Keep their true-duplicate rate
+unqualified. For a separate negative route, give the checker proposal
+[#1040](https://github.com/fyodoriv/agentbrew/pull/1040) and merged PR
+[#1041](https://github.com/fyodoriv/agentbrew/pull/1041) as a deliberately
+different replacement. Their public file lists differ. Predict exit one
+with the one-step install test as missing, and no changes to the caller's
+checkout. Any successful preservation result rejects this control.

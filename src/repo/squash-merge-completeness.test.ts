@@ -17,7 +17,7 @@ function runFixture(options: {
   previousPath?: string;
   keepOriginal?: boolean;
   fileStatus?: string | null;
-  number?: number | number[];
+  number?: number | readonly number[];
 }) {
   const root = mkdtempSync(join(tmpdir(), "agentbrew-squash-verifier-"));
   const bin = join(root, "bin");

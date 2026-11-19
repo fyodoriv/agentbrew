@@ -82,7 +82,7 @@ Never open a PR whose own check fails.
 | Diff includes docs or config the task never named | 3 | Revert the unrelated hunks |
 | "Tests pass" with no check for the stated goal | 4 | Run the goal's own command |
 | New module added "for future tasks" | 2 | Write it when a task needs it |
-| Touches 8 files when 3 were planned | 3 | Justify each extra file or revert it |
+| Touches more files than planned | 3 | Justify each extra file or revert it |
 
 ## Sources
 

@@ -676,7 +676,7 @@
   - **ID**: new-project-repo-hygiene-lints
   - **Tags**: new-project, lint, absorbed-from-minsky
   - **Mode**: AFK
-  - **Details**: Add three optional lints to the `new-project` templates: one filename casing rule, a check that every test file imports a source file that exists (orphan tests), and a check that tests sit next to the code they test. Keep each as a small script with its own test, and wire them into the template `scripts/check.sh`. Sources: https://github.com/fyodoriv/minsky/blob/main/scripts/check-filename-casing.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/check-orphan-tests.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/check-test-file-colocation.mjs. The orphan check came from a real failure: a conflict resolution kept new source but old tests, and 13 tests broke.
+  - **Details**: Add three optional lints to the `new-project` templates: one filename casing rule, a check that every test file imports a source file that exists (orphan tests), and a check that tests sit next to the code they test. Keep each as a small script with its own test, and wire them into the template `scripts/check.sh`. Sources: https://github.com/fyodoriv/minsky/blob/main/scripts/check-filename-casing.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/check-orphan-tests.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/check-test-file-colocation.mjs. The orphan check came from a real failure: a conflict resolution kept new source but old tests, and many tests broke.
   - **Files**: `skill-plugins/workflow/new-project/templates/scripts/`, `skill-plugins/workflow/new-project/evals/evals.json`, `.agents/requirements.yaml`
   - **Output**: code
   - **Acceptance**: A scaffolded repo fails `scripts/check.sh` on a mis-cased file, an orphan test, and a misplaced test, and passes a clean scaffold.
@@ -704,7 +704,7 @@
   - **ID**: pre-push-timing-check
   - **Tags**: hooks, speed, absorbed-from-minsky
   - **Mode**: AFK
-  - **Details**: The `new-project` guidance says to keep pre-push under about 10 seconds on changed files. Nothing measures it. Add a timed check that runs the pre-push command on a fixture diff and fails when it takes longer than 10 seconds. Source: https://github.com/fyodoriv/minsky/blob/main/scripts/check-pre-push-hook-fast.mjs. Cover both agentbrew's own `lefthook.yml` and the `new-project` template.
+  - **Details**: The `new-project` guidance says to keep pre-push fast on changed files. Nothing measures it. Add a timed check that runs the pre-push command on a fixture diff and fails when it takes longer than 10 seconds. Source: https://github.com/fyodoriv/minsky/blob/main/scripts/check-pre-push-hook-fast.mjs. Cover both agentbrew's own `lefthook.yml` and the `new-project` template.
   - **Files**: `lefthook.yml`, `skill-plugins/workflow/new-project/templates/lefthook.yml`, a new test
   - **Output**: code
   - **Acceptance**: A test runs the pre-push command on a small diff and fails above 10 seconds.

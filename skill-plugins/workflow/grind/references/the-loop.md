@@ -163,7 +163,7 @@ already on `main` (an empty diff after rebasing onto `origin/main`) or the owner
 says so for that PR. "Preserved in PR history" and "tracked by a task" are not
 reasons.
 
-**Three checks before any admin merge.** All three must hold:
+**Checks before any admin merge.** All of them must hold:
 1. `gh pr view <n> --json mergeable,mergeStateStatus` shows `MERGEABLE` and `BLOCKED` (not `UNSTABLE`).
 2. Every pending or failed check is review-shaped (approval, code owner), not CI, lint, or tests.
 3. `gh pr checks <n>` shows no failing check.

@@ -51,6 +51,10 @@ It prints the state, what needs you, and a `Next:` line with the exact command f
 - Your company ships private skills, rules, MCP servers, and hooks to every developer as a signed plugin.
 - You want to know how big your always-loaded agent context is and where agent time goes.
 
+## Sponsor
+
+If agentbrew saves you time, you can [sponsor its author on GitHub](https://github.com/sponsors/fyodoriv). It keeps the work going.
+
 ## Features
 
 Most developers use multiple AI coding tools. Each stores config in its own format (JSON, TOML, YAML, markdown). Add an MCP server: edit several config files. Add a skill: copy into each agent's skill directory.

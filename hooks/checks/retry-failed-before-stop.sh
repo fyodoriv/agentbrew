@@ -8,10 +8,10 @@
 #
 # Reads the transcript and finds tool calls in this turn (since the last real
 # user message) that failed: `is_error: true`, or a known failure text such as
-# "not connected" or "timed out". A failure is skipped when a later call of the
-# same tool succeeded, or when the user denied the call. If any are left, block
-# the stop once and ask the agent to retry them now. `stop_hook_active` is true
-# on the stop that follows a block, so the hook never loops.
+# "not connected" or "timed out". A later success or denial resolves the same
+# tool and input. The reminder names only the tools and asks the agent to check
+# the outcome before retrying safe, authorized actions. `stop_hook_active`
+# allows the stop after the one reminder.
 
 set -uo pipefail
 
@@ -38,7 +38,8 @@ TRANSCRIPT="$(json_get "${INPUT:-{\}}" '.transcript_path')"
 # Only the tail matters; a long session transcript can be large.
 REASON="$(tail -n 2000 "$TRANSCRIPT" | hook_jq -rs '
   def text: if type == "string" then . elif type == "array" then map(.text? // "") | join(" ") else "" end;
-  def summary: tostring | gsub("\\s+"; " ") | .[0:80];
+  def safe_name:
+    (strings | select(test("^[A-Za-z_][A-Za-z0-9_.:-]{0,127}$"))) // "unnamed tool";
   [ .[] | select(type == "object") ] as $rows
   | ([ $rows | to_entries[]
        | select(.value.type == "user" and (.value.isMeta // false | not))
@@ -46,6 +47,7 @@ REASON="$(tail -n 2000 "$TRANSCRIPT" | hook_jq -rs '
            or ([.value.message.content[]? | select(.type == "text")] | length > 0
                and ([.value.message.content[]? | select(.type == "tool_result")] | length == 0)))
        | .key ] | last // -1) as $start
+  | select($start >= 0)
   | [ $rows[($start + 1):][] | .message.content? | arrays | .[] ] as $blocks
   | [ $blocks[] | select(.type == "tool_use") ] as $calls
   | [ $blocks[] | select(.type == "tool_result")
@@ -57,17 +59,19 @@ REASON="$(tail -n 2000 "$TRANSCRIPT" | hook_jq -rs '
       | ($results | map(select(.id == $c.id)) | first) as $r
       | select($r != null) | { i: $i, name: $c.name, input: $c.input, failed: $r.failed, denied: $r.denied } ] as $done
   | [ $done[] | select(.failed and (.denied | not)) | . as $f
-      | select([ $done[] | select(.i > $f.i and .name == $f.name and (.failed | not)) ] | length == 0) ]
+      | select(any($done[];
+          .i > $f.i and .name == $f.name and .input == $f.input
+          and (.denied or (.failed | not))) | not) ]
   | if length == 0 then empty else
-      "These tool calls failed this turn and were not retried: "
-      + (map("\(.name) (\(.input | summary))") | unique | join("; "))
-      + ". Retry each one now; a failure at the start (for example a browser that was not connected yet) often works later. "
-      + "If a retry fails again, say so in your final message."
+      "Unresolved tool failures this turn: "
+      + (map(.name | safe_name) | unique | join(", "))
+      + ". Retry only authorized actions that are safe to repeat. "
+      + "Verify an uncertain outcome first, or report what is unresolved."
     end
 ' 2>/dev/null)"
 [ -n "$REASON" ] || verdict_allow "$HOOK_ID" "no unretried failures"
 
 # shellcheck disable=SC2016
 hook_jq -nc --arg reason "$REASON" '{decision: "block", reason: $reason}' || exit 0
-log_decision "$HOOK_ID" "block" "asked to retry failed calls"
+log_decision "$HOOK_ID" "block" "asked to check unresolved tool failures"
 exit 0

@@ -100,6 +100,47 @@ check "Test 6 no failures → allow ($OUT)" "$([ -z "$OUT" ] && echo 0 || echo 1
 OUT="$(run_hook "$TMP/missing.jsonl" false)"
 check "Test 7 missing transcript → allow ($OUT)" "$([ -z "$OUT" ] && echo 0 || echo 1)"
 
+# A reminder can name the tool without copying its input into the next turn.
+T8="$TMP/private-input.jsonl"
+{
+  user "check an outcome"
+  call e1 Query '{"value":"fixture-private-input-1112"}'
+  result e1 true "connection refused"
+} >"$T8"
+OUT="$(run_hook "$T8" false)"
+check "Test 8 private input stays out of the safe follow-up" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("Query") and contains("safe to repeat") and (contains("fixture-private-input-1112")|not))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+# A different successful action through the same tool leaves the failure open.
+T9="$TMP/another-action.jsonl"
+{
+  user "check two outcomes"
+  call f1 Query '{"value":"first"}'
+  result f1 true "not connected"
+  call f2 Query '{"value":"second"}'
+  result f2 false "ok"
+} >"$T9"
+OUT="$(run_hook "$T9" false)"
+check "Test 9 success for another input leaves the failure open" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("Query"))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+T10="$TMP/later-denial.jsonl"
+{
+  user "check an outcome"
+  call g1 Query '{"value":"first"}'
+  result g1 true "connection refused"
+  call g2 Query '{"value":"first"}'
+  result g2 true "user denied"
+} >"$T10"
+OUT="$(run_hook "$T10" false)"
+check "Test 10 a later denial resolves the same action" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
+T11="$TMP/no-user-turn.jsonl"
+{
+  call h1 Query '{"value":"first"}'
+  result h1 true "connection refused"
+} >"$T11"
+OUT="$(run_hook "$T11" false)"
+check "Test 11 no current user turn allows stop" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
 echo ""
 echo "retry-failed-before-stop.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

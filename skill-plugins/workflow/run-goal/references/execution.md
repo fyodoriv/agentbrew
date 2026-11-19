@@ -425,6 +425,24 @@ start it again after the edits; never report its result for the new code.
 - A test of one operating system's feature runs only there
   (`it.runIf(process.platform === "darwin")`). Never weaken its assertion.
 
+## Review before the long cycle
+
+- When one hosted cycle takes 20 minutes or more, start the fresh-context
+  diff review before the first push, or with it. Put its fixes and the
+  first CI fixes in one push. In one goal the review came after the push
+  and its 10 fixes cost a second 30-minute cycle.
+- For a new command that prints data about private records, tell the
+  reviewer to list every field an agent can read and to name each one as
+  an id, a count, or owner text. One such review found a reading's value
+  and a success line printed to agents; the author's own check missed
+  both.
+- Give each subagent its own scratch file names. One session subagent
+  wrote its PR body to the lead's `pr-body.md` in the shared scratch
+  folder and replaced it.
+- Write a script file that holds git command text with the file tool, not
+  a shell heredoc. A command-guard hook reads the heredoc text as the
+  command and blocks it.
+
 ## Required reviewer approvals
 
 Keep a merge criterion open while a required approval is missing. Check the

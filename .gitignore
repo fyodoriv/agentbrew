@@ -22,7 +22,6 @@ plugin-lock.json
 .orchestrator/
 
 # Task queue session state (local per-developer, not shared)
-.taskgrind-state
 
 # Environment secrets
 .env

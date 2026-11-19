@@ -1,7 +1,7 @@
 # Run guards
 
 
-These are the checks the archived taskgrind runner did for you. Do them
+These are the checks no outer runner does for you. Do them
 yourself.
 
 1. **Preflight** before the first task: no rebase, merge, or detached `HEAD`

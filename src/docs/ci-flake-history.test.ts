@@ -129,8 +129,12 @@ describe("hosted CI flake history", () => {
 
     const missingRun = runApiFixture({ ...runsPage, total_count: 2 }, pages);
     const missingJob = runApiFixture(runsPage, [{ total_count: 3, jobs: run.jobs }]);
-    const duplicateJob = runApiFixture(runsPage, [pages[0], pages[0]]);
-    for (const bad of [missingRun, missingJob, duplicateJob]) {
+    const inconsistentPages = runApiFixture(runsPage, [pages[0], { ...pages[1], total_count: 1 }]);
+    const duplicateJob = runApiFixture(runsPage, [
+      pages[0],
+      { ...pages[1], jobs: [{ ...run.jobs[1], id: run.jobs[0].id }] },
+    ]);
+    for (const bad of [missingRun, missingJob, inconsistentPages, duplicateJob]) {
       expect(bad.status).toBe(1);
       expect(bad.stdout).toBe("");
       expect(bad.stderr).toContain("No CI flake report.");

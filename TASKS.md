@@ -332,19 +332,6 @@
 
 ## P2
 
-- [ ] Report a missing setup as a catalog install failure
-  - **ID**: catalog-install-missing-state-exit
-  - **Tags**: cli, reliability
-  - **Details**: A disposable catalog install printed the initialization hint and exited successfully. The real install never started.
-  - **Output**: code
-  - **Acceptance**: Missing configuration fails before catalog or rule writes. An initialized named install and its preview continue to work.
-  - **Hypothesis**: A missing-state refusal returns a nonzero exit before automatic sync can claim success.
-  - **Measurement**: Run the focused catalog and CLI cases and the disposable CLI control in the [registered plan](docs/plans/catalog-install-missing-state.md).
-  - **Success**: Both missing-state cases exit 1 with zero catalog reads and zero rule writes. Both initialized controls exit 0. Preview writes zero rule blocks and apply writes one.
-  - **Pivot**: Any wrong exit, uninitialized write, or initialized regression rejects the change.
-  - **Anchor**: `src/catalog/install.ts` and the Nov 18, 2026 disposable install check.
-
-
 - [ ] wrap-up fetch-caller tests W03 and W04 time out under load
   - **ID**: wrap-up-fetch-caller-timeout
   - **Tags**: tests, flaky, wrap-up

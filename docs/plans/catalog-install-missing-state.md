@@ -7,10 +7,12 @@ also lacked state. A script could report an install that never started.
 - **Hypothesis**: The catalog install rejects missing state before reading
   the catalog or writing any artifact. With initialized state, the same
   named rule installs and a preview still performs no write.
-- **Measurement**: Run the missing-state cases in
-  `src/catalog/install.test.ts` and the install command tests. Run the real
-  CLI with a disposable home before and after `init --skip-install --skip-sync`.
-  Use a named bundled rule with networking disabled and no background job.
+- **Measurement**: Run
+  `npx vitest run src/catalog/install.test.ts src/commands/cli-install.test.ts`
+  on hosted CI. In a disposable home, run
+  `agentbrew install conventional-commits` and its `--dry-run` form before
+  and after `agentbrew init --skip-install --skip-sync`. Disable networking
+  and background jobs for the disposable run.
 - **Success**: Both missing-state cases (apply and preview) signal exit 1,
   with zero catalog reads or rule writes. One real initialized preview and
   one apply exit 0. The preview writes zero rule blocks and apply writes one.
@@ -39,3 +41,13 @@ returns success without installing the rule. Preserve that hint.
   or regression in a complete setup rejects the candidate.
 - **Anchor**: The no-shared-rules result in `src/catalog/install-other.ts` and
   the existing `installRule` missing-file fixture.
+
+## Disposable CLI result
+
+The original CLI returned exit 0 in both missing-state cases and after
+an attempt to install a rule without a shared rules file. The candidate
+returned exit 1 in all three cases. It created no rule files and started
+no automatic sync for the refusals. With initialized state, preview
+returned exit 0 and wrote no rule file. After `agentbrew rules init`,
+apply and retry both returned exit 0 and left exactly one rule block.
+The run used a disposable configuration and denied outbound networking.

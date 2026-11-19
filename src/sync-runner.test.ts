@@ -45,6 +45,7 @@ const stateMock = vi.hoisted(() => ({
         agents: Array<{ name: string; detected: boolean }>;
         catalogVersion: string;
         mcpServers?: Array<{ name: string; command: string; args: string[]; env: Record<string, string> }>;
+        sources?: Array<{ url: string; origin: string }>;
       }
     | undefined,
   defaultState: {
@@ -83,6 +84,12 @@ vi.mock("./sync/linked-worktree.js", () => ({
   linkedWorktreeWarning: vi.fn((main: string) => `skipped worktree of ${main}`),
 }));
 vi.mock("./sync/model-sync.js", () => ({ syncModels: vi.fn() }));
+vi.mock("./sync/soft-update.js", () => ({
+  formatSoftUpdateSummary: vi.fn(() => undefined),
+  isAgentbrewProvidedSkillSource: vi.fn((source: { origin?: string }) => source.origin === "catalog"),
+  softUpdateStaleOverlaySources: vi.fn(() => ({ refreshed: [], fresh: [], failed: [] })),
+}));
+vi.mock("./update.js", () => ({ refreshInstalledSkills: vi.fn(() => []) }));
 
 import { applyAgentfile } from "./agentfile.js";
 import { flushInstallSummary, install, installSkills } from "./catalog/install.js";
@@ -99,8 +106,10 @@ import { syncMcpServers } from "./sync/mcp-sync.js";
 import { syncModels } from "./sync/model-sync.js";
 import { syncRules } from "./sync/rules-sync.js";
 import { syncSkills } from "./sync/skills-sync.js";
+import { softUpdateStaleOverlaySources } from "./sync/soft-update.js";
 import type { SyncModule } from "./sync-runner.js";
 import { autoSync, buildSyncModules, runSyncParallel, runSyncWithErrorCollection } from "./sync-runner.js";
+import { refreshInstalledSkills } from "./update.js";
 
 const mockSaveSyncErrors = vi.mocked(saveSyncErrors);
 const mockClearSyncErrors = vi.mocked(clearSyncErrors);
@@ -120,6 +129,8 @@ const mockInstallSkills = vi.mocked(installSkills);
 const mockFlushInstallSummary = vi.mocked(flushInstallSummary);
 const mockSnapshotAgentConfigs = vi.mocked(snapshotAgentConfigs);
 const mockWithStateOverride = vi.mocked(withStateOverride);
+const mockSoftUpdate = vi.mocked(softUpdateStaleOverlaySources);
+const mockRefreshInstalledSkills = vi.mocked(refreshInstalledSkills);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -631,6 +642,45 @@ describe("prepareSync and Agentfile handling", () => {
       process.cwd(),
       expect.objectContaining({ dryRun, syncModules: ["hooks"], scopeAgentfileContent: true }),
     );
+  });
+
+  // docs/plans/selected-skill-preparation.md: the registered rows, in both runners.
+  const everyModuleExceptSkills = ["mcp", "rules", "commands", "agents", "hooks", "models", "instructions"];
+  describe.each([
+    ["sequential", runSyncWithErrorCollection],
+    ["parallel", runSyncParallel],
+  ] as const)("skill preparation follows the selection, %s runner", (_runner, run) => {
+    it.each([
+      { name: "selected hooks", syncModules: ["hooks"], dryRun: false, prepared: 0, snapshots: 1 },
+      { name: "selected rest", syncModules: everyModuleExceptSkills, dryRun: false, prepared: 0, snapshots: 1 },
+      { name: "selected skills", syncModules: ["skills"], dryRun: false, prepared: 1, snapshots: 1 },
+      { name: "selected pair", syncModules: ["hooks", "skills"], dryRun: false, prepared: 1, snapshots: 1 },
+      { name: "no selection", syncModules: undefined, dryRun: false, prepared: 1, snapshots: 1 },
+      { name: "selected preview", syncModules: ["skills"], dryRun: true, prepared: 0, snapshots: 0 },
+    ])("$name: $prepared source refetch and skill copy call(s)", async ({
+      syncModules,
+      dryRun,
+      prepared,
+      snapshots,
+    }) => {
+      mockApplyAgentfile.mockReturnValue({ skillsToInstall: [], recommendedRequested: false } as never);
+      stateMock.activeState = {
+        ...stateMock.defaultState,
+        sources: [{ url: "https://example.com/fixture-managed.git", origin: "catalog" }],
+      };
+      const ran: string[] = [];
+      const modules: SyncModule[] = (syncModules ?? ["hooks", "skills"]).map((name) => ({
+        name,
+        fn: async () => void ran.push(name),
+      }));
+
+      await run(modules, { dryRun, ...(syncModules && { syncModules }) });
+
+      expect(mockSoftUpdate).toHaveBeenCalledTimes(prepared);
+      expect(mockRefreshInstalledSkills).toHaveBeenCalledTimes(prepared);
+      expect(mockSnapshotAgentConfigs).toHaveBeenCalledTimes(snapshots);
+      expect(ran.sort()).toEqual([...(syncModules ?? ["hooks", "skills"])].sort());
+    });
   });
 
   it("applies global and project Agentfiles during sync", async () => {

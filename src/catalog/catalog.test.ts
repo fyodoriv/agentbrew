@@ -467,6 +467,7 @@ describe("skill source ownership", () => {
       analyze: "fyodoriv/agentbrew",
       "ubiquitous-language": "fyodoriv/agentbrew",
       caveman: "fyodoriv/agentbrew",
+      "karpathy-disciplines": "fyodoriv/agentbrew",
       "project-audit": "fyodoriv/agentbrew",
       "git-diagnose-codebase": "fyodoriv/agentbrew",
       "strategic-review": "fyodoriv/agentbrew",

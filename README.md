@@ -1143,7 +1143,7 @@ agentbrew report --off | --on
                                        details, show the exact text, post only with --yes
                                        (see CONTRIBUTING.md "Report problems and ideas")
 agentbrew classify <repo-path>         Classify a repo as solo or shared (downstream
-                                       safety-rail input — minsky, etc.)
+                                       safety-rail input for orchestrators)
                                        Override file: ~/.config/agentbrew/repo-class.yaml
 ```
 
@@ -1205,12 +1205,9 @@ npm run verify                         # full gate: build smoke + typecheck + li
 npm run perf:gate                      # fail when a tracked command got over 10% slower than the merge-base (part of both gates)
 npm run build                          # deps drift guard + tsup → dist/ + CLI smoke
 npm run verify:build-pipeline          # npm ls + build + dist/cli.js --version
-npm run lint:rules                     # Minsky rule checks on this repo (part of verify)
 ```
 
-`npm run lint:rules` runs Minsky's deterministic rule checks (`scripts/check-rule-*.mjs`) against this repo through `src/adapters/rule-lint.minsky.ts`, instead of reimplementing them. It finds Minsky at `AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`. Without a checkout, or with one too old for `--repo`, each rule is skipped, not failed.
-
-Rule 9 requires Hypothesis, Success/Acceptance, Pivot, Measurement, and Anchor on every `- **ID**:` task block, with no grandfathered tasks; `npm run verify` also runs `@tasks-md/lint --require-prereg` on `TASKS.md`. Minsky has no script for rules 8 and 16, so two local checks run in `npm run verify`. `scripts/check-rule-8-pattern-conformance.mjs` checks the VISION.md "Pattern conformance index" against each file's `Pattern:` comment, and `scripts/check-rule-16-defaults.mjs` fails when a CLI flag has no row in `docs/cli-flags-audit.md` saying why it is not the default.
+Rule 9 requires Hypothesis, Success/Acceptance, Pivot, Measurement, and Anchor on every `- **ID**:` task block, with no grandfathered tasks; `npm run verify` also runs `@tasks-md/lint --require-prereg` on `TASKS.md`. Two local checks run in `npm run verify`. `scripts/check-rule-8-pattern-conformance.mjs` checks the VISION.md "Pattern conformance index" against each file's `Pattern:` comment, and `scripts/check-rule-16-defaults.mjs` fails when a CLI flag has no row in `docs/cli-flags-audit.md` saying why it is not the default.
 
 `npm run verify` also runs `scripts/check-rule-3-test-first.mjs`, the test-first half of rule 3. It fails when the branch (committed or not) changes a non-test file under `src/` but changes no test file, unless a commit message on the branch has a `Test exemption: <reason>` line. It compares against `origin/main` (`--base <ref>` or `TEST_FIRST_BASE` to change it) and skips when that ref has no merge base.
 

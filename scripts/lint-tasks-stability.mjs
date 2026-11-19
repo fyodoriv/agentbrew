@@ -11,7 +11,7 @@
 // is the convention; this makes it mechanical (feedback-loop IRON LAW:
 // linters enforce, instructions suggest).
 //
-// Reused across the minsky tooling family (agentbrew, dotfiles, and team
+// Reused across the tooling family (agentbrew, dotfiles, and team
 // overlays) — each repo lints its own TASKS.md against its own allowlist.
 // Sibling repos invoke this copy via the agentbrew-locate shell helper.
 //
@@ -130,7 +130,7 @@ if (violations.length) {
     console.error(`  - ${t.id} [${t.section}] — stability tags: ${stabilityTagsOf(t).join(", ")}`);
   }
   console.error(
-    "\nPromote each to P0/P1 (with the 5 minsky HDD fields), retag if it isn't really\n" +
+    "\nPromote each to P0/P1 (with the 5 hypothesis-driven fields), retag if it isn't really\n" +
       "stability work, or grandfather it in the allowlist while it waits:\n" +
       `  ${allowFile}`,
   );

@@ -53,7 +53,7 @@ bash ~/.config/agentbrew/scripts/verify-vision-trace.sh <path-to-pr-body.md>
 ```
 
 The script:
-1. Locates VISION.md (or `vision.md`, lowercase) in the current repo's root, `docs/`, or `.minsky/`.
+1. Locates VISION.md (or `vision.md`, lowercase) in the current repo's root or `docs/`.
 2. Parses the YAML frontmatter (or warns if missing).
 3. Scans the PR body for `Vision goal: <id>` lines.
 4. For each cited id, checks it exists in the frontmatter `goals:` list.

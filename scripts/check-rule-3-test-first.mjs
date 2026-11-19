@@ -2,7 +2,7 @@
 // Rule 3, test-first half: a branch that changes behavior code under `src/`
 // must also change a test, or carry a `Test exemption: <reason>` line in a
 // commit message. The doc-first half runs through Minsky's
-// check-rule-3-doc-first.mjs in `npm run lint:rules`.
+// a doc-first check.
 //
 // The diff is the working tree (committed, staged, unstaged, and untracked
 // files) against the merge base with the base ref. Base ref: `--base <ref>`,

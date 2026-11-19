@@ -1,6 +1,6 @@
 /**
  * `agentbrew classify <repo-path>` — classify a repo as solo or shared so
- * downstream tools (minsky, safe-admin-merge, etc.) can scale
+ * downstream tools (orchestrators, safe-admin-merge, etc.) can scale
  * safety guards by repo class.
  *
  * Source: 2026-04-27 user incident — `safe-admin-merge.sh` blocked an admin
@@ -31,7 +31,7 @@ export function registerClassifyCommand(program: Command): void {
   // `harden-user-story-cli-reference-invariant`: README.md (line 278) and
   // VISION.md (line 47) both document `agentbrew classify <repo-path>` as
   // a CLI command users invoke directly, even though the primary consumers
-  // are downstream tools (minsky, safe-admin-merge). The
+  // are downstream tools (orchestrators, safe-admin-merge). The
   // "Advanced" group placement signals "not part of the primary flow"
   // without lying about whether the command exists.
   program

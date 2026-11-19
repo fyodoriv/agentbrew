@@ -24,7 +24,6 @@ Tests run on CI ([opt-out](docs/ci.md#tests-run-on-hosted-ci-only)).
 | Tests for the diff (not a folder) | `npm test` (`vitest related`) |
 | All tests | `npm run test:all` |
 | Typecheck / lint changed files | `npx tsc --noEmit` / `npm run lint:changed` |
-| Rule lints (Minsky rules; skipped without a Minsky checkout) | `npm run lint:rules` |
 | Task queue lint | `node scripts/lint-tasks-stability.mjs TASKS.md` |
 | Hook fixtures | `bash scripts/run-hook-fixtures.sh` |
 | Inner-loop gate (what the diff can break); may say `merge-ready` | `npm run verify:changed` |
@@ -50,7 +49,6 @@ Tests run on CI ([opt-out](docs/ci.md#tests-run-on-hosted-ci-only)).
 | Change the Agentfile format | `src/agentfile*.ts` | README "Agentfile" |
 | Change default models | `src/sync/model-sync.ts` | README "Agentfile" |
 | Change context-budget measurement | `src/measure/` | README "Context budget measurement" |
-| Change the rule lints | `src/adapters/rule-lint.minsky.ts`, `scripts/run-rule-lints.ts` | README "Development" |
 | Add or close a task | `TASKS.md` (every block needs the rule-9 fields) | [`docs/task-backend-contract.md`](docs/task-backend-contract.md) |
 | Change a leak or privacy gate | `src/oss/no-internal-refs.test.ts` | [`SECURITY.md`](SECURITY.md) |
 | Add a docs test | `src/docs/*.test.ts` | [`docs/README.md`](docs/README.md) |

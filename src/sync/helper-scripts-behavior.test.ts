@@ -206,17 +206,6 @@ describe("verify-vision-trace.sh", () => {
     expect(out).toContain("opt-out");
   });
 
-  it("finds VISION.md under .minsky/", () => {
-    write(".minsky/VISION.md", VISION_WITH_GOALS);
-    write("pr.md", body("- Vision goal: G2 — generic first"));
-
-    const { status, out } = runScript("verify-vision-trace.sh", ["pr.md"]);
-
-    expect(status).toBe(0);
-    expect(out).toContain("VISION.md: .minsky/VISION.md");
-    expect(out).toContain("✓ G2 — Generic first");
-  });
-
   it.each([
     "<!-- vision-trace: not-applicable — dependabot lockfile bump -->",
     "<!-- Vision Trace: Not Applicable: release bot -->",

@@ -9,6 +9,11 @@ reading user data. Built in from the first commit, not added later.
 - Fields: `ts`, `event` (`component.action`, for example `setup.done`), `story`
   (the user story id, such as `US-01`, when the event belongs to one), `ok`,
   `seconds`, and ids or counts only.
+- One event per operation: every top-level operation (CLI command, request
+  handler, scheduled job, main action) writes exactly one event when it ends,
+  with `ok`, `seconds`, and `degraded: true` when it fell back to a weaker
+  path. Describe the input by its shape (counts, or a hash), never its content.
+  No operation ends without an event; a test runs each one and asserts it.
 - Content-free: never log user text, file contents, or secrets. Log a hash or a
   count instead. An error message that could quote user content is dropped.
   Enforce it in the writer: every string field must match an allow-list

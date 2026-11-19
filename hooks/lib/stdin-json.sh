@@ -26,7 +26,9 @@
 
 set -euo pipefail
 
-__STDIN_JSON_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+__STDIN_JSON_LIB_DIR="${BASH_SOURCE[0]%/*}"
+[[ "${BASH_SOURCE[0]}" == */* ]] || __STDIN_JSON_LIB_DIR=.
+__STDIN_JSON_LIB_DIR="$(CDPATH='' cd -- "${__STDIN_JSON_LIB_DIR:-/}" && pwd)"
 # shellcheck source=./bootstrap-endpoint-path.sh
 source "$__STDIN_JSON_LIB_DIR/bootstrap-endpoint-path.sh"
 
@@ -45,9 +47,22 @@ hook_jq() {
 # Read the full stdin into a variable. Hook callers should source this and
 # call read_hook_stdin at the top of their script.
 read_hook_stdin() {
-  local input
-  input="$(cat)"
+  local input=""
+  IFS= read -r -d '' input || true
   printf '%s' "$input"
+}
+
+# Use a configured interpreter or an installed macOS toolchain before PATH.
+hook_python() {
+  local interpreter="${HOOK_PYTHON:-}"
+  if [ -z "$interpreter" ]; then
+    for interpreter in /Library/Developer/CommandLineTools/usr/bin/python3 \
+      /Applications/Xcode.app/Contents/Developer/usr/bin/python3; do
+      [ -x "$interpreter" ] && break
+      interpreter=""
+    done
+  fi
+  "${interpreter:-python3}" -I "$@"
 }
 
 # Extract a value from the hook JSON via jq path expression.

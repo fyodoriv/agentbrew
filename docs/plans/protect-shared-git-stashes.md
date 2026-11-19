@@ -15,3 +15,8 @@
 
 This slice checks a leading direct Git invocation. The other destructive
 command shapes and expanded shell coverage remain open in the task queue.
+
+The deployed-layout check refused four registered discard cases and three
+more with quoted, escaped, or special path arguments. It passed five
+registered allowed cases and four command-boundary controls. The fake Git
+recorded zero calls.

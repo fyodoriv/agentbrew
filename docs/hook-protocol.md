@@ -106,6 +106,14 @@ deleted.
 
 ## Runtime contract
 
+The `no-destructive-commands` check inspects the leading command on the
+first line. It refuses a direct `git stash drop` or `git stash clear`.
+Git shares stashes across linked worktrees. The check reads the command
+text without running it. Listing, inspecting, or saving a stash stays
+available. Add `no-destructive-commands` to `enabled:` in the hooks
+overlay and run `agentbrew sync` to turn on the check. It uses Python 3
+to read Git arguments.
+
 Hook scripts read the agent's hook payload from stdin as JSON. The common Claude
 Code shape is:
 

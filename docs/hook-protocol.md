@@ -293,9 +293,11 @@ that long (the hook timeout is 5 s).
 ## Retry failed calls before stop
 
 `retry-failed-before-stop` (Stop, opt-in) checks the current user turn
-for unresolved tool failures. A later success or denial for the same tool
-and input resolves that attempt. The hook allows the stop when it cannot
-identify the user turn. It names only the tools and prompts the agent to
+for unresolved tool failures. A later success or explicit user denial
+resolves an attempt when both calls have the same tool and structured
+input. A service or file permission error stays unresolved. Without a
+known user turn, the hook allows the stop. It shows validated tool names
+and prompts the agent to
 verify uncertain outcomes before repeating an authorized, safe action.
 The reminder runs once. `stop_hook_active` allows the next stop.
 Use `HOOK_BYPASS_RETRY_FAILED_BEFORE_STOP=1` to bypass this reminder.

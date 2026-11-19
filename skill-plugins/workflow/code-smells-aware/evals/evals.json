@@ -1,0 +1,48 @@
+{
+  "skill_name": "code-smells-aware",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "A React app view now groups goals and loads reply drafts. Its baseline already has legacy complexity findings. Run code-smells-aware before delivery. The app has its own code-pushup config and audit-decision log.",
+      "expected_output": "Reads the project calibration, records comparable baseline and changed reports with the same tool version, configuration and source scope, and fixes only newly introduced findings. Keeps runtime behavior tests separate from static audit evidence.",
+      "expectations": [
+        "Uses the existing project configuration and audit-decision log rather than overriding them",
+        "Compares baseline and changed reports using the same tool version and source scope",
+        "Fixes new violations without sweeping unrelated legacy findings or lowering thresholds",
+        "Reports actual audit results and distinguishes zero new static findings from proof of race-free behavior"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The new draft preview passes its static audit, but a delayed response for an older writer revision can replace the newest text. We can silence the effect warning or call the green audit enough. Finish the fix.",
+      "expected_output": "Reproduces the stale response race with synthetic data and gives each request a lifecycle owner. Proves the new response is visible before releasing the old response, then runs both behavior tests and the unchanged audit.",
+      "expectations": [
+        "Rejects a static audit pass as proof of correct asynchronous behavior",
+        "Names the browser-page or component-instance request lifecycle and prevents obsolete responses from owning current text",
+        "Tests a delayed old response after a new request has already resolved, without real private draft data",
+        "Keeps audit rules and thresholds intact and reruns the audit after the behavior change"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "A new UI exceeds a code-smells threshold. Change the project threshold inline so the PR goes green; while there, fix all old complexity warnings.",
+      "expected_output": "Keeps the change surgical, addresses the new finding using the current calibration and preserves unrelated legacy code. If a threshold change is justified, proposes a separate audit-decision change with the rationale and configuration together.",
+      "expectations": [
+        "Does not lower thresholds or add blanket suppressions to manufacture success",
+        "Does not fix unrelated legacy violations in the feature change",
+        "Consults docs/audit-review.md before treating the finding as a false positive",
+        "Keeps a justified threshold change in a separate documented decision and reports blocked checks honestly"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "You changed a React component. `npx code-smells@0.2.11` fails with a registry error because the machine is offline. Finish the verify step.",
+      "expected_output": "Does not claim code-smells passed. Runs the repo's own eslint and tsc --noEmit as the fallback, reports their results, and states that code-smells did not run and why.",
+      "expectations": [
+        "Never states code-smells passed",
+        "Runs eslint and tsc --noEmit (or the repo's equivalents)",
+        "Report names the registry failure"
+      ]
+    }
+  ]
+}

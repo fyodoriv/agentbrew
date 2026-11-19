@@ -3959,6 +3959,17 @@
         "Fixes the independent review findings and reruns their regression tests before merging",
         "Verifies that an unauthenticated request receives no private data from the deployed test site"
       ]
+    },
+    {
+      "id": 346,
+      "prompt": "/goal have agentbrew and dotfiles absorb everything useful from repo X so X can be archived. X holds a CLI and one skill that agentbrew's catalog installs from X.",
+      "expected_output": "Inventories X and its consumers first, moves only the live parts (the skill and its evals) into agentbrew, runs agentbrew's skill-routing and volatile-count lints on the moved files before pushing, gives every X task an absorbed-or-dropped verdict, lands the README archive notice through a PR when main is protected, and archives X only after all PRs merge.",
+      "expectations": [
+        "Lists consumers of X before moving anything",
+        "Runs the target repo's lints on moved skill text before claiming done",
+        "Every task in X gets a verdict",
+        "Archives only after the moving PRs merge"
+      ]
     }
   ]
 }

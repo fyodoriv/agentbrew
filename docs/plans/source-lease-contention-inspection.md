@@ -29,3 +29,11 @@ observed a lock directory disappear after exclusive creation returned
 The regression injects one return path and launches no Git children. The
 natural and physical research cohorts remain closed. The original incidents
 still have no confirmed syscall attribution.
+
+## Unit evidence
+
+The baseline failed with `ENOENT` during the competing lease inspection.
+With the repair, all 18 checkout lease tests passed. The new controls cover
+a fresh asynchronous acquisition, the synchronous busy result, and an
+inspection failure after successful creation. Existing tests still reject
+unsafe ownership and record poisoned leases.

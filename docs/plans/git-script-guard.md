@@ -19,7 +19,7 @@ real Git in a disposable repo for the read-only case. Time ten paired
 
 Check hard reset, forced clean, whole-tree checkout and restore, shared
 branch creation or switch, stash drop and clear, skipped commit hooks,
-and a forced push to a protected branch. Check status, diff, log,
+and a forced push with an explicit protected destination. Check status, diff, log,
 worktree list, stash list/show/apply, a checkout of a specific path,
 a normal commit, and a normal push. Include a script and a nested shell.
 
@@ -36,3 +36,11 @@ remain delivery controls.
 Anchor: Reason 1990 (Human Error, defenses in depth), the archived Minsky
 `.claude/shims/git` control, the [Git CLI contract](https://git-scm.com/docs/git#_options),
 and [Claude Code's session environment](https://code.claude.com/docs/en/hooks#persist-environment-variables).
+
+## Baseline and controls
+
+The baseline recorder received the whole-checkout operation from a
+nested shell. The deployed-layout fixture matched the registered
+blocked and allowed outcomes, and real Git status output matched byte
+for byte. The fixture also checked a linked checkout, a failed checkout
+probe, a dry run, and option-like file names.

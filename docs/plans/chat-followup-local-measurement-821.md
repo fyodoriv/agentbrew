@@ -25,7 +25,7 @@ The existing metadata helper has SHA-256
 ```sh
 HEAVY_RUN_EXCLUSIVE_WAIT=2400 heavy-run --exclusive gtimeout 390 node \
   scripts/eval-chat-followup-821.mjs "$CHAT_FOLLOWUP_RECEIPT" \
-  1c0be23477723604a0fb1ee4788daa16a28513c4ab8a36bd97f46a62b0dbdacf
+  3beb83494565dad3d2d7e0b32bdbe7fbd87e019b98cebb8a70d49d259541e69a
 ```
 
 The runner writes only enum choices and the frozen identity to its receipt.

@@ -2,14 +2,14 @@ import { createHash } from "node:crypto";
 import { closeSync, fsyncSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { fileURLToPath } from "node:url";
-import { requestDecision } from "./chat-rule-schema-protocol.mjs";
-import { modelDigest } from "./eval-chat-message-rule-821.mjs";
 
 const MODEL_DIGEST = "31d9857b5705086d352d4d6db04e86c5d0f6a2b5d59a4dc7ce5cdb271ccf9141";
 const CASES_DIGEST = "ce8183d0cd5ed1b6c38564c7c1d023dd6eba55a7319f3c36ef1c8e20ea6561f6";
 const PROTOCOL_DIGEST = "6aa8a467e6c406f9ff52c3f0bd21c07169428ebb71cf7bc84f5aa46c675ac6f9";
+const METADATA_HELPER_DIGEST = "612adc6581b6d96a09f0cc21fa6a49c1824e8e9e32ae953029b9285bf1fcddf3";
 const CASES_FILE = new URL("chat-followup-cases-821.json", import.meta.url);
 const PROTOCOL_FILE = new URL("chat-rule-schema-protocol.mjs", import.meta.url);
+const METADATA_HELPER_FILE = new URL("eval-chat-message-rule-821.mjs", import.meta.url);
 const METADATA_URL = "http://127.0.0.1:11434/api/tags";
 const GENERATION_URL = "http://127.0.0.1:11434/api/chat";
 const MAX_RESPONSE_BYTES = 64 * 1024;
@@ -51,7 +51,8 @@ export async function baseline(receiptPath, runnerDigest, readModelDigest, decid
     !/^[a-f0-9]{64}$/.test(runnerDigest) ||
     sha256(readFileSync(new URL(import.meta.url))) !== runnerDigest ||
     sha256(casesBytes) !== CASES_DIGEST ||
-    sha256(readFileSync(PROTOCOL_FILE)) !== PROTOCOL_DIGEST
+    sha256(readFileSync(PROTOCOL_FILE)) !== PROTOCOL_DIGEST ||
+    sha256(readFileSync(METADATA_HELPER_FILE)) !== METADATA_HELPER_DIGEST
   ) {
     throw new Error("Frozen inputs changed");
   }
@@ -79,6 +80,7 @@ export async function baseline(receiptPath, runnerDigest, readModelDigest, decid
       runnerDigest,
       casesDigest: CASES_DIGEST,
       protocolDigest: PROTOCOL_DIGEST,
+      metadataHelperDigest: METADATA_HELPER_DIGEST,
       correct,
       records,
     };
@@ -97,8 +99,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const result = await baseline(
       receipt,
       runnerDigest,
-      () => modelDigest(localTransport),
-      (prompt) => requestDecision(prompt, localTransport),
+      async () => (await import(METADATA_HELPER_FILE.href)).modelDigest(localTransport),
+      async (prompt) => (await import(PROTOCOL_FILE.href)).requestDecision(prompt, localTransport),
     );
     console.log(JSON.stringify(result));
   } catch {

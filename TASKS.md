@@ -332,6 +332,18 @@
 
 ## P2
 
+- [ ] Three strangers reach a first run from the README alone
+  - **ID**: readme-human-first-run-test
+  - **Tags**: readme, new-project, usability, from-minsky
+  - **Details**: Port minsky `docs/user-tests/README.md` and `template.md` into the `readme` skill (and point to it from new-project owner practices). Protocol: 3 people who have never seen the project follow only the README with no help, on a clean machine or account; log time to first successful run and every point of friction with its time. Any friction over 5 minutes becomes a P1 README task. Automated stranger-install tests (dotfiles `tests/stranger-readiness.bats`) stay; this adds the human check they cannot do.
+  - **Files**: `skill-plugins/workflow/readme/references/human-first-run-test.md`, `skill-plugins/workflow/readme/SKILL.md`, `skill-plugins/workflow/new-project/references/owner-practices.md`, a readme eval.
+  - **Acceptance**: the readme skill links the protocol and template; an eval asks for a usability check and the agent proposes the 3-stranger protocol with the 5-minute bar.
+  - **Hypothesis**: README gaps that block first-time users are found before release instead of from issues.
+  - **Measurement**: median time to first run across the 3 sessions, recorded in the template.
+  - **Success**: median at or under 5 minutes for agentbrew and dotfiles.
+  - **Pivot**: median over 10 minutes after two README fix rounds; then rework the install path, not the prose.
+  - **Anchor**: Nielsen 1993 (Usability Engineering; 3-5 users find most problems).
+
 - [ ] A lockfile entry cannot change its hash without changing its version
   - **ID**: lockfile-integrity-flip-check
   - **Tags**: supply-chain, ci, from-minsky

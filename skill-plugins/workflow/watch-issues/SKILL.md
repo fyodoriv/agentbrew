@@ -8,8 +8,7 @@ description: >
   repeats on a schedule. Use when the user says "watch for new issues", "keep
   implementing new tasks", "keep on the lookup", "/watch-issues", or when a
   goal's queue is empty and the user wants the work to continue. Don't use for
-  one task (use next-task) or a one-repo overnight marathon (use grind with
-  taskgrind).
+  one task (use next-task) or a one-repo overnight marathon (use grind).
 argument-hint: "[repo paths; default: ~/.config/watch-issues/repos, else this repo]"
 ---
 
@@ -131,16 +130,16 @@ or the user's words in this session).
   The built-in `/loop` runs its prompt once right away. If you already ran a
   pass earlier in this turn, skip that first run and say so, so the same items
   do not get duplicate workers.
-- Under `taskgrind` (no Monitor, a 10-minute tool limit): one bounded step per
-  tool call, `watch-pass.sh --wait 540 --interval 60`. It returns at the first
-  new item, or after 9 minutes with only the summary line. Repeat until the
-  run's time is nearly up; never exit only because the queue is idle (start
-  taskgrind with `TG_STALL_EXIT=never` for a long watch). Never ask anything.
+- Headless (`claude -p` from a schedule, no Monitor, a 10-minute tool
+  limit): one bounded step per tool call, `watch-pass.sh --wait 540
+  --interval 60`. It returns at the first new item, or after 9 minutes with
+  only the summary line. Repeat until the run's time is nearly up; never exit
+  only because the queue is idle. Never ask anything.
 - To react to a branch head move or any issue or PR update (for example
   careerbrew's `/work` watch phase): `bash <skill-dir>/scripts/watch-repos.sh 300 owner/repo@branch...`
   prints the start state, then one line per change. It is read-only, and a
   failed read counts as no change.
-- Unattended, for one repo: `taskgrind` with the `grind` skill.
+- Unattended, for one repo: `/goal` or `/loop` with the `grind` skill.
 - Stop when the user says so, or when every repo is skipped for the same
   reason twice in a row (for example, signed out of `gh`). Report that reason.
 
@@ -157,4 +156,4 @@ or the user's words in this session).
 
 - `report-upstream`: users' agents file the issues this skill picks up.
 - `next-task`: one task, once.
-- `grind`: one repo, sweep then implement, run by `taskgrind` for hours.
+- `grind`: one repo, sweep then implement, run by `/goal` or `/loop` for hours.

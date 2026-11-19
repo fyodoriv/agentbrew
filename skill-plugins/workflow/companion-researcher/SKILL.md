@@ -327,7 +327,7 @@ When invoked by a user (interactive), you may:
 - Show progress between lanes
 - Confirm major decisions when helpful (e.g. "found 3 PRs to file — proceed?")
 
-When invoked by a wrapper script (autonomous, e.g. via `taskgrind`-style outer loop), do not prompt. Make a reasonable choice, log it, and continue. Stopping is safe — the outer loop restarts from `TASKS.md` + git state.
+When invoked by a wrapper script (autonomous, e.g. `/loop`, `/goal`, or a scheduled `claude -p`), do not prompt. Make a reasonable choice, log it, and continue. Stopping is safe — the outer loop restarts from `TASKS.md` + git state.
 
 ## Output Discipline
 

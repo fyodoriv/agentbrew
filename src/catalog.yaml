@@ -595,12 +595,6 @@ skills:
     category: review
     recommended: false
 
-  - name: grind-report
-    description: "Analyze taskgrind marathon logs, score each repo, find root causes, and file tasks. Don't use for live debugging of a running grind."
-    source: fyodoriv/agentbrew
-    category: workflow
-    recommended: false
-
   - name: sweep
     description: "Parallel-safe codebase sweep that stages no-brainer findings and drains them into TASKS.md P3 at session end. Don't use to implement the findings."
     source: fyodoriv/agentbrew

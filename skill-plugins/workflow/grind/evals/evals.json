@@ -8,16 +8,16 @@
       "expectations": [
         "Prioritizes existing unblocked TASKS.md items over finding new work",
         "Runs the tidy/check queue/implement loop with no reliance on conversation memory",
-        "Avoids interactive questions in taskgrind autonomous mode",
+        "Avoids interactive questions in unattended mode",
         "Commits and updates tasks so a fresh session can continue"
       ]
     },
     {
       "id": 2,
-      "prompt": "Taskgrind session 4 starts with previous logs and 30 minutes remaining. What comes first?",
+      "prompt": "Grind pass 4 of an unattended /goal run starts with 30 minutes remaining. What comes first?",
       "expected_output": "Analyze prior logs and repo state, then continue the queue rather than starting arbitrary work.",
       "expectations": [
-        "Reads past taskgrind logs before choosing work",
+        "Reads past run outcomes (git log, stuck-cap notes, open PRs) before choosing work",
         "Detects project commands and current git state",
         "Handles dangling PRs/stale state during tidy before implementation",
         "Stops safely when context/time expires because the outer loop restarts"
@@ -25,7 +25,7 @@
     },
     {
       "id": 3,
-      "prompt": "The queue is empty halfway through a taskgrind marathon. What should the agent do?",
+      "prompt": "The queue is empty halfway through an unattended grind. What should the agent do?",
       "expected_output": "Sweep for work, file tasks, then return to implementation in bounded batches.",
       "expectations": [
         "Uses sweep only after confirming no actionable unblocked tasks remain",
@@ -39,7 +39,7 @@
       "prompt": "grind for 2-3 hours on this repo with batch size 5",
       "expected_output": "An autonomous loop that reads prior grind logs, skips sweeping when actionable tasks exist, implements highest-priority tasks, and ships verified PR-sized work.",
       "expectations": [
-        "Reads recent /tmp/taskgrind logs for the current repo before choosing work, unless none exist",
+        "Reads recent run outcomes for the current repo (git log, stuck-cap notes, open PRs) before choosing work",
         "Detects project type and canonical verify/test commands from package files and AGENTS.md",
         "Checks the queue before sweeping and skips sweep when unclaimed unblocked tasks already exist",
         "Picks tasks strictly P0 to P3, preferring unblockers and hardest actionable work over easy lower-priority tasks",
@@ -60,10 +60,10 @@
     },
     {
       "id": 6,
-      "prompt": "taskgrind sessions keep shipping zero tasks and there are stale feature branches; recover without asking me questions",
-      "expected_output": "A non-interactive recovery pass that analyzes logs, tidies branches/PRs safely, decomposes stalled tasks, and avoids user prompts under taskgrind mode.",
+      "prompt": "grind passes keep shipping zero tasks and there are stale feature branches; recover without asking me questions",
+      "expected_output": "A non-interactive recovery pass that analyzes past run outcomes, tidies branches/PRs safely, decomposes stalled tasks, and avoids user prompts in unattended mode.",
       "expectations": [
-        "Treats taskgrind autonomous mode as non-interactive and does not ask the user for routine decisions",
+        "Treats unattended mode as non-interactive and does not ask the user for routine decisions",
         "Diagnoses zero-ship streaks, git sync failures, stale branch state, and timeout patterns from logs",
         "Attempts to merge or repair open own PRs before creating new work, following repo safety rules",
         "Adds a task or decomposes stalled tasks when logs prove repeated stall on oversized work",
@@ -116,6 +116,29 @@
         "Files sweep or scout findings with gh issue create instead of appending to TASKS.md",
         "Puts Closes #N in the PR body to complete the issue",
         "Never creates or edits TASKS.md, and ignores the stale TASKS.md file"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Grind this repo overnight until 7am; nobody will be at the keyboard.",
+      "expected_output": "Runs under native /goal or /loop (or scheduled claude -p), not the archived taskgrind runner, does the preflight (git state, WIP commit, caffeinate on macOS), and stops at the deadline.",
+      "expectations": [
+        "Uses /goal, /loop, or a scheduled claude -p session, not taskgrind",
+        "Checks for an in-progress rebase/merge/detached HEAD before the first task",
+        "Sets aside uncommitted work with a WIP commit, never a bare git stash",
+        "Uses caffeinate on macOS for the long run",
+        "Stops at the stated deadline"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Unattended grind: task fix-flaky-sync failed 3 times and every other task has a Blocked by line.",
+      "expected_output": "Marks fix-flaky-sync blocked with the attempt note, waits one 10-minute interval, re-reads the queue, then stops with all_tasks_blocked if nothing changed.",
+      "expectations": [
+        "Adds a Blocked by: attempted 3 times note with the last error",
+        "Waits one interval and re-reads the queue before stopping",
+        "Stops with the all_tasks_blocked reason instead of looping",
+        "Does not ask the user anything"
       ]
     }
   ]

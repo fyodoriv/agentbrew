@@ -85,7 +85,7 @@
     },
     {
       "id": 9,
-      "prompt": "/watch-issues under taskgrind (no Monitor, a 10-minute tool limit); the queue is empty.",
+      "prompt": "/watch-issues in a headless claude -p run (no Monitor, a 10-minute tool limit); the queue is empty.",
       "expected_output": "The agent runs watch-pass.sh --wait 540 --interval 60 one bounded step per tool call, ships an item when one arrives, and never asks the user anything.",
       "expectations": [
         "Keeps each wait under the 10-minute tool limit (--wait 540 or less)",

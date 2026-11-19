@@ -483,7 +483,6 @@ describe("skill source ownership", () => {
       "companion-task-groom": "fyodoriv/agentbrew",
       "companion-test-gaps": "fyodoriv/agentbrew",
       grind: "fyodoriv/agentbrew",
-      "grind-report": "fyodoriv/agentbrew",
       sweep: "fyodoriv/agentbrew",
       "update-tooling": "fyodoriv/dotfiles",
       "tooling-checkup": "fyodoriv/dotfiles",

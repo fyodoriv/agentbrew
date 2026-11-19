@@ -20,3 +20,14 @@
 
 This change covers Agentbrew. The separate tasks.md repository still needs
 its own delivery and remains in the task queue.
+
+## Scratch evidence
+
+The same-version flip, removed digest, and moved scoped alias each exited 1
+and named the affected package without printing a digest. The version bump
+and the unchanged base with local and bundled records exited 0. An unknown
+base and an incomplete lockfile exited 2. The checked-in Agentbrew lockfile
+passed against its current base. Replacing one locked location's hash with
+a hash already known at a second location also exited 1. So did replacing
+the hashed record with a local link to the same named version. Malformed roots,
+unresolved local links, and invalid UTF-8 each exited 2.

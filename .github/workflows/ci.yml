@@ -50,6 +50,11 @@ jobs:
           node-version-file: .node-version
           # No npm cache: measured slower than a cold `npm ci` (docs/ci.md).
 
+      - name: Check lockfile integrity before install
+        env:
+          LOCKFILE_BASE: ${{ github.event.pull_request.base.sha || github.event.before || 'origin/main' }}
+        run: node scripts/check-lockfile-integrity.mjs --base "$LOCKFILE_BASE"
+
       - name: Install
         run: npm ci
 

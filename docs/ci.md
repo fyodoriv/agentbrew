@@ -29,6 +29,14 @@ lockfile before running the build. It refuses missing or incomplete npm
 comparison data. A declared optional package can be absent, and checked-in
 local package links must still point to their recorded targets.
 
+Before `npm ci`, hosted CI compares the npm lockfile with the exact pull
+request base or previous pushed commit. It refuses a new integrity hash for
+an existing package and version, even when npm moves that package. At the
+same location it also refuses replacing or removing a previously locked hash.
+Run `node scripts/check-lockfile-integrity.mjs --base origin/main` from the
+checkout to review a lockfile change. Exit 1 names the affected packages.
+Exit 2 means the comparison could not run.
+
 ## Step cache (like nx)
 
 `scripts/verify.sh` records steps that pass, keyed on their inputs. Reuse in

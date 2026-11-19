@@ -290,6 +290,20 @@ transcript in batches, so a contract printed 6 to 8 seconds earlier was
 often not on disk yet, and real contracts were blocked. A hook cannot wait
 that long (the hook timeout is 5 s).
 
+## Retry failed calls before stop
+
+`retry-failed-before-stop` (Stop, opt-in) checks the current user turn
+for unresolved tool failures. A later success or explicit user denial
+resolves an attempt when both calls have the same valid tool name and
+structured input. Each failure needs a unique call and result ID. A
+service or file permission error stays unresolved. Without a
+known user turn, the hook allows the stop. It shows validated tool names
+and prompts the agent to
+verify uncertain outcomes before repeating an authorized, safe action.
+The reminder runs once. `stop_hook_active` allows the next stop.
+Use `HOOK_BYPASS_RETRY_FAILED_BEFORE_STOP=1` to bypass this reminder.
+Enable it in the hooks overlay `enabled:` list.
+
 ## Cross-workspace publishing
 
 The opt-in hook `no-cross-workspace-publish` blocks three commands before the

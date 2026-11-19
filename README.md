@@ -51,6 +51,10 @@ It prints the state, what needs you, and a `Next:` line with the exact command f
 - Your company ships private skills, rules, MCP servers, and hooks to every developer as a signed plugin.
 - You want to know how big your always-loaded agent context is and where agent time goes.
 
+## Sponsor
+
+If agentbrew saves you time, you can [sponsor its author on GitHub](https://github.com/sponsors/fyodoriv). It keeps the work going.
+
 ## Features
 
 Most developers use multiple AI coding tools. Each stores config in its own format (JSON, TOML, YAML, markdown). Add an MCP server: edit several config files. Add a skill: copy into each agent's skill directory.
@@ -861,7 +865,7 @@ node ~/.config/agentbrew/scripts/agent-perf.mjs report --session latest
 node ~/.config/agentbrew/scripts/agent-perf.mjs brief                  # 5-line summary for agents
 ```
 
-At session start, the `perf-brief` hook gives the agent a short brief of the slowest steps. When dotfiles is installed, the `updates-landed` hook also passes on its once-a-day "updates landed, run the checkup" line (`dotfiles-updates-landed`; dotfiles keeps that state), so the agent can suggest the checkup. After a turn with 5 or more minutes of tool time, the opt-in `perf-task-review` Stop hook asks the agent for a short "Time review" once.
+At session start, the `perf-brief` hook gives the agent a short brief of the slowest steps. When dotfiles is installed, the `updates-landed` hook also passes on its once-a-day "updates landed, run the checkup" line (`dotfiles-updates-landed`; dotfiles keeps that state), so the agent can suggest the checkup. After a turn with 5 or more minutes of tool time, the opt-in `perf-task-review` Stop hook asks the agent for a short "Time review" once. The opt-in `retry-failed-before-stop` Stop hook names unresolved tool failures and prompts the agent to verify uncertain outcomes before it retries safe, authorized actions.
 
 `AGENTBREW_PERF_REVIEW_MIN_SECS` changes the threshold. Turn it on by listing it under `enabled:` in `~/.config/agentbrew/hooks-overlay/manifest.yaml`.
 

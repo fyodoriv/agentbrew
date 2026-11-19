@@ -93,6 +93,15 @@ describe("hosted workflows", () => {
     expect(text).toMatch(/cancel-in-progress:/);
   });
 
+  it("ci.yml checks lockfile integrity before installing dependencies", () => {
+    const text = workflows.find((w) => w.name === "ci.yml")?.text ?? "";
+    const lines = codeLines(text).map((line) => line.trim());
+    const integrity = lines.indexOf("run: node scripts/check-lockfile-integrity.mjs --github-actions");
+    const install = lines.indexOf("run: npm ci");
+    expect(integrity).toBeGreaterThan(-1);
+    expect(install).toBeGreaterThan(integrity);
+  });
+
   it("scopes both gate cache operations to the runner image version", () => {
     const text = workflows.find((workflow) => workflow.name === "ci.yml")?.text ?? "";
     expect(text).toContain('"$ImageOS" "$ImageVersion" "$RUNNER_ARCH" >> "$GITHUB_OUTPUT"');

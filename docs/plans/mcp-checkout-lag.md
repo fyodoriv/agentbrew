@@ -24,7 +24,8 @@ Pivot: any false verdict, write, network request, output of a remote URL,
 or operation outside the managed cache rejects the approach.
 
 Anchor: [Agentbrew issue #1167](https://github.com/fyodoriv/agentbrew/issues/1167),
-`src/mcp/mcp-git.ts`, `src/mcp/git-ref.ts`, and `src/status.ts`.
+`src/mcp/mcp-git.ts`, `src/mcp/git-ref.ts`, `src/status.ts`, and
+the [Git environment contract](https://git-scm.com/docs/git#_environment_variables).
 
 This check only compares saved tracking refs. A checkout with old tracking
 refs can be behind the live remote. The report does not certify remote

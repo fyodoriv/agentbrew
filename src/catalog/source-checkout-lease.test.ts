@@ -4,6 +4,7 @@ import {
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  type PathLike,
   readdirSync,
   readFileSync,
   rmSync,
@@ -13,7 +14,7 @@ import {
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   assertSourceCheckoutLease,
   noteSourceGitFailure,
@@ -22,6 +23,19 @@ import {
   withSourceCheckoutLeaseSync,
   withSourceCheckoutLeases,
 } from "./source-checkout-lease.js";
+
+const testMkdir = vi.hoisted(() => ({ intercept: undefined as ((path: PathLike) => boolean) | undefined }));
+
+vi.mock("node:fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return {
+    ...actual,
+    mkdirSync: (...args: Parameters<typeof actual.mkdirSync>) => {
+      if (testMkdir.intercept?.(args[0])) return;
+      return actual.mkdirSync(...args);
+    },
+  };
+});
 
 let root: string;
 const leaseRoot = join(homedir(), ".cache", "agentbrew", "source-checkout-leases");
@@ -32,12 +46,45 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "agentbrew-source-lease-"));
 });
 afterEach(() => {
+  testMkdir.intercept = undefined;
   // These fixtures launch no Git children. Retained locks are synthetic, owned test data.
   rmSync(leaseRoot, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });
 });
 
 describe("source checkout lease ownership", () => {
+  it("acquires a fresh async lease after a contended directory disappears", async () => {
+    const checkout = target();
+    const directory = lockPath(checkout.path);
+    let attempts = 0;
+    const collideOnce = (path: PathLike) => {
+      if (path === directory && ++attempts === 1)
+        throw Object.assign(new Error("fixture collision"), { code: "EEXIST" });
+      return false;
+    };
+    const work = vi.fn(() => assertSourceCheckoutLease(checkout.path));
+    testMkdir.intercept = collideOnce;
+    await withSourceCheckoutLeases([checkout], async () => work());
+    expect(attempts).toBe(2);
+    expect(work).toHaveBeenCalledTimes(1);
+    expect(existsSync(directory)).toBe(false);
+
+    attempts = 0;
+    work.mockClear();
+    expect(() => withSourceCheckoutLeaseSync(checkout, work)).toThrow(SourceCheckoutLeaseRefusal);
+    expect(attempts).toBe(1);
+    expect(work).not.toHaveBeenCalled();
+  });
+
+  it("refuses when its own newly created directory is missing", async () => {
+    const checkout = target();
+    const directory = lockPath(checkout.path);
+    testMkdir.intercept = (path) => path === directory;
+    const work = vi.fn();
+    await expect(withSourceCheckoutLeases([checkout], work)).rejects.toMatchObject({ code: "ENOENT" });
+    expect(work).not.toHaveBeenCalled();
+  });
+
   it("holds private owner-bound metadata through work and releases normally", async () => {
     const checkout = target();
     await withSourceCheckoutLeases([checkout], async () => {

@@ -20,7 +20,7 @@
         "Reads past run outcomes (git log, stuck-cap notes, open PRs) before choosing work",
         "Detects project commands and current git state",
         "Handles dangling PRs/stale state during tidy before implementation",
-        "Stops safely when context/time expires because the outer loop restarts"
+        "Stops safely when context/time expires because the next /loop or /goal pass resumes from TASKS.md and git"
       ]
     },
     {

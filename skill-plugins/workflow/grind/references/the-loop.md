@@ -318,7 +318,7 @@ tasks → make zero roadmap progress. Decompose and implement instead.
 
 #### 4e. Claim and implement
 
-Add your identity to the task line: `- [ ] Task description (@devin)`
+Add your identity to the task line: `- [ ] Task description (@claude)`
 
 Create a branch (if repo convention requires it — check AGENTS.md):
 ```bash

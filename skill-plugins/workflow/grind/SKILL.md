@@ -76,7 +76,7 @@ Track consecutive failures. When tasks fail repeatedly, escalate:
 | 1-2 | Normal — skip and move on |
 | 3 | **REFINE** — re-read the failing task, try a different approach. Check if the task needs decomposing into sub-tasks. |
 | 5 | **PIVOT** — skip all remaining tasks of the same type/tag. Sweep fresh to find different work. |
-| 2 PIVOTs in one session | **STOP** — the codebase may need human attention. Print a session report and exit cleanly. The outer loop will start a fresh session. |
+| 2 PIVOTs in one session | **STOP** — the codebase may need human attention. Print a session report and exit cleanly. The next `/loop` wake-up or session starts fresh. |
 
 **Failure classification** — classify each failure to pick the right response:
 
@@ -116,7 +116,7 @@ Use heuristics instead:
 | Heuristic | Action |
 |-----------|--------|
 | Shipped 5+ tasks this session | Flush and exit — you've done good work |
-| Prompt said < 30 min remaining | Flush and exit after current task |
+| < 30 min left before the run's deadline | Flush and exit after current task |
 | Tool calls are taking noticeably longer | Context is likely filling — flush and exit |
 | You notice repeated tool errors or truncated output | Context is at the limit — exit immediately |
 

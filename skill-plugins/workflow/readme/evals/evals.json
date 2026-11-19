@@ -43,6 +43,17 @@
     },
     {
       "id": 4,
+      "prompt": "My README with a recorded 100-byte baseline and 10% headroom is now 120 bytes. Check the budget before committing.",
+      "expected_output": "Runs the README budget mode, finds the 110-byte limit, and explains the 10-byte overrun. The agent checks the staged README and budget before committing.",
+      "expectations": [
+        "Uses the existing README checker with --budget",
+        "Compares UTF-8 bytes with the tracked baseline plus headroom",
+        "Checks the staged README and budget before commit",
+        "Records a reason in review if the baseline needs a deliberate increase"
+      ]
+    },
+    {
+      "id": 5,
       "prompt": "How can I check if new developers can get to a real first run from our README on their own?",
       "expected_output": "A first-run usability test plan using the README skill's run template. It defines the first result, observes three unfamiliar people, and reports the median when all three finish without help.",
       "expectations": [

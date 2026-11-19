@@ -172,6 +172,25 @@ interface FixtureChildResult {
   output: string;
 }
 
+const REFRESH_FAILURE_PREFIX = "FIXTURE_B_FAILURE=";
+const REFRESH_RESULT_PREFIX = "FIXTURE_B_RESULT=";
+const REFRESH_ERRNOS = ["ENOENT", "EACCES", "EPERM", "EEXIST", "OTHER"];
+
+function summarizeRefreshFailure(output: string): string {
+  const records = output.split(/\r?\n/).filter((line) => line.startsWith(REFRESH_FAILURE_PREFIX));
+  if (records.length !== 1) return "unclassified";
+  const payload = records[0].slice(REFRESH_FAILURE_PREFIX.length);
+  try {
+    const { kind, errno } = JSON.parse(payload) as { kind?: unknown; errno?: unknown };
+    const knownKind = kind === "lease-refusal" || kind === "other";
+    const knownErrno = typeof errno === "string" && REFRESH_ERRNOS.includes(errno);
+    if (knownKind && knownErrno && JSON.stringify({ kind, errno }) === payload) return `${kind}/${errno}`;
+  } catch {
+    return "unclassified";
+  }
+  return "unclassified";
+}
+
 function refreshFailureCatch(): string {
   return `.catch(error=>{
     let kind="other";
@@ -179,9 +198,9 @@ function refreshFailureCatch(): string {
     try {
       kind=error instanceof SourceCheckoutLeaseRefusal?"lease-refusal":"other";
       const code=error!==null&&typeof error==="object"?Object.getOwnPropertyDescriptor(error,"code")?.value:undefined;
-      if(["ENOENT","EACCES","EPERM","EEXIST"].includes(code))errno=code;
+      if(${JSON.stringify(REFRESH_ERRNOS)}.includes(code))errno=code;
     } catch {}
-    console.error("FIXTURE_B_FAILURE="+JSON.stringify({kind,errno}));
+    console.error(${JSON.stringify(REFRESH_FAILURE_PREFIX)}+JSON.stringify({kind,errno}));
     console.error("fixture refresh failed");
     process.exitCode=1;
   });`;
@@ -254,6 +273,10 @@ async function cleanupFixtureChildren(children: ReturnType<typeof productionChil
 
 function fixtureRecord<T>(result: FixtureChildResult, prefix: string): T {
   const line = result.output.split("\n").find((candidate) => candidate.startsWith(prefix));
+  if (!line && prefix === REFRESH_RESULT_PREFIX) {
+    const exit = result.code ?? "unavailable";
+    throw new Error(`refresh worker result absent (exit ${exit}, failure ${summarizeRefreshFailure(result.output)})`);
+  }
   if (!line) throw new Error(`fixture outcome absent; inspect child logs in ${root}`);
   return JSON.parse(line.slice(prefix.length)) as T;
 }
@@ -685,6 +708,42 @@ describe("explicit pull bounded progress (#780)", () => {
 describe("safe enum failure observation", () => {
   const marker = "synthetic-private-error-marker";
   const privateCode = "synthetic-unlisted-errno";
+
+  const safeRecord = `${REFRESH_FAILURE_PREFIX}{"kind":"lease-refusal","errno":"OTHER"}`;
+  const missingResultCases = [
+    { name: "allowlisted failure", record: safeRecord, expected: "lease-refusal/OTHER" },
+    { name: "missing record", record: "", expected: "unclassified" },
+    { name: "malformed record", record: `${REFRESH_FAILURE_PREFIX}{${marker}`, expected: "unclassified" },
+    { name: "null record", record: `${REFRESH_FAILURE_PREFIX}null`, expected: "unclassified" },
+    {
+      name: "unlisted errno",
+      record: `${REFRESH_FAILURE_PREFIX}{"kind":"other","errno":"${privateCode}"}`,
+      expected: "unclassified",
+    },
+    {
+      name: "extra raw field",
+      record: `${REFRESH_FAILURE_PREFIX}{"kind":"other","errno":"EACCES","path":"${marker}"}`,
+      expected: "unclassified",
+    },
+    {
+      name: "duplicate field",
+      record: `${REFRESH_FAILURE_PREFIX}{"kind":"other","errno":"ENOENT","errno":"EACCES"}`,
+      expected: "unclassified",
+    },
+    { name: "duplicate records", record: `${safeRecord}\n${safeRecord}`, expected: "unclassified" },
+  ];
+
+  it.each(missingResultCases)("keeps a missing result failed with $name", ({ record, expected }) => {
+    const readResult = () => fixtureRecord({ code: 1, output: `${marker}\n${record}` }, REFRESH_RESULT_PREFIX);
+    expect(readResult).toThrow(`refresh worker result absent (exit 1, failure ${expected})`);
+    expect(readResult).not.toThrow(marker);
+    expect(readResult).not.toThrow(privateCode);
+  });
+
+  it("leaves a present refresh result with the normal parser", () => {
+    expect(fixtureRecord({ code: 0, output: `${REFRESH_RESULT_PREFIX}[]` }, REFRESH_RESULT_PREFIX)).toEqual([]);
+  });
+
   const controls = [
     {
       name: "typed refusal",
@@ -711,8 +770,8 @@ describe("safe enum failure observation", () => {
       `import {SourceCheckoutLeaseRefusal} from "./src/catalog/source-checkout-lease.ts"; Promise.reject(${expression})${refreshFailureCatch()}`,
     );
     const result = await fixtureChildResult(child);
-    const records = result.output.split("\n").filter((line) => line.startsWith("FIXTURE_B_FAILURE="));
-    const successRecords = result.output.split("\n").filter((line) => line.startsWith("FIXTURE_B_RESULT="));
+    const records = result.output.split("\n").filter((line) => line.startsWith(REFRESH_FAILURE_PREFIX));
+    const successRecords = result.output.split("\n").filter((line) => line.startsWith(REFRESH_RESULT_PREFIX));
     expect(result.code).toBe(1);
     expect(result.output).not.toContain(marker);
     expect(result.output).not.toContain(privateCode);
@@ -727,7 +786,7 @@ describe("safe enum failure observation", () => {
         }),
     );
     expect(records).toHaveLength(1);
-    const record = fixtureRecord<{ kind: string; errno: string }>(result, "FIXTURE_B_FAILURE=");
+    const record = fixtureRecord<{ kind: string; errno: string }>(result, REFRESH_FAILURE_PREFIX);
     expect(Object.keys(record).sort()).toEqual(["errno", "kind"]);
     expect(record).toEqual(expected);
   });
@@ -774,7 +833,7 @@ describe("cross-process receipt-bound copy (#780)", () => {
       );
       expect(a.done()).toBe(false);
       const newer = commit(x.repo, "newer cross-process bytes");
-      const bCode = `import {indexAllSources} from "./src/catalog/index-source.ts"; import {SourceCheckoutLeaseRefusal} from "./src/catalog/source-checkout-lease.ts"; indexAllSources([${JSON.stringify(x.source)}],{explicitPull:true}).then(outcomes=>{console.log("FIXTURE_B_RESULT="+JSON.stringify(outcomes));if(outcomes.some(o=>o.status==="failed"))process.exitCode=1})${refreshFailureCatch()}`;
+      const bCode = `import {indexAllSources} from "./src/catalog/index-source.ts"; import {SourceCheckoutLeaseRefusal} from "./src/catalog/source-checkout-lease.ts"; indexAllSources([${JSON.stringify(x.source)}],{explicitPull:true}).then(outcomes=>{console.log(${JSON.stringify(REFRESH_RESULT_PREFIX)}+JSON.stringify(outcomes));if(outcomes.some(o=>o.status==="failed"))process.exitCode=1})${refreshFailureCatch()}`;
       const b = productionChild(home, bCode);
       children.push(b);
       await fixtureHandshake(() => b.done() || b.output().includes(`Waiting for another refresh of ${x.source.url}`));
@@ -785,7 +844,7 @@ describe("cross-process receipt-bound copy (#780)", () => {
         aResult,
         "FIXTURE_A_RESULT=",
       );
-      const bRecord = fixtureRecord<{ status: string; reason: string; sha?: string }[]>(bResult, "FIXTURE_B_RESULT=");
+      const bRecord = fixtureRecord<{ status: string; reason: string; sha?: string }[]>(bResult, REFRESH_RESULT_PREFIX);
       if (bResult.code !== 0) {
         expect(bResult.code).toBe(1);
         expect(bRecord.every((outcome) => outcome.sha === undefined)).toBe(true);
@@ -794,7 +853,7 @@ describe("cross-process receipt-bound copy (#780)", () => {
         children.push(retry);
         const retryResult = await fixtureChildResult(retry);
         expect(retryResult.code).toBe(0);
-        expect(fixtureRecord<{ sha?: string }[]>(retryResult, "FIXTURE_B_RESULT=")[0]?.sha).toBe(newer);
+        expect(fixtureRecord<{ sha?: string }[]>(retryResult, REFRESH_RESULT_PREFIX)[0]?.sha).toBe(newer);
       } else expect(bRecord[0]?.sha).toBe(newer);
       expect(git(childCache(x.source), "rev-parse", "HEAD")).toBe(newer);
       expect(aRecord.sources.find((source) => source.url === x.source.url)?.commitSha).toBe(accepted);

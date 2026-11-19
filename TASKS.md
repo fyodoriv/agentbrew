@@ -684,7 +684,7 @@
   - **Measurement**: `bash skill-plugins/workflow/new-project/scripts/scaffold.sh` into a scratch directory, then `scripts/check.sh fast`, with and without seeded violations.
   - **Success**: 3 of 3 seeded violations fail; clean scaffold exits 0 in under 10 seconds.
   - **Pivot**: A gate over 10 seconds on a scaffold rejects the approach; move that lint to the full gate only.
-  - **Filename gate**: With the opt-in enabled, a real scaffold passes 1 of 1 clean checks and fails 1 of 1 uppercase ordinary Markdown filenames in docs/. The same fixture passes 1 of 1 default runs. Git ignoring a case-only file change cannot reuse a passing filename check. Keep the two import and test-placement checks open.
+  - **Filename gate**: With the opt-in enabled, a clean scaffold exits 0 and a seeded uppercase ordinary Markdown filename in docs/ exits 1. The same seeded fixture exits 0 in default mode. Git ignoring a case-only file change cannot reuse a passing filename check. Keep the two import and test-placement checks open.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Forsgren, Humble and Kim (2018), Accelerate (fast feedback).
 
 - [ ] Doc-quality lints for AGENTS.md and skills: why-first paragraph, README byte budget, skill rule cap

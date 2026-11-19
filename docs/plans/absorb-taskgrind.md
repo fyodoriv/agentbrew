@@ -27,7 +27,7 @@ Each taskgrind feature or open task gets one row: **absorb** (and where),
 | Git sync between sessions, TASKS.md-only conflict auto-resolve | absorb | grind `references/run-guards.md` 2 (keep both sides' blocks, not "keep local") |
 | Per-task 3-attempt cap | absorb | grind `references/run-guards.md` 3 (`**Blocked by**: attempted 3 times`) |
 | All-tasks-blocked wait, then exit | absorb | grind `references/run-guards.md` 4 |
-| Stall / diminishing-returns exit | absorb | grind `references/run-guards.md` 5 (two empty passes) |
+| Stall / diminishing-returns exit | absorb | grind `references/run-guards.md` 13-15 (decompose at 3 zero-ship passes, stop at 6, diminishing returns) |
 | Empty-queue sweep | absorb | grind `references/run-guards.md` 6 (already in the loop's sweep phase) |
 | Network pause and retry | absorb | grind `references/run-guards.md` 7 |
 | Session report + attempted-task IDs | covered | grind skill, Session Report (already there) |
@@ -55,7 +55,7 @@ they are dropped. The few with an idea that outlives the runner:
 | Task | Verdict | Home |
 |---|---|---|
 | `detect-queue-fully-blocked-and-bail` | absorb | Run guards 4 |
-| `detect-mid-session-agent-stall`, `auto-bail-on-consecutive-backend-failures`, `sweep-watchdog-bail-on-no-progress` | absorb | Run guards 5 |
+| `detect-mid-session-agent-stall`, `auto-bail-on-consecutive-backend-failures`, `sweep-watchdog-bail-on-no-progress` | absorb | Run guards 13-15 |
 | `final-sync-warn-on-stranded-feature-branch`, `health-check-detect-stranded-commits` | covered | grind handoff checklist (return to the default branch, push first) |
 | `detect-and-clean-content-merged-branches` | covered | `ship-it` branch cleanup step |
 | `agent-worktree-isolation`, `git-sync-handle-worktree-collision`, `slot-non-zero-git-sync-drift` | covered | Claude Code worktrees |
@@ -84,3 +84,59 @@ loses the taskgrind remote, since an archived repo takes no pushes.
    tasks.md runs taskgrind.
 3. `gh repo view fyodoriv/taskgrind --json isArchived` returns `true`, its
    README points here, and the tap formula is gone.
+
+## Deep pass: every tracked file (72)
+
+Second pass, 2026-11-19. Source: `git ls-files` in the taskgrind checkout
+(33 files outside `tests/`, 39 test files). Kinds: absorb, covered (a home
+already does it), drop (with reason).
+
+### Principles, rules, and templates
+
+| File | Verdict | Home or reason |
+|---|---|---|
+| `bin/taskgrind` session prompt: completion protocol | absorb | grind run-guards 7 |
+| `bin/taskgrind` session prompt: public-write gate | absorb | grind run-guards 10-11, SKILL rule 8 |
+| `bin/taskgrind` session prompt: autonomy, multi-instance, workspace, focus | absorb | grind run-guards 4, 8, 9; tasks.md claim check for multi-instance |
+| `bin/taskgrind` stall warning, decompose, diminishing returns, all-blocked, empty-queue sweep | absorb | grind run-guards 13-17 |
+| `bin/taskgrind` preflight (git state, rebase, caffeinate, network) | absorb | grind run-guards 2-3, 18 |
+| `bin/taskgrind` runner loop, backend switch, model file, watchdog | drop | native `/loop` and `/goal` replace the bash outer loop |
+| `AGENTS.md`, `CLAUDE.md` | covered | agentbrew AGENTS.md delivery and gotchas (bash 3.2, BASH_ENV) |
+| `docs/architecture.md` (principles: small passes, queue as state, git as memory) | absorb | grind SKILL rules + run-guards 19 |
+| `docs/defaults-rationale.md` | absorb | thresholds kept in run-guards 12-17; this map is the "why" |
+| `docs/user-stories.md` | covered | agentbrew `docs/user-stories/` grind stories |
+| `docs/resume-state.md` | drop | `/goal` contract file and git log replace resume state |
+| `docs/README.md`, `README.md`, `man/taskgrind.1` | drop | runner docs; archive notice in README (taskgrind#18) |
+| `SECURITY.md` (broad permissions, no secrets in logs) | absorb | grind run-guards 1 |
+| `CONTRIBUTING.md` flaky-bats triage ladder | absorb | dotfiles `docs/ci-setup.md` troubleshooting |
+| `CONTRIBUTING.md` rest | covered | agentbrew CONTRIBUTING + report-upstream |
+| `TASKS.md` (42 open tasks) | covered | table "Open tasks" above |
+| `docs/research/skillclaw-export.md` | drop | spike verdict was reject; nothing to keep |
+| `docs/proof/metrics.json`, `scripts/proof.sh`, `bin/taskgrind-telemetry` | covered | agentbrew `scripts/metrics.sh` and telemetry |
+
+### Skills
+
+| File | Verdict | Home or reason |
+|---|---|---|
+| `.agents/skills/taskgrind-repo-setup/SKILL.md` | absorb | grind `references/repo-setup.md` |
+| `.agents/skills/grind-log-analyze/SKILL.md` | absorb | arc taxonomy + stuck review in the-loop Phase 0a; log ledger dropped (no runner logs) |
+| `.agents/skills/standing-audit-gap-loop/SKILL.md` | covered | sweep + grind empty-queue rule 17 |
+
+### Commands, scripts, config
+
+| File | Verdict | Home or reason |
+|---|---|---|
+| `Makefile` (lint, test, check, audit) | covered | agentbrew `npm run verify`, cached-run |
+| `scripts/validate-skills.py` | covered | agentbrew skill evals + agent-bloat-lint |
+| `scripts/install-shellcheck.sh` | covered | dotfiles Brewfile installs shellcheck |
+| `install.sh`, `INSTALL.md` | drop | runner install; formula removed (homebrew-tap#2) |
+| `lib/constants.sh`, `lib/fullpower.sh`, `lib/watchdog.sh` | drop | runner internals; `caffeinate` kept as run-guards 3 |
+| `Agentfile.yaml` (context7, tasks-mcp, github MCP) | covered | agentbrew catalog already ships these |
+| `.github/workflows/check.yml` | covered | agentbrew + dotfiles hosted CI |
+| `.editorconfig`, `.gitignore`, `LICENSE` | drop | repo boilerplate |
+
+### Tests (39 files under `tests/`)
+
+| Files | Verdict | Reason |
+|---|---|---|
+| all 39 bats files | drop | they test the bash runner, which is gone; the behaviors they pin now live as grind evals |

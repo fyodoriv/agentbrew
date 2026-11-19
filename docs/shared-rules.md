@@ -55,7 +55,9 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - User-facing friction is P0 or P1: a wrong or surprising default, or a workaround the user must remember, is P0; an inconsistency between entry points or missing `--help` is P1. P2 needs a written reason for the deferral.
 - Validate task files with `npx @tasks-md/lint TASKS.md` when edited.
 - **Measure every task (IRON LAW):** every task block, at every priority, carries `Hypothesis`, `Measurement`, `Success`, `Pivot`, and `Anchor`. Check with `npx @tasks-md/lint --require-prereg TASKS.md`. The agentbrew task schema tests also require a valid `ID` and a separate, nonempty `Success` field on every task. Add the required fields before filing a task.
-- **Measure in use, not only in tests:** a task that changes what a user gets also names where the effect shows after it ships: a telemetry event, a dashboard tile, or a metrics command. When that number does not exist, the task adds it, or a first task does. A change that adds or changes an event also updates the events doc and the dashboard tile, and reads the tile back when real data arrives. Never invent an event to fill a tile.
+- **Measure in use, not only in tests:** a task that changes what a user gets also names where the effect shows after it ships: a telemetry event, a dashboard tile, or a metrics command. When that number does not exist, the task adds it, or a first task does. A change that adds or changes an event also updates the events doc and the dashboard tile, and reads the tile back when real data arrives. Never invent an event to fill a tile. Re-check the number 7 and 30 days after merge; call it a regression only when two checks in a row miss.
+- **Stances expire:** a standing decision ("we do not support X", "we defer Y") names the fact it rests on, the condition that ends it, and the action that unlocks it.
+- **Contract first:** land the interface (types, schema, CLI surface) and its tests before the runtime that fills it, so parallel work builds against a fixed shape.
 
 ## Time budgets and scope
 
@@ -127,7 +129,7 @@ A long task or a user-requested deadline remains valid.
 - Assist with defensive security only.
 - Never search for, expose, log, or commit secrets/credentials/tokens/cookies/keys.
 - Do not perform destructive operations without explicit confirmation for that exact action.
-- A local web UI or dashboard binds to `127.0.0.1` by default. Binding `0.0.0.0` needs an explicit opt-in setting and a doc note.
+- A local web UI or dashboard binds to `127.0.0.1` by default. Binding `0.0.0.0` needs an explicit opt-in setting and a doc note. A local endpoint that changes state also requires a per-run token, even on loopback.
 - Never send emails, payments, Slack/Jira/GitHub comments/reviews, or other public side effects without approval unless repo rules explicitly authorize that delivery step.
 
 ## Org-overlay routing

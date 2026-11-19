@@ -138,6 +138,21 @@ deadline rejects the gate design.
 **Anchor.** [Vitest test API](https://vitest.dev/api/test) and the existing
 flake tracker task's one seeded literal control.
 
+## Measure pre-push time
+
+Run this from committed Agentbrew source with Lefthook installed:
+
+```bash
+heavy-run --exclusive node scripts/check-pre-push-budget.mjs
+```
+
+The check sets up disposable repositories for Agentbrew and a new project.
+Both fixtures come from the same commit. Agentbrew's leak test uses a
+synthetic pattern in the fixture. The timing check feeds each hook a real
+five-file Git diff with no manifest changes. It measures each hook five times after setup and fails if a sample exceeds
+10 seconds, the hook fails, or the expected check does not run. The fixture
+uses local Git refs.
+
 ## Merge rule
 
 Merge only when every hosted check on the pull request is green. Never merge on a pending or red check. Wait with `gh pr checks <n> --watch`.

@@ -50,6 +50,10 @@ Repos can push back on any of these: map an area to their own files, waive
 it with a reason, or propose a change to the requirement. See
 `requirements-map.md` (linked from SKILL.md).
 
+When the project is ready for first-time users, use the README skill's
+[first-run usability test](https://github.com/fyodoriv/agentbrew/blob/main/skill-plugins/workflow/readme/SKILL.md#first-run-usability-test)
+to measure the start flow with three people.
+
 ## 3. Rejected, and why
 
 | Practice | Why not in a new repo |

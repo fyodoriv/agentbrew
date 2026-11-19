@@ -77,3 +77,18 @@ Checkup commands run this once a month per repo:
 5. A waiver that also shows up in another repo becomes a requirement-change
    proposal (section 3).
 6. `bash <skill>/scripts/audit-due.sh <repo> --record`.
+
+## Optional unit test rules
+
+JavaScript and TypeScript repos with the `typescript` dev dependency can
+enable either check in the fast gate.
+
+- `CHECK_ORPHAN_TESTS=1 scripts/check.sh fast` checks relative imports in
+  unit tests and requires at least one import from `src/`.
+- `CHECK_TEST_PLACEMENT=1 scripts/check.sh fast` checks that a unit test
+  shares its name and folder with its source file. For example, put
+  `src/format.test.ts` next to `src/format.ts`.
+
+Both checks read `.test` and `.spec` files in `src/`, `test/`, and
+`tests/unit/`. They skip `e2e`, `integration`, fixture, and build folders.
+Use regular source and test files in these trees. The checks skip symlinks.

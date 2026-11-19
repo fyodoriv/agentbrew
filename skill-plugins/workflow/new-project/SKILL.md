@@ -55,6 +55,9 @@ ADRs, `docs/plans/`, `Agentfile.yaml`, `.gitignore`, `.env.example`,
 `lefthook.yml` (secret scan, docs check, fast gate), and `scripts/check.sh`
 (`fast` per commit, full with e2e per PR).
 
+JavaScript and TypeScript scaffolds can opt in to the
+[unit test import and placement checks](references/requirements-map.md#optional-unit-test-rules).
+
 ## Steps
 
 1. **Interview (one round, three questions at most).** Ask only what changes the

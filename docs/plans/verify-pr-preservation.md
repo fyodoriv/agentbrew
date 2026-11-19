@@ -49,3 +49,7 @@ exit one before applying any patch. Both controls must preserve the
 caller. A positive result names the repository and exact revisions. It
 applies at the time of verification, so delivery rechecks those revisions
 immediately before any authorized closure.
+
+Both new controls refused the pair. The ambiguous graph had exactly two
+best merge bases. The live #1040/#1041 check still named the missing file
+when bound to the caller's GitHub origin.

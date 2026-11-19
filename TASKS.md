@@ -392,18 +392,6 @@
   - **Pivot**: more than 1 legitimate README change per month needs a baseline bump.
   - **Anchor**: Sweller 1988 (cognitive load theory).
 
-- [ ] Tracked files never hold a literal home path
-  - **ID**: no-literal-home-paths
-  - **Tags**: privacy, lint, from-minsky
-  - **Details**: Port minsky `scripts/check-no-hardcoded-user-paths.mjs` and `check-no-personal-paths-in-docs.mjs` into `scripts/lint-repo-artifacts.sh`: fail on literal user home paths in tracked code and docs; allow `~` and `$HOME`. Check first whether the private-pattern gate already covers this.
-  - **Files**: `scripts/lint-repo-artifacts.sh` and its test.
-  - **Acceptance**: a planted literal home path fails the lint; `~/` passes; the current tree passes.
-  - **Hypothesis**: literal home paths leaking a username into public repos go from possible to blocked before push.
-  - **Measurement**: `bash scripts/lint-repo-artifacts.sh; echo exit=$?` on a planted fixture and on the tree.
-  - **Success**: fixture exits 1, tree exits 0.
-  - **Pivot**: more than 3 false positives on the tree.
-  - **Anchor**: OWASP 2021 (A01 information exposure).
-
 - [ ] wrap-up fetch-caller tests W03 and W04 time out under load
   - **ID**: wrap-up-fetch-caller-timeout
   - **Tags**: tests, flaky, wrap-up

@@ -120,8 +120,10 @@ for positional, options-object, and parameterized test cases. Use the
 repository gate after checking a named constant and an unchanged legacy deadline.
 
 **Success.** Flag all three inline-deadline forms and zero normal controls.
-Preserve both global 30-second defaults. Fail when the change base or source
-cannot be read.
+Preserve both global 30-second defaults. A title-only edit must keep an
+existing deadline. A same-titled test in a different suite cannot inherit
+that deadline. A .prep.test.ts filename alone does not exempt a test. Fail
+when the change base or source cannot be read.
 
 **Pivot.** Any false block on an unrelated edit or an eligible existing
 deadline rejects the gate design.

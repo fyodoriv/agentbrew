@@ -7,9 +7,12 @@ const MODEL_DIGEST = "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a094
 const CASES_DIGEST = "27f3e62c1c74606dbdca3131035ceb3900c9f3bc9058b61cfec28916e4daceba";
 const PROTOCOL_DIGEST = "6aa8a467e6c406f9ff52c3f0bd21c07169428ebb71cf7bc84f5aa46c675ac6f9";
 const METADATA_HELPER_DIGEST = "612adc6581b6d96a09f0cc21fa6a49c1824e8e9e32ae953029b9285bf1fcddf3";
+const BASELINE_RECEIPT_DIGEST = "4f3a3c464d94def699321c526fed2e98f8b78000dfe25c1e11a1df0f9f3e42e1";
+const RULE_DIGEST = "5ac5ea01fb2390374abd4a2cd605c6fef2022a51f69a13a8d8c218f0b1b2856b";
 const CASES_FILE = new URL("chat-followup-served-cases-821.json", import.meta.url);
 const PROTOCOL_FILE = new URL("chat-rule-schema-protocol.mjs", import.meta.url);
 const METADATA_HELPER_FILE = new URL("eval-chat-message-rule-821.mjs", import.meta.url);
+const RULE_FILE = new URL("chat-followup-candidate-821.txt", import.meta.url);
 const METADATA_URL = "http://127.0.0.1:11434/api/tags";
 const GENERATION_URL = "http://127.0.0.1:11434/api/chat";
 const MAX_RESPONSE_BYTES = 64 * 1024;
@@ -45,7 +48,13 @@ async function localTransport(url, options) {
   });
 }
 
-export async function baseline(receiptPath, runnerDigest, readModelDigest, decide, onStage = () => undefined) {
+export async function baseline(
+  receiptPath,
+  runnerDigest,
+  readModelDigest,
+  decide,
+  { onStage = () => undefined, candidateReference } = {},
+) {
   const casesBytes = readFileSync(CASES_FILE);
   if (
     !/^[a-f0-9]{64}$/.test(runnerDigest) ||
@@ -87,6 +96,7 @@ export async function baseline(receiptPath, runnerDigest, readModelDigest, decid
       metadataHelperDigest: METADATA_HELPER_DIGEST,
       correct,
       records,
+      ...(candidateReference ? { baselineReceiptDigest: BASELINE_RECEIPT_DIGEST, ruleDigest: RULE_DIGEST } : {}),
     };
     onStage("receipt");
     writeFileSync(receipt, `${JSON.stringify(result)}\n`);
@@ -97,23 +107,43 @@ export async function baseline(receiptPath, runnerDigest, readModelDigest, decid
   }
 }
 
+export function readCandidateReference(receiptPath) {
+  const receipt = readFileSync(receiptPath);
+  const text = readFileSync(RULE_FILE);
+  if (sha256(receipt) !== BASELINE_RECEIPT_DIGEST || sha256(text) !== RULE_DIGEST) {
+    throw new Error("Candidate inputs changed");
+  }
+  return { correct: JSON.parse(receipt).correct, rule: text.toString("utf8").trim() };
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   let stage = "inputs";
   try {
-    const [receipt, runnerDigest] = process.argv.slice(2);
-    if (process.argv.length !== 4 || !receipt) throw new Error("Expected receipt and runner digest");
+    const args = process.argv.slice(2);
+    const isCandidate = args[0] === "--candidate";
+    if (args.length !== (isCandidate ? 4 : 2)) throw new Error("Unexpected measurement arguments");
+    const reference = isCandidate ? readCandidateReference(args[1]) : undefined;
+    const [receipt, runnerDigest] = isCandidate ? args.slice(2) : args;
     const result = await baseline(
       receipt,
       runnerDigest,
       async () => (await import(METADATA_HELPER_FILE.href)).modelDigest(localTransport),
-      async (prompt) => (await import(PROTOCOL_FILE.href)).requestDecision(prompt, localTransport),
-      (current) => {
-        stage = current;
+      async (prompt) =>
+        (await import(PROTOCOL_FILE.href)).requestDecision(
+          reference ? `${reference.rule}\n\n${prompt}` : prompt,
+          localTransport,
+        ),
+      {
+        onStage: (current) => {
+          stage = current;
+        },
+        candidateReference: reference,
       },
     );
     console.log(JSON.stringify(result));
+    if (reference && (result.correct !== result.total || result.correct <= reference.correct)) process.exitCode = 1;
   } catch {
-    console.error(`Chat follow-up baseline unavailable at ${stage}. Keep its receipt.`);
+    console.error(`Chat follow-up measurement unavailable at ${stage}. Keep its receipt.`);
     process.exitCode = 1;
   }
 }

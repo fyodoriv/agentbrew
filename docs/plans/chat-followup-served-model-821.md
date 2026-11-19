@@ -59,3 +59,22 @@ changing the six cases, grading, model, limits or response format.
 - **Anchor**: Issue #821, the frozen served-model baseline and the existing opt-in rule in src/catalog.yaml.
 
 Candidate text SHA-256 5ac5ea01fb2390374abd4a2cd605c6fef2022a51f69a13a8d8c218f0b1b2856b.
+
+## Candidate invocation
+
+Set `CHAT_FOLLOWUP_SERVED_RECEIPT` to the verified baseline file. Set
+`CHAT_FOLLOWUP_CANDIDATE_RECEIPT` to the unused candidate file in a different
+private output folder. The runner strips the final newline from the fixed
+rule text and adds it before the unchanged baseline prompt.
+
+```sh
+HEAVY_RUN_EXCLUSIVE_WAIT=2400 heavy-run --exclusive gtimeout 390 node \
+  scripts/eval-chat-followup-821.mjs --candidate "$CHAT_FOLLOWUP_SERVED_RECEIPT" \
+  "$CHAT_FOLLOWUP_CANDIDATE_RECEIPT" \
+  32914849e64f0f1f61fa7d368b3d63ea76f44a653345f7768a3edf4b3c995693
+```
+
+The runner rejects a changed baseline or rule before it reserves the
+candidate. It preserves a complete candidate receipt even if the score
+misses the threshold. Trial results use fictional inputs and do not
+establish performance in a real workspace.

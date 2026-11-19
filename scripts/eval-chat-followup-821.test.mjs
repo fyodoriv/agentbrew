@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { baseline } from "./eval-chat-followup-821.mjs";
+import { baseline, readCandidateReference } from "./eval-chat-followup-821.mjs";
 
 const model = "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7";
 const runner = new URL("eval-chat-followup-821.mjs", import.meta.url);
@@ -33,7 +33,7 @@ test("finalizes one private six-case receipt before reporting a score", async (t
       prompts.push(prompt);
       return actions[prompts.length - 1];
     },
-    (stage) => stages.push(stage),
+    { onStage: (stage) => stages.push(stage) },
   );
   const receipt = JSON.parse(readFileSync(path, "utf8"));
   assert.deepEqual(result, { correct: 5, total: 6 });
@@ -97,4 +97,12 @@ test("a changed model digest rejects an otherwise valid cohort", async (t) => {
   );
   assert.equal(lookups, 2);
   assert.equal(statSync(path).size, 0);
+});
+
+test("an unrelated or incomplete baseline cannot qualify a candidate", (t) => {
+  const path = scratchReceipt(t);
+  writeFileSync(path, '{"correct":4}');
+  assert.throws(() => readCandidateReference(path), /Candidate inputs changed/);
+  writeFileSync(path, "");
+  assert.throws(() => readCandidateReference(path), /Candidate inputs changed/);
 });

@@ -4016,6 +4016,16 @@
         "Checks every listed name for registry status, DNS, web and code-host presence, not a sample",
         "Reports any unchecked name as pending, never as done"
       ]
+    },
+    {
+      "id": 351,
+      "prompt": "/goal immediately deploy the app to the new domain, change the name and branding, and all labels",
+      "expected_output": "Contract first; covers the new hostname with the existing access control before attaching the domain; finds that an API-added custom domain still needs its DNS record and adds it (or hands off at the exact field); proves deploy with live probes (login redirect, bad-key 403); renames only user-facing brand strings and records that CLI commands keep their real name.",
+      "expectations": [
+        "The access control (e.g. Cloudflare Access) covers the new hostname before the domain goes live, and an unauthenticated probe of the new host shows the login redirect.",
+        "The deploy criterion is proved with live HTTP evidence, not the API status alone.",
+        "CLI command hints, storage keys and headers are not renamed as brand labels; the contract records that scope."
+      ]
     }
   ]
 }

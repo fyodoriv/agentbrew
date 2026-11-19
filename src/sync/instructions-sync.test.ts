@@ -1,4 +1,13 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -64,7 +73,7 @@ vi.mock("../state.js", async () => {
 });
 
 import { readOpencodeMajor } from "../core/opencode-version.js";
-import { loadManifest, saveManifest } from "../manifest.js";
+import { contentHash, loadManifest, saveManifest } from "../manifest.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import {
   compressSkillsListing,
@@ -253,6 +262,74 @@ describe("syncInstructions", () => {
     expect(claudeContent).toContain("# Global Claude Code Context");
     expect(readFileSync(canonicalInstructionsFile, "utf-8")).toContain("# Global Claude Code Context");
     expect(getCanonicalInstructionsPath()).toBe(canonicalInstructionsFile);
+  });
+
+  it("keeps distinct local instructions during preview, first sync, and retry", async () => {
+    writeAgentsMd();
+    mkdirSync(join(testDir, "claude"), { recursive: true });
+    mkdirSync(join(testDir, "codex"), { recursive: true });
+    writeFileSync(claudeRulesFile, "Claude-owned text\n");
+    const codexOwnerText = "Codex-owned text\n";
+    writeFileSync(codexRulesFile, codexOwnerText);
+
+    await syncInstructions({ dryRun: true });
+    expect(existsSync(canonicalInstructionsFile)).toBe(false);
+    expect(readFileSync(claudeRulesFile, "utf8")).toBe("Claude-owned text\n");
+    expect(readFileSync(codexRulesFile, "utf8")).toBe(codexOwnerText);
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining("Existing instructions kept"));
+
+    for (let run = 0; run < 2; run++) {
+      await syncInstructions({ quiet: true });
+      expect(readFileSync(claudeRulesFile, "utf8")).toContain("Claude-owned text");
+      expect(lstatSync(codexRulesFile).isFile()).toBe(true);
+      expect(readFileSync(codexRulesFile, "utf8")).toBe(codexOwnerText);
+    }
+  });
+
+  it.each([
+    "missing",
+    "matching",
+    "stale",
+  ])("keeps separate text out of a fresh link (receipt: %s)", async (receipt) => {
+    writeAgentsMd();
+    mkdirSync(join(testDir, "codex"), { recursive: true });
+    const localText = [
+      "Codex-only instruction",
+      "<!-- agentbrew:start -->",
+      "Shared rule from the verified writer",
+      "<!-- agentbrew:end -->",
+      "",
+    ].join("\n");
+    writeFileSync(codexRulesFile, localText);
+    if (receipt !== "missing") {
+      const recorded = receipt === "matching" ? localText : "Earlier rules";
+      vi.mocked(loadManifest).mockReturnValue({ hashes: { [codexRulesFile]: contentHash(recorded) } });
+    }
+    const fresh = AGENT_DEFINITIONS[4] as { rulesFile?: string };
+    const freshPath = join(testDir, "fresh", "AGENTS.md");
+    fresh.rulesFile = freshPath;
+    try {
+      await syncInstructions({ quiet: true });
+      expect(readlinkSync(freshPath)).toBe(canonicalInstructionsFile);
+      const shared = readFileSync(freshPath, "utf8");
+      expect(shared).toContain("Global Claude Code Context");
+      expect(shared).not.toContain("Codex-only instruction");
+      expect(shared.includes("Shared rule from the verified writer")).toBe(receipt === "matching");
+      expect(readFileSync(codexRulesFile, "utf8")).toBe(localText);
+    } finally {
+      delete fresh.rulesFile;
+    }
+  });
+
+  it("leaves a different dangling instruction link untouched", async () => {
+    writeAgentsMd();
+    mkdirSync(join(testDir, "codex"), { recursive: true });
+    const ownerTarget = join(testDir, "local-rules.md");
+    symlinkSync(ownerTarget, codexRulesFile);
+
+    await syncInstructions({ quiet: true });
+    expect(readlinkSync(codexRulesFile)).toBe(ownerTarget);
+    expect(existsSync(ownerTarget)).toBe(false);
   });
 
   it("skips agents without rulesFile", async () => {

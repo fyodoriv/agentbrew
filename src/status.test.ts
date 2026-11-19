@@ -32,6 +32,9 @@ vi.mock("./sync/skills-sync.js", async () => {
 });
 
 vi.mock("./sync/instructions-sync.js", () => ({
+  getCanonicalInstructionsPath: () => "/tmp/agentbrew/AGENTS.md",
+  inspectInstructionsPath: vi.fn(() => "missing"),
+  usesAgentsMdStandardPath: (path: string) => path.endsWith("/AGENTS.md"),
   helperScriptStatus: vi.fn(() => []),
   loadInstructions: vi.fn(() => undefined),
   isInstructionsUpToDate: (deployed: string, content: string) =>
@@ -92,7 +95,7 @@ import {
 import { loadState } from "./state.js";
 import { collectStatusData, getSourcesFreshness, status } from "./status.js";
 import { probeAutoRepairHealth } from "./sync/auto-repair-health.js";
-import { helperScriptStatus, loadInstructions } from "./sync/instructions-sync.js";
+import { helperScriptStatus, inspectInstructionsPath, loadInstructions } from "./sync/instructions-sync.js";
 import { getSkillSources } from "./sync/skills-sync.js";
 import type { Source } from "./types.js";
 
@@ -572,6 +575,19 @@ describe("status instructions section", () => {
       .flat()
       .join(" ");
     expect(calls).toContain("out of date");
+  });
+
+  it("reports separate instructions without asking to run sync", async () => {
+    mockLoadState.mockReturnValue(makeBasicState());
+    mockLoadInstructions.mockReturnValue("# Shared instructions");
+    mockExistsSync.mockReturnValue(false);
+    vi.mocked(inspectInstructionsPath).mockReturnValueOnce("separate");
+
+    await status({ verbose: true });
+    const lines = vi.mocked(console.log).mock.calls.flat().join("\n");
+    const instructions = lines.split("\n").find((line) => line.startsWith("Instructions"));
+    expect(instructions).toContain("1 kept separate");
+    expect(instructions).not.toContain("run `agentbrew sync`");
   });
 
   it("shows not deployed when target missing", async () => {

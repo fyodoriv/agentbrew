@@ -89,15 +89,20 @@ Re-measure after a lockfile or workflow change; drop a cache whose warm median i
 A flaky gate trains people to ignore it. Detect flakes from run history, not
 by feel.
 
-- Read the last 100 runs of a workflow. Find same-SHA pairs where a job failed,
-  then passed.
+- Read up to 100 completed CI runs. Compare repeated attempts of the same run,
+  using the same named job and source SHA. In each job's history, compare
+  consecutive observations where both results are failures or successes.
+  Cancelled or ambiguous observations break the pair.
 - Report a job when its flake rate is at least 10% over at least 5 same-SHA
   pairs. 10% is the empirical mark where a team learns to ignore a gate
   (Memon et al., 2017; Forsgren, Humble, Kim, *Accelerate*, 2018). Under 5
   pairs, a high rate is noise.
 - Keep both numbers as named constants so a test can pin them.
-- Run the detector as a non-blocking job. A detector that fails the build on
-  every hit becomes a flaky gate itself.
+- Run **CI flake report** from GitHub Actions or use
+  `node scripts/gh-actions-flake-tracker.mjs --repo OWNER/REPO`. The report
+  shows the sample size and each job's denominator. `eligible: false` means
+  the sample is too small. Missing attempt history gives an unavailable
+  result. The manual workflow reads Actions metadata outside the merge gate.
 - For each hit, write a task block with the fix hypothesis. If the root cause
   takes more than a day, downgrade the job to non-blocking and file a
   follow-up.

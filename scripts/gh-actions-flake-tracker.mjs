@@ -21,14 +21,30 @@ function githubList(endpoint, paginate = false) {
   }
 }
 
+function verifiedRows(pages, field, limit = Number.POSITIVE_INFINITY) {
+  const total = pages[0]?.total_count;
+  if (
+    !Number.isSafeInteger(total) ||
+    total < 0 ||
+    !pages.every((page) => page?.total_count === total && Array.isArray(page[field]))
+  ) {
+    throw new Error("GitHub history pages did not agree on the result count.");
+  }
+  const rows = pages.flatMap((page) => page[field]);
+  if (rows.length !== Math.min(total, limit)) {
+    throw new Error("GitHub returned an incomplete CI history.");
+  }
+  return rows;
+}
+
 function readGitHubRuns(repository) {
   const root = `repos/${repository}/actions`;
   const pages = githubList(`${root}/workflows/ci.yml/runs?status=completed&per_page=${MAX_RUNS}`);
-  const runs = pages.flatMap((page) => page.workflow_runs).slice(0, MAX_RUNS);
+  const runs = verifiedRows(pages, "workflow_runs", MAX_RUNS);
   return runs.map((run) => {
     const jobs =
       run?.run_attempt > 1 && Number.isSafeInteger(run.id)
-        ? githubList(`${root}/runs/${run.id}/jobs?filter=all&per_page=100`, true).flatMap((page) => page.jobs)
+        ? verifiedRows(githubList(`${root}/runs/${run.id}/jobs?filter=all&per_page=100`, true), "jobs")
         : [];
     return { id: run?.id, head_sha: run?.head_sha, run_attempt: run?.run_attempt, jobs };
   });
@@ -37,20 +53,25 @@ function readGitHubRuns(repository) {
 function jobAttempts(run) {
   const jobs = new Map();
   const observedAttempts = new Set();
+  const jobIds = new Set();
   for (const job of run.jobs) {
     if (
       job?.run_id !== run.id ||
       job.head_sha !== run.head_sha ||
+      !Number.isSafeInteger(job.id) ||
+      job.id < 1 ||
+      jobIds.has(job.id) ||
       typeof job.name !== "string" ||
       !job.name ||
       !Number.isSafeInteger(job.run_attempt) ||
       job.run_attempt < 1 ||
       job.run_attempt > run.run_attempt
     ) {
-      throw new Error("Run history contains a job with an unverified run, SHA, name or attempt.");
+      throw new Error("Run history contains a job with an unverified identity, run, SHA, name or attempt.");
     }
 
     observedAttempts.add(job.run_attempt);
+    jobIds.add(job.id);
     const attempts = jobs.get(job.name) ?? new Map();
     const comparable = job.status === "completed" && (job.conclusion === "failure" || job.conclusion === "success");
     attempts.set(job.run_attempt, comparable && !attempts.has(job.run_attempt) ? job.conclusion : null);

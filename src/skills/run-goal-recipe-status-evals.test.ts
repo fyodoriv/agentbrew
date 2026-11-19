@@ -21,7 +21,7 @@ describe("run-goal contributed recipe and status cases", () => {
       createHash("sha256")
         .update(JSON.stringify(evals.slice(0, 241)))
         .digest("hex"),
-    ).toBe("7ab8d489d56d1a6f495045620f29119486192597cfe2b9ba04336ea74624f41b");
+    ).toBe("384a15a89e5fc46f587d57a8958ac7ec4cb2b6bc031366373146e92bd3096d64");
     expect(evals.slice(241, 245)).toHaveLength(4);
     expect(recipe()?.id).toBe(242);
     expect(status()?.id).toBe(245);

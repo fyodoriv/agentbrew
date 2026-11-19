@@ -19,3 +19,23 @@ also lacked state. A script could report an install that never started.
 - **Anchor**: `install` in `src/catalog/install.ts` and the disposable
   rule-install check on Nov 18, 2026. Basili, Caldiera, and Rombach (1994),
   Goal Question Metric.
+
+## Missing shared rules follow-up
+
+Initialization without recommended items or sync can leave shared rules
+unavailable. A named catalog rule then prints the rules setup hint and
+returns success without installing the rule. Preserve that hint.
+
+- **Hypothesis**: An explicit rule apply fails when its shared rules file is
+  missing. A preview remains read-only and successful once Agentbrew state
+  exists. An initialized shared rules file admits an apply and a retry.
+- **Measurement**: Extend the existing missing-rules fixture. Run the actual
+  command with valid state and missing shared rules, then run
+  `agentbrew rules init` in the same disposable home and retry.
+- **Success**: One missing-rules apply exits 1 with zero rule files or
+  automatic sync and keeps the setup hint. A preview exits 0 with zero writes.
+  One subsequent apply and one retry exit 0 with exactly one rule block.
+- **Pivot**: Any unexpected write, missing hint, false success, duplicate rule,
+  or regression in a complete setup rejects the candidate.
+- **Anchor**: The no-shared-rules result in `src/catalog/install-other.ts` and
+  the existing `installRule` missing-file fixture.

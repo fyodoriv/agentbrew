@@ -6,11 +6,14 @@ import {
   BLOAT_RULE,
   collectAgentBloatFindings,
   lintCommandBloat,
+  lintDocQuality,
   lintMdcBloat,
   lintSkillBloat,
   loadSkillBaselines,
+  README_MAX_BYTES,
   SKILL_BODY_TOKEN_HARD,
   SKILL_DESCRIPTION_MAX_CHARS,
+  SKILL_MAX_RULES,
   summarizeAgentBloat,
 } from "./agent-bloat-lint.js";
 import { isAlwaysApplied, isBroadGlob, parseMdcFrontmatter } from "./measure/mdc-frontmatter.js";
@@ -69,6 +72,88 @@ describe("lintSkillBloat", () => {
     expect(findings).toContainEqual(
       expect.objectContaining({ ruleId: BLOAT_RULE.SKILL_BASELINE_GROWTH, severity: "error" }),
     );
+  });
+});
+
+describe("doc quality", () => {
+  it("requires purpose in the opening prose and ignores badges, comments and examples", () => {
+    const above = [
+      "---",
+      "title: Fixture",
+      "---",
+      "# Docs",
+      "",
+      "[![build](badge.svg)](checks)",
+      "<!--",
+      "```",
+      "This guide shows how to set up a tool.",
+      "-->",
+      "```md",
+      "<!--",
+      "This guide shows how to set up a tool.",
+      "```",
+      "",
+    ].join("\r\n");
+    const purpose = "This guide shows how to set up the tool.";
+    expect(lintDocQuality(`${above}Add a document.\r\n\r\n${purpose}`, "AGENTS.md")).toContainEqual(
+      expect.objectContaining({ ruleId: BLOAT_RULE.DOC_OPENING_PURPOSE, severity: "error" }),
+    );
+    expect(lintDocQuality(above + purpose, "AGENTS.md")).toEqual([]);
+    expect(lintDocQuality("Agentbrew synchronizes agent settings across tools.", "AGENTS.md")).toEqual([]);
+    expect(lintDocQuality("This guide exists.", "AGENTS.md")).toContainEqual(
+      expect.objectContaining({ ruleId: BLOAT_RULE.DOC_OPENING_PURPOSE }),
+    );
+  });
+
+  it("enforces the README limit in UTF-8 bytes", () => {
+    const intro = "One CLI that syncs agent settings.\n\n";
+    const remaining = README_MAX_BYTES - Buffer.byteLength(intro);
+    const atLimit = intro + "é".repeat(Math.floor(remaining / 2)) + "x".repeat(remaining % 2);
+    expect(lintDocQuality(atLimit, "README.md")).toEqual([]);
+    expect(lintDocQuality(`${atLimit}é`, "README.md")).toContainEqual(
+      expect.objectContaining({ ruleId: BLOAT_RULE.README_BYTE_BUDGET, measured: README_MAX_BYTES + 2 }),
+    );
+  });
+
+  it("caps only top-level entries in the skill Rules section", () => {
+    const skill = "---\nname: test\ndescription: Use this skill for a check.\n---\n## Rules\n";
+    const options = { path: "SKILL.md", dirName: "test" };
+    const entries = "- Keep it safe.\n".repeat(SKILL_MAX_RULES - 2);
+    const excluded = "  - Detail.\n```md\n<!--\n- Example.\n```\n<!-- - Hidden. -->\n";
+    const headings = "### Check input\n- Detail.\n### Check output\n";
+    const outside = "## Notes\n- This is separate.\n";
+    expect(lintSkillBloat(skill + entries + excluded + headings + outside, options)).toEqual([]);
+    expect(lintSkillBloat(`${skill}${entries}${excluded}${headings}### Extra\n${outside}`, options)).toContainEqual(
+      expect.objectContaining({ ruleId: BLOAT_RULE.SKILL_RULE_CAP, measured: SKILL_MAX_RULES + 1 }),
+    );
+  });
+
+  it("reads indented rule sections and line endings used in Markdown sources", () => {
+    const body = `  ## Rules ##\r\n${"  - Keep it safe.\r\n".repeat(SKILL_MAX_RULES + 1)}`;
+    const skill = "\uFEFF---\r\nname: test\r\ndescription: Use this skill for a check.\r\n---\r\n";
+    expect(lintSkillBloat(skill + body, { path: "SKILL.md", dirName: "test" })).toContainEqual(
+      expect.objectContaining({ ruleId: BLOAT_RULE.SKILL_RULE_CAP, measured: SKILL_MAX_RULES + 1 }),
+    );
+  });
+
+  it("ignores headings inside list details and resumes at a new top-level list", () => {
+    const skill = "---\nname: test\ndescription: Use this skill for a check.\n---\n";
+    const parts = [
+      "- Outside list.\n  ## Rules\n  - This is a nested list.\n",
+      "## Rules\n- First rule.\n  ## Nested detail\n  - This is a nested list.\n",
+      "\nNext group.\n\n",
+      "  - A top-level rule.\n".repeat(SKILL_MAX_RULES),
+    ];
+    expect(lintSkillBloat(skill + parts.join(""), { path: "SKILL.md", dirName: "test" })).toContainEqual(
+      expect.objectContaining({ ruleId: BLOAT_RULE.SKILL_RULE_CAP, measured: SKILL_MAX_RULES + 1 }),
+    );
+  });
+
+  it("reports root docs through the existing artifact scan", () => {
+    const repoRoot = temporaryRepo();
+    writeFileSync(join(repoRoot, "AGENTS.md"), "# Guide\n\nA list of notes.\n");
+    const findings = collectAgentBloatFindings({ repoRoot, commandsDir: join(repoRoot, "commands") });
+    expect(findings).toEqual([expect.objectContaining({ ruleId: BLOAT_RULE.DOC_OPENING_PURPOSE, path: "AGENTS.md" })]);
   });
 });
 

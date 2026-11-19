@@ -684,6 +684,7 @@
   - **Measurement**: `bash skill-plugins/workflow/new-project/scripts/scaffold.sh` into a scratch directory, then `scripts/check.sh fast`, with and without seeded violations.
   - **Success**: 3 of 3 seeded violations fail; clean scaffold exits 0 in under 10 seconds.
   - **Pivot**: A gate over 10 seconds on a scaffold rejects the approach; move that lint to the full gate only.
+  - **Test gate**: Opt-in TypeScript and JavaScript unit checks must find 2 of 2 fixtures (a missing relative source import and a valid source imported by a misplaced test). One clean test next to its source and one clean empty scaffold must both pass. Default-off gates must produce zero hygiene findings. Time the clean enabled fast gate separately. Pivot to the full gate if it takes 10 seconds or more, or narrow the convention if either positive fixture fails.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Forsgren, Humble and Kim (2018), Accelerate (fast feedback).
 
 - [ ] Doc-quality lints for AGENTS.md and skills: why-first paragraph, README byte budget, skill rule cap

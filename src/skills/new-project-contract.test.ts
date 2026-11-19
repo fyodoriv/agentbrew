@@ -532,6 +532,84 @@ describe("new-project skill", () => {
     expect(defaults.stdout).not.toMatch(/orphan-test|test-placement/);
   });
 
+  it("requires a tracking comment for explicit source stubs when opted in", () => {
+    const dir = fresh("tool", "fake-markers");
+    const deps = join(dir, "node_modules");
+    mkdirSync(deps, { recursive: true });
+    symlinkSync(join(process.cwd(), "node_modules", "typescript"), join(deps, "typescript"), "junction");
+    const check = (enabled: string) =>
+      spawnSync("/bin/bash", [join(dir, "scripts", "check.sh"), "fast"], {
+        cwd: dir,
+        encoding: "utf-8",
+        env: { ...env, CHECK_OFFLINE: "1", CHECK_FAKE_MARKERS: enabled },
+      });
+    const empty = check("1");
+    expect(empty.status, empty.stderr).toBe(0);
+    expect(empty.stdout).toContain("fake-marker: source markers passed.");
+
+    const src = join(dir, "src");
+    mkdirSync(join(src, "__tests__"), { recursive: true });
+    writeFileSync(join(src, "__tests__", "support.ts"), "export const mockCatalog = () => [];\n");
+    writeFileSync(join(src, "catalog.fixture.ts"), "export const mockCatalog = () => [];\n");
+    writeFileSync(join(src, "catalog.test.ts"), "export const mockCatalog = () => [];\n");
+    const nameStub = "export const fakeCatalog = () => [];\n";
+    const throwStub = 'export function catalog() { throw new Error("Not implemented yet"); }\n';
+    const file = join(src, "catalog.ts");
+    writeFileSync(file, nameStub + throwStub);
+    const missing = check("1");
+    expect(missing.status).toBe(1);
+    expect(missing.stderr).toContain("fake-marker: src/catalog.ts:1 needs an adjacent");
+    expect(missing.stderr).toContain("fake-marker: src/catalog.ts:2 needs an adjacent");
+    expect(missing.stderr).not.toMatch(/catalog\.test|catalog\.fixture|support\.ts/);
+
+    const disabled = check("0");
+    expect(disabled.status, disabled.stderr).toBe(0);
+    expect(disabled.stdout).not.toContain("fake-marker");
+
+    writeFileSync(file, `// FAKE: missing the tracking task\n${nameStub}`);
+    const incomplete = check("1");
+    expect(incomplete.status).toBe(1);
+    expect(incomplete.stderr).toContain("fake-marker: src/catalog.ts:2 needs an adjacent");
+
+    writeFileSync(
+      file,
+      [
+        "// FAKE: stands in for the inventory - tracked at connect-catalog\n",
+        nameStub,
+        "// FAKE: tracks the missing adapter - tracked at connect-catalog\n",
+        throwStub,
+        "export const catalogRevision = () => 1;\n",
+      ].join(""),
+    );
+    const fixed = check("1");
+    expect(fixed.status, fixed.stderr).toBe(0);
+    expect(fixed.stdout).toContain("fake-marker: source markers passed.");
+
+    writeFileSync(
+      file,
+      [
+        "export const fakeNamed = function realName() { return []; };",
+        "export const fakeWrapped = (() => []);",
+        "export const adapter = { fakeProperty: function realName() { return []; } };",
+        "export class Catalog { fakeField = () => []; }",
+        "export const",
+        "// FAKE: replaces the first test adapter - tracked at connect-catalog",
+        "fakeFirst = () => [],",
+        "fakeSecond = () => [];",
+      ].join("\n"),
+    );
+    const wrapped = check("1");
+    expect(wrapped.status).toBe(1);
+    const locations = wrapped.stderr.match(/src\/catalog\.ts:\d+/gu);
+    expect(locations).toEqual([
+      "src/catalog.ts:1",
+      "src/catalog.ts:2",
+      "src/catalog.ts:3",
+      "src/catalog.ts:4",
+      "src/catalog.ts:8",
+    ]);
+  });
+
   it("lets an existing repo map an area to its own files or waive it with a reason", () => {
     const dir = fresh("tool-none", "mapped");
     renameSync(join(dir, "docs", "VISION.md"), join(dir, "VISION.md"));

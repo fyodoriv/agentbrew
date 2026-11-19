@@ -51,6 +51,9 @@ fi
 if [ "${CHECK_TEST_PLACEMENT:-0}" = 1 ]; then
   key="" step test-placement node scripts/check-test-placement.mjs
 fi
+if [ "${CHECK_FAKE_MARKERS:-0}" = 1 ]; then
+  key="" step fake-marker node scripts/check-fake-markers.mjs
+fi
 if command -v gitleaks >/dev/null 2>&1 && git rev-parse -q --verify HEAD >/dev/null; then
   step secrets gitleaks git --no-banner --redact -l warn --log-opts=-20
 fi

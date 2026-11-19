@@ -1,7 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-hook_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+hook_dir="${BASH_SOURCE[0]%/*}"
+[[ "${BASH_SOURCE[0]}" == */* ]] || hook_dir=.
+hook_dir="$(CDPATH='' cd -- "${hook_dir:-/}" && pwd)"
 if [ -d "$hook_dir/lib" ]; then lib="$hook_dir/lib"; else lib="$hook_dir/../lib"; fi
 # shellcheck source=../lib/stdin-json.sh
 source "$lib/stdin-json.sh"
@@ -25,7 +27,7 @@ case "$screen" in
   *) verdict_allow "$HOOK_ID" "no stash discard to check" ;;
 esac
 
-if ! decision="$(printf '%s' "$command_text" | python3 -I -S "$lib/destructive-command.py" 2>/dev/null)"; then
+if ! decision="$(printf '%s' "$command_text" | hook_python -S "$lib/destructive-command.py" 2>/dev/null)"; then
   verdict_block "$HOOK_ID" "The stash command could not be checked. Inspect the stash without deleting it."
 fi
 case "$decision" in

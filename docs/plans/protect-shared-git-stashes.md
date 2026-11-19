@@ -24,3 +24,7 @@ recorded zero calls.
 The first Ubuntu run found an old manifest count of 21. The new hook
 made the correct count 22. The fixture now checks the new ID and still
 requires all Bash hooks to be off by default.
+
+After the shared hook startup change landed, the check adopted its
+interpreter selector. A separate control verifies the configured
+interpreter receives the isolated flags and the stash classifier path.

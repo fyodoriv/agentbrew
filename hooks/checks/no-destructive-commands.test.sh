@@ -46,5 +46,16 @@ check 'separate shell lines' 0 Bash $'git\nstash drop'
 check 'no Git subcommand before a comment' 0 Bash $'git # note\nstash drop'
 check 'comment instead of a Git directory value' 0 Bash 'git -C # stash drop'
 check 'separator instead of a Git directory value' 0 Bash 'git -C; stash drop'
+
+export PYTHON_CALL_RECEIPT="$scratch/python-called"
+cat > "$scratch/bin/interpreter-override" <<'STUB'
+#!/bin/bash
+test "$1 $2 ${3##*/}" = "-I -S destructive-command.py" || exit 99
+touch "$PYTHON_CALL_RECEIPT"
+printf '%s\n' block
+STUB
+chmod +x "$scratch/bin/interpreter-override"
+HOOK_PYTHON="$scratch/bin/interpreter-override" check 'shared interpreter route' 2 Bash 'git stash drop'
+[ -e "$PYTHON_CALL_RECEIPT" ]
 [ ! -e "$GIT_CALL_RECEIPT" ]
 printf '%s\n' 'Git commands executed: 0'

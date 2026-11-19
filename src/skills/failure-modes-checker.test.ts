@@ -213,6 +213,8 @@ describe("check-failure-modes.mjs", () => {
       "| 1 | Disk full | `df -m /tmp \\| awk 'NR==2'` (disk-full) | `loud-crash-supervisor-restart` | `tests/sync.test.ts` |",
       "| 2 | Corrupt line | truncate the log | `graceful-degrade` — `parseLog` skips the line; the gitignore is untouched | `tests/sync.test.ts` |",
       "| 3 | API down | 5xx | `circuit-break-and-notify` | `tests/sync.test.ts` |",
+      "| 4 | Stale lock | old pid | `graceful-degrade` — the runner ignores them and logs a warning | `tests/sync.test.ts` |",
+      "| 5 | Read-only ignore file | chmod | `graceful-degrade` — sets `repo.yaml.ignoreMechanism: per-clone-exclude` | `tests/sync.test.ts` |",
     ].join("\n");
     withRepo(
       { "README.md": section({ labels, table }), "tests/sync.test.ts": "test('x', () => {});\n" },
@@ -222,6 +224,29 @@ describe("check-failure-modes.mjs", () => {
         expect(result.status).toBe(0);
       },
     );
+  });
+
+  it("rejects a forbidden span or silent-retry prose beside an allowed span", () => {
+    const rows = [
+      "| A | t | `crash-loudly` first, then `retry-silently` | `tests/sync.test.ts` |",
+      "| B | t | `graceful-degrade`; on 5xx log and continue | `tests/sync.test.ts` |",
+    ];
+    for (const row of rows) {
+      withRepo({ "README.md": section({ table: `${HEADER}\n${row}` }) }, (_root, run) => {
+        const result = run("README.md");
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("is forbidden");
+      });
+    }
+  });
+
+  it("reads the Test column, not another header that ends in test", () => {
+    const table = "| Mode | Trigger | Expected under test | Test |\n|---|---|---|---|\n| A | t | crash loudly |  |";
+    withRepo({ "README.md": section({ table }) }, (_root, run) => {
+      const result = run("README.md");
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("Test is empty");
+    });
   });
 
   it("rejects a file with no failure modes section", () => {

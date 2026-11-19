@@ -18,7 +18,7 @@ const COLUMNS = {
   mode: /^(?:failure\s+)?mode$/,
   trigger: /^trigger\b/,
   expected: /^expected\b/,
-  test: /\btests?$/,
+  test: /^(?:\w+\s+)?tests?$/,
 };
 const ALLOWED = new Map([
   ["crash loudly", "crash loudly"],
@@ -30,6 +30,8 @@ const ALLOWED = new Map([
   ["loud crash supervisor restart", "crash loudly"],
 ]);
 const FORBIDDEN = /retry silently|silent(ly)? retr|\bignore|log and continue/;
+// Prose beside a behavior span: "ignores them" can describe a graceful skip, so only these count.
+const FORBIDDEN_PROSE = /retry silently|silent(ly)? retr|log and continue/;
 const TEST_FILE = /\.(test|spec)\.|_test\.|(^|\/)test_|\.bats$/;
 // Dependency, build, and sibling-worktree folders: a match there is not this repo's test.
 const SKIP_DIRS = new Set([
@@ -219,10 +221,17 @@ function testExists(token, root) {
 const normalize = (text) => strip(text).toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ");
 
 // A cell may name the behavior in backticks among other code and prose:
-// `graceful-degrade` — `parseEvents` drops the bad line. Use the span that names a behavior.
+// `graceful-degrade` — `parseEvents` drops the bad line. Use the span that names a behavior,
+// but any forbidden span, or silent-retry prose beside an allowed span, fails the cell.
 function behaviorOf(cell) {
   const spans = [...cell.matchAll(/`([^`]+)`/g)].map((match) => normalize(match[1]));
-  return spans.find((span) => ALLOWED.has(span) || FORBIDDEN.test(span)) ?? normalize(cell);
+  // Only a plain-words span names a behavior; `repo.yaml.ignoreMechanism` is code, not "ignore".
+  const forbidden = spans.find((span) => /^[a-z ]+$/.test(span) && FORBIDDEN.test(span));
+  if (forbidden) return forbidden;
+  const allowed = spans.find((span) => ALLOWED.has(span));
+  if (!allowed) return normalize(cell);
+  const prose = normalize(cell.replace(/`[^`]+`/g, " ")).match(FORBIDDEN_PROSE);
+  return prose ? prose[0] : allowed;
 }
 
 function checkExpected(name, cell, errors) {

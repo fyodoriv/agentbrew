@@ -380,6 +380,54 @@
   - **Pivot**: more than 1 false block per week in hook observation logs.
   - **Anchor**: Reason 1990 (Human Error, defenses in depth).
 
+- [ ] Git calls from scripts and sh -c pass the same safety blocks
+  - **ID**: git-path-shim
+  - **Tags**: hooks, git, from-minsky
+  - **Details**: Port minsky `.claude/shims/git` (see the archived repo): a `git` wrapper put first on the agent PATH that applies the dangerous-git blocks to the real argv, so `sh -c`, scripts and aliases cannot bypass the Bash-text hook. Opt-in via the hook manifest; pass through to the real git otherwise.
+  - **Files**: `hooks/shims/git`, its fixture test, `hooks/manifest.yaml`.
+  - **Acceptance**: a blocked git call wrapped in `sh -c` is blocked under the shim; `git status` passes through unchanged.
+  - **Hypothesis**: destructive git calls hidden inside scripts go from unblocked to blocked.
+  - **Measurement**: `bats tests/hooks/git-shim.bats` on 10 blocked and 10 allowed fixtures.
+  - **Success**: 10/10 blocked and 10/10 allowed.
+  - **Pivot**: any allowed fixture blocked, or added latency over 20 ms per git call.
+  - **Anchor**: Reason 1990 (Human Error, defenses in depth).
+
+- [ ] Editing TASKS.md lints it right away
+  - **ID**: tasks-md-lint-on-edit
+  - **Tags**: hooks, tasks-md, from-minsky
+  - **Details**: Port the TASKS.md branch of minsky `.claude/hooks/post-edit.sh`: after an Edit or Write to `TASKS.md`, run `@tasks-md/lint` (including rule 9 fields and quality warnings) and block the next turn with the errors until fixed.
+  - **Files**: `hooks/checks/tasks-md-lint-on-edit.sh`, its fixture test, `hooks/manifest.yaml`.
+  - **Acceptance**: an edit that drops a task's Pivot is reported in the same turn; a valid edit is silent.
+  - **Hypothesis**: TASKS.md lint failures found in CI drop to near zero because the edit hook catches them first.
+  - **Measurement**: count TASKS.md lint failures in hosted CI over 30 days before and after (`gh run list` plus a log grep).
+  - **Success**: at least 80% fewer CI TASKS.md lint failures.
+  - **Pivot**: under 30% fewer, or hook runtime over 2 s.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (Accelerate, shift-left testing).
+
+- [ ] Tests only import exports that exist
+  - **ID**: check-tests-import-only-existing-exports
+  - **Tags**: lint, tests, from-minsky
+  - **Details**: Port minsky `scripts/check-orphan-tests.mjs`: every named symbol a `.mjs`/`.js` test imports from a source file must exist as a named export there, catching source/test API drift that `tsc` does not see. Add it to `lint-changed.sh`.
+  - **Files**: `scripts/check-orphan-tests.mjs`, its test, `scripts/lint-changed.sh`.
+  - **Acceptance**: a fixture test importing a removed export fails with file and symbol; the current tree passes.
+  - **Hypothesis**: orphaned test imports are caught at lint time instead of at test run.
+  - **Measurement**: `node scripts/check-orphan-tests.mjs; echo exit=$?` on the fixture and the tree.
+  - **Success**: fixture exits 1, tree exits 0.
+  - **Pivot**: more than 2 false positives on the tree.
+  - **Anchor**: Meszaros 2007 (xUnit Test Patterns, obsolete tests).
+
+- [ ] Closing a superseded PR proves nothing is lost
+  - **ID**: lossless-pr-close
+  - **Tags**: ship-it, watch-issues, git, from-minsky
+  - **Details**: Port minsky `scripts/verify-pr-closure-is-lossless.mjs`: before closing a PR as superseded or duplicate, apply its patch onto the surviving branch with `git apply --3way --check` and refuse the close if any hunk is left over. Call it from ship-it and watch-issues; this is the mechanical proof the "Merge means merge" rule asks for.
+  - **Files**: `scripts/verify-pr-closure-is-lossless.mjs`, its test, ship-it and watch-issues docs.
+  - **Acceptance**: a fixture PR with one unique hunk is refused and the hunk named; a true duplicate passes.
+  - **Hypothesis**: PR closes that drop unique work go from unchecked to zero.
+  - **Measurement**: `node scripts/verify-pr-closure-is-lossless.mjs --closed <n> --survivor <m>; echo exit=$?` on fixtures and the last 10 closed PRs.
+  - **Success**: fixtures correct; 0 false refusals on true duplicates.
+  - **Pivot**: more than 1 false refusal in 10 real closes.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (Accelerate, change failure rate).
+
 - [ ] wrap-up fetch-caller tests W03 and W04 time out under load
   - **ID**: wrap-up-fetch-caller-timeout
   - **Tags**: tests, flaky, wrap-up

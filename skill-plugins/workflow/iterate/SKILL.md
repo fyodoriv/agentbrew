@@ -70,6 +70,10 @@ Choose the single most promising change. Consider:
 
 Edit the minimum code needed to test the hypothesis. One file if possible. Small diff.
 
+Timebox it: reach the commit in 2.4 within about 15 minutes of starting the change. If you
+cannot, the change is too big. Split it, commit the smallest part that you can verify alone,
+and make the rest the next hypothesis. (Minsky's overnight runs got more done with this rule.)
+
 ### 2.4 Commit before verification
 
 Stage only the files you changed in this iteration — never `git add -A`, `git add .`, or other broad staging:

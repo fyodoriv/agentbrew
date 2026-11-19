@@ -200,6 +200,34 @@ skills:
     recommended: false
     rationale: "Agents fail the same four ways: silent assumptions, scope creep, vague 'done', and over-engineering. A short primer with a runnable success check counters each one. Adapted from Karpathy's 2024 notes on LLM coding failures."
 
+  - name: pre-register
+    description: "Pre-register a non-trivial change as an experiment: hypothesis, runnable measurement, success, pivot, and a primary-source anchor before code, then an honest self-grade after. Ships a checker for PR bodies and task blocks."
+    source: fyodoriv/agentbrew
+    category: quality
+    recommended: true
+    rationale: "A metric picked after the result lets every change succeed. Writing the prediction first, with a margin between success and pivot, keeps changes falsifiable. Adapted from minsky rule #9 and its experiment lints (Munafò et al. 2017)."
+
+  - name: split-roles
+    description: "Build one code change with three separate contexts: a builder writes the code, a fresh tester writes failing tests from the spec only, and a fresh judge blocks the merge on any open defect."
+    source: fyodoriv/agentbrew
+    category: testing
+    recommended: true
+    rationale: "Tests written by the context that wrote the code tend to mirror it, so a wrong implementation passes. Separate contexts make the tests and the grade independent. Adapted from minsky's developer, QA, and reviewer personas (Myers 1979)."
+
+  - name: failure-modes
+    description: "Write a tested failure-mode table for a new component, job, or service: steady state, blast radius, escape hatch, and one row per fault with the expected behavior and the test that reproduces it. Ships a checker."
+    source: fyodoriv/agentbrew
+    category: quality
+    recommended: true
+    rationale: "Unattended and I/O code fails in ways nobody planned for, and silent retries hide it. A table that names each fault, its expected behavior, and a real test makes failure behavior a design choice. Adapted from minsky rule #7 (Basiri et al. 2016)."
+
+  - name: rule-to-lint
+    description: "Turn a prose rule that keeps getting broken into a deterministic hook, lint, or test with red and allowed fixtures, then shrink the prose to one line that names the check."
+    source: fyodoriv/agentbrew
+    category: guardrails
+    recommended: false
+    rationale: "Prose rules cost context on every session and still get broken. A check enforces the rule and frees the context; an LLM judge may advise but never be the only gate. Adapted from minsky rule #10 (Bessey et al. 2010)."
+
   - name: verification-before-completion
     description: "Gate function before any completion claim — run verification command, read output, THEN claim. Evidence before assertions, always."
     source: obra/superpowers
@@ -272,7 +300,7 @@ skills:
     recommended: false
 
   - name: project-audit
-    description: "Deep audit across four lenses: no-brainer fixes, stability gaps, dependency modernization, documentation drift."
+    description: "Deep audit across five lenses: no-brainer fixes, stability gaps, dependency modernization, documentation drift, and quality gaps (untested code, silent operations, untested failure behavior, unmeasured tasks)."
     source: fyodoriv/agentbrew
     category: quality
     recommended: true

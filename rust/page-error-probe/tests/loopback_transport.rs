@@ -275,7 +275,7 @@ async fn peer(
                 expect_command(&mut wire, command(6, "Page.navigate", "root")).await;
                 send(&mut wire, reply(6, "root")).await;
                 expect_command(&mut wire, command(7, "Runtime.evaluate", "root")).await;
-                if case != Case::EventOverflow {
+                if !matches!(case, Case::EventOverflow | Case::Cancel) {
                     send(&mut wire, reply(7, "root")).await;
                 }
                 match case {
@@ -337,6 +337,9 @@ async fn peer(
         json!({"id":8,"method":"Target.closeTarget","params":{"targetId":"owned-root"}}),
     )
     .await;
+    if case == Case::Cancel {
+        send(&mut wire, reply(7, "root")).await;
+    }
     let owned_remains = case == Case::ClosePresent;
     send(
         &mut wire,

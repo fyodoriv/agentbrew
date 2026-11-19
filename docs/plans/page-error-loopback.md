@@ -207,7 +207,9 @@ The held close reply case and the explicit cancellation cleanup check each
 failed before their fixes. The final fixture keeps the client socket open
 until the peer close frame arrives. During cancellation it can receive the
 one outstanding Runtime reply before verifying the target close and target
-list independently. The mismatched target reply still fails verification.
+list independently. The peer withholds the Runtime reply until it
+sees the target close request, so each cancellation test exercises this
+ordering. The mismatched target reply still fails verification.
 All ten loopback tests and 59 reducer tests passed. The checks still use
 the original time limits and the disposable fixture. They do not qualify a
 production browser cutoff.

@@ -658,6 +658,104 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
+- [ ] Public-release preflight blocks hardcoded user paths, personal paths in docs, and data egress
+  - **ID**: preflight-privacy-lints
+  - **Tags**: privacy, release, lint, absorbed-from-minsky
+  - **Mode**: AFK
+  - **Details**: Minsky is archived and stays readable. Its privacy lints are generic. Port the small ones into the public-release preflight as deterministic checks with their tests: hardcoded user home paths in source, personal paths in docs, and code that sends user data to an outside host. Sources: https://github.com/fyodoriv/minsky/blob/main/scripts/check-no-hardcoded-user-paths.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/check-no-personal-paths-in-docs.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/check-privacy-data-egress.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/check-otel-no-pii.mjs. Wrap, do not copy blindly: reuse existing `src/oss/` gates where they already cover a case.
+  - **Files**: `src/oss/`, `scripts/verify.sh`, new `*.test.ts` files, `docs/editing-rules.md`
+  - **Output**: code
+  - **Acceptance**: The preflight fails on a fixture with a hardcoded home path, a personal path in a doc, and an unapproved outbound host, and passes on the repo itself.
+  - **Hypothesis**: a deterministic preflight catches the three leak classes before a push; seeded fixtures caught go from 0 of 3 to 3 of 3 with 0 false positives on the current tree.
+  - **Measurement**: `npx vitest run src/oss` and `npm run check:oss; echo "exit=$?"`
+  - **Success**: 3 of 3 seeded fixtures fail the check, and the repo tree has 0 findings.
+  - **Pivot**: More than 2 false positives on the current tree rejects the path-pattern approach; use an allowlist file or drop that check.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; OWASP ASVS V8 (data protection).
+
+- [ ] new-project ships a repo-hygiene lint pack: filename casing, orphan tests, test colocation
+  - **ID**: new-project-repo-hygiene-lints
+  - **Tags**: new-project, lint, absorbed-from-minsky
+  - **Mode**: AFK
+  - **Details**: Add three optional lints to the `new-project` templates: one filename casing rule, a check that every test file imports a source file that exists (orphan tests), and a check that tests sit next to the code they test. Keep each as a small script with its own test, and wire them into the template `scripts/check.sh`. Sources: https://github.com/fyodoriv/minsky/blob/main/scripts/check-filename-casing.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/check-orphan-tests.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/check-test-file-colocation.mjs. The orphan check came from a real failure: a conflict resolution kept new source but old tests, and 13 tests broke.
+  - **Files**: `skill-plugins/workflow/new-project/templates/scripts/`, `skill-plugins/workflow/new-project/evals/evals.json`, `.agents/requirements.yaml`
+  - **Output**: code
+  - **Acceptance**: A scaffolded repo fails `scripts/check.sh` on a mis-cased file, an orphan test, and a misplaced test, and passes a clean scaffold.
+  - **Hypothesis**: a new repo catches 3 hygiene classes at its first gate; seeded violations caught go from 0 of 3 to 3 of 3, with a clean scaffold at 0 findings.
+  - **Measurement**: `bash skill-plugins/workflow/new-project/scripts/scaffold.sh` into a scratch directory, then `scripts/check.sh fast`, with and without seeded violations.
+  - **Success**: 3 of 3 seeded violations fail; clean scaffold exits 0 in under 10 seconds.
+  - **Pivot**: A gate over 10 seconds on a scaffold rejects the approach; move that lint to the full gate only.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Forsgren, Humble and Kim (2018), Accelerate (fast feedback).
+
+- [ ] Doc-quality lints for AGENTS.md and skills: why-first paragraph, README byte budget, skill rule cap
+  - **ID**: doc-quality-lints
+  - **Tags**: docs, lint, skills, absorbed-from-minsky
+  - **Mode**: AFK
+  - **Details**: Port three doc-quality checks as deterministic lints with tests: a doc opens with a why paragraph, the README stays under a byte budget, and a skill holds no more than a fixed number of rules. Reuse `src/agent-bloat-lint.ts` where it already measures size; add only what it lacks. Sources: https://github.com/fyodoriv/minsky/blob/main/scripts/check-doc-why-first-paragraph.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/check-readme-byte-budget.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/check-skill-rule-cap.mjs. The other Minsky `check-rule-*.mjs` scripts read Minsky's own constitution, so they are not generic; do not port them.
+  - **Files**: `src/agent-bloat-lint.ts`, `docs/agent-bloat-lint.md`, new tests
+  - **Output**: code
+  - **Acceptance**: The lints flag a seeded doc without a why paragraph, an oversized README, and a skill over the rule cap; the current tree passes.
+  - **Hypothesis**: three seeded doc-quality violations are caught; false positives on the current tree stay at 0.
+  - **Measurement**: `npx vitest run src/agent-bloat-lint.test.ts` and `agentbrew lint`
+  - **Success**: 3 of 3 seeded violations flagged; 0 findings on the current tree.
+  - **Pivot**: Any finding on the current tree that needs more than a one-line fix rejects the threshold; set the threshold from the measured distribution.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Pyramid principle for docs (Minto, 1987).
+
+- [ ] Time the pre-push hook and fail it over 10 seconds
+  - **ID**: pre-push-timing-check
+  - **Tags**: hooks, speed, absorbed-from-minsky
+  - **Mode**: AFK
+  - **Details**: The `new-project` guidance says to keep pre-push under about 10 seconds on changed files. Nothing measures it. Add a timed check that runs the pre-push command on a fixture diff and fails when it takes longer than 10 seconds. Source: https://github.com/fyodoriv/minsky/blob/main/scripts/check-pre-push-hook-fast.mjs. Cover both agentbrew's own `lefthook.yml` and the `new-project` template.
+  - **Files**: `lefthook.yml`, `skill-plugins/workflow/new-project/templates/lefthook.yml`, a new test
+  - **Output**: code
+  - **Acceptance**: A test runs the pre-push command on a small diff and fails above 10 seconds.
+  - **Hypothesis**: pre-push wall time on a small diff is measured and stays at or under 10 seconds; today it is unmeasured.
+  - **Measurement**: `npx vitest run` on the new timing test, which prints the measured seconds.
+  - **Success**: At most 10 seconds on a 5-file diff, on 5 runs out of 5.
+  - **Pivot**: If the median exceeds 10 seconds, move the slowest step to the full gate; do not raise the limit.
+  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (fast feedback loops).
+
+- [ ] Track flaky hosted checks and ban hardcoded timeouts
+  - **ID**: flake-tracker-and-timeout-check
+  - **Tags**: ci, flaky, lint, absorbed-from-minsky
+  - **Mode**: AFK
+  - **Details**: Port the same-SHA failure-then-success flake detector (see docs/ci.md, Flake detection thresholds) and the check that bans hardcoded timeouts in tests. Run the detector as a non-blocking job. Sources: https://github.com/fyodoriv/minsky/blob/main/scripts/gh-actions-flake-tracker.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/check-no-hardcoded-timeouts.mjs, https://github.com/fyodoriv/minsky/blob/main/docs/rule-11-flake-detection.md.
+  - **Files**: `.github/workflows/`, `scripts/`, new tests, `docs/ci.md`
+  - **Output**: code
+  - **Acceptance**: A fixture of run history with one flaky job is reported; a test file with a literal timeout fails the lint.
+  - **Hypothesis**: flaky hosted checks are named from data; unnamed flaky jobs above the threshold go from unknown to 0.
+  - **Measurement**: `node scripts/gh-actions-flake-tracker.mjs --fixture <fixture>; echo "exit=$?"` and the timeout lint's test.
+  - **Success**: Fixture flake reported with rate at or above 10% over at least 5 same-SHA pairs; timeout lint flags 1 of 1 seeded literal.
+  - **Pivot**: If the detector reports more than 3 false flakes on real history, tighten to 20% and re-measure; if still noisy, drop it.
+  - **Anchor**: Memon et al. (2017), Taming Google-scale continuous testing; Luo et al. (2014), An empirical analysis of flaky tests.
+
+- [ ] Add a dependabot bump triage helper: patch and minor auto-merge, major held
+  - **ID**: dependabot-triage-helper
+  - **Tags**: dependencies, ci, absorbed-from-minsky
+  - **Mode**: AFK
+  - **Details**: Minsky has a 121-line pure function that classifies a Dependabot bump by semver size: patch and minor may merge once checks are green, major needs the owner, and an unparseable version is treated as major. Port it with its test and call it from the watch-issues or update-tooling flow so it has a consumer. Source: https://github.com/fyodoriv/minsky/blob/main/scripts/dependabot-triage.mjs, https://github.com/fyodoriv/minsky/blob/main/scripts/dependabot-triage.test.mjs. Do not port it alone: an unused helper fails the knip check.
+  - **Files**: `src/` (new helper and test), the skill or command that consumes it
+  - **Output**: code
+  - **Acceptance**: The helper classifies patch, minor, major, and unparseable versions correctly and one consumer calls it.
+  - **Hypothesis**: owner-held major bumps are never merged unattended; unattended major merges stay at 0 across the test matrix.
+  - **Measurement**: `npx vitest run` on the new helper test.
+  - **Success**: All patch, minor, major, and unparseable cases classify correctly; 0 majors marked auto-merge.
+  - **Pivot**: If no consumer needs it after one pass of watch-issues, drop the task rather than keep dead code.
+  - **Anchor**: Semantic Versioning 2.0.0 (semver.org); Dependabot best practices (docs.github.com).
+
+- [ ] Optional FAKE marker rule: stubs must say they are fake
+  - **ID**: fake-marker-rule
+  - **Tags**: lint, testing, absorbed-from-minsky
+  - **Mode**: AFK
+  - **Details**: Add an optional lint rule to the `new-project` templates: a stub or fake in non-test code carries a `// FAKE:` comment naming what it stands in for, so a stub is never mistaken for a real implementation. Keep it opt-in. Source: https://github.com/fyodoriv/minsky/blob/main/user-stories/011-fake-data-marked-explicitly.md. The story defines the marker format (`// FAKE: <reason> - tracked at <task-id>`) but has no lint script yet, so design the check from it.
+  - **Files**: `skill-plugins/workflow/new-project/templates/`, a new test
+  - **Output**: code
+  - **Acceptance**: A seeded stub without the marker fails the lint; the same stub with the marker passes.
+  - **Hypothesis**: unmarked stubs in a scaffolded repo go from unchecked to 0 findings.
+  - **Measurement**: `npx vitest run` on the new lint test with one marked and one unmarked fixture.
+  - **Success**: 1 of 1 unmarked stub fails; 1 of 1 marked stub passes; 0 findings on a clean scaffold.
+  - **Pivot**: If the lint cannot tell a stub from a real small function without more than 2 false positives on the template, drop it.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Meszaros (2007), xUnit Test Patterns (test doubles).
+
 ## P3
 
 - [ ] Propose the guard start-budget note to the built-in workflow-authoring skill

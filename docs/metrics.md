@@ -48,6 +48,15 @@ Checked values, not goals. Re-measure before you quote them.
   salted hash (the salt stays in `~/.local/state/agentbrew/proof-salt`).
   Nothing is uploaded; how a second machine's totals reach the repo is open.
 
+- **Invariants for a rendered metrics file.** Reject four things: a value with
+  no `Updated` timestamp; a value older than its freshness budget (fixed before
+  the observation, never tuned after a failure); a section with no budget; and
+  drift between the rendered ids and the source list of metrics. A `(stub)` is
+  always allowed. It is the visible signal for "no data yet" (Helland, 2007).
+- **No-vanity guard.** A counter that only goes up is a vanity metric (Ries,
+  2011): it rewards activity and cannot fail. A metric that is monotonic by
+  design needs an explicit opt-in marker next to its definition. Adding a
+  second one needs the same-commit edit that acknowledges it.
 - Events are content-free: counts, times, and enum names only. The format and
   the privacy rules are in [`observability.md`](observability.md).
 - `source_lines` uses the same rule as the 30K-line kill trigger: every tracked

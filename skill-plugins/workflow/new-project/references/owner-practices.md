@@ -36,6 +36,7 @@ area in brackets.
 | Every `docs/*.md` has a row in the docs map | agentbrew docs map test; private app `tests/test_docs.py` | `scripts/check-docs.sh` |
 | Fast gate per commit, full gate (with e2e) once per PR | agentbrew `verify:changed` vs `verify`; private app per-commit vs per-PR gates | `scripts/check.sh fast` |
 | Cheap and security checks first; pre-push kept short | minsky `lefthook.yml` and its pre-push budget | `lefthook.yml` |
+| Pre-push runs only changed files and stays under about 10 seconds; the full gate runs before merge | agentbrew `lefthook.yml` | `lefthook.yml`, `scripts/check.sh` |
 | Secret scan on staged files and in the gate | dotfiles `git-hooks/pre-commit`, minsky `scripts/scan-secrets.mjs` | `lefthook.yml`, `scripts/check.sh` |
 | A dated traps table for anything that cost time | private app agent guide "Traps"; agentbrew `## Gotchas` | `AGENTS.md` Gotchas |
 | A machine-checkable rule becomes a check, not prose | minsky vision §10 (every rule has a lint and a test) | `AGENTS.md` rule 9 |

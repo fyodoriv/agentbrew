@@ -84,6 +84,24 @@ Re-measure after a lockfile or workflow change; drop a cache whose warm median i
 - No step prints the environment. The gate job sets `DO_NOT_TRACK=1`, so it sends no usage data.
 - The private-pattern file is never uploaded. The local gates stay the authority for leaks ([`SECURITY.md`](../SECURITY.md)).
 
+## Flake detection thresholds
+
+A flaky gate trains people to ignore it. Detect flakes from run history, not
+by feel.
+
+- Read the last 100 runs of a workflow. Find same-SHA pairs where a job failed,
+  then passed.
+- Report a job when its flake rate is at least 10% over at least 5 same-SHA
+  pairs. 10% is the empirical mark where a team learns to ignore a gate
+  (Memon et al., 2017; Forsgren, Humble, Kim, *Accelerate*, 2018). Under 5
+  pairs, a high rate is noise.
+- Keep both numbers as named constants so a test can pin them.
+- Run the detector as a non-blocking job. A detector that fails the build on
+  every hit becomes a flaky gate itself.
+- For each hit, write a task block with the fix hypothesis. If the root cause
+  takes more than a day, downgrade the job to non-blocking and file a
+  follow-up.
+
 ## Merge rule
 
 Merge only when every hosted check on the pull request is green. Never merge on a pending or red check. Wait with `gh pr checks <n> --watch`.

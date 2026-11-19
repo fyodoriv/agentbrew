@@ -84,6 +84,36 @@ Prove each claim. Be honest about how strong the proof is.
    wins over this skill: keep both green.
 6. In the PR, paste the checker output before and after.
 
+## Reader-priority tiers
+
+Use the tiers to judge "everything else". Tag each section, then sort by tier.
+
+| Tier | Reader question | Content |
+|---|---|---|
+| 1 | What is this? Does it solve my problem? | Hook plus 2-3 sentences of what it does, not what it competes with |
+| 2 | How do I try it? | Install and run in two commands or fewer |
+| 3 | What does it do? | Numbered walkthrough and one or two key terms |
+| 4 | Should I commit to it? | Honest capability table, known limits, error modes; positioning only here |
+| 5 | How do I use it daily? | CLI reference, configuration, key files |
+| 6 | How do I maintain it? | Update, uninstall, contribute, license |
+
+Common bugs: maintenance (tier 6) right after the start block, a competitor
+table before the reader knows what the tool does, internals before behavior,
+and tracker IDs inside the install section. Move such content down or to
+`docs/`.
+
+## Cited paths and task IDs must exist
+
+Before you ship, check that every file path the README cites exists, and every
+task ID it cites is in the task backend (`TASKS.md` or the issue tracker):
+
+```bash
+grep -oE '`[A-Za-z0-9_./-]+\.[a-z]{1,4}`' README.md | tr -d '`' | sort -u \
+  | while read f; do test -e "$f" || echo "MISS $f"; done
+```
+
+A broken citation is debt. Fix it or remove it.
+
 ## The checker
 
 `scripts/check-readme.py` prints one line per problem and exits 1 when any

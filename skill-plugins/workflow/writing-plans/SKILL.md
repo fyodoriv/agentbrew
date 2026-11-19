@@ -71,6 +71,13 @@ source; proposals name an owner and the evidence needed to accept or reject
 them. Cite exact paths, APIs, commands, and known call sites once they are
 verified. Do not fabricate line numbers, endpoint behavior, or test commands.
 
+## Slice order and verification
+
+Plan each slice so the project builds and its tests pass after it lands.
+Run the build and the slice's tests after every slice, before you start the
+next. Put the riskiest slice first. Never stack a second slice on an unverified
+one: two compounded failures take far longer to debug than one.
+
 ## Task quality bar
 
 Numbered work is the plan's execution contract. Each task must be independently

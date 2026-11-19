@@ -1,0 +1,49 @@
+{
+  "skill_name": "karpathy-disciplines",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Fix the off-by-one in parseRange(). While you are there, the file has some ugly formatting and an unused helper, feel free to tidy up.",
+      "expected_output": "A minimal fix limited to the bug, with unrelated tidying reported rather than done.",
+      "expectations": [
+        "Changes only the lines needed for the off-by-one fix and any orphan the fix creates",
+        "Does not reformat adjacent code or delete the pre-existing unused helper",
+        "Mentions the unused helper and formatting as noticed but not touched",
+        "Applies the line-trace test: every changed line traces to the request"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Add retry support to our HTTP client wrapper. It is only used by one caller today.",
+      "expected_output": "States the success check first, then implements the simplest retry without speculative options.",
+      "expectations": [
+        "States a goal, a runnable success command, a pivot condition, and a file scope before editing",
+        "Writes the minimum code for the stated need with no plugin system or unused configuration",
+        "Does not add an abstraction layer for hypothetical future callers",
+        "Runs the success command and reports its real output before claiming done"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Make the export faster.",
+      "expected_output": "Surfaces the ambiguity and asks or states an explicit assumption before coding.",
+      "expectations": [
+        "Does not start editing immediately",
+        "Names what is unclear, such as which export, the current time, and the target",
+        "Asks one focused question or writes down an explicit assumption",
+        "Turns the answer into a measurable success command before coding"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The check for this bugfix still fails after my third different approach. What now?",
+      "expected_output": "Treats three failed approaches as the pivot signal, stops, and reports.",
+      "expectations": [
+        "Recognizes three failed approaches as the pivot signal",
+        "Stops looping and summarizes what was tried and what was learned",
+        "Asks the user for direction or proposes a changed approach",
+        "Does not open a PR whose own verification command fails"
+      ]
+    }
+  ]
+}

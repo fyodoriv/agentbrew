@@ -7,13 +7,13 @@ description: >
   — that NEVER touches source files the worker might edit. Delegates to
   `companion-docs-sync`, `companion-test-gaps`, `companion-competitor-watch`,
   `companion-task-groom`, and `companion-skill-curate` sub-skills via
-  subagents. Loops across non-minsky repos under the workspace until the
+  subagents. Loops across the repos under the workspace until the
   user stops it. Use when the user says "companion mode", "work in
   parallel", "help in the background while X works", or launches a second
   session on an active repo. Don't use for fixing bugs, implementing
   features, or any work that edits source code (use writing-plans / systematic-debugging
   instead).
-argument-hint: "[--workspace path] [--worker-repo name] [--lanes docs,tests,competitors,tasks,skills] [--exclude-repos minsky]"
+argument-hint: "[--workspace path] [--worker-repo name] [--lanes docs,tests,competitors,tasks,skills] [--exclude-repos name,...]"
 triggers:
   - user
   - model
@@ -84,9 +84,9 @@ debugging time, branch resets, and trust. Obey these rules without exception.
    the same port. If you need to run tests, use the project's
    non-watching command (`npm test`, `vitest run`, `cargo test`,
    `pytest`) with a tight timeout.
-7. **Respect `--exclude-repos`.** By default, exclude `minsky` because it
-   has its own autonomous loop that conflicts with companion work. Add
-   other excluded repos via the flag.
+7. **Respect `--exclude-repos`.** Exclude any repo that runs its own
+   autonomous loop, because it conflicts with companion work. Name such
+   repos via the flag.
 8. **No public writes without explicit approval.** Per the global rules,
    creating PRs is part of normal current-repo delivery; commenting on
    someone else's PR, opening Jira tickets, posting to Slack, publishing
@@ -164,13 +164,13 @@ of the current working directory if it contains multiple repos.
 
 ```bash
 workspace="${WORKSPACE:-$HOME/apps/tooling}"
-exclude="${EXCLUDE:-minsky}"
+exclude="${EXCLUDE:-}"
 
 eligible_repos=()
 for dir in "$workspace"/*/; do
   repo=$(basename "$dir")
   # Skip excluded repos
-  echo "$exclude" | tr ',' '\n' | grep -qx "$repo" && continue
+  [ -n "$exclude" ] && echo "$exclude" | tr ',' '\n' | grep -qx "$repo" && continue
   # Must be a git repo
   [ -d "$dir/.git" ] || continue
   # Must have TASKS.md (signals it's an active project we groom)

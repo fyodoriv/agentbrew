@@ -257,8 +257,6 @@ Each load-bearing artifact names the published pattern it follows. A new artifac
 | `src/catalog/source-checkout-lease.ts` | Scoped Locking | Schmidt et al. 2000, *Pattern-Oriented Software Architecture*, vol. 2 | partial | Async invocation scope acquires ordered leases; uncertain Git termination retains them. |
 | `src/sync/pull-source-caches.ts` | Adapter | Gamma et al. 1994, *Design Patterns* | full | Adapts registered readers and verified MCP update results to source-pull outcomes. |
 | `src/mcp/adapters.ts` | Adapter | Gamma et al. 1994, *Design Patterns* | full | `getAdapter()` picks one adapter per `mcpFormat`; each turns a server into one agent's config shape. |
-| `src/adapters/rule-lint.ts` | Ports and Adapters | Cockburn 2005, "Hexagonal Architecture" | full | `RuleLint` is the port; rule linters plug in behind it. |
-| `src/adapters/rule-lint.minsky.ts` | Ports and Adapters | Cockburn 2005, "Hexagonal Architecture" | full | Adapter that runs Minsky's rule scripts with `--repo`. |
 | `src/sync/commands-delegate.ts` | Gateway | Fowler 2002, *Patterns of Enterprise Application Architecture* | full | One object wraps the `ai-rules` subprocess; callers never spawn it. |
 | `src/core/transforms.ts` | Strategy | Gamma et al. 1994, *Design Patterns* | full | One command transform per agent, chosen by `commandTransform`. |
 | `src/core/agents.ts` | Table-Driven Methods | McConnell 2004, *Code Complete* 2nd ed., ch. 18 | full | Agent support is data in `agents.yaml`; adding an agent is a YAML edit. |

@@ -153,6 +153,25 @@ For **each** PR, escalate through every strategy until it merges:
 6. **If all allowed strategies fail**: log the PR number and reason, move to the next PR.
    Do NOT close the PR — it has code worth saving.
 
+**Poll, then squash.** After a push, poll until the PR is mergeable and clean:
+`gh pr view <n> --json state,mergeStateStatus`. Run polling in the background.
+Stop on `DIRTY` (rebase needed). On `CLEAN`, run
+`gh pr merge <n> --squash --delete-branch`.
+
+**Never close a PR to empty the queue.** A close is valid only when the work is
+already on `main` (an empty diff after rebasing onto `origin/main`) or the owner
+says so for that PR. "Preserved in PR history" and "tracked by a task" are not
+reasons.
+
+**Three checks before any admin merge.** All three must hold:
+1. `gh pr view <n> --json mergeable,mergeStateStatus` shows `MERGEABLE` and `BLOCKED` (not `UNSTABLE`).
+2. Every pending or failed check is review-shaped (approval, code owner), not CI, lint, or tests.
+3. `gh pr checks <n>` shows no failing check.
+
+**Check what landed.** After a squash merge, compare
+`gh pr view <n> --json files --jq '.files[].path'` with your local
+`git show <sha> --stat`. A missing file needs its own PR.
+
 **Do not skip PRs because they look hard.** Every open PR is unshipped work.
 Fight for each one before moving on.
 

@@ -107,8 +107,6 @@ Update the overlay file to extend coverage.
 
 `AGENTS.md` has a size limit, so it keeps these lines short. The full facts:
 
-- **Rule lints**: `npm run lint:rules` skips when it finds no Minsky checkout.
-  It looks in `AGENTBREW_MINSKY_DIR`, then in `~/apps/tooling/minsky`.
 - **Tests for the diff**: `npm test` runs `vitest related` on the changed
   files. It does not take a folder.
 - **Full gate**: the cache of `npm run verify` is shared between worktrees and
@@ -163,3 +161,27 @@ Do not write counts of tests, files, lines, agents, skills, commands, servers, o
 4. **User-facing CLI output goes through the `chalk`-wrapped `console.log` / `console.error` conventions already in the codebase.** `noConsole` is intentionally `off` in biome — agentbrew is a CLI that prints to stdout/stderr by design. Non-user-facing diagnostics (swallowed errors, silent skips) must use `logSkipped()` / `logger.warn()` so they can be filtered and instrumented.
 5. **Pass the full verify gate before claiming done.** `npm run verify` = typecheck + biome + security lint + all tests. The hosted check on the pull request runs it; a green hosted check is the proof. No exceptions.
 6. **When something goes wrong, ask: "Can this be a lint rule?"** Every bug that reaches CI should become a rule that prevents the next one. The system feeds on its own failures.
+
+## Evidence base
+
+Each practice below backs a rule or gate in this repo. Cite it in a PR when you
+lean on it.
+
+- **Test-driven development.** Beck, *Test-Driven Development: By Example*
+  (Addison-Wesley, 2003). Red, green, refactor. Backs the Prove-It rule: a
+  failing test first, then the fix.
+- **MAPE-K loop.** Kephart and Chess, "The Vision of Autonomic Computing",
+  *IEEE Computer* 36(1), 2003. Monitor, analyze, plan, execute over shared
+  knowledge. Backs the checkup and drift-repair loops.
+- **Pre-registered hypotheses.** Nosek et al., "The Preregistration
+  Revolution", *PNAS* 115(11), 2018; Basili, Caldiera, Rombach, "The Goal
+  Question Metric Approach", 1994. Backs the Hypothesis, Measurement, Success,
+  Pivot, and Anchor fields on every task.
+- **Let it crash.** Armstrong, *Programming Erlang* (Pragmatic Bookshelf,
+  2007). Let a supervisor restart a failed process. Do not wrap every failure
+  in defensive code. Backs the retry and heal loops.
+- **Error budgets.** Beyer et al., *Site Reliability Engineering* (O'Reilly,
+  2016), ch. 3. Treat acceptable failure as a budget. Over budget means slow
+  down, not panic. Backs the flake and perf thresholds.
+- **Plan, do, check, act.** Deming, *Out of the Crisis* (MIT Press, 1986).
+  Backs the predicted-versus-observed entries in `docs/learnings.md`.

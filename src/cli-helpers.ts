@@ -63,7 +63,7 @@ export function formatUnlistedCommands(
  * Today this section lists the programmatic / internal commands that have
  * no user-story documentation: `fix` (scheduler entry — cron / launchagent
  * / systemd hardcode it), `instructions` / `skills` / `hooks` (sync
- * sub-namespaces), and `classify` (programmatic API for minsky).
+ * sub-namespaces), and `classify` (programmatic API for orchestrators).
  * If a command moves out of `hidden:true`, it stops appearing here and
  * starts appearing in its `HELP_COMMAND_GROUPS` group instead.
  */

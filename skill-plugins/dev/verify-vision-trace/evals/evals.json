@@ -6,7 +6,7 @@
       "prompt": "This PR body cites `Vision goal: G7`, but I am not sure G7 exists. Validate it.",
       "expected_output": "A vision-trace validation that resolves cited goal ids against VISION.md frontmatter and fails invalid ids.",
       "expectations": [
-        "Locates VISION.md or vision.md in root, docs/, or .minsky/",
+        "Locates VISION.md or vision.md in root or docs/",
         "Parses YAML frontmatter with schema vision-v1 and a goals list",
         "Extracts cited ids from the PR body Vision trace block",
         "Reports valid ids with their names and invalid ids as NOT FOUND",
@@ -42,7 +42,7 @@
       "prompt": "verify that my PR's vision-trace block references valid goals from VISION.md",
       "expected_output": "The vision-trace goal ids are validated against VISION.md frontmatter; all cited goals exist.",
       "expectations": [
-        "Locates VISION.md in the repo root, docs/, or .minsky/ directory",
+        "Locates VISION.md in the repo root or docs/ directory",
         "Parses YAML frontmatter with schema: vision-v1 and goals list",
         "Scans the PR body for 'Vision goal: <id>' lines",
         "For each cited id, verifies it exists in the frontmatter goals list",

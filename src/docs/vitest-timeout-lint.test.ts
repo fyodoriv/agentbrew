@@ -97,11 +97,67 @@ describe("Vitest timeout lint", () => {
     });
   });
 
+  it("keeps an unchanged timeout when its test title changes", () => {
+    fixture((root, _git, run) => {
+      const path = join(root, "src/legacy.test.ts");
+      writeFileSync(path, initial.replace("an existing test", "a clearer title"));
+      const result = run();
+      expect(result.status, result.stderr).toBe(0);
+    });
+  });
+
+  it("detects a same-titled test added in a different suite", () => {
+    fixture((root, git, run) => {
+      const path = "src/suites.test.ts";
+      const source = [
+        'import { describe, it } from "vitest";',
+        'describe("old suite", () => {',
+        '  it("same title", () => {}, 2_000);',
+        "});",
+        'describe("new suite", () => {',
+        '  it("ordinary case", () => {});',
+        "});",
+      ].join("\n");
+      writeFileSync(join(root, path), source);
+      git("add", "--", path);
+      git("commit", "--quiet", "-m", "test: fixture suites");
+      const previous = git("rev-parse", "HEAD").trim();
+      const moved = source
+        .replace('  it("same title", () => {}, 2_000);\n', "")
+        .replace('  it("ordinary case", () => {});', '  it("same title", () => {}, 2_000);');
+      writeFileSync(join(root, path), moved);
+      const result = run(previous);
+      expect(result.status, result.stderr).toBe(1);
+      expect(result.stderr).toContain("src/suites.test.ts:");
+    });
+  });
+
+  it("checks a regular test named prep and retains the two registered exclusions", () => {
+    fixture((root, _git, run) => {
+      for (const name of ["ordinary.prep.test.ts", "sync-selection-binding.prep.test.ts"]) {
+        writeFileSync(join(root, "src", name), initial);
+      }
+      const result = run();
+      expect(result.status, result.stderr).toBe(1);
+      expect(result.stderr.trim()).toMatch(/^src\/ordinary\.prep\.test\.ts:2:/);
+      expect(result.stderr).not.toContain("sync-selection-binding");
+    });
+  });
+
   it("refuses an unavailable change base", () => {
     fixture((_root, _git, run) => {
       const result = run("missing-derived-test-ref");
       expect(result.status).toBe(2);
       expect(result.stderr).toContain("Vitest timeout check unavailable");
+    });
+  });
+
+  it("refuses invalid source instead of treating it as a clean test", () => {
+    fixture((root, _git, run) => {
+      writeFileSync(join(root, "src/invalid.test.ts"), "import { it } from 'vitest'; it(");
+      const result = run();
+      expect(result.status).toBe(2);
+      expect(result.stderr).toContain("Unable to parse");
     });
   });
 });

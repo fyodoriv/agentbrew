@@ -6,6 +6,8 @@ and script family its own verdict. Verdicts: PORT (moved here, or filed as a
 task with an exact spec), ALREADY-THERE (the target path holds it), DROP
 (orchestrator-only, with the reason).
 
+Where this ledger and minsky `absorbed.md` disagree, this ledger wins. For example, the "repo-hygiene lint pack" rows (`check-filename-casing`, `check-test-file-colocation`, `check-no-repo-root-install-in-tests`, `check-otel-no-pii`) are DROP: they enforce minsky's own layout. Also dropped as minsky-only: `scripts/check-skill-rule-cap.mjs` (counts rules in minsky's spec-monitor) and `scripts/check-cross-repo-pr-rate.mjs` (reads minsky's experiment store).
+
 ## Where each PORT landed
 
 | minsky item | Landed in |
@@ -22,6 +24,8 @@ task with an exact spec), ALREADY-THERE (the target path holds it), DROP
 | `check-toolchain.mjs` + lefthook `piped: true` | task `new-project-toolchain-first-hook` |
 | `check-readme-byte-budget.mjs` | task `readme-byte-budget` |
 | `check-no-hardcoded-user-paths.mjs`, `check-no-personal-paths-in-docs.mjs` | task `no-literal-home-paths` |
+| skill `triage` out-of-scope memory | `skill-plugins/workflow/watch-issues/SKILL.md` step 3, eval 17 |
+| skill `diagnose` feedback-loop ladder + ranked hypotheses | task `diagnose-loop-ladder-and-ranked-hypotheses` |
 | hook `block-dangerous-bash.sh` (stash drop/clear, `gh pr merge --admin`, `gh repo delete`, `-c core.hooksPath` commit, `rm -rf` outside temp) | task `block-remaining-dangerous-commands` |
 
 
@@ -102,7 +106,7 @@ Total rows: 61
 | .claude/skills/ci-gate-check | DROP | predicts minsky's own 35 CI gates |
 | .claude/skills/cli-consolidation | ALREADY-THERE | agentbrew/skill-plugins/workflow/cli-design/SKILL.md (default-behavior + fold-into-flags review) |
 | .claude/skills/competitor-research | ALREADY-THERE | agentbrew/skill-plugins/dev/competitor-spot-check + workflow/companion-competitor-watch; M1.10 scorecard is minsky-specific |
-| .claude/skills/diagnose | ALREADY-THERE | catalog systematic-debugging (obra) covers reproduce/hypothesize/instrument/regression test |
+| .claude/skills/diagnose | PORT | catalog systematic-debugging tests one hypothesis at a time; the feedback-loop ladder and 3-5 ranked falsifiable hypotheses are task `diagnose-loop-ladder-and-ranked-hypotheses` |
 | .claude/skills/doubt-driven-development | ALREADY-THERE | catalog doubt-driven-development (addyosmani) |
 | .claude/skills/experiment-validate | PORT | tasks.md/packages/lint/src/rule9.ts: today only checks field presence. Add opt-in quality checks from minsky's three lints: Measurement must contain a runnable command (backticked), Success and Pivot thresholds must differ (a margin, not the same number), Anchor must name a citation (author+year or URL) |
 | .claude/skills/grill-task | ALREADY-THERE | catalog grill-with-docs (mattpocock) |
@@ -119,7 +123,7 @@ Total rows: 61
 | .claude/skills/spec-driven-development | ALREADY-THERE | catalog spec-driven-development |
 | .claude/skills/task-slice | ALREADY-THERE | catalog to-issues (vertical tracer-bullet slices) + writing-plans |
 | .claude/skills/task-spec | ALREADY-THERE | catalog spec-driven-development + analyze; .minsky/specs path is minsky-specific |
-| .claude/skills/triage | ALREADY-THERE | agentbrew/skill-plugins/workflow/watch-issues + review-tasks |
+| .claude/skills/triage | PORT (partial) | watch-issues covers triage; its out-of-scope memory (`.out-of-scope/<concept>.md`) is now in `skill-plugins/workflow/watch-issues/SKILL.md` step 3 |
 | .claude/skills/worktree-handoff | ALREADY-THERE | agentbrew/skill-plugins/workflow/handoff + wrap-up |
 | .claude/skills/zoom-out | ALREADY-THERE | catalog improve-codebase-architecture + ubiquitous-language (15-line prompt, no extra idea) |
 | skill-plugins/observer/minsky/SKILL.md | DROP | launch + monitor minsky run loop |
@@ -214,7 +218,7 @@ Total rows: 61
 | scripts/check-orphan-tests.mjs | PORT | tasks.md/scripts (or package test lint): every symbol a test imports from `../src` must exist as a named export; catches src/test API drift before tsc in mjs tests. Lower priority. |
 | scripts/check-lockfile-registry.mjs | ALREADY-THERE | agentbrew/scripts/check-locked-dependencies.mjs + dotfiles oss-readiness gate cover registry/leak; generic allowlist idea optional |
 | scripts/check-lockfile-integrity.mjs, check-sbom-shape.mjs | DROP | supply-chain slice for minsky's pnpm publish; tooling repos use check-lockfile-sync.sh |
-| scripts/scan-secrets.mjs | ALREADY-THERE | dotfiles/modules/security/lib/secret-scan.sh + .github/workflows/oss-readiness.yml |
+| scripts/scan-secrets.mjs | ALREADY-THERE | dotfiles/lib/secret-scan.sh + .github/workflows/oss-readiness.yml |
 | scripts/check-no-no-verify-bypass.mjs | ALREADY-THERE | agentbrew/hooks/checks/no-commit-no-verify.sh |
 | scripts/check-bot-commit-hook-bypass.mjs | DROP | only matters for CI bots committing with lefthook; no such workflow in targets |
 | scripts/gh-actions-flake-tracker.mjs, check-rule-11-no-flaky-gates.mjs | ALREADY-THERE | agentbrew/scripts/gh-actions-flake-tracker.mjs; docs/ci.md |

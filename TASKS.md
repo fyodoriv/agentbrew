@@ -332,6 +332,18 @@
 
 ## P2
 
+- [ ] Debugging starts from a reliable failing signal and ranked hypotheses
+  - **ID**: diagnose-loop-ladder-and-ranked-hypotheses
+  - **Tags**: skills, debugging, from-minsky
+  - **Details**: minsky's `diagnose` skill had two techniques the catalog `systematic-debugging` skill lacks. (1) A feedback-loop ladder: try a failing test, a curl fixture, a CLI fixture, a trace replay, a minimal harness, a property or fuzz test, `git bisect run`, then a human-run script, in that order, and do not go on until the signal fails the same way every time. (2) Before testing, write 3 to 5 ranked, falsifiable hypotheses ("if X is the cause, changing Y removes the bug") and test the cheapest to disprove first. Add both as a small agentbrew skill (`skill-plugins/workflow/diagnose/`) or a catalog entry for the upstream mattpocock `diagnose` skill, with evals.
+  - **Files**: `skill-plugins/workflow/diagnose/SKILL.md` and `evals/evals.json`, or `src/catalog.yaml`.
+  - **Acceptance**: an eval where the bug is intermittent makes the agent build a repeatable failing signal first and list ranked hypotheses before editing code.
+  - **Hypothesis**: debugging sessions that edit code before a repeatable failing signal exists drop from common to rare.
+  - **Measurement**: `npx agentbrew eval diagnose` pass rate on its evals.
+  - **Success**: all diagnose evals pass with the skill and at least 1 fails without it.
+  - **Pivot**: no eval separates with-skill from without-skill runs.
+  - **Anchor**: Zeller 2009 (Why Programs Fail, scientific debugging).
+
 - [ ] Agent hooks block the last five destructive commands minsky blocked
   - **ID**: block-remaining-dangerous-commands
   - **Tags**: hooks, safety, from-minsky

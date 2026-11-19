@@ -9,6 +9,8 @@ import {
   readlinkSync,
   renameSync,
   rmSync,
+  symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -423,6 +425,62 @@ describe("new-project skill", () => {
     expect(mapped.out).toContain("waived: 1");
     writeFileSync(join(dir, ".agents", "requirements.yaml"), "map.vision: MISSING.md\n");
     expect(score(dir, "tool").out).toContain("FAIL [vision] mapped to MISSING.md");
+  });
+
+  it("runs the fast gate without caching unknown links and nested checkouts", () => {
+    const dir = fresh("tool-none", "cache-special-files");
+    const check = () =>
+      spawnSync("/bin/bash", [join(dir, "scripts", "check.sh"), "fast"], {
+        cwd: dir,
+        encoding: "utf-8",
+        env: { ...env, CHECK_OFFLINE: "1" },
+      });
+    expect(check().status).toBe(0);
+    expect(check().stdout).toContain("docs cached (inputs unchanged)");
+
+    const external = join(scratch, "cache-external-tree");
+    mkdirSync(external);
+    const link = join(dir, "linked");
+    symlinkSync(external, link, "junction");
+    const expectFullCheck = () => {
+      const result = check();
+      expect(result.status, result.stdout + result.stderr).toBe(0);
+      expect(result.stdout).toContain("cache unavailable. Running every check.");
+      expect(result.stdout).toContain("check-docs: docs match the code");
+      expect(result.stdout).not.toContain("docs cached");
+    };
+    expectFullCheck();
+    unlinkSync(link);
+    symlinkSync(join(scratch, "not-present"), link, "junction");
+    expectFullCheck();
+    unlinkSync(link);
+
+    const alias = join(dir, "CLAUDE.md");
+    unlinkSync(alias);
+    symlinkSync("AGENTS.md\n", alias);
+    expectFullCheck();
+    unlinkSync(alias);
+    symlinkSync("AGENTS.md", alias);
+    git(dir, "add", "--", "AGENTS.md");
+    git(dir, "update-index", "--assume-unchanged", "AGENTS.md");
+    expect(check().status).toBe(0);
+    expect(check().stdout).toContain("docs cached (inputs unchanged)");
+    appendFileSync(join(dir, "AGENTS.md"), "\nA changed guide.\n");
+    expect(git(dir, "diff", "--name-only", "--", "AGENTS.md")).toBe("");
+    expect(check().stdout).toContain("check-docs: docs match the code");
+
+    const ordinary = join(dir, "-");
+    writeFileSync(ordinary, "first\n");
+    expect(check().stdout).toContain("check-docs: docs match the code");
+    expect(check().stdout).toContain("docs cached (inputs unchanged)");
+    writeFileSync(ordinary, "changed\n");
+    expect(check().stdout).toContain("check-docs: docs match the code");
+
+    const nested = join(dir, "nested-checkout");
+    mkdirSync(nested);
+    git(nested, "init", "-q");
+    writeFileSync(join(nested, "input.txt"), "untracked nested input\n");
+    expectFullCheck();
   });
 
   it("caches gate steps by input hash and re-runs them after any change", () => {

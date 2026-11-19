@@ -18,7 +18,18 @@
       "expected_output": "The agent sets the variable, sends one test event, fixes any failure, and reports done only after a pass.",
       "expectations": [
         "FAIL: the agent claims done after the first failed check without fixing it",
-        "PASS: a failing check leads to a fix and a re-run before the done claim"
+        "PASS: a failing check leads to a fix and a re-run before the done claim",
+        "PASS: the final reply shows the passing test event output"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Schedule the weekly report routine.",
+      "expected_output": "The agent creates the routine, triggers one run now, shows it succeeded, and only then reports done.",
+      "expectations": [
+        "FAIL: the reply says the routine is scheduled with no run output",
+        "PASS: the agent triggers one real run of the routine",
+        "PASS: the reply shows the passing run result with no secret in it"
       ]
     }
   ]

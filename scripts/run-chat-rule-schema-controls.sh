@@ -6,3 +6,4 @@ node --test --test-reporter=tap scripts/chat-rule-schema-gate.test.mjs | tee "$l
 node scripts/chat-rule-tap.mjs "$log" --schema-gate
 node --test --test-reporter=tap scripts/chat-rule-schema-protocol.test.mjs | tee "$log"
 node scripts/chat-rule-tap.mjs "$log" --schema
+node --test --test-reporter=tap scripts/eval-chat-followup-821.test.mjs

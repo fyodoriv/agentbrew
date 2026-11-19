@@ -1,0 +1,32 @@
+[
+  {
+    "id": "aurora-thread",
+    "context": "The user wants to add the crate count to your 23-hour-old update in the Aurora thread. Your update is still the latest message in that thread. Someone posted in the parent channel ten minutes ago. You can edit the update.",
+    "expected": "EDIT"
+  },
+  {
+    "id": "fern-dm",
+    "context": "The user wants to add a pickup time to your 40-minute-old direct message to Mara, the latest message in her DM. You sent a newer message to Ivo in a separate DM. You can edit Mara’s message.",
+    "expected": "EDIT"
+  },
+  {
+    "id": "paper-kite",
+    "context": "The user authorized an update in the Paper Kite thread. Your eight-minute-old update in the same channel is in the Lantern thread and can be edited. You have no message in Paper Kite.",
+    "expected": "POST"
+  },
+  {
+    "id": "parcel-recipient",
+    "context": "The user authorized a pickup update in Ivo’s DM. Your only recent pickup message was sent to Mara in her separate DM and can still be edited. You have no message in Ivo’s DM.",
+    "expected": "POST"
+  },
+  {
+    "id": "pressed-leaf",
+    "context": "The user wants to add a room number to your latest update in the Pressed Leaf thread. It is 18 minutes old. The platform has locked editing on it. The user approved deleting a different message in the Storage thread only. Your Pressed Leaf update is still visible.",
+    "expected": "HOLD"
+  },
+  {
+    "id": "sealed-map",
+    "context": "The user wants to add a map link to your latest update in the Sealed Map thread. It is 35 minutes old and the platform can edit it. The user said to preserve that exact message and to wait for approval before sending anything else in that thread. Approval has not arrived.",
+    "expected": "HOLD"
+  }
+]

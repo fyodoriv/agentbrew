@@ -36,7 +36,8 @@ file coverage. Byte content and authorization are separate checks.
 On November 19, the archived verifier exited 0 after its file-list command
 exited 7. It printed a clean result. The new verifier found every expected
 path on all 20 registered Agentbrew merges. Each read-only check took 1.01 to
-1.87 seconds with up to three readers at a time.
+1.87 seconds with up to three readers at a time. The final strict metadata
+candidate again passed all 20 cases in 0.90 to 1.38 seconds each.
 
 ## Delivery order checks
 
@@ -55,3 +56,9 @@ cascade can delete the Agentbrew branch before the new verifier runs.
   cleanup before verification rejects the integration.
 - **Anchor:** Dotfiles `docs/ship-it-reference.md` Step 7 and the Agentbrew
   squash file coverage controls above.
+
+The extracted delivery procedure ran against a scratch Git history. All
+four merge-option controls passed. The direct and delivery paths reported
+exit 0 for the full rename, 1 for either planted omission, and 2 for missing
+evidence. The delivery procedure also refused an unmerged receipt, a commit
+without the verifier, an unknown ancestor, and a missing target branch.

@@ -49,6 +49,8 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 
 ## Task queues
 
+- **Clarify first:** before coding a task, list each open question as `[NEEDS CLARIFICATION: <question>]` in the task or plan. Answer it from the repo or ask; never guess silently.
+
 - Default task file format is tasks.md: `# Tasks`, `## P0`..`## P3`, checkbox tasks, metadata labels (`ID`, `Tags`, `Details`, `Files`, `Acceptance`).
 - Completed tasks are removed, not checked off.
 - Stability, regression-catching, observability, deployment-infra, auth-path, data-integrity, and CI-gate work is P0 unless a repo explicitly says otherwise.
@@ -112,6 +114,8 @@ A long task or a user-requested deadline remains valid.
 - Stacked skill PRs: manually runnable on each branch + doc path audit — see **`pr`** skill. Skill PRs with evals run the full suite to the documented pass bar.
 - For bug fixes, prefer Prove-It: failing regression first, then fix, then green.
 - **A flaky check is not evidence:** when a check passes and fails on the same commit, its green run proves nothing. File a task that names the flake rate and quarantine or fix the check; never cite its pass.
+- **No silent retries:** a retry loop that hides a failure is a bug. Log each retry with its cause, cap the count, and surface the last error when the cap is hit.
+- **Doctor-check contract:** a health or doctor check (1) passes in every legal state, so it has no false positives; (2) names the real, dated failure it guards; (3) keeps its decision pure, with the probe passed in; (4) when the probe itself errors, falls back to the safe default and does not fire; (5) prints a fix line that names a verify command.
 - For Jenkins failures, read the console log before retrying or pushing another commit.
 
 ## Browser and web UI work
@@ -129,6 +133,8 @@ A long task or a user-requested deadline remains valid.
 - Assist with defensive security only.
 - Never search for, expose, log, or commit secrets/credentials/tokens/cookies/keys.
 - Do not perform destructive operations without explicit confirmation for that exact action.
+- Changes to security-critical code (auth, crypto, secrets handling, permissions) need the owner's explicit approval before merge.
+- No silent security trade-offs: when security and speed or convenience compete, write the trade-off and its reason in the PR body.
 - A local web UI or dashboard binds to `127.0.0.1` by default. Binding `0.0.0.0` needs an explicit opt-in setting and a doc note. A local endpoint that changes state also requires a per-run token, even on loopback.
 - Never send emails, payments, Slack/Jira/GitHub comments/reviews, or other public side effects without approval unless repo rules explicitly authorize that delivery step.
 
@@ -247,6 +253,8 @@ Every request to set up a tool (skill, MCP server, command, hook, plugin, CLI) f
 Ollama is the one local model engine; never install a second one (LM Studio, mlx-lm) next to it. A repo that needs a local model lists its tag in `.agents/local-models` in the same PR, so dotfiles `local-models` keeps it and removes models no repo lists. Pull models on demand (`local-models ensure`), never "just in case".
 
 ## Agent rule/skill changes → sync + fix drift + commit
+
+**Ratchet:** when a lint or hook starts enforcing a rule, remove the prose copy of that rule in the same PR, so two mechanisms never compete and always-loaded text stays small.
 
 After rule/skill/config edits: `agentbrew sync` → `agentbrew status --fix` until **0 drift** → commit `tooling/agentbrew/docs/shared-rules.md` when shared rules changed.
 

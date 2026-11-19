@@ -404,7 +404,7 @@ describe("new-project skill", () => {
     writeFileSync(join(dir, ".node-version"), `${process.versions.node}\n`);
     const missing = run();
     expect(missing.status).toBe(1);
-    expect(missing.stderr).toMatch(/^toolchain: .+biome[^\n]*\n$/);
+    expect(missing.stderr).toMatch(/^toolchain: biome cannot start[^\n]*\n$/);
     expect(existsSync(marker)).toBe(false);
     const nativeBin = join(dir, "node_modules", ".bin");
     mkdirSync(nativeBin, { recursive: true });

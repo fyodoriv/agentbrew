@@ -741,6 +741,7 @@
   - **Measurement**: `npx vitest run` on the new lint test with one marked and one unmarked fixture.
   - **Success**: 1 of 1 unmarked stub fails; 1 of 1 marked stub passes; 0 findings on a clean scaffold.
   - **Pivot**: If the lint cannot tell a stub from a real small function without more than 2 false positives on the template, drop it.
+  - **Registered scope**: Use the scaffold's JavaScript and TypeScript source inventory. Detect explicitly named fake, mock or stub functions and function bodies that only throw a recognized placeholder error. Require an adjacent line comment with a reason and a tracking ID. Seed both detection patterns; each unmarked form exits 1, and the marked form, ordinary functional code, ignored test code, default mode and the clean scaffold all exit 0. Preserve the original false-positive pivot.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Meszaros (2007), xUnit Test Patterns (test doubles).
 
 ## P3

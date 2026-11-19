@@ -52,6 +52,7 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - Default task file format is tasks.md: `# Tasks`, `## P0`..`## P3`, checkbox tasks, metadata labels (`ID`, `Tags`, `Details`, `Files`, `Acceptance`).
 - Completed tasks are removed, not checked off.
 - Stability, regression-catching, observability, deployment-infra, auth-path, data-integrity, and CI-gate work is P0 unless a repo explicitly says otherwise.
+- User-facing friction is P0 or P1: a wrong or surprising default, or a workaround the user must remember, is P0; an inconsistency between entry points or missing `--help` is P1. P2 needs a written reason for the deferral.
 - Validate task files with `npx @tasks-md/lint TASKS.md` when edited.
 - **Measure every task (IRON LAW):** every task block, at every priority, carries `Hypothesis`, `Measurement`, `Success`, `Pivot`, and `Anchor`. Check with `npx @tasks-md/lint --require-prereg TASKS.md`. The agentbrew task schema tests also require a valid `ID` and a separate, nonempty `Success` field on every task. Add the required fields before filing a task.
 - **Measure in use, not only in tests:** a task that changes what a user gets also names where the effect shows after it ships: a telemetry event, a dashboard tile, or a metrics command. When that number does not exist, the task adds it, or a first task does. A change that adds or changes an event also updates the events doc and the dashboard tile, and reads the tile back when real data arrives. Never invent an event to fill a tile.
@@ -82,6 +83,8 @@ A long task or a user-requested deadline remains valid.
 - **PRs, stacks, Jira:** use `gh` for PRs and the Jira MCP server (or a team overlay's Jira skill) for tickets. No `Status:` lines or file inventories in PR bodies. Vision trace: **## Session entry**. E2E/automation non-blocking. Report **`Merged N/M PRs`**.
 - **PR review recipients.** Request only named reviewers. Use the approved delivery workflow to check automatic review assignments before opening a non-draft PR or marking one ready. Keep the PR in draft if a team could receive a request or the rules are unclear. Preserve existing review requests and requirements.
 - **PR opener (IRON LAW):** `## Summary` (2–3 sentences): what the change does, then why it is useful. Follow with `## Details`; rewrite from verified facts before merge. Add a `## Real vs mocked` table when tests, fixtures, mocks, stubs, a simulator, harness, or POC change. Inventory every changed test group and name what each mock replaces. Date one-off observations and label screenshot captions as real or simulated.
+- **Merge means merge (IRON LAW):** a PR is done when its commit lands on the default branch. Close a PR as superseded or duplicate only with mechanical proof that its diff is already on the base (an empty diff after a rebase onto it), posted on the PR, or when the owner says so. Try one rebase before closing a `CONFLICTING` PR. Never close PRs to drain a queue.
+- **Hypothesis self-grade:** when a PR closes a task with a pre-registered hypothesis, its body adds `Predicted`, `Observed` (the measurement output), `Match` (yes/no), and `Lesson`.
 - Commit format: `type: subject TICKET`, header ≤72 chars.
 - **Rebase:** see `rebase-verification.mdc`.
 - **PR conflicts (IRON LAW):** Green checks do not prove a PR is mergeable. CI tests the PR head, not its merge with the base. On every PR touch, run `git merge-tree --write-tree --name-only <base> HEAD` and `gh pr view <n> --json mergeable,mergeStateStatus`. Treat `CONFLICTING` as not green. Bring in the base per `rebase-verification.mdc`.
@@ -106,6 +109,7 @@ A long task or a user-requested deadline remains valid.
 - **Google Docs (IRON LAW):** After every GDoc edit batch (any project, any doc), run the **visual verification loop** in the **`markdown-for-gdoc`** skill: `docs_get_structured` on the edited range, then **open the live doc in browser** and inspect the section (list numbering, headings, spacing, bold). Fix list bleed, wrong heading styles, and empty numbered items; repeat until structured read and visual check agree. MCP `read_document` export alone is **not** completion. Read the skill before the first edit; invoke it whenever authoring or surgically editing a GDoc.
 - Stacked skill PRs: manually runnable on each branch + doc path audit — see **`pr`** skill. Skill PRs with evals run the full suite to the documented pass bar.
 - For bug fixes, prefer Prove-It: failing regression first, then fix, then green.
+- **A flaky check is not evidence:** when a check passes and fails on the same commit, its green run proves nothing. File a task that names the flake rate and quarantine or fix the check; never cite its pass.
 - For Jenkins failures, read the console log before retrying or pushing another commit.
 
 ## Browser and web UI work
@@ -123,6 +127,7 @@ A long task or a user-requested deadline remains valid.
 - Assist with defensive security only.
 - Never search for, expose, log, or commit secrets/credentials/tokens/cookies/keys.
 - Do not perform destructive operations without explicit confirmation for that exact action.
+- A local web UI or dashboard binds to `127.0.0.1` by default. Binding `0.0.0.0` needs an explicit opt-in setting and a doc note.
 - Never send emails, payments, Slack/Jira/GitHub comments/reviews, or other public side effects without approval unless repo rules explicitly authorize that delivery step.
 
 ## Org-overlay routing

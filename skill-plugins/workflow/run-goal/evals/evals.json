@@ -3994,6 +3994,17 @@
         "Searches the merged default branches, not the PR branches, before archiving, and lists the intentional guard hits it keeps",
         "Runs the archive only after all target PRs are merged and the user approved archiving"
       ]
+    },
+    {
+      "id": 349,
+      "prompt": "Goal: deeply research everything worth taking from an archived repo and make 5 independent judges pass before finishing. Two of five judges return FAIL with specific missed items. What do you do?",
+      "expected_output": "The agent ports or files an exact-spec task for each missed item, corrects the ledger rows the judges named, then re-runs each failed lens as a new fresh-context judge (not the same agent), repeating until all five lenses return PASS; it quotes each judge's VERDICT line as evidence and never counts a judge that saw an older ledger as passing a lens it failed.",
+      "expectations": [
+        "Fixes every item a failing judge named, as content or an exact-spec task",
+        "Corrects the ledger rows the judge flagged",
+        "Re-runs the failed lens with a new fresh-context judge, not a resumed one",
+        "Finishes only when all five lenses show VERDICT: PASS, quoted"
+      ]
     }
   ]
 }

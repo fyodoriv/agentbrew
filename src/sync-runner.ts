@@ -100,6 +100,19 @@ function refreshManagedInstalledSkillsBeforeSync(dryRun: boolean): void {
   }
 }
 
+/**
+ * Soft-update stale agentbrew-provided skill sources (catalog, team overlay,
+ * global Agentfile) so managed skills stay current without `sync --pull`.
+ * Within the cache TTL (30 min) this is a cheap state scan + no network.
+ * See `src/sync/soft-update.ts` for the TTL and origin filter.
+ * Only the skills module reads these caches: a selection without it leaves them alone.
+ */
+function prepareSkillContentBeforeSync(syncModules: readonly string[] | undefined, dryRun: boolean): void {
+  if (syncModules && !syncModules.includes("skills")) return;
+  softUpdateOverlaySourcesBeforeSync(dryRun);
+  refreshManagedInstalledSkillsBeforeSync(dryRun);
+}
+
 function cloneStateForDryRun(state: AgentBrewState | undefined): AgentBrewState | undefined {
   if (!state) return undefined;
   return JSON.parse(JSON.stringify(state)) as AgentBrewState;
@@ -192,12 +205,7 @@ async function prepareSync(options?: SyncRunnerOptions): Promise<PreparedSync> {
   // Snapshot agent config files before sync so rollback is possible
   snapshotBeforeSync(dryRun);
 
-  // Soft-update stale agentbrew-provided skill sources (catalog, team overlay,
-  // global Agentfile) so managed skills stay current without `sync --pull`.
-  // Within the cache TTL (30 min) this is a cheap state scan + no network.
-  // See `src/sync/soft-update.ts` for the TTL and origin filter.
-  softUpdateOverlaySourcesBeforeSync(dryRun);
-  refreshManagedInstalledSkillsBeforeSync(dryRun);
+  prepareSkillContentBeforeSync(options?.syncModules, dryRun);
 
   return { virtualState };
 }

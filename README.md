@@ -976,7 +976,7 @@ What does not carry over on its own:
 
 A company overlay that already moved to a plugin follows the [org overlay update plan](docs/plans/org-overlay-update-plan.md) to adopt the 2026-11 core (task `org-overlay-adopt-core-2026-11`).
 
-`agentbrew sync` soft-updates **agentbrew-managed skill sources** (catalog and global Agentfile `origin: global`) when their cache is older than 30 minutes, then re-copies any installed skills from the refreshed cache before deploying symlinks. User-, project-, and agentfile-added sources refresh only on explicit `agentbrew sync --pull`. Within the TTL window, plain `sync` stays quiet (no network).
+`agentbrew sync` soft-updates **agentbrew-managed skill sources** (catalog and global Agentfile `origin: global`) when their cache is older than 30 minutes, then re-copies any installed skills from the refreshed cache before deploying symlinks. User-, project-, and agentfile-added sources refresh only on explicit `agentbrew sync --pull`. Within the TTL window, plain `sync` stays quiet (no network). A `--only` selection without `skills` skips both steps: it fetches no managed skill source and copies no skill file.
 
 Offline or auth failures on plain `sync` print a one-line warning and fall back to the cached copy. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**.
 

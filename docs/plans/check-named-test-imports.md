@@ -35,3 +35,11 @@ name. The lint must agree on both inputs and name the missing export.
 Two disagreements reject the default compiler resolution. Any candidate
 disagreement or median added time above 500 ms rejects the adapter.
 The child Git process may initialize only the scratch repository.
+
+## Star export control
+
+An unresolved name can also come from two different star exports.
+Register one fixture with two owners of the same name. Node and the lint
+must both reject the name. A companion fixture explicitly selects one
+owner, and both must accept it. Retain the shell entry point and the
+original performance ceiling.

@@ -4005,6 +4005,17 @@
         "Re-runs the failed lens with a new fresh-context judge, not a resumed one",
         "Finishes only when all five lenses show VERDICT: PASS, quoted"
       ]
+    },
+    {
+      "id": 350,
+      "prompt": "/goal suggest 50 product names, research each name's web presence, tell me which domains are truly available",
+      "expected_output": "Prints a 3-line research contract first. Checks every listed name, not a sample: registry RDAP (404 = unregistered), DNS, a web search and a code-host search. Batches searches, paces code-host API calls, and reports any unchecked name as pending instead of done.",
+      "files": [],
+      "expectations": [
+        "Prints a short research contract before gathering evidence",
+        "Checks every listed name for registry status, DNS, web and code-host presence, not a sample",
+        "Reports any unchecked name as pending, never as done"
+      ]
     }
   ]
 }

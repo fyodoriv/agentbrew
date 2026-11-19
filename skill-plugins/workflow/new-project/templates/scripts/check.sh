@@ -16,10 +16,39 @@ mode="${1:-full}"
 [ -w "$HOME/.npm/_cacache" ] || export npm_config_cache="${TMPDIR:-/tmp}/npm-cache"
 mkdir -p .metrics/cache
 
+untracked_inputs() {
+  local path target
+  local -a regular=()
+  local has_regular=false
+  git ls-files -z --others --exclude-standard | {
+    while IFS= read -r -d "" path; do
+      if [ -L "$path" ]; then
+        # Preserve trailing newlines and hash the separately known guide file.
+        [ "$path" = CLAUDE.md ] && [ -f AGENTS.md ] && [ ! -L AGENTS.md ] || return 1
+        target="$(readlink -n -- "$path" && printf '\001')" || return 1
+        [ "$target" = $'AGENTS.md\001' ] || return 1
+        printf 'link\0%s\0%s\0' CLAUDE.md AGENTS.md
+        regular+=("./AGENTS.md")
+        has_regular=true
+      elif [ -f "$path" ]; then
+        regular+=("./$path")
+        has_regular=true
+      else
+        return 1
+      fi
+    done
+    if $has_regular; then
+      printf '%s\0' "${regular[@]}" | xargs -0 shasum -- 2>/dev/null
+    fi
+  }
+}
+
 key=""
 if [ "${NO_CACHE:-0}" != 1 ] && git rev-parse --git-dir >/dev/null 2>&1; then
-  key="$( { echo "$mode"; git ls-files -s; git diff;
-            git ls-files -z --others --exclude-standard | xargs -0 shasum 2>/dev/null; } | shasum | cut -c1-16)"
+  if ! key="$( { printf '%s\n' "$mode" && git ls-files -s && git diff && untracked_inputs; } | shasum | cut -c1-16)"; then
+    key=""
+    echo "check.sh: cache unavailable. Running every check."
+  fi
 fi
 
 step() {

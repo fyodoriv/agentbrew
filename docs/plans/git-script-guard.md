@@ -44,3 +44,26 @@ nested shell. The deployed-layout fixture matched the registered
 blocked and allowed outcomes, and real Git status output matched byte
 for byte. The fixture also checked a linked checkout, a failed checkout
 probe, a dry run, and option-like file names.
+
+## Dotfiles command rewrite
+
+Hypothesis: a session marker can keep Git guarded when the Dotfiles
+Claude command hook replaces PATH in the tool input. The Dotfiles
+wrapper can request an argument decision and remain the only process
+that executes the allowed operation.
+
+Measurement: extend the deployed-layout fixture with decision-only
+commands and run the companion Dotfiles default-mode Bash control.
+Check the exact supported decision and the recorder for execution.
+Include the combined wrappers in the queued timing check.
+
+Success: a refused call returns exit 2 and reaches Git zero times. An
+allowed decision returns exit 0 and reaches Git zero times until the
+Dotfiles wrapper forwards the original command once. Keep added median
+latency within 20 ms.
+
+Pivot: any duplicate delegate, guard outside the opted-in session,
+failure of the existing fixed PATH guard, or timing over the threshold.
+
+Anchor: Dotfiles `agent-hooks/prepend-endpoint-path.sh`, Dotfiles
+`bin/git`, and the Claude Code session environment contract above.

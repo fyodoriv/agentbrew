@@ -188,3 +188,17 @@ reply case, all nine existing families, and all 59 reducer cases. Reject
 any change to capture decisions, target cleanup checks or existing
 deadlines. Anchor: L08 terminal result and tokio-tungstenite 0.30.0
 `poll_close` and `poll_next`.
+
+The held reply control reproduced premature return. The first fix passed
+that control. L08 then exposed a second issue: the cancelled client's
+in-flight Runtime reply shifted the target cleanup replies by one frame.
+The first frame at WebSocket shutdown was the target-list reply, with
+request ID 9. The pinned inherent `WebSocketStream::close` sends the local
+close frame. A stream read is still needed to observe the peer reply.
+
+For the cancellation case, admit at most one exact, outstanding Runtime
+reply before the target close acknowledgement. Predict zero false cleanup
+refusals for cancellation and zero false approvals of the mismatched
+target reply. Check the existing L08 result, one explicit cleanup receipt
+after cancellation, and the held close case. Reject any other skipped
+reply or change to the capture exit, time limit or owned target checks.

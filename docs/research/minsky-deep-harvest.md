@@ -19,15 +19,15 @@ Where this ledger and minsky `absorbed.md` disagree, this ledger wins. For examp
 | `docs/agents/working-tasks.md` tool-call discipline | `skill-plugins/local-llm-warmup/SKILL.md` anti-pattern 13 |
 | vision #19 operator-explicit-start | dotfiles `AGENTS.md`: heavy LaunchAgents are opt-in |
 | skill `experiment-validate`, `check-pivot-success-margin`, `check-anchor-primary-source`, `check-measurement-inspects-output` | tasks.md `packages/lint/src/rule9.ts` `qualityWarningsIn()` (tasksmd/tasks.md#53); the output-inspection check is reduced to "Measurement has a command in backticks" |
-| `check-orphan-tests.mjs` | tasks.md task `check-tests-import-only-existing-exports` |
-| `verify-squash-merge-completeness.mjs` | task `verify-squash-merge-completeness` |
-| `check-toolchain.mjs` + lefthook `piped: true` | task `new-project-toolchain-first-hook` |
+| `check-orphan-tests.mjs` | task `check-tests-import-only-existing-exports` |
+| `verify-squash-merge-completeness.mjs` | shipped: `scripts/verify-squash-merge-completeness.mjs` (agentbrew #1142) |
+| `check-toolchain.mjs` + lefthook `piped: true` | shipped in the new-project scaffold (agentbrew #1144) |
 | `check-readme-byte-budget.mjs` | task `readme-byte-budget` |
-| `check-lockfile-integrity.mjs` (docs/security/supply-chain.md layer 1) | task `lockfile-integrity-flip-check` |
+| `check-lockfile-integrity.mjs` (docs/security/supply-chain.md layer 1) | shipped in agentbrew (#1149); tasks.md port is task `lockfile-integrity-flip-check` |
 | docs/security/dashboard-exposure.md per-run token | `docs/shared-rules.md` Security and secrets |
 | `docs/user-tests/*` | task `readme-human-first-run-test` |
 | `docs/validated-learnings.md`, `docs/experiment-tracker.md` | `docs/shared-rules.md` Task queues: re-check, Stances expire, Contract first |
-| `check-no-hardcoded-user-paths.mjs`, `check-no-personal-paths-in-docs.mjs` | task `no-literal-home-paths` |
+| `check-no-hardcoded-user-paths.mjs`, `check-no-personal-paths-in-docs.mjs` | already there: the pre-push scanner catches both (agentbrew #1143) |
 | working-tasks.md UI is P0-P1 | `docs/shared-rules.md` Task queues |
 | skill `triage` out-of-scope memory | `skill-plugins/workflow/watch-issues/SKILL.md` step 3, eval 17 |
 | skill `diagnose` feedback-loop ladder + ranked hypotheses | task `diagnose-loop-ladder-and-ranked-hypotheses` |
@@ -44,10 +44,10 @@ Where this ledger and minsky `absorbed.md` disagree, this ledger wins. For examp
 | vision #4 Everything measurable, everything visible | ALREADY-THERE | agentbrew/AGENTS.md + shared-rules (observability/telemetry); tooling telemetry live |
 | vision #5 Theoretical grounding (CS anchor per term) | ALREADY-THERE | `Anchor` field required on every task (agentbrew shared-rules "## Task queues"; dotfiles constitution rule 11) |
 | vision #6 Stay alive (let it crash, supervisor) | DROP | Daemon/supervisor resilience for the minsky loop; no long-running orchestrator in targets |
-| vision #7 Chaos engineering | DROP | Per-failure-mode chaos tests for the orchestrator daemon; general part covered by Prove-It rule |
+| vision #7 Chaos engineering | PORT (partial) | Per-failure-mode chaos tests are orchestrator-only (drop). "Silent retry that hides failure" → shared-rules Verification "No silent retries" |
 | vision #8 Pattern conformance (row per artifact) | DROP | Heavy minsky-only bookkeeping; no target uses it; Anchor field covers the useful part |
-| vision #9 Pre-registered hypothesis (iron) | ALREADY-THERE | global CLAUDE.md "Pre-registered hypothesis"; agentbrew shared-rules "## Task queues"; dotfiles/docs/constitution.md rule 11 |
-| vision #10 Deterministic enforcement | ALREADY-THERE | agentbrew/docs/research/hooks-over-agents-md.md, agentbrew/docs/editing-rules.md, agentbrew/hooks/manifest.yaml |
+| vision #9 Pre-registered hypothesis (iron) | ALREADY-THERE + PORT | Core: global CLAUDE.md, shared-rules "## Task queues", dotfiles constitution rule 11. NEEDS-CLARIFICATION inventory → shared-rules Task queues "Clarify first" |
+| vision #10 Deterministic enforcement | ALREADY-THERE + PORT | hooks-over-agents-md.md, editing-rules.md, hooks/manifest.yaml. Ratchet sub-rule → shared-rules "Agent rule/skill changes" "Ratchet" |
 | vision #11 No flaky metric is load-bearing | ALREADY-THERE | agentbrew/docs/ci.md "## Flake detection thresholds" (10% same-SHA) |
 | vision #12 Scope discipline (stability before new scope) | ALREADY-THERE | agentbrew/docs/shared-rules.md "## Scope discipline"; global CLAUDE.md "Surgical changes" |
 | vision #13 Security & privacy (8-item bar) | PORT (partial) | Secrets/PII/supply chain already in shared-rules "## Security and secrets" + secret-scan. Missing item 4: add to agentbrew/docs/shared-rules.md "## Security and secrets": "A local web UI or dashboard binds to 127.0.0.1 by default. Binding 0.0.0.0 needs an explicit opt-in flag and a doc note." Threat-model/cloud-audit items DROP (minsky packages). |
@@ -88,14 +88,14 @@ Where this ledger and minsky `absorbed.md` disagree, this ledger wins. For examp
 | docs/agents/working-tasks.md: OMC modes, personas | DROP | minsky persona/mode routing |
 | docs/agents/working-tasks.md: UI is P0-P1 | PORT | `docs/shared-rules.md` Task queues: user-facing friction is P0 or P1; its sub-rules (one command per operation, sane no-args defaults) are already in the global "One command to start any app" and "Every action through CLI, agent, and UI" rules |
 | RECURRING.md | DROP | observer-dogfood and other minsky cadence loops; dotfiles LaunchAgents doc covers its own jobs |
-| ask-human.md | ALREADY-THERE | ask-human MCP in agentbrew/src/catalog.yaml + docs/decisions/re-promote-ask-human-mcp-after-stdio-fix.md; async-human-comms-blocks hook |
+| ask-human.md | ALREADY-THERE | ask-human MCP was replaced by mcp-feedback-enhanced in src/catalog.yaml (2026-10-16); the ask-or-decide rule is covered by the global "Local autonomy" rule and shared-rules "Human-blocked actions" |
 | templates/repo.yaml | ALREADY-THERE | tasks.md / Agentfile `task_backend` + .agents/tasks.config.yaml (rest is runner-only) |
 | CONTRIBUTING.md | ALREADY-THERE | agentbrew/dotfiles CONTRIBUTING.md with "Report problems and ideas" |
 | INSTALL.md | ALREADY-THERE | agentbrew/dotfiles INSTALL.md playbooks (doctor, audit, first run); OpenHands step DROP |
 | hook block-dangerous-bash.sh | PORT (partial) | force-push, `--no-verify`, `reset --hard`, `clean -f`, `checkout .` already blocked (agentbrew no-force-push-protected, no-commit-no-verify; dotfiles agent-hooks/block-dangerous-git.sh). The rest is task `block-remaining-dangerous-commands` |
 | hook block-vision-md-edit.sh | DROP | Protects minsky vision.md for MAPE-K loop |
 | hook live-fire-smoke-post-edit.sh | DROP | Smoke test of minsky launchd/systemd scripts |
-| hook post-edit.sh (single-file lint) | DROP | Runs minsky check-rule-* lints; dotfiles/agentbrew use their own gates |
+| hook post-edit.sh (single-file lint) | PORT (partial) | biome/tsc/markdownlint branches drop (each repo has its own gates); TASKS.md lint-on-edit branch → task `tasks-md-lint-on-edit` |
 | hook spec-driven-precondition.sh | DROP | Keyed on novel/**/src paths; spec-driven-development skill covers the practice |
 | hook stop-gate.sh | ALREADY-THERE | agentbrew hooks verify-before-completion, retry-failed-before-stop, goal-retro-before-stop |
 | hook worker-uses-tmp-worktree.sh | ALREADY-THERE | global "Pipeline-managed repos" rule; parallel worktree rules |
@@ -124,7 +124,7 @@ Total rows: 61
 | .claude/skills/minsky-supervisor | DROP | daemon start/stop; minsky archived |
 | .claude/skills/openhands-shim-knobs | DROP | OpenHands shim |
 | .claude/skills/poll-merge | ALREADY-THERE | ship-it command (merge when green) + watch-issues |
-| .claude/skills/pr-merge-no-shortcuts | PORT | agentbrew/docs/shared-rules.md "Git and delivery": rule lives only in workflow/grind/references/the-loop.md. Add: "Never close a PR to drain a queue. Close only when rebasing onto origin/main leaves an empty diff (post that proof on the PR) or the owner says so." |
+| .claude/skills/pr-merge-no-shortcuts | PORT | shared-rules.md Git and delivery "Merge means merge"; squash file check → `scripts/verify-squash-merge-completeness.mjs` (#1142); `--admin` → task `block-remaining-dangerous-commands` |
 | .claude/skills/reader-priority-docs | ALREADY-THERE | agentbrew/skill-plugins/workflow/readme/SKILL.md + shared "answer first" language rule + docs/agent-guide-baseline.md |
 | .claude/skills/spec-driven-development | ALREADY-THERE | catalog spec-driven-development |
 | .claude/skills/task-slice | ALREADY-THERE | catalog to-issues (vertical tracer-bullet slices) + writing-plans |
@@ -151,7 +151,7 @@ Total rows: 61
 | docs/commit-hook-toolchain.md | DROP | minsky lefthook chain |
 | docs/competitive-comparison.md | DROP | minsky positioning |
 | docs/configuration.md | DROP | ~/.minsky/config.json |
-| docs/conflict-auto-resolution.md | DROP | daemon-vs-daemon conflicts; run-goal evals already cover empty-diff conflict proof |
+| docs/conflict-auto-resolution.md | PORT (task) | Mergiraf merge driver → dotfiles task `git-mergiraf-merge-driver-setup`; daemon-vs-daemon parts drop |
 | docs/cost-tiers.md | DROP | minsky cost tiers |
 | docs/cross-repo-portability/2026-05-04-classification-run.md | DROP | historic run output |
 | docs/cross-repo-portability.md | DROP | minsky lint portability |
@@ -197,7 +197,11 @@ Total rows: 61
 | docs/security/secret-scanning.md | ALREADY-THERE | dotfiles leak gates + pre-push hook |
 | docs/security/supervisor-sandbox.md | DROP | supervisor sandbox |
 | docs/security/supply-chain.md | ALREADY-THERE | catalog supply-chain-risk-auditor + tool-setup preflight (pin versions) |
-| docs/self-diagnose-authoring.md | DROP | daemon self-diagnose checks |
+| docs/self-diagnose-authoring.md | PORT | five-rule check contract → shared-rules Verification "Doctor-check contract"; daemon wiring drops |
+| .claude/shims/git | PORT (task) | task `git-path-shim`; dotfiles `bin/git-safe` is an opt-in alias, not a PATH shim |
+| scripts/verify-pr-closure-is-lossless.mjs | PORT (task) | task `lossless-pr-close` |
+| vision #13 "no silent security trade-offs" | PORT | shared-rules Security and secrets |
+| MILESTONES.md "What Minsky will never do" | ALREADY-THERE + PORT | destructive-op approval, human-owned architecture and no hidden failure are in the global rules; security-critical code approval → shared-rules Security and secrets |
 | docs/self-diagnose-throughput-invariants.md | DROP | daemon invariants |
 | docs/session-ledger-schema.json | DROP | minsky ledger |
 | docs/spec-advisories/2026-05-03-quarterly-audit.md | DROP | historic audit |
@@ -220,10 +224,10 @@ Total rows: 61
 | scripts/check-toolchain.mjs (+ lefthook toolchain-first `piped: true`) | PORT | agentbrew/skill-plugins/workflow/new-project/templates (scripts + lefthook): toolchain barrier that checks `.node-version` match and per-arch native binaries (biome) resolve, printing one actionable line before other hooks. |
 | scripts/verify-squash-merge-completeness.mjs | PORT | agentbrew/scripts/verify-squash-merge-completeness.mjs (call from ship-it after merge): compare PR head file list vs squash commit to catch silently dropped files. |
 | scripts/check-readme-byte-budget.mjs | PORT | agentbrew/skill-plugins/workflow/readme/scripts/check-readme.py: add a ratchet byte budget (hard limit = baseline + headroom) so README compression does not decay. |
-| scripts/check-no-hardcoded-user-paths.mjs, check-no-personal-paths-in-docs.mjs | PORT | agentbrew/scripts/lint-repo-artifacts.sh: fail on `/Users/<name>/` or `/home/<name>/` literals in tracked code/docs (allow `~`, `$HOME`). Generic public-repo hygiene, not covered by the private-pattern gate. |
-| scripts/check-orphan-tests.mjs | PORT | tasks.md/scripts (or package test lint): every symbol a test imports from `../src` must exist as a named export; catches src/test API drift before tsc in mjs tests. Lower priority. |
+| scripts/check-no-hardcoded-user-paths.mjs, check-no-personal-paths-in-docs.mjs | ALREADY-THERE | the before-push scanner catches both planted paths (agentbrew #1143) |
+| scripts/check-orphan-tests.mjs | PORT (task) | agentbrew task `check-tests-import-only-existing-exports` |
 | scripts/check-lockfile-registry.mjs | ALREADY-THERE | agentbrew/scripts/check-locked-dependencies.mjs + dotfiles oss-readiness gate cover registry/leak; generic allowlist idea optional |
-| scripts/check-lockfile-integrity.mjs | PORT | task `lockfile-integrity-flip-check`: `check-lockfile-sync.sh` only checks that package.json and the lockfile agree, not that a same-version entry kept its hash |
+| scripts/check-lockfile-integrity.mjs | PORT | shipped in agentbrew #1149: `check-lockfile-sync.sh` only checks that package.json and the lockfile agree, not that a same-version entry kept its hash |
 | scripts/check-sbom-shape.mjs | DROP | SBOM shape for minsky's pnpm publish pipeline |
 | scripts/scan-secrets.mjs | ALREADY-THERE | dotfiles/lib/secret-scan.sh + .github/workflows/oss-readiness.yml |
 | scripts/check-no-no-verify-bypass.mjs | ALREADY-THERE | agentbrew/hooks/checks/no-commit-no-verify.sh |

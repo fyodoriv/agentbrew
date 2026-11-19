@@ -9,6 +9,8 @@ import {
   readlinkSync,
   renameSync,
   rmSync,
+  symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -454,6 +456,80 @@ describe("new-project skill", () => {
     const insensitive = check("1", { BASH_ENV: bashEnv });
     expect(insensitive.status).toBe(1);
     expect(insensitive.stderr).toContain("docs/getting-started.MD needs a lowercase kebab-case Markdown filename");
+  });
+
+  it("checks source imports and placement in a real TypeScript scaffold when opted in", () => {
+    const dir = fresh("tool", "unit-test-layout");
+    const deps = join(dir, "node_modules");
+    mkdirSync(deps, { recursive: true });
+    symlinkSync(join(process.cwd(), "node_modules", "typescript"), join(deps, "typescript"), "junction");
+    const check = (orphan: string, placement: string, filename = "") =>
+      spawnSync("/bin/bash", [join(dir, "scripts", "check.sh"), "fast"], {
+        cwd: dir,
+        encoding: "utf-8",
+        env: {
+          ...env,
+          CHECK_OFFLINE: "1",
+          CHECK_ORPHAN_TESTS: orphan,
+          CHECK_TEST_PLACEMENT: placement,
+          CHECK_FILENAME_CASE: filename,
+        },
+      });
+    const empty = check("1", "1", "1");
+    expect(empty.status, empty.stdout + empty.stderr).toBe(0);
+    expect(empty.stdout).toContain("filename-case: docs filenames passed.");
+    expect(empty.stdout).toContain("orphan-test: unit test imports passed.");
+    expect(empty.stdout).toContain("test-placement: unit tests are next to their source.");
+
+    const testsTree = join(dir, "tests");
+    const linkedTree = join(scratch, "linked-test-tree");
+    renameSync(testsTree, linkedTree);
+    mkdirSync(join(linkedTree, "unit"), { recursive: true });
+    const linkedTest = join(linkedTree, "unit", "ignored.test.ts");
+    writeFileSync(linkedTest, 'import "./intentionally-missing.js";\n');
+    symlinkSync(linkedTree, testsTree, "junction");
+    git(dir, "add", "--", "tests");
+    const linked = check("1", "1");
+    expect(linked.status, linked.stdout + linked.stderr).toBe(0);
+    unlinkSync(testsTree);
+    unlinkSync(linkedTest);
+    renameSync(linkedTree, testsTree);
+    git(dir, "add", "--", "tests");
+
+    const nonUnit = [join(dir, "src", "integration"), join(dir, "test", "e2e"), join(dir, "tests", "unit", "fixtures")];
+    for (const folder of nonUnit) {
+      mkdirSync(folder, { recursive: true });
+      writeFileSync(join(folder, "expected-noise.test.ts"), 'import "./intentionally-missing.js";\n');
+    }
+    const src = join(dir, "src");
+    mkdirSync(src, { recursive: true });
+    writeFileSync(join(src, "format.ts"), "export const format = () => 'ok';\n");
+    const unit = join(src, "format.test.ts");
+    writeFileSync(unit, 'import { format } from "./format.js";\nvoid format;\n');
+    const clean = check("1", "1", "1");
+    expect(clean.status, clean.stdout + clean.stderr).toBe(0);
+
+    writeFileSync(unit, 'import { format } from "./missing.js";\nvoid format;\n');
+    const orphan = check("1", "0");
+    expect(orphan.status).toBe(1);
+    expect(orphan.stderr).toContain("orphan-test: src/format.test.ts imports missing file ./missing.js.");
+    writeFileSync(unit, 'import "node:assert";\n');
+    const noSource = check("1", "0");
+    expect(noSource.status).toBe(1);
+    expect(noSource.stderr).toContain("needs a relative import from src/.");
+
+    const centralized = join(dir, "tests", "unit");
+    mkdirSync(centralized, { recursive: true });
+    renameSync(unit, join(centralized, "format.test.ts"));
+    writeFileSync(join(centralized, "format.test.ts"), 'import { format } from "../../src/format.js";\nvoid format;\n');
+    const misplaced = check("1", "1");
+    expect(misplaced.status).toBe(1);
+    expect(misplaced.stdout).toContain("orphan-test: unit test imports passed.");
+    expect(misplaced.stderr).toContain("test-placement: tests/unit/format.test.ts needs to sit next to");
+
+    const defaults = check("", "");
+    expect(defaults.status, defaults.stderr).toBe(0);
+    expect(defaults.stdout).not.toMatch(/orphan-test|test-placement/);
   });
 
   it("lets an existing repo map an area to its own files or waive it with a reason", () => {

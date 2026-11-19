@@ -45,6 +45,12 @@ if [ "${CHECK_FILENAME_CASE:-0}" = 1 ]; then
   # Git can ignore a rename that changes only case. Read actual filenames.
   key="" step filename-case bash scripts/check-filename-case.sh
 fi
+if [ "${CHECK_ORPHAN_TESTS:-0}" = 1 ]; then
+  key="" step orphan-tests node scripts/check-orphan-tests.mjs
+fi
+if [ "${CHECK_TEST_PLACEMENT:-0}" = 1 ]; then
+  key="" step test-placement node scripts/check-test-placement.mjs
+fi
 if command -v gitleaks >/dev/null 2>&1 && git rev-parse -q --verify HEAD >/dev/null; then
   step secrets gitleaks git --no-banner --redact -l warn --log-opts=-20
 fi

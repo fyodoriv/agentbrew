@@ -292,12 +292,13 @@ that long (the hook timeout is 5 s).
 
 ## Retry failed calls before stop
 
-`retry-failed-before-stop` (Stop, opt-in) reads the transcript for the
-current turn. It lists tool calls that failed (`is_error`, or text such as
-"not connected" or "timed out") with no later success of the same tool.
-User denials do not count. It blocks the stop once and asks the agent to
-retry them; if a retry fails again, the agent says so. `stop_hook_active`
-allows the next stop. Bypass: `HOOK_BYPASS_RETRY_FAILED_BEFORE_STOP=1`.
+`retry-failed-before-stop` (Stop, opt-in) checks the current user turn
+for unresolved tool failures. A later success or denial for the same tool
+and input resolves that attempt. The hook allows the stop when it cannot
+identify the user turn. It names only the tools and prompts the agent to
+verify uncertain outcomes before repeating an authorized, safe action.
+The reminder runs once. `stop_hook_active` allows the next stop.
+Use `HOOK_BYPASS_RETRY_FAILED_BEFORE_STOP=1` to bypass this reminder.
 Enable it in the hooks overlay `enabled:` list.
 
 ## Cross-workspace publishing

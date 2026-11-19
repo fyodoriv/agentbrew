@@ -859,7 +859,7 @@ node ~/.config/agentbrew/scripts/agent-perf.mjs report --session latest
 node ~/.config/agentbrew/scripts/agent-perf.mjs brief                  # 5-line summary for agents
 ```
 
-At session start, the `perf-brief` hook gives the agent a short brief of the slowest steps. When dotfiles is installed, the `updates-landed` hook also passes on its once-a-day "updates landed, run the checkup" line (`dotfiles-updates-landed`; dotfiles keeps that state), so the agent can suggest the checkup. After a turn with 5 or more minutes of tool time, the opt-in `perf-task-review` Stop hook asks the agent for a short "Time review" once. The opt-in `retry-failed-before-stop` Stop hook asks the agent to retry tool calls that failed this turn (for example a browser that was not connected yet) before it stops.
+At session start, the `perf-brief` hook gives the agent a short brief of the slowest steps. When dotfiles is installed, the `updates-landed` hook also passes on its once-a-day "updates landed, run the checkup" line (`dotfiles-updates-landed`; dotfiles keeps that state), so the agent can suggest the checkup. After a turn with 5 or more minutes of tool time, the opt-in `perf-task-review` Stop hook asks the agent for a short "Time review" once. The opt-in `retry-failed-before-stop` Stop hook names unresolved tool failures and prompts the agent to verify uncertain outcomes before it retries safe, authorized actions.
 
 `AGENTBREW_PERF_REVIEW_MIN_SECS` changes the threshold. Turn it on by listing it under `enabled:` in `~/.config/agentbrew/hooks-overlay/manifest.yaml`.
 

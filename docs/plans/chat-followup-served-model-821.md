@@ -35,3 +35,27 @@ HEAVY_RUN_EXCLUSIVE_WAIT=2400 heavy-run --exclusive gtimeout 390 node \
 The frozen runner reports only one of six failure stages. It retains the
 exclusive receipt after any admitted abort. The prior code remains available
 at the recorded first-cohort commit.
+
+## Baseline result
+
+The run at c32748c7 exited 0 with four correct decisions out of six. The
+served model digest matched before and after. Keep the private receipt with
+SHA-256 4f3a3c464d94def699321c526fed2e98f8b78000dfe25c1e11a1df0f9f3e42e1.
+The prior incomplete receipt stays closed.
+
+## Candidate registration
+
+The existing opt-in chat-merge-recent-message catalog rule covers recent
+messages. The candidate clarifies destination, action permission and the
+case where editing is unavailable. It uses the existing issue policy.
+The text in scripts/chat-followup-candidate-821.txt was selected before
+looking at per-case errors. Add this text to the existing prompt without
+changing the six cases, grading, model, limits or response format.
+
+- **Hypothesis**: The clarified rule raises the result from 4 of 6 to 6 of 6 and does not act in either HOLD case.
+- **Measurement**: Reuse the exact cases and stable served model. Verify the complete baseline receipt against its hash before making a request. Reserve one new candidate receipt. Record only enums and score.
+- **Success**: 6 of 6, at least one more correct than the frozen baseline, and zero wrong actions in HOLD cases.
+- **Pivot**: Any wrong choice, invalid result, model drift or incomplete run rejects the candidate. Keep the current rule and both receipts. Do not retry the cohort.
+- **Anchor**: Issue #821, the frozen served-model baseline and the existing opt-in rule in src/catalog.yaml.
+
+Candidate text SHA-256 5ac5ea01fb2390374abd4a2cd605c6fef2022a51f69a13a8d8c218f0b1b2856b.

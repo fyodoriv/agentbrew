@@ -42,6 +42,20 @@ describe("npm lockfile integrity gate", () => {
     return spawnSync(process.execPath, [script, "--base", base], { cwd, encoding: "utf8", env, timeout: 5000 });
   }
 
+  function checkHosted(event: string, options: NodeJS.ProcessEnv) {
+    return spawnSync(process.execPath, [script, "--github-actions"], {
+      cwd,
+      env: { ...env, GITHUB_EVENT_NAME: event, GITHUB_SHA: git(["rev-parse", "HEAD"]), ...options },
+      encoding: "utf8",
+      timeout: 5000,
+    });
+  }
+
+  function commitFile(file: string, message: string): void {
+    git(["add", file]);
+    git(["-c", "commit.gpgSign=false", "-c", "core.hooksPath=/dev/null", "commit", "-qm", message]);
+  }
+
   beforeEach(() => {
     cwd = mkdtempSync(join(tmpdir(), "agentbrew-lockfile-integrity-"));
     env = {
@@ -54,10 +68,9 @@ describe("npm lockfile integrity gate", () => {
       GIT_COMMITTER_NAME: "Fixture",
       GIT_COMMITTER_EMAIL: "fixture@example.com",
     };
-    git(["init", "-q", "-b", "main"]);
+    git(["init", "-q", "-b", "main", "--template="]);
     writeLock(baseline);
-    git(["add", "package-lock.json"]);
-    git(["-c", "commit.gpgSign=false", "-c", "core.hooksPath=/dev/null", "commit", "-qm", "baseline lockfile"]);
+    commitFile("package-lock.json", "baseline lockfile");
     commit = git(["rev-parse", "HEAD"]);
   });
 
@@ -137,5 +150,39 @@ describe("npm lockfile integrity gate", () => {
       ]),
     );
     expect(check()).toMatchObject({ status: 2 });
+  });
+
+  it("uses the first parent of the exact GitHub pull request merge checkout", () => {
+    git(["switch", "-qc", "topic"]);
+    writeFileSync(join(cwd, "note.txt"), "topic change");
+    commitFile("note.txt", "topic change");
+    git(["switch", "-q", "main"]);
+    writeLock({ ...baseline, [path]: { ...packageRecord, integrity: thirdHash } });
+    commitFile("package-lock.json", "updated base");
+    git(["merge", "-q", "--no-ff", "--no-edit", "topic"]);
+
+    expect(check("HEAD^2").status).toBe(1);
+    expect(checkHosted("pull_request", { GITHUB_REF: "refs/pull/2/merge" }).status).toBe(0);
+    expect(checkHosted("pull_request", { GITHUB_REF: "refs/pull/2/merge", GITHUB_SHA: commit }).status).toBe(2);
+    expect(checkHosted("pull_request", { GITHUB_REF: "refs/heads/main" }).status).toBe(2);
+  });
+
+  it("uses the validated before commit for a multi-commit push", () => {
+    writeLock({ ...baseline, [path]: { ...packageRecord, integrity: thirdHash } });
+    commitFile("package-lock.json", "changed digest");
+    writeFileSync(join(cwd, "note.txt"), "second push commit");
+    commitFile("note.txt", "second push commit");
+    const after = git(["rev-parse", "HEAD"]);
+    const eventPath = join(cwd, "event.json");
+    writeFileSync(eventPath, JSON.stringify({ before: commit, after }));
+    expect(check("HEAD^").status).toBe(0);
+    expect(checkHosted("push", { GITHUB_EVENT_PATH: eventPath })).toMatchObject({
+      status: 1,
+      stderr: expect.stringContaining('"example@1.0.0"'),
+    });
+    writeFileSync(eventPath, JSON.stringify({ before: "HEAD^", after }));
+    expect(checkHosted("push", { GITHUB_EVENT_PATH: eventPath }).status).toBe(2);
+    writeFileSync(eventPath, JSON.stringify({ before: commit, after: commit }));
+    expect(checkHosted("push", { GITHUB_EVENT_PATH: eventPath }).status).toBe(2);
   });
 });

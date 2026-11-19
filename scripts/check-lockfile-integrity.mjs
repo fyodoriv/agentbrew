@@ -80,15 +80,40 @@ function changedIdentities(before, after) {
   return [...changes].sort();
 }
 
+const commitIdPattern = /^[0-9a-f]{40}$/;
+
+function hostedBase() {
+  const { GITHUB_EVENT_NAME, GITHUB_EVENT_PATH, GITHUB_REF, GITHUB_SHA } = process.env;
+  const [checkedOut, ...parents] = git(["rev-list", "--parents", "-1", "HEAD"]).toString("ascii").trim().split(" ");
+  if (checkedOut !== GITHUB_SHA) throw new Error("checkout does not match the GitHub run");
+
+  if (
+    GITHUB_EVENT_NAME === "pull_request" &&
+    /^refs\/pull\/\d+\/merge$/.test(GITHUB_REF ?? "") &&
+    parents.length === 2
+  ) {
+    return parents[0];
+  }
+  if (GITHUB_EVENT_NAME === "push" && GITHUB_EVENT_PATH) {
+    const event = JSON.parse(readFileSync(GITHUB_EVENT_PATH, "utf8"));
+    if (typeof event?.before === "string" && commitIdPattern.test(event.before) && event.after === checkedOut) {
+      return event.before;
+    }
+  }
+  if (GITHUB_EVENT_NAME === "workflow_dispatch") return "origin/main";
+  throw new Error("the hosted baseline could not be verified");
+}
+
 function run(args) {
-  if (args.length !== 0 && (args.length !== 2 || args[0] !== "--base" || !args[1])) {
-    console.error("Usage: node scripts/check-lockfile-integrity.mjs [--base COMMIT]");
+  const hosted = args.length === 1 && args[0] === "--github-actions";
+  if (!hosted && args.length !== 0 && (args.length !== 2 || args[0] !== "--base" || !args[1])) {
+    console.error("Usage: node scripts/check-lockfile-integrity.mjs [--base COMMIT | --github-actions]");
     return 2;
   }
-  const base = args[1] ?? "origin/main";
   let before;
   let after;
   try {
+    const base = hosted ? hostedBase() : (args[1] ?? "origin/main");
     const commit = git(["rev-parse", "--verify", "--end-of-options", `${base}^{commit}`])
       .toString("ascii")
       .trim();

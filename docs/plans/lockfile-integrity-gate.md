@@ -52,3 +52,8 @@ The assertion rejects GitHub event expressions used outside job controls.
   or the comparison silently falls back to a moving branch.
 - **Anchor:** Run `44569804661` checked out the GitHub PR merge ref. The
   existing workflow safety test protects the boundary.
+
+The focused workflow assertion failed on the original revision. After the
+change, all 45 workflow and lockfile tests passed. The PR fixture used parent
+one and the push fixture detected a flip across two commits. Mismatched
+heads and non-commit baseline values returned exit 2.

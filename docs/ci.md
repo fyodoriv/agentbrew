@@ -29,8 +29,10 @@ lockfile before running the build. It refuses missing or incomplete npm
 comparison data. A declared optional package can be absent, and checked-in
 local package links must still point to their recorded targets.
 
-Before `npm ci`, hosted CI compares the npm lockfile with the exact pull
-request base or previous pushed commit. It refuses a new integrity hash for
+Before `npm ci`, hosted CI compares the npm lockfile with the first parent
+of GitHub's verified PR merge checkout or the validated previous push
+commit. A manual workflow run compares with `origin/main`.
+It refuses a new integrity hash for
 an existing package and version, even when npm moves that package. At the
 same location it also refuses replacing or removing a previously locked hash.
 Run `node scripts/check-lockfile-integrity.mjs --base origin/main` from the

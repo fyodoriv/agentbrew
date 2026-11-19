@@ -332,6 +332,78 @@
 
 ## P2
 
+- [ ] Debugging starts from a reliable failing signal and ranked hypotheses
+  - **ID**: diagnose-loop-ladder-and-ranked-hypotheses
+  - **Tags**: skills, debugging, from-minsky
+  - **Details**: minsky's `diagnose` skill had two techniques the catalog `systematic-debugging` skill lacks. (1) A feedback-loop ladder: try a failing test, a curl fixture, a CLI fixture, a trace replay, a minimal harness, a property or fuzz test, `git bisect run`, then a human-run script, in that order, and do not go on until the signal fails the same way every time. (2) Before testing, write 3 to 5 ranked, falsifiable hypotheses ("if X is the cause, changing Y removes the bug") and test the cheapest to disprove first. Add both as a small agentbrew skill (`skill-plugins/workflow/diagnose/`) or a catalog entry for the upstream mattpocock `diagnose` skill, with evals.
+  - **Files**: `skill-plugins/workflow/diagnose/SKILL.md` and `evals/evals.json`, or `src/catalog.yaml`.
+  - **Acceptance**: an eval where the bug is intermittent makes the agent build a repeatable failing signal first and list ranked hypotheses before editing code.
+  - **Hypothesis**: debugging sessions that edit code before a repeatable failing signal exists drop from common to rare.
+  - **Measurement**: `npx agentbrew eval diagnose` pass rate on its evals.
+  - **Success**: all diagnose evals pass with the skill and at least 1 fails without it.
+  - **Pivot**: no eval separates with-skill from without-skill runs.
+  - **Anchor**: Zeller 2009 (Why Programs Fail, scientific debugging).
+
+- [ ] Agent hooks block the destructive commands minsky blocked and we still allow
+  - **ID**: block-remaining-dangerous-commands
+  - **Tags**: hooks, safety, from-minsky
+  - **Details**: minsky `.claude/hooks/block-dangerous-bash.sh` blocked commands our hooks still allow: `git stash drop` and `git stash clear` (stashes are shared by every worktree, so one agent can delete another's work), `gh pr merge --admin` (skips branch protection), `gh repo delete`, `git -c core.hooksPath=<x> commit` (a quiet hook bypass), and `rm -rf` outside the temp and scratch folders. Also block: creating or switching branches in a shared main checkout (`git checkout -b/-B`, `git switch -c/-C`, `git checkout <type>/...`) when the git dir equals the common git dir, unless the command uses `git -C`, `cd` into a worktree, or `git worktree` (a sibling agent once switched branches and wiped another session's edits); wholesale reverts `git checkout <ref> -- .` and `git restore :/`; and direct `npm publish` (releases go through the tag workflow with its SBOM and provenance gates). Add them to `hooks/checks/` (or extend `no-commit-no-verify.sh` for the hooksPath case), each with a fixture test, and register them in the hook manifest.
+  - **Files**: `hooks/checks/no-destructive-commands.sh`, its `.test.sh`, `hooks/checks/no-commit-no-verify.sh`, hook manifest, `docs/` hook list.
+  - **Acceptance**: every command shape listed in Details is blocked in a fixture; `git stash list`, `gh pr merge --squash`, and `rm -rf $TMPDIR/x` still pass.
+  - **Hypothesis**: agent runs that destroy shared stashes or bypass branch protection go from possible to 0.
+  - **Measurement**: `bash hooks/checks/no-destructive-commands.test.sh; echo exit=$?`.
+  - **Success**: every blocked case and every allowed case passes, plus a branch switch inside a linked worktree is allowed.
+  - **Pivot**: more than 1 false block per week in hook observation logs.
+  - **Anchor**: Reason 1990 (Human Error, defenses in depth).
+
+- [ ] Squash merges never silently drop a PR file
+  - **ID**: verify-squash-merge-completeness
+  - **Tags**: ship-it, git, from-minsky
+  - **Details**: Port minsky `scripts/verify-squash-merge-completeness.mjs` (see the archived repo). After a squash merge, compare the PR head's changed files with the files the squash commit changed and report any file that did not land. Call it from ship-it after each merge.
+  - **Files**: `scripts/verify-squash-merge-completeness.mjs`, its test, ship-it command docs.
+  - **Acceptance**: a fixture where the squash commit omits one PR file makes the script exit 1 and name the file; a normal merge exits 0.
+  - **Hypothesis**: files lost in squash merges go from unnoticed to caught at merge time.
+  - **Measurement**: `node scripts/verify-squash-merge-completeness.mjs --pr <n>; echo exit=$?` on the fixture and on the last 20 merged PRs.
+  - **Success**: fixture exits 1, all 20 real PRs exit 0.
+  - **Pivot**: more than 1 false alarm in the 20 real PRs.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (Accelerate, change failure rate).
+
+- [ ] New projects check the toolchain before every other hook
+  - **ID**: new-project-toolchain-first-hook
+  - **Tags**: new-project, lefthook, from-minsky
+  - **Details**: Port minsky `scripts/check-toolchain.mjs` plus its `lefthook.yml` toolchain-first `piped: true` group into the new-project lefthook template. The first pre-commit command checks that the running node matches `.node-version` and that native binaries load, and stops the chain with one clear line instead of many MODULE_NOT_FOUND traces.
+  - **Files**: `skill-plugins/workflow/new-project/templates/` lefthook template and its scorer test.
+  - **Acceptance**: a scaffolded repo with a wrong node version fails pre-commit with one toolchain line and runs no later hook.
+  - **Hypothesis**: time to diagnose a wrong-toolchain commit failure drops from reading several stack traces to one line.
+  - **Measurement**: `npx vitest run skill-plugins/workflow/new-project` with a wrong-version fixture.
+  - **Success**: the fixture prints exactly one toolchain error line.
+  - **Pivot**: the check adds more than 300 ms to a normal commit.
+  - **Anchor**: Nygard 2007 (Release It!, fail fast).
+
+- [ ] README size cannot creep back up
+  - **ID**: readme-byte-budget
+  - **Tags**: readme, docs, from-minsky
+  - **Details**: Port minsky `scripts/check-readme-byte-budget.mjs` into the readme skill checker: fail when README.md grows past its recorded baseline plus a headroom percentage, with an explicit way to raise the baseline.
+  - **Files**: `skill-plugins/workflow/readme/scripts/check-readme.py` and its test.
+  - **Acceptance**: a README 20% over baseline fails the check; one within headroom passes.
+  - **Hypothesis**: README bloat in owned repos is caught at commit time instead of in periodic cleanups.
+  - **Measurement**: `python3 skill-plugins/workflow/readme/scripts/check-readme.py --budget README.md; echo exit=$?`.
+  - **Success**: agentbrew, dotfiles and careerbrew READMEs pass at their baselines.
+  - **Pivot**: more than 1 legitimate README change per month needs a baseline bump.
+  - **Anchor**: Sweller 1988 (cognitive load theory).
+
+- [ ] Tracked files never hold a literal home path
+  - **ID**: no-literal-home-paths
+  - **Tags**: privacy, lint, from-minsky
+  - **Details**: Port minsky `scripts/check-no-hardcoded-user-paths.mjs` and `check-no-personal-paths-in-docs.mjs` into `scripts/lint-repo-artifacts.sh`: fail on literal user home paths in tracked code and docs; allow `~` and `$HOME`. Check first whether the private-pattern gate already covers this.
+  - **Files**: `scripts/lint-repo-artifacts.sh` and its test.
+  - **Acceptance**: a planted literal home path fails the lint; `~/` passes; the current tree passes.
+  - **Hypothesis**: literal home paths leaking a username into public repos go from possible to blocked before push.
+  - **Measurement**: `bash scripts/lint-repo-artifacts.sh; echo exit=$?` on a planted fixture and on the tree.
+  - **Success**: fixture exits 1, tree exits 0.
+  - **Pivot**: more than 3 false positives on the tree.
+  - **Anchor**: OWASP 2021 (A01 information exposure).
+
 - [ ] wrap-up fetch-caller tests W03 and W04 time out under load
   - **ID**: wrap-up-fetch-caller-timeout
   - **Tags**: tests, flaky, wrap-up

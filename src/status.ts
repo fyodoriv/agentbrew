@@ -25,7 +25,14 @@ import {
 import { COMMANDS_DIR } from "./paths.js";
 import { getStatePath, requireState } from "./state.js";
 import { type AutoRepairDescription, describeAutoRepair, probeAutoRepairHealth } from "./sync/auto-repair-health.js";
-import { helperScriptStatus, isInstructionsUpToDate, loadInstructions } from "./sync/instructions-sync.js";
+import {
+  getCanonicalInstructionsPath,
+  helperScriptStatus,
+  inspectInstructionsPath,
+  isInstructionsUpToDate,
+  loadInstructions,
+  usesAgentsMdStandardPath,
+} from "./sync/instructions-sync.js";
 import { formatModelLabel, resolveTargetModel } from "./sync/model-sync.js";
 import { agentNameClashes, commandNameClashes, formatNameClash, type NameClash } from "./sync/name-clashes.js";
 import { collectSkills, getSkillSources } from "./sync/skills-sync.js";
@@ -62,7 +69,7 @@ interface StatusData {
   sources: Array<{ url: string; type: string; installed: number; available: number; origin?: string }>;
   skills: Array<{ source: string; names: string[] }>;
   commands: { count: number; deployedTo: number; totalTargets: number };
-  instructions: { targets: number; upToDate: number; outOfDate: number; notDeployed: number } | undefined;
+  instructions: { targets: number; upToDate: number; outOfDate: number; notDeployed: number; kept: number } | undefined;
   syncErrors: Array<{ module?: string; message: string }> | undefined;
   mcpHealth: { failing: number; generatedAt?: string } | undefined;
   skillNameClashes: InstalledSkillClash[];
@@ -89,11 +96,17 @@ function computeInstructionsStatus(): StatusData["instructions"] {
   const content = loadInstructions();
   if (!content) return undefined;
   const targets = AGENT_DEFINITIONS.filter((a) => a.rulesFile !== undefined);
+  const canonicalPath = getCanonicalInstructionsPath();
+  let kept = 0;
   let upToDate = 0;
   let outOfDate = 0;
   let notDeployed = 0;
   for (const agent of targets) {
     const targetPath = expandHome(agent.rulesFile ?? "");
+    if (usesAgentsMdStandardPath(targetPath) && inspectInstructionsPath(targetPath, canonicalPath) === "separate") {
+      kept++;
+      continue;
+    }
     if (!existsSync(targetPath)) {
       notDeployed++;
       continue;
@@ -110,7 +123,7 @@ function computeInstructionsStatus(): StatusData["instructions"] {
       notDeployed++;
     }
   }
-  return { targets: targets.length, upToDate, outOfDate, notDeployed };
+  return { targets: targets.length, upToDate, outOfDate, notDeployed, kept };
 }
 
 function collectSkillsData(): StatusData["skills"] {
@@ -511,6 +524,7 @@ function printVerboseInstructionsSection(): void {
     if (instructionsStatus.upToDate > 0) parts.push(chalk.green(`${instructionsStatus.upToDate} up to date`));
     if (instructionsStatus.outOfDate > 0)
       parts.push(chalk.yellow(`${instructionsStatus.outOfDate} out of date — run \`agentbrew sync\``));
+    if (instructionsStatus.kept > 0) parts.push(chalk.dim(`${instructionsStatus.kept} kept separate`));
     if (instructionsStatus.notDeployed > 0) parts.push(chalk.dim(`${instructionsStatus.notDeployed} not deployed`));
     console.log(
       `${chalk.bold("\nInstructions")} (${instructionsStatus.targets} targets)${parts.length > 0 ? ` — ${parts.join(", ")}` : ""}\n`,

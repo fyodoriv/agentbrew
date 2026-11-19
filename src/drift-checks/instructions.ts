@@ -1,9 +1,9 @@
-import { existsSync, lstatSync, readFileSync, readlinkSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
 import { logSkipped } from "../core/logger.js";
 import { loadState } from "../state.js";
 import {
   getCanonicalInstructionsPath,
+  inspectInstructionsPath,
   isInstructionsUpToDate,
   loadInstructions,
   usesAgentsMdStandardPath,
@@ -12,58 +12,14 @@ import { AGENT_DEFINITIONS } from "../types.js";
 import { expandHome } from "../utils.js";
 import type { DriftItem } from "./types.js";
 
-function resolveSymlinkTarget(linkPath: string): string | undefined {
-  try {
-    if (!lstatSync(linkPath).isSymbolicLink()) return undefined;
-    const raw = readlinkSync(linkPath);
-    return raw.startsWith("/") ? raw : resolve(dirname(linkPath), raw);
-  } catch (e) {
-    logSkipped("drift/instructions/resolveSymlink", e);
-    return undefined;
-  }
-}
-
-function readDeployedInstructions(
-  agentPath: string,
-  canonicalPath: string,
-): { content?: string; unreadable?: boolean } {
+function readDeployedInstructions(agentPath: string): { content?: string; unreadable?: boolean } {
   if (!existsSync(agentPath)) return {};
-  if (usesAgentsMdStandardPath(agentPath)) {
-    const linkTarget = resolveSymlinkTarget(agentPath);
-    if (linkTarget !== undefined && linkTarget !== canonicalPath) {
-      try {
-        return { content: readFileSync(agentPath, "utf-8") };
-      } catch (e) {
-        logSkipped("drift/instructions/readSymlinkTarget", e);
-        return { unreadable: true };
-      }
-    }
-    if (existsSync(canonicalPath)) {
-      try {
-        return { content: readFileSync(canonicalPath, "utf-8") };
-      } catch (e) {
-        logSkipped("drift/instructions/readCanonical", e);
-        return { unreadable: true };
-      }
-    }
-  }
   try {
     return { content: readFileSync(agentPath, "utf-8") };
   } catch (e) {
     logSkipped("drift/instructions/readDeployed", e);
     return { unreadable: true };
   }
-}
-
-function checkStandardPathLayout(agentPath: string, canonicalPath: string): DriftItem["detail"] | undefined {
-  const linkTarget = resolveSymlinkTarget(agentPath);
-  if (linkTarget !== undefined && linkTarget !== canonicalPath) {
-    return "instructions symlink points elsewhere — Run: agentbrew sync";
-  }
-  if (linkTarget === undefined && existsSync(agentPath) && !lstatSync(agentPath).isSymbolicLink()) {
-    return "AGENTS.md path is a regular file, not symlink to canonical — Run: agentbrew sync";
-  }
-  return undefined;
 }
 
 function outOfDateDetail(deployed: string, content: string): DriftItem {
@@ -96,14 +52,11 @@ function checkAgentInstructionsDrift(
 ): DriftItem | undefined {
   const expanded = expandHome(agent.rulesFile ?? "");
 
-  if (usesAgentsMdStandardPath(expanded)) {
-    const layoutIssue = checkStandardPathLayout(expanded, canonicalPath);
-    if (layoutIssue) {
-      return { agent: agent.name, type: "instructions", detail: layoutIssue };
-    }
+  if (usesAgentsMdStandardPath(expanded) && inspectInstructionsPath(expanded, canonicalPath) === "separate") {
+    return undefined;
   }
 
-  const deployedResult = readDeployedInstructions(expanded, canonicalPath);
+  const deployedResult = readDeployedInstructions(expanded);
   if (deployedResult.unreadable) {
     return { agent: agent.name, type: "instructions", detail: "instructions file unreadable" };
   }

@@ -4026,6 +4026,16 @@
         "The deploy criterion is proved with live HTTP evidence, not the API status alone.",
         "CLI command hints, storage keys and headers are not renamed as brand labels; the contract records that scope."
       ]
+    },
+    {
+      "id": 352,
+      "prompt": "/goal add a new CLI command group that reports on my private records, with tests and docs, and ship it. The repo's hosted checks take 30 minutes per run and local test runs are blocked.",
+      "expected_output": "Contract first; starts a fresh-context diff review before or with the first push and batches its fixes with the first CI fixes; tells the reviewer to classify every agent-visible output field as id, count, or owner text; gives each subagent its own scratch file names.",
+      "expectations": [
+        "The fresh-context diff review starts before or together with the first hosted push, not after the first hosted run ends.",
+        "The reviewer is told to list each field an agent can read and classify it as an id, a count, or owner text.",
+        "The review fixes and the first CI fixes go in one push, so the hosted cycle runs once for both."
+      ]
     }
   ]
 }

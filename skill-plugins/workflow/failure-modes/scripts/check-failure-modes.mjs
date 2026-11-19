@@ -6,6 +6,20 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 
 const LABELS = ["Steady state", "Blast radius", "Escape hatch"];
+// Wording variants per label, including the format minsky used ("Steady-state hypothesis").
+const LABEL_PATTERNS = {
+  "Steady state": "steady[\\s-]+state(?:\\s+hypothesis)?",
+  "Blast radius": "blast\\s+radius",
+  "Escape hatch": "(?:operator\\s+)?escape\\s+hatch",
+};
+// Header cells per column: "Mode" or "Failure mode", "Trigger / fault axis",
+// "Expected behavior", "Test" or "Chaos test".
+const COLUMNS = {
+  mode: /^(?:failure\s+)?mode$/,
+  trigger: /^trigger\b/,
+  expected: /^expected\b/,
+  test: /\btests?$/,
+};
 const ALLOWED = new Map([
   ["crash loudly", "crash loudly"],
   ["loud crash", "crash loudly"],
@@ -13,6 +27,7 @@ const ALLOWED = new Map([
   ["degrade gracefully", "degrade gracefully"],
   ["gracefully degrade", "degrade gracefully"],
   ["graceful degrade", "degrade gracefully"],
+  ["loud crash supervisor restart", "crash loudly"],
 ]);
 const FORBIDDEN = /retry silently|silent(ly)? retr|\bignore|log and continue/;
 const TEST_FILE = /\.(test|spec)\.|_test\.|(^|\/)test_|\.bats$/;
@@ -102,7 +117,7 @@ const stripTest = (text) => text.replace(/[*`]/g, "").trim();
 const isStructural = (line) => /^\s*(#{1,6}\s|\|)/.test(line) || LABELS.some((l) => labelMatch(line, l));
 
 function labelMatch(line, label) {
-  const name = label.replace(" ", "\\s+");
+  const name = LABEL_PATTERNS[label];
   const inline = new RegExp(`^\\s*(?:[-*]\\s+)?\\**\\s*${name}\\s*:?\\s*\\**\\s*:?\\s*(.*)$`, "i");
   const heading = new RegExp(`^\\s*#{2,6}\\s+${name}\\s*:?\\s*$`, "i");
   if (heading.test(line)) return { text: "" };
@@ -130,19 +145,20 @@ function checkLabels(section, errors) {
   }
 }
 
+// GitHub tables treat "\\|" as a literal pipe inside a cell (often inside a code span).
 const cells = (line) =>
   line
     .trim()
     .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((cell) => cell.trim());
+    .replace(/(?<!\\)\|$/, "")
+    .split(/(?<!\\)\|/)
+    .map((cell) => cell.replace(/\\\|/g, "|").trim());
 
 function findTable(section) {
   for (let i = 0; i + 1 < section.length; i += 1) {
     if (!section[i].includes("|") || !/^\s*\|?\s*:?-{3,}\s*:?\s*\|/.test(section[i + 1])) continue;
     const header = cells(section[i]).map((cell) => strip(cell).toLowerCase());
-    const column = (name) => header.indexOf(name);
+    const column = (name) => header.findIndex((cell) => COLUMNS[name].test(cell));
     const cols = {
       mode: column("mode"),
       trigger: column("trigger"),
@@ -200,8 +216,17 @@ function testExists(token, root) {
   return listTestFiles(root).some((file) => readOrEmpty(file).includes(token));
 }
 
+const normalize = (text) => strip(text).toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ");
+
+// A cell may name the behavior in backticks among other code and prose:
+// `graceful-degrade` — `parseEvents` drops the bad line. Use the span that names a behavior.
+function behaviorOf(cell) {
+  const spans = [...cell.matchAll(/`([^`]+)`/g)].map((match) => normalize(match[1]));
+  return spans.find((span) => ALLOWED.has(span) || FORBIDDEN.test(span)) ?? normalize(cell);
+}
+
 function checkExpected(name, cell, errors) {
-  const expected = strip(cell).toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ");
+  const expected = behaviorOf(cell);
   if (FORBIDDEN.test(expected)) {
     errors.push(`${name}: Expected "${expected}" is forbidden; it hides the failure`);
   } else if (!ALLOWED.has(expected)) {

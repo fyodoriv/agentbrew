@@ -201,6 +201,29 @@ describe("check-failure-modes.mjs", () => {
     });
   });
 
+  it("accepts the minsky wording, behavior spans among prose, and escaped pipes", () => {
+    const labels = [
+      "- **Steady-state hypothesis**: zero missed nights over 30 days.",
+      "- **Blast radius**: one mirror folder.",
+      "- **Operator escape hatch**: `launchctl bootout gui/501/com.example.nightly-sync`.",
+    ].join("\n");
+    const table = [
+      "| # | Failure mode | Trigger / fault axis | Expected behavior | Chaos test |",
+      "|---|---|---|---|---|",
+      "| 1 | Disk full | `df -m /tmp \\| awk 'NR==2'` (disk-full) | `loud-crash-supervisor-restart` | `tests/sync.test.ts` |",
+      "| 2 | Corrupt line | truncate the log | `graceful-degrade` — `parseLog` skips the line; the gitignore is untouched | `tests/sync.test.ts` |",
+      "| 3 | API down | 5xx | `circuit-break-and-notify` | `tests/sync.test.ts` |",
+    ].join("\n");
+    withRepo(
+      { "README.md": section({ labels, table }), "tests/sync.test.ts": "test('x', () => {});\n" },
+      (root, run) => {
+        const result = run("README.md", "--repo", root);
+        expect(result.stderr).toBe("");
+        expect(result.status).toBe(0);
+      },
+    );
+  });
+
   it("rejects a file with no failure modes section", () => {
     withRepo({ "README.md": "# Tool\n\nNo section.\n" }, (_root, run) => {
       const result = run("README.md");

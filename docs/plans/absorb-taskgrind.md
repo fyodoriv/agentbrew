@@ -54,7 +54,7 @@ they are dropped. The few with an idea that outlives the runner:
 
 | Task | Verdict | Home |
 |---|---|---|
-| `detect-queue-fully-blocked-and-bail` | absorb | Run guards 4 |
+| `detect-queue-fully-blocked-and-bail` | absorb | Run guards 16 |
 | `detect-mid-session-agent-stall`, `auto-bail-on-consecutive-backend-failures`, `sweep-watchdog-bail-on-no-progress` | absorb | Run guards 13-15 |
 | `final-sync-warn-on-stranded-feature-branch`, `health-check-detect-stranded-commits` | covered | grind handoff checklist (return to the default branch, push first) |
 | `detect-and-clean-content-merged-branches` | covered | `ship-it` branch cleanup step |
@@ -104,7 +104,7 @@ already does it), drop (with reason).
 | `AGENTS.md`, `CLAUDE.md` | covered | agentbrew AGENTS.md delivery and gotchas (bash 3.2, BASH_ENV) |
 | `docs/architecture.md` (principles: small passes, queue as state, git as memory) | absorb | grind SKILL rules + run-guards 19 |
 | `docs/defaults-rationale.md` | absorb | thresholds kept in run-guards 12-17; this map is the "why" |
-| `docs/user-stories.md` | covered | agentbrew `docs/user-stories/` grind stories |
+| `docs/user-stories.md` (overnight grind, focused grind, ...) | covered | grind `evals/evals.json` cases pin the same scenarios; no separate story file |
 | `docs/resume-state.md` | drop | `/goal` contract file and git log replace resume state |
 | `docs/README.md`, `README.md`, `man/taskgrind.1` | drop | runner docs; archive notice in README (taskgrind#18) |
 | `SECURITY.md` (broad permissions, no secrets in logs) | absorb | grind run-guards 1 |
@@ -128,9 +128,10 @@ already does it), drop (with reason).
 |---|---|---|
 | `Makefile` (lint, test, check, audit) | covered | agentbrew `npm run verify`, cached-run |
 | `scripts/validate-skills.py` | covered | agentbrew skill evals + agent-bloat-lint |
-| `scripts/install-shellcheck.sh` | covered | dotfiles Brewfile installs shellcheck |
+| `scripts/install-shellcheck.sh` | covered | dotfiles CI installs shellcheck (`.github/workflows/ci.yml`); doctor modules check it locally |
 | `install.sh`, `INSTALL.md` | drop | runner install; formula removed (homebrew-tap#2) |
-| `lib/constants.sh`, `lib/fullpower.sh`, `lib/watchdog.sh` | drop | runner internals; `caffeinate` kept as run-guards 3 |
+| `lib/constants.sh`, `lib/fullpower.sh` | drop | runner internals and TTY cosmetics; `caffeinate` kept as run-guards 3 |
+| `lib/watchdog.sh` | absorb | its lesson (2026-05-01: a hung backend ignored SIGTERM and overran its cap ~15x) is run-guards 20, hard kill for headless runs |
 | `Agentfile.yaml` (context7, tasks-mcp, github MCP) | covered | agentbrew catalog already ships these |
 | `.github/workflows/check.yml` | covered | agentbrew + dotfiles hosted CI |
 | `.editorconfig`, `.gitignore`, `LICENSE` | drop | repo boilerplate |
@@ -139,4 +140,4 @@ already does it), drop (with reason).
 
 | Files | Verdict | Reason |
 |---|---|---|
-| all 39 bats files | drop | they test the bash runner, which is gone; the behaviors they pin now live as grind evals |
+| all 39 files (bats tests, `test_helper.bash`, `verify-bash32-compat.sh`) | drop | they test the bash runner, which is gone; the behaviors they pin now live as grind evals |

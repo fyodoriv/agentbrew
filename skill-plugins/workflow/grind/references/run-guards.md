@@ -12,7 +12,7 @@ one scheduled `claude -p` session.
 2. **Git state**: no rebase, merge, or detached `HEAD` in progress. Count
    uncommitted files; commit or set them aside with a WIP commit, never a bare
    stash.
-3. **Sleep**: on macOS, run long unattended runs under `caffeinate -i`.
+3. **Sleep**: on macOS, keep the Mac awake for the run: `caffeinate -i -w $PPID &`.
 4. **Publish mode**: decide it once, from the user's words or standing rules.
    - Default: follow the repo's delivery rules.
    - **Review-only** ("don't push", "for review"): commit locally only. No
@@ -66,9 +66,14 @@ one scheduled `claude -p` session.
 17. **Empty queue**: run one sweep. If it adds nothing, wait one 10-minute
     interval for tasks from other agents or the user, then stop with
     `queue_empty`. Shipping a task later allows another sweep.
-18. **Network loss**: pause and retry; do not count network errors as task
-    attempts.
+18. **Network loss**: retry with growing waits (1, 2, 4 ... minutes); do not
+    count network errors as task attempts. Still down after 1 hour: stop with
+    `network_down` and let the user resume.
 19. **Keep passes small**: one task per commit, commit before the context
     fills. A crash loses only uncommitted work.
+20. **Headless runs need a hard cap**: wrap a scheduled `claude -p` in an
+    outside timeout that ends in SIGKILL, for example
+    `gtimeout --kill-after=2m 4h claude -p "/grind"` (`timeout` on Linux). A
+    hung backend can ignore SIGTERM; never trap or swallow the cap's signal.
 
 Why these thresholds: `docs/plans/absorb-taskgrind.md` in agentbrew.

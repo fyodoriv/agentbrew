@@ -139,6 +139,8 @@ the JSON payload. This saves external launches on hosts with slow process
 startup. Run Python helpers through `hook_python` in `stdin-json.sh`.
 It uses an explicit `HOOK_PYTHON` override first, then an installed macOS
 developer toolchain, then Python on `PATH`. It passes `-I` in each case.
+The task edit check uses system Python for executable filtering before it
+accepts tools from `PATH`.
 The managed command hook default is 15 seconds. Codex SessionEnd and
 Interrupt keep their three-second limit.
 
@@ -305,6 +307,20 @@ An earlier version read the transcript instead. Claude Code writes the
 transcript in batches, so a contract printed 6 to 8 seconds earlier was
 often not on disk yet, and real contracts were blocked. A hook cannot wait
 that long (the hook timeout is 5 s).
+
+## Check task files after an edit
+
+To check a project's root `TASKS.md` after Claude Code writes or edits it,
+include `tasks-md-lint-on-edit` in the machine overlay's `enabled:` list.
+Use system Python and install `tasks-lint` in a tool directory outside the
+session and edited projects.
+Preview with `agentbrew sync --dry-run`, then run `agentbrew sync`.
+
+A valid file stays quiet. A validation error asks the agent to run
+`tasks-lint --require-prereg TASKS.md` and fix the reported fields.
+A missing tool or timeout appears in hook diagnostics. The check keeps task
+text out of its output and logs. Use the project's commit check to enforce
+the task rules at delivery.
 
 ## Retry failed calls before stop
 

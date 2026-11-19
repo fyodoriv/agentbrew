@@ -137,6 +137,20 @@ skills:
     recommended: true
     rationale: "Sessions end mid-task (context limits, cloud containers reclaimed). Work left only in a session is lost; a draft PR plus a task is how the next session continues."
 
+  - name: browser-forms
+    description: "Drive web forms and setup flows yourself, stop only at the sensitive step (final click, secret, password, code), keep tabs open, and hand off numbered final steps per tab."
+    source: fyodoriv/agentbrew
+    category: productivity
+    recommended: true
+    rationale: "Written click-through steps waste the user's time when the browser can fill the form. Stopping at the sensitive step keeps secrets and final commits with the user."
+
+  - name: confirm-setup-works
+    description: "After any token, secret, routine, env var, or integration setup, run a real end-to-end check that never prints a secret, fix failures, then say done."
+    source: fyodoriv/agentbrew
+    category: productivity
+    recommended: true
+    rationale: "Setup that was never exercised fails later, far from its cause. One live check right after setup catches it while the context is fresh."
+
   - name: handoff
     description: "Compacts a long session into a mktemp handoff document for a fresh agent. References artifacts by path/SHA rather than duplicating content."
     source: fyodoriv/agentbrew

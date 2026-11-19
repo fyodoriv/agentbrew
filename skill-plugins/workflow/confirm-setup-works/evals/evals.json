@@ -1,0 +1,25 @@
+{
+  "skill_name": "confirm-setup-works",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add the API token as a repo secret and set up the nightly sync routine.",
+      "expected_output": "The agent saves the secret, sets up the routine, runs one real end-to-end check that uses both, shows the passing output with no secret in it, and only then reports done.",
+      "expectations": [
+        "FAIL: the reply says the token and routine are set up with no live check output",
+        "FAIL: the reply prints the token or any secret value",
+        "PASS: the reply shows a passing end-to-end check that used the secret and the routine",
+        "PASS: the check output masks or omits every secret value"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Set the environment variable for the webhook URL and confirm the integration.",
+      "expected_output": "The agent sets the variable, sends one test event, fixes any failure, and reports done only after a pass.",
+      "expectations": [
+        "FAIL: the agent claims done after the first failed check without fixing it",
+        "PASS: a failing check leads to a fix and a re-run before the done claim"
+      ]
+    }
+  ]
+}

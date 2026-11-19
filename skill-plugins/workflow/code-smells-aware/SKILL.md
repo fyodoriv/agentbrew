@@ -130,17 +130,17 @@ Modules with too many imports / files that change together.
 - **`code-smells/domain-boundaries`** (max **3 cross-domain imports**;
   opt-in via repo config) — DDD bounded-context violations. Empty-config
   default = no-op. When configured, catches cross-team / cross-domain leaks.
-- **`temporal-coupling/hidden-coupling`** (≥30% co-change, ≥3 pairs, last
+- **`temporal-coupling/hidden-coupling`** (≥30% co-change, at least three pairs, last
   90 days) — Tornhill "Software Design X-Rays" 2018: files that always
   change together are coupled in a way that static analysis can't see.
   Unique to this tool — no off-the-shelf alternative.
 
 **While you write:**
-- When `import { ... }` exceeds 12 lines, ask "is this module doing two
+- When `import { ... }` exceeds a dozen lines, ask "is this module doing two
   jobs?" Split before you reach 15.
 - Don't reach across `src/featureA/` to import private internals of
   `src/featureB/` — go through a public barrel or invert the call.
-- If your change touches 3+ files that always change together, you're
+- If your change touches three or more files that always change together, you're
   amplifying temporal coupling. Consider whether the abstraction can be
   redrawn so the change is local to one file.
 
@@ -272,7 +272,7 @@ real users. The high-weight ones to internalize:
 - **`knip/unlisted-dependencies`** (weight 2) — supply-chain risk.
 
 **While you write:**
-- If you copy-paste 30+ lines, stop and extract a helper.
+- If you copy-paste thirty or more lines, stop and extract a helper.
 - If you delete an import, also delete its export and any other dead
   references — `knip --fix` after a refactor catches drift.
 - Conventional commits (`fix:`, `feat:`, `refactor:`) feed the bug-fix-

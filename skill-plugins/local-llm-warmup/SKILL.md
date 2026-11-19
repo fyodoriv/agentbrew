@@ -438,6 +438,11 @@ The receiving user has burned hours on each of these. Don't reintroduce:
     unlock free quota" arrangements** for stability-critical paths. Paid
     direct-vendor APIs (Anthropic Haiku/Sonnet) only when cloud fallback is
     needed.
+13. **Don't let a local model answer an agent loop in prose only.** In an
+    agent framework (opencode, OpenHands), a reply like "Let me check X"
+    with no tool call ends the run. minsky saw this in 13 of 13 qwen3-coder
+    runs. Put "every reply carries a tool call until the task is done" in
+    the system brief, and pin that brief line with a test.
 
 ## Optional: paid stable cloud fallback
 

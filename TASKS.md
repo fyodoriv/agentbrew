@@ -332,6 +332,54 @@
 
 ## P2
 
+- [ ] Squash merges never silently drop a PR file
+  - **ID**: verify-squash-merge-completeness
+  - **Tags**: ship-it, git, from-minsky
+  - **Details**: Port minsky `scripts/verify-squash-merge-completeness.mjs` (see the archived repo). After a squash merge, compare the PR head's changed files with the files the squash commit changed and report any file that did not land. Call it from ship-it after each merge.
+  - **Files**: `scripts/verify-squash-merge-completeness.mjs`, its test, ship-it command docs.
+  - **Acceptance**: a fixture where the squash commit omits one PR file makes the script exit 1 and name the file; a normal merge exits 0.
+  - **Hypothesis**: files lost in squash merges go from unnoticed to caught at merge time.
+  - **Measurement**: `node scripts/verify-squash-merge-completeness.mjs --pr <n>; echo exit=$?` on the fixture and on the last 20 merged PRs.
+  - **Success**: fixture exits 1, all 20 real PRs exit 0.
+  - **Pivot**: more than 1 false alarm in the 20 real PRs.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (Accelerate, change failure rate).
+
+- [ ] New projects check the toolchain before every other hook
+  - **ID**: new-project-toolchain-first-hook
+  - **Tags**: new-project, lefthook, from-minsky
+  - **Details**: Port minsky `scripts/check-toolchain.mjs` plus its `lefthook.yml` toolchain-first `piped: true` group into the new-project lefthook template. The first pre-commit command checks that the running node matches `.node-version` and that native binaries load, and stops the chain with one clear line instead of many MODULE_NOT_FOUND traces.
+  - **Files**: `skill-plugins/workflow/new-project/templates/` lefthook template and its scorer test.
+  - **Acceptance**: a scaffolded repo with a wrong node version fails pre-commit with one toolchain line and runs no later hook.
+  - **Hypothesis**: time to diagnose a wrong-toolchain commit failure drops from reading several stack traces to one line.
+  - **Measurement**: `npx vitest run skill-plugins/workflow/new-project` with a wrong-version fixture.
+  - **Success**: the fixture prints exactly one toolchain error line.
+  - **Pivot**: the check adds more than 300 ms to a normal commit.
+  - **Anchor**: Nygard 2007 (Release It!, fail fast).
+
+- [ ] README size cannot creep back up
+  - **ID**: readme-byte-budget
+  - **Tags**: readme, docs, from-minsky
+  - **Details**: Port minsky `scripts/check-readme-byte-budget.mjs` into the readme skill checker: fail when README.md grows past its recorded baseline plus a headroom percentage, with an explicit way to raise the baseline.
+  - **Files**: `skill-plugins/workflow/readme/scripts/check-readme.py` and its test.
+  - **Acceptance**: a README 20% over baseline fails the check; one within headroom passes.
+  - **Hypothesis**: README bloat in owned repos is caught at commit time instead of in periodic cleanups.
+  - **Measurement**: `python3 skill-plugins/workflow/readme/scripts/check-readme.py --budget README.md; echo exit=$?`.
+  - **Success**: agentbrew, dotfiles and careerbrew READMEs pass at their baselines.
+  - **Pivot**: more than 1 legitimate README change per month needs a baseline bump.
+  - **Anchor**: Sweller 1988 (cognitive load theory).
+
+- [ ] Tracked files never hold a literal home path
+  - **ID**: no-literal-home-paths
+  - **Tags**: privacy, lint, from-minsky
+  - **Details**: Port minsky `scripts/check-no-hardcoded-user-paths.mjs` and `check-no-personal-paths-in-docs.mjs` into `scripts/lint-repo-artifacts.sh`: fail on literal user home paths in tracked code and docs; allow `~` and `$HOME`. Check first whether the private-pattern gate already covers this.
+  - **Files**: `scripts/lint-repo-artifacts.sh` and its test.
+  - **Acceptance**: a planted literal home path fails the lint; `~/` passes; the current tree passes.
+  - **Hypothesis**: literal home paths leaking a username into public repos go from possible to blocked before push.
+  - **Measurement**: `bash scripts/lint-repo-artifacts.sh; echo exit=$?` on a planted fixture and on the tree.
+  - **Success**: fixture exits 1, tree exits 0.
+  - **Pivot**: more than 3 false positives on the tree.
+  - **Anchor**: OWASP 2021 (A01 information exposure).
+
 - [ ] wrap-up fetch-caller tests W03 and W04 time out under load
   - **ID**: wrap-up-fetch-caller-timeout
   - **Tags**: tests, flaky, wrap-up

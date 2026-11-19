@@ -47,7 +47,7 @@ keyboard, or `claude -p`. Then:
 
 ## Run guards
 
-The archived taskgrind runner did preflight, sync, stuck-task, all-blocked,
+A long run needs preflight, sync, stuck-task, all-blocked,
 stall, empty-queue, and network checks. Do them yourself: read
 `references/run-guards.md` before the first task.
 

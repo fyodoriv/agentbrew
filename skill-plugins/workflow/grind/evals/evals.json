@@ -121,9 +121,9 @@
     {
       "id": 11,
       "prompt": "Grind this repo overnight until 7am; nobody will be at the keyboard.",
-      "expected_output": "Runs under native /goal or /loop (or scheduled claude -p), not the archived taskgrind runner, does the preflight (git state, WIP commit, caffeinate on macOS), and stops at the deadline.",
+      "expected_output": "Runs under native /goal or /loop (or scheduled claude -p), not a separate bash runner, does the preflight (git state, WIP commit, caffeinate on macOS), and stops at the deadline.",
       "expectations": [
-        "Uses /goal, /loop, or a scheduled claude -p session, not taskgrind",
+        "Uses /goal, /loop, or a scheduled claude -p session, not a separate bash runner",
         "Checks for an in-progress rebase/merge/detached HEAD before the first task",
         "Sets aside uncommitted work with a WIP commit, never a bare git stash",
         "Uses caffeinate on macOS for the long run",

@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Check a README against the readme skill's shape. Prints one line per problem; exit 1 if any."""
 
+import argparse
+import json
 import re
+import subprocess
 import sys
+from pathlib import Path
 
 
 def problems(text: str) -> list[str]:
@@ -71,9 +75,56 @@ def problems(text: str) -> list[str]:
     return out
 
 
+def read_index(path: Path, *args: str) -> bytes:
+    return subprocess.check_output(
+        ["git", *args, f":./{path.as_posix()}"], stderr=subprocess.DEVNULL
+    )
+
+
+def check_budget(path: Path, staged: bool) -> int:
+    try:
+        config = path.with_name(".readme-budget.json")
+        data = json.loads(read_index(config, "show") if staged else config.read_bytes())
+        if not staged and not path.is_file():
+            raise OSError
+        size = int(read_index(path, "cat-file", "-s")) if staged else path.stat().st_size
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        print("budget: cannot read README or .readme-budget.json.", file=sys.stderr)
+        return 2
+    if not isinstance(data, dict):
+        data = {}
+    baseline = data.get("baseline_bytes")
+    headroom = data.get("headroom_percent")
+    reason = data.get("reason")
+    if (
+        type(baseline) is not int
+        or baseline < 0
+        or type(headroom) is not int
+        or headroom < 0
+        or not isinstance(reason, str)
+        or not reason.strip()
+    ):
+        print("budget: set nonnegative baseline_bytes and headroom_percent and a reason.", file=sys.stderr)
+        return 2
+    limit = baseline * (100 + headroom) // 100
+    if size > limit:
+        print(f"budget: {size} bytes exceeds {limit} bytes. Edit the README or record a new baseline and reason.", file=sys.stderr)
+        return 1
+    print(f"budget: {size} of {limit} bytes.")
+    return 0
+
+
 def main() -> int:
-    path = sys.argv[1] if len(sys.argv) > 1 else "README.md"
-    found = problems(open(path, encoding="utf-8").read())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("readme", nargs="?", type=Path, default=Path("README.md"))
+    parser.add_argument("--budget", action="store_true", help="check the project's README byte budget")
+    parser.add_argument("--staged", action="store_true", help="read the README and its budget from the Git index")
+    args = parser.parse_args()
+    if args.staged and (not args.budget or args.readme.is_absolute()):
+        parser.error("--staged needs --budget and a relative README path")
+    if args.budget:
+        return check_budget(args.readme, args.staged)
+    found = problems(args.readme.read_text(encoding="utf-8"))
     for p in found:
         print(p)
     print(f"{len(found)} problems")

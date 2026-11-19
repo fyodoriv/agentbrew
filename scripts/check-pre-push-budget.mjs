@@ -130,7 +130,9 @@ async function main() {
     const own = join(scratch, "agentbrew");
     const scaffold = join(scratch, "scaffold");
     mkdirSync(own);
-    const archive = run("git", ["archive", "--format=tar", "HEAD"], root, env, {
+    const commit = run("git", ["rev-parse", "HEAD"], root, env).trim();
+    console.log(`Fixture revision ${commit}`);
+    const archive = run("git", ["archive", "--format=tar", commit], root, env, {
       encoding: "buffer",
       maxBuffer: 64 * 1024 * 1024,
     });

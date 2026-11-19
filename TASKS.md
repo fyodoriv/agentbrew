@@ -380,18 +380,6 @@
   - **Pivot**: the check adds more than 300 ms to a normal commit.
   - **Anchor**: Nygard 2007 (Release It!, fail fast).
 
-- [ ] README size cannot creep back up
-  - **ID**: readme-byte-budget
-  - **Tags**: readme, docs, from-minsky
-  - **Details**: Port minsky `scripts/check-readme-byte-budget.mjs` into the readme skill checker: fail when README.md grows past its recorded baseline plus a headroom percentage, with an explicit way to raise the baseline.
-  - **Files**: `skill-plugins/workflow/readme/scripts/check-readme.py` and its test.
-  - **Acceptance**: a README 20% over baseline fails the check; one within headroom passes.
-  - **Hypothesis**: README bloat in owned repos is caught at commit time instead of in periodic cleanups.
-  - **Measurement**: `python3 skill-plugins/workflow/readme/scripts/check-readme.py --budget README.md; echo exit=$?`.
-  - **Success**: agentbrew, dotfiles and careerbrew READMEs pass at their baselines.
-  - **Pivot**: more than 1 legitimate README change per month needs a baseline bump.
-  - **Anchor**: Sweller 1988 (cognitive load theory).
-
 - [ ] wrap-up fetch-caller tests W03 and W04 time out under load
   - **ID**: wrap-up-fetch-caller-timeout
   - **Tags**: tests, flaky, wrap-up

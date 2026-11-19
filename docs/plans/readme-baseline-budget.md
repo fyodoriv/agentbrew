@@ -36,3 +36,8 @@ its unchanged source in a scratch checkout also refuses the 120-byte
 staged README with one budget diagnostic, while an unrelated staged change
 gets no budget output. A successful over-budget commit or double check
 rejects the wiring. Use the exact dispatcher from Dotfiles `366d7750`.
+
+The existing dispatcher admitted the staged 120-byte README before the
+repo-local hook was added. With the shared hook, both dispatcher and native
+Lefthook accepted the 100-byte commit and refused its staged overrun with
+one diagnostic. Both routes accepted an unrelated staged commit quietly.

@@ -43,3 +43,17 @@ Register one fixture with two owners of the same name. Node and the lint
 must both reject the name. A companion fixture explicitly selects one
 owner, and both must accept it. Retain the shell entry point and the
 original performance ceiling.
+
+## Linker replacement
+
+The initial compiler adapter disagreed with Node in both same-name cases.
+Replace it with the existing esbuild package pinned under `tsx` in the
+lockfile. The linker can check imports without evaluating test bodies.
+The scratch probe accepted the runtime file and explicit re-export. It
+rejected the missing name, the conflicting star exports and an unused
+missing import. Keep external packages external and write no bundle.
+Use `heavy-run npx --offline vitest run src/scripts/check-orphan-tests.test.ts
+--maxWorkers=1` for the gate fixture. Preserve all previously registered
+cases and the 500 ms ceiling. Any extra file write, observed test execution,
+Node disagreement, checkout false report, or required gate failure rejects
+this candidate.

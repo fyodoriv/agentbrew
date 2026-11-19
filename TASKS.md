@@ -726,6 +726,7 @@
   - **Measurement**: `node scripts/gh-actions-flake-tracker.mjs --fixture <fixture>; echo "exit=$?"` and the timeout lint's test.
   - **Success**: Fixture flake reported with rate at or above 10% over at least 5 same-SHA pairs; timeout lint flags 1 of 1 seeded literal.
   - **Pivot**: If the detector reports more than 3 false flakes on real history, tighten to 20% and re-measure; if still noisy, drop it.
+  - **Tracker gate**: Within each repeated workflow run, compare the same named job on the same source SHA. At least five observed pairs and at least ten percent failure-then-success pairs report a flake. Fixtures pin 10 percent, under-five samples, cancelled or ambiguous jobs, different run IDs, and missing history. Incomplete history cannot report zero flakes. Live verification reads up to 100 completed CI runs without changes. Keep the literal timeout lint open until its own baseline is registered.
   - **Anchor**: Memon et al. (2017), Taming Google-scale continuous testing; Luo et al. (2014), An empirical analysis of flaky tests.
 
 - [ ] Add a dependabot bump triage helper: patch and minor auto-merge, major held

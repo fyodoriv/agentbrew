@@ -23,6 +23,10 @@ Where this ledger and minsky `absorbed.md` disagree, this ledger wins. For examp
 | `verify-squash-merge-completeness.mjs` | task `verify-squash-merge-completeness` |
 | `check-toolchain.mjs` + lefthook `piped: true` | task `new-project-toolchain-first-hook` |
 | `check-readme-byte-budget.mjs` | task `readme-byte-budget` |
+| `check-lockfile-integrity.mjs` (docs/security/supply-chain.md layer 1) | task `lockfile-integrity-flip-check` |
+| docs/security/dashboard-exposure.md per-run token | `docs/shared-rules.md` Security and secrets |
+| `docs/user-tests/*` | task `readme-human-first-run-test` |
+| `docs/validated-learnings.md`, `docs/experiment-tracker.md` | `docs/shared-rules.md` Task queues: re-check, Stances expire, Contract first |
 | `check-no-hardcoded-user-paths.mjs`, `check-no-personal-paths-in-docs.mjs` | task `no-literal-home-paths` |
 | working-tasks.md UI is P0-P1 | `docs/shared-rules.md` Task queues |
 | skill `triage` out-of-scope memory | `skill-plugins/workflow/watch-issues/SKILL.md` step 3, eval 17 |
@@ -159,7 +163,7 @@ Total rows: 61
 | docs/enterprise-deployment-options.md | DROP | minsky deployment audit |
 | docs/example-config.json | DROP | minsky config |
 | docs/experiment-runner.md | DROP | per-PR runner; quality lint idea captured under experiment-validate PORT |
-| docs/experiment-tracker.md | DROP | scheduled replay tracker; "measure in use" already in shared-rules |
+| docs/experiment-tracker.md | PORT | `docs/shared-rules.md` Task queues: re-check at +7 and +30 days, regression only after two misses in a row; the replay scheduler itself is minsky-only |
 | docs/heal-class-coverage-matrix.md | DROP | generated daemon report |
 | docs/host-transformation-checklist.md | DROP | "make host follow minsky" checklist; new-project scorer covers |
 | docs/language-strategy.md | DROP | minsky language decision |
@@ -187,7 +191,7 @@ Total rows: 61
 | docs/research-log.md | DROP | minsky dependency watch list |
 | docs/rule-11-flake-detection.md | PORT | agentbrew/docs/shared-rules.md "## Verification": no flake rule there today. Add: "A flaky check is not evidence. When a gate passes and fails on the same commit, quarantine it with a task that names the flake rate; never count its green run as proof." |
 | docs/security/audit-gate.md | DROP | minsky cloud-tier gate |
-| docs/security/dashboard-exposure.md | DROP | minsky dashboard bind |
+| docs/security/dashboard-exposure.md | PORT | `docs/shared-rules.md` Security and secrets: 127.0.0.1 default bind and per-run token |
 | docs/security/otel-no-pii.md | ALREADY-THERE | global rule "no live auth material or customer payloads in logs" |
 | docs/security/privacy-data-egress.md | ALREADY-THERE | agentbrew shared-rules org-overlay/leak gates |
 | docs/security/secret-scanning.md | ALREADY-THERE | dotfiles leak gates + pre-push hook |
@@ -201,9 +205,9 @@ Total rows: 61
 | docs/strategic-review-2026-05-22-continue-or-wrap-more.md | DROP | historic review |
 | docs/uninstall.md | DROP | minsky uninstall |
 | docs/updating.md | DROP | minsky update |
-| docs/user-tests/README.md | DROP | M1.11 user tests |
-| docs/user-tests/template.md | DROP | M1.11 template |
-| docs/validated-learnings.md | DROP | experiment log; shared memory replaces it |
+| docs/user-tests/README.md | PORT | task `readme-human-first-run-test` (3 strangers, README only, 5-minute median) |
+| docs/user-tests/template.md | PORT | same task: the session log template |
+| docs/validated-learnings.md | PORT | the log format is replaced by shared memory; its two lessons are in `docs/shared-rules.md` Task queues: "Stances expire" and "Contract first" |
 | docs/visions/2026-05-22-openhands-fulfillment.md | DROP | OpenHands vision |
 
 ## minsky harvest C: file-family pass (2026-11-19, read-only)
@@ -219,7 +223,8 @@ Total rows: 61
 | scripts/check-no-hardcoded-user-paths.mjs, check-no-personal-paths-in-docs.mjs | PORT | agentbrew/scripts/lint-repo-artifacts.sh: fail on `/Users/<name>/` or `/home/<name>/` literals in tracked code/docs (allow `~`, `$HOME`). Generic public-repo hygiene, not covered by the private-pattern gate. |
 | scripts/check-orphan-tests.mjs | PORT | tasks.md/scripts (or package test lint): every symbol a test imports from `../src` must exist as a named export; catches src/test API drift before tsc in mjs tests. Lower priority. |
 | scripts/check-lockfile-registry.mjs | ALREADY-THERE | agentbrew/scripts/check-locked-dependencies.mjs + dotfiles oss-readiness gate cover registry/leak; generic allowlist idea optional |
-| scripts/check-lockfile-integrity.mjs, check-sbom-shape.mjs | DROP | supply-chain slice for minsky's pnpm publish; tooling repos use check-lockfile-sync.sh |
+| scripts/check-lockfile-integrity.mjs | PORT | task `lockfile-integrity-flip-check`: `check-lockfile-sync.sh` only checks that package.json and the lockfile agree, not that a same-version entry kept its hash |
+| scripts/check-sbom-shape.mjs | DROP | SBOM shape for minsky's pnpm publish pipeline |
 | scripts/scan-secrets.mjs | ALREADY-THERE | dotfiles/lib/secret-scan.sh + .github/workflows/oss-readiness.yml |
 | scripts/check-no-no-verify-bypass.mjs | ALREADY-THERE | agentbrew/hooks/checks/no-commit-no-verify.sh |
 | scripts/check-bot-commit-hook-bypass.mjs | DROP | only matters for CI bots committing with lefthook; no such workflow in targets |

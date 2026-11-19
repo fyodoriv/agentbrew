@@ -78,6 +78,7 @@ const OWNER_WORKFLOW_HOOK_IDS = [
   "perf-task-review",
   "retry-failed-before-stop",
   "no-home-crawl",
+  "tasks-md-lint-on-edit",
 ];
 
 describe("usage-tip retirement", () => {
@@ -475,6 +476,29 @@ describe("canonical hook manifest", () => {
       [...bashHookIds, "context-budget-measure", ...OWNER_WORKFLOW_HOOK_IDS].sort(),
     );
     expect(managed.filter((hook) => hook.matcher === "Bash")).toEqual([]);
+    expect(resolvedManifest.hooks.find((hook) => hook.id === "tasks-md-lint-on-edit")).toMatchObject({
+      event: "PostToolUse",
+      matcher: "Write|Edit",
+      verdict: "block",
+      agents: ["claude-code"],
+    });
+    expect(managed.find((hook) => hook.command?.includes("tasks-md-lint-on-edit.sh"))).toBeUndefined();
+  });
+
+  it("wires the enabled task edit check into Claude Code only", () => {
+    const repoRoot = resolve(import.meta.dirname, "../..");
+    const overlayPath = join(tempRoot(), "overlay.yaml");
+    writeManifest(overlayPath, "version: 1\nenabled: [tasks-md-lint-on-edit]\nhooks: []\n");
+    const { managed } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", { overlayPath });
+    const claude = toClaudeHooksConfig(filterHooksForTarget(managed, "claude-code"));
+    const groups = claude.PostToolUse?.filter((group) =>
+      group.hooks.some((hook) => hook.command?.endsWith("/tasks-md-lint-on-edit.sh")),
+    );
+    expect(groups).toHaveLength(1);
+    expect(groups?.[0]?.matcher).toBe("Write|Edit");
+    expect(
+      filterHooksForTarget(managed, "codex").some((hook) => hook.command?.endsWith("/tasks-md-lint-on-edit.sh")),
+    ).toBe(false);
   });
 
   it("ships the perf-record hooks on by default, async, for Claude Code only", () => {

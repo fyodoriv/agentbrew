@@ -24,3 +24,28 @@ unqualified. For a separate negative route, give the checker proposal
 different replacement. Their public file lists differ. Predict exit one
 with the one-step install test as missing, and no changes to the caller's
 checkout. Any successful preservation result rejects this control.
+
+## Observed results
+
+The archived command left the unstaged diff empty while one unique file
+change was staged. The candidate accepted both duplicate trees, named a
+unique text file and a unique binary file, and refused a conflicting
+tree. All five local controls preserved the caller's index and checkout.
+
+The live command refused the #1040/#1041 pair and named
+`real-e2e/scenarios/us01-one-step-install.test.ts`. The caller's index,
+commit and working tree did not change. This is a negative control. The
+ten examined closes still need verified replacement links to measure
+the false-refusal rate.
+
+## Identity and merge-base controls
+
+Require the exact repository from the caller's origin in each GitHub read.
+A fixture returns two valid PR numbers from a different repository.
+Predict exit one even when all named Git objects exist locally.
+
+A criss-cross Git graph gives the proposal two best merge bases. Predict
+exit one before applying any patch. Both controls must preserve the
+caller. A positive result names the repository and exact revisions. It
+applies at the time of verification, so delivery rechecks those revisions
+immediately before any authorized closure.

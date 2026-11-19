@@ -227,7 +227,12 @@ async fn send_raw(wire: &mut Wire, raw: Message) {
         .expect("fixture send");
 }
 
-async fn peer(listener: TcpListener, case: Case, cancel: oneshot::Sender<()>) {
+async fn peer(
+    listener: TcpListener,
+    case: Case,
+    cancel: oneshot::Sender<()>,
+    held_close: Option<(oneshot::Sender<()>, oneshot::Receiver<()>)>,
+) {
     use tokio_tungstenite::tungstenite::protocol::frame::{
         coding::{Data, OpCode},
         Frame,
@@ -270,7 +275,7 @@ async fn peer(listener: TcpListener, case: Case, cancel: oneshot::Sender<()>) {
                 expect_command(&mut wire, command(6, "Page.navigate", "root")).await;
                 send(&mut wire, reply(6, "root")).await;
                 expect_command(&mut wire, command(7, "Runtime.evaluate", "root")).await;
-                if case != Case::EventOverflow {
+                if !matches!(case, Case::EventOverflow | Case::Cancel) {
                     send(&mut wire, reply(7, "root")).await;
                 }
                 match case {
@@ -332,6 +337,9 @@ async fn peer(listener: TcpListener, case: Case, cancel: oneshot::Sender<()>) {
         json!({"id":8,"method":"Target.closeTarget","params":{"targetId":"owned-root"}}),
     )
     .await;
+    if case == Case::Cancel {
+        send(&mut wire, reply(7, "root")).await;
+    }
     let owned_remains = case == Case::ClosePresent;
     send(
         &mut wire,
@@ -353,6 +361,10 @@ async fn peer(listener: TcpListener, case: Case, cancel: oneshot::Sender<()>) {
         .await
         .expect("fixture close deadline");
     assert!(matches!(close, Some(Ok(Message::Close(_)))));
+    if let Some((ready, release)) = held_close {
+        ready.send(()).expect("close controller awaits peer");
+        release.await.expect("close controller releases the reply");
+    }
     timeout(CLEANUP, wire.flush())
         .await
         .expect("fixture flush deadline")
@@ -445,20 +457,30 @@ async fn capture(
     Ok(())
 }
 
-async fn verify_close(wire: &mut Wire) -> Result<(), &'static str> {
+async fn verify_close(wire: &mut Wire, cancelled: bool) -> Result<(), &'static str> {
     send(
         wire,
         json!({"id":8,"method":"Target.closeTarget","params":{"targetId":"owned-root"}}),
     )
     .await;
-    let acknowledged = response(wire, json!({"id":8,"result":{"success":true}})).await;
+    let mut close_reply = read_wire(wire).await;
+    let late_runtime_reply = reply(7, "root").to_string();
+    if cancelled
+        && close_reply
+            .as_ref()
+            .is_ok_and(|text| text.as_str() == late_runtime_reply)
+    {
+        close_reply = read_wire(wire).await;
+    }
+    let expected_close = json!({"id":8,"result":{"success":true}}).to_string();
+    let acknowledged = close_reply.is_ok_and(|text| text.as_str() == expected_close);
     send(wire, json!({"id":9,"method":"Target.getTargets"})).await;
     let absent = response(
         wire,
         json!({"id":9,"result":{"fixture_target_ids":["sentinel"]}}),
     )
     .await;
-    if acknowledged.is_err() || absent.is_err() {
+    if !acknowledged || absent.is_err() {
         return Err("CAPTURE_SCOPE_UNVERIFIED");
     }
     Ok(())
@@ -477,14 +499,28 @@ async fn observe(address: std::net::SocketAddr, cancel: oneshot::Receiver<()>) -
             if let Err(code) = result {
                 replay.send_control(&json!({"fault":code}));
             }
-            let closed = timeout(CLEANUP, verify_close(&mut wire)).await;
-            if !matches!(closed, Ok(Ok(()))) {
+            let cancelled = result == Err("CAPTURE_CANCELLED_INT");
+            let closed = timeout(CLEANUP, verify_close(&mut wire, cancelled)).await;
+            let cleanup_verified = matches!(closed, Ok(Ok(())));
+            if cancelled {
+                assert!(
+                    cleanup_verified,
+                    "cancelled fixture verified owned target cleanup"
+                );
+            }
+            if !cleanup_verified {
                 replay.send_control(&json!({"fault":"CAPTURE_SCOPE_UNVERIFIED"}));
             }
-            timeout(CLEANUP, wire.close(None))
-                .await
-                .expect("client close deadline")
-                .expect("client close");
+            let peer_close = timeout(CLEANUP, async {
+                wire.close(None).await.expect("client close write");
+                wire.next().await
+            })
+            .await
+            .expect("client close deadline");
+            assert!(
+                matches!(peer_close, Some(Ok(Message::Close(_)))),
+                "client received the peer close reply"
+            );
         }
     }
     serde_json::to_value(replay.finish()).expect("safe receipt")
@@ -496,8 +532,10 @@ fn run(case: Case) -> Value {
             let listener = fixture_listener().await;
             let address = listener.local_addr().unwrap();
             let (sender, receiver) = oneshot::channel();
-            let (receipt, ()) =
-                tokio::join!(observe(address, receiver), peer(listener, case, sender));
+            let (receipt, ()) = tokio::join!(
+                observe(address, receiver),
+                peer(listener, case, sender, None),
+            );
             assert_eq!(receipt["preparation_only"], true);
             assert!(!receipt.to_string().contains("private-fixture-marker"));
             receipt
@@ -584,6 +622,36 @@ fn l08_cancellation_and_mismatched_close() {
         run(Case::BadClose)["diagnostics"],
         json!(["CAPTURE_SCOPE_UNVERIFIED"])
     );
+}
+
+#[test]
+fn l08_waits_for_held_peer_close_reply() {
+    runtime().block_on(async {
+        timeout(FIXTURE, async {
+            let listener = fixture_listener().await;
+            let address = listener.local_addr().unwrap();
+            let (cancel, cancel_receiver) = oneshot::channel();
+            let (ready, peer_read_close) = oneshot::channel();
+            let (release_peer, release) = oneshot::channel();
+            let controller = async {
+                let observation = observe(address, cancel_receiver);
+                tokio::pin!(observation);
+                tokio::select! {
+                    biased;
+                    _ = &mut observation => panic!("capture returned before the peer close reply"),
+                    ready = peer_read_close => ready.expect("peer received the close frame"),
+                }
+                release_peer.send(()).expect("peer is waiting to reply");
+                assert_eq!(observation.await["decision"], "clean");
+            };
+            tokio::join!(
+                controller,
+                peer(listener, Case::Empty, cancel, Some((ready, release))),
+            );
+        })
+        .await
+        .expect("owned fixture deadline");
+    });
 }
 
 #[test]

@@ -136,3 +136,80 @@ default launch under the outer Darwin profile. Both runs used disposable
 profiles, test keychain flags, the debugging pipe, and synthetic local
 pages. This fixture result leaves production capture integration and
 general event-drain coverage open.
+
+## Native trace completion experiment
+
+Can Chrome's trace flush qualify capture of console, exception, and request
+failures? On one disposable Chrome instance, start a trace and subscribe to
+Runtime and Network events before opening the loopback fixture. The fixture
+must log one console error, raise one uncaught exception, and receive one
+HTTP 503 response. The independent Runtime and Network events must report
+all three. The local server must observe exactly one request for the failing
+resource.
+
+Run the private fixture with `heavy-run node "$PAGE_TRACE_PROBE"`. Bound
+the run to 30 seconds. Allow network access to the fixture port only. Use
+fresh browser state and the test keychain flags. Record only counts and the
+trace completion flag. Keep the trace candidate only if the trace reports
+each of the three failures in a structured event and reports no trace loss.
+Use the request ID to match a received response to the exact fixture path.
+If a direct control fails, the run is inconclusive. If the controls pass
+and the trace misses a failure, keep production closure unverified and
+reject that trace configuration as the event source.
+Anchor: [Chrome Tracing completion](https://chromedevtools.github.io/devtools-protocol/tot/Tracing/#event-tracingComplete),
+issue #563, and Basili, Caldiera and Rombach (1994).
+
+Chromium 149.0.7827.55 reported trace completion with no reported trace
+loss or fixture overflow. The trace matched the failing resource by its
+request ID and HTTP 503 status. It contained neither of the two synthetic
+error markers. The direct Runtime and Network controls observed all three
+failures on the same page. The allowed server saw one request for the
+resource. The denied server saw zero requests, and the browser reported
+access denied. The fixture closed the context and browser.
+
+The trace used `devtools.timeline`, `disabled-by-default-devtools.timeline`,
+`blink.console` and `v8`. This result rejects that configuration as an
+event source for the complete gate. The trace completion flag covers the
+trace buffer. Production capture still needs a verified cutoff for each
+owned Runtime and Network session.
+
+## Loopback close acknowledgement
+
+The local nine-family fixture run failed in L08 at the peer's flush with
+`BrokenPipe`. The client can finish its close write and drop the socket before
+the peer returns its close frame. The pinned tokio-tungstenite close sink
+drives the write. The stream reads the reply.
+
+Hold the peer reply until a test-owned barrier releases it. Predict one
+premature client return on the unchanged fixture and zero after the client
+waits for the reply. Run the new case by name, then the existing loopback
+and reducer suite with the command above. Keep zero failures in the held
+reply case, all nine existing families, and all 59 reducer cases. Reject
+any change to capture decisions, target cleanup checks or existing
+deadlines. Anchor: L08 terminal result and tokio-tungstenite 0.30.0
+`poll_close` and `poll_next`.
+
+The held reply control reproduced premature return. The first fix passed
+that control. L08 then exposed a second issue: the cancelled client's
+in-flight Runtime reply shifted the target cleanup replies by one frame.
+The first frame at WebSocket shutdown was the target-list reply, with
+request ID 9. The pinned inherent `WebSocketStream::close` sends the local
+close frame. A stream read is still needed to observe the peer reply.
+
+For the cancellation case, admit at most one exact, outstanding Runtime
+reply before the target close acknowledgement. Predict zero false cleanup
+refusals for cancellation and zero false approvals of the mismatched
+target reply. Check the existing L08 result, one explicit cleanup receipt
+after cancellation, and the held close case. Reject any other skipped
+reply or change to the capture exit, time limit or owned target checks.
+
+The held close reply case and the explicit cancellation cleanup check each
+failed before their fixes. The final fixture keeps the client socket open
+until the peer close frame arrives. During cancellation it can receive the
+one outstanding Runtime reply before verifying the target close and target
+list independently. The peer withholds the Runtime reply until it
+sees the target close request, so each cancellation test exercises this
+ordering. The mismatched target reply still fails verification.
+All ten loopback tests and 59 reducer tests passed. The checks still use
+the original time limits and the disposable fixture. They do not qualify a
+production browser cutoff.

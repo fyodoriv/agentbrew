@@ -535,6 +535,7 @@
   - **ID**: page-zero-errors-skill
   - **Mode**: AFK
   - **Implementation decision**: The former upstream was removed from the catalog in `43465de` and remains unavailable. The [Rust reducer and loopback preparation](docs/plans/page-error-loopback.md) tests bounded synthetic capture. Real Chrome admission, session coverage, and capture cutoff still need proof before an adapter can report success.
+  - **Progress**: The [native trace control](docs/plans/page-error-loopback.md#native-trace-completion-experiment) observed three seeded failures directly. Chrome tracing captured the HTTP failure only, with no reported trace loss. The production gate still needs owned-session cutoff proof.
   - **Tags**: browser, skills, verification
   - **Details**: Issue #563 requires a skill and a capture command that exits non-zero on console errors, exceptions, or 4xx/5xx requests. Implement the capture in Rust. Sign-in and gateway hosts are settings.
   - **Files**: `skill-plugins/`, README skill list

@@ -141,6 +141,37 @@ T11="$TMP/no-user-turn.jsonl"
 OUT="$(run_hook "$T11" false)"
 check "Test 11 no current user turn allows stop" "$([ -z "$OUT" ] && echo 0 || echo 1)"
 
+T12="$TMP/service-denial.jsonl"
+{
+  user "check an outcome"
+  call i1 Query '{"value":"first"}'
+  result i1 true "connection refused"
+  call i2 Query '{"value":"first"}'
+  result i2 true "Error: permission denied"
+} >"$T12"
+OUT="$(run_hook "$T12" false)"
+check "Test 12 a service permission error stays unresolved" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("Query"))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+T13="$TMP/missing-input.jsonl"
+{
+  user "check an outcome"
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"j1","name":"Query"}]}}'
+  result j1 true "connection refused"
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"j2","name":"Query"}]}}'
+  result j2 false "ok"
+} >"$T13"
+OUT="$(run_hook "$T13" false)"
+check "Test 13 missing input cannot prove the same action" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("Query"))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+T14="$TMP/invalid-label.jsonl"
+{
+  user "check an outcome"
+  call k1 'Query\n' '{}'
+  result k1 true "connection refused"
+} >"$T14"
+OUT="$(run_hook "$T14" false)"
+check "Test 14 malformed label uses the safe placeholder" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("unnamed tool") and (contains("\n")|not))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
 echo ""
 echo "retry-failed-before-stop.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

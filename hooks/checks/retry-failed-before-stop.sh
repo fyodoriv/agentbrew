@@ -39,7 +39,7 @@ TRANSCRIPT="$(json_get "${INPUT:-{\}}" '.transcript_path')"
 REASON="$(tail -n 2000 "$TRANSCRIPT" | hook_jq -rs '
   def text: if type == "string" then . elif type == "array" then map(.text? // "") | join(" ") else "" end;
   def safe_name:
-    (strings | select(test("^[A-Za-z_][A-Za-z0-9_.:-]{0,127}$"))) // "unnamed tool";
+    (strings | select(test("\\A[A-Za-z_][A-Za-z0-9_.:-]{0,127}\\z"))) // "unnamed tool";
   [ .[] | select(type == "object") ] as $rows
   | ([ $rows | to_entries[]
        | select(.value.type == "user" and (.value.isMeta // false | not))
@@ -53,15 +53,16 @@ REASON="$(tail -n 2000 "$TRANSCRIPT" | hook_jq -rs '
   | [ $blocks[] | select(.type == "tool_result")
       | . as $r | ($r.content | text) as $t
       | { id: $r.tool_use_id,
-          denied: ($t | test("doesn.t want to proceed|tool use was rejected|permission.*denied|user denied"; "i")),
+          denied: ($t | test("\\buser (?:doesn.t want to proceed|denied)\\b|\\btool use was rejected by the user\\b"; "i")),
           failed: (($r.is_error // false) or ($t | test("not connected|timed out|ECONNREFUSED|connection refused"; "i"))) } ] as $results
   | [ $calls | to_entries[] | .key as $i | .value as $c
       | ($results | map(select(.id == $c.id)) | first) as $r
       | select($r != null) | { i: $i, name: $c.name, input: $c.input, failed: $r.failed, denied: $r.denied } ] as $done
   | [ $done[] | select(.failed and (.denied | not)) | . as $f
       | select(any($done[];
-          .i > $f.i and .name == $f.name and .input == $f.input
-          and (.denied or (.failed | not))) | not) ]
+          .i > $f.i and .name == $f.name
+          and ($f.input | type == "object") and (.input | type == "object")
+          and .input == $f.input and (.denied or (.failed | not))) | not) ]
   | if length == 0 then empty else
       "Unresolved tool failures this turn: "
       + (map(.name | safe_name) | unique | join(", "))

@@ -180,6 +180,17 @@
         "Writes a short committed .agents/grind.md with skip rules for credentials, personal data, paid sign-ups, and production",
         "Proves the setup with one short pass before calling the repo ready"
       ]
+    },
+    {
+      "id": 17,
+      "prompt": "Grind run: the current slice of the task has been red for 15 minutes and nothing is committed yet. What do you do?",
+      "expected_output": "Splits the slice, commits the smallest green part, and files the rest as a sub-task without asking.",
+      "expectations": [
+        "Applies the 15-minute commit-or-split rule without asking the user",
+        "Commits the smallest part of the slice that passes the gate",
+        "Adds the rest of the slice to TASKS.md as a sub-task",
+        "Does not keep editing the large red slice past the timebox"
+      ]
     }
   ]
 }

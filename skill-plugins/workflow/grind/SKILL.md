@@ -207,7 +207,10 @@ This helps the next session (or the user) understand where things stand.
    or commit to main when the repo convention says so.
 5. **Skip blocked tasks** — if a task has `**Blocked by**:` with an unresolved blocker, skip it.
 6. **Skip claimed tasks** — if a task has `(@agent-name)` that isn't you, skip it.
-7. **Don't get stuck** — if a task takes more than 30 minutes of wall time with no progress,
+7. **Don't get stuck** — commit a green step within about 15 minutes of starting a slice.
+   If the slice is still red at 15 minutes, split it: commit the smallest part that passes,
+   and add the rest to TASKS.md as a sub-task (minsky's overnight runs got more done with
+   this timebox). If a task takes more than 30 minutes of wall time with no progress,
    or you hit any ambiguity that could stall you, add `**Blocked by**:` with a clear
    description and move on. Prefer shipping 10 unambiguous tasks over deliberating on 1.
 8. **Merge immediately when merging is approved** — don't accumulate open PRs. When the

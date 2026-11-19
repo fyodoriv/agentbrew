@@ -33,10 +33,14 @@ third-party equivalent in the current source inventory:
 
 `analyze`, `browser-forms`, `caveman`, `cli-design`, `companion-competitor-watch`,
 `companion-docs-sync`, `companion-researcher`, `companion-skill-curate`,
-`companion-task-groom`, `companion-test-gaps`, `confirm-setup-works`, `git-diagnose-codebase`,
-`grind`, `handoff`, `karpathy-disciplines`, `markdown-for-gdoc`, `perf-review`, `project-audit`, `readme`,
-`report-upstream`, `rfc`, `run-goal`, `sourced-calculations`, `strategic-review`, `sweep`, `task-command-center`,
+`companion-task-groom`, `companion-test-gaps`, `confirm-setup-works`, `failure-modes`, `git-diagnose-codebase`,
+`grind`, `handoff`, `karpathy-disciplines`, `markdown-for-gdoc`, `perf-review`, `pre-register`, `project-audit`, `readme`,
+`report-upstream`, `rfc`, `rule-to-lint`, `run-goal`, `sourced-calculations`, `split-roles`, `strategic-review`, `sweep`, `task-command-center`,
 `to-issues`, `ubiquitous-language`, `watch-issues`, and `wrap-up`.
+
+`pre-register`, `split-roles`, `failure-modes`, and `rule-to-lint` adapt rules that the
+archived minsky runner enforced on every repo it worked on (vision rules #7, #9, and #10,
+and its developer, QA, and reviewer personas).
 
 ## Built on third-party audits
 

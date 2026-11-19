@@ -2,6 +2,8 @@
 
 ## Start here
 
+Use this guide to find the source, docs, and checks for an Agentbrew change.
+
 agentbrew syncs skills, MCP, rules, commands, and agent definitions.
 Repo: `github.com/fyodoriv/agentbrew` (`main`).
 

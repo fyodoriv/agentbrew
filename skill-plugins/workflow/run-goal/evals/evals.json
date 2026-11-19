@@ -3952,7 +3952,13 @@
       "id": 345,
       "prompt": "/goal make my private lists visible on the shared site only when I pick myself as the signed-in person",
       "expected_output": "Contract names a server-side check (identity AND party) with tests for owner, other identity and no identity; a fresh-context reviewer runs before merge and its findings (lost writes, fail-open fallbacks, crash-on-bad-input) are fixed and re-tested; live probe shows unauthenticated requests get no data.",
-      "files": []
+      "files": [],
+      "expectations": [
+        "Requires both signed-in ownership and selection of the owner in the server-side check",
+        "Tests the owner, another identity that selects the owner, and an unauthenticated request",
+        "Fixes the independent review findings and reruns their regression tests before merging",
+        "Verifies that an unauthenticated request receives no private data from the deployed test site"
+      ]
     }
   ]
 }

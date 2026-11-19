@@ -227,3 +227,15 @@ its samples. The separate [controlled release-window research
 prediction](source-lease-release-window-research.md) studies an artificial
 schedule. Even a physical synthetic reproduction cannot satisfy this cohort's
 historical acceptance or establish the earlier incident's cause.
+
+## Ordinary CI diagnostics
+
+In [run 44489293620](https://github.com/fyodoriv/agentbrew/actions/runs/44489293620),
+the cross-process updater test failed before reading its second worker result.
+The live cause remains unknown. The worker retains its original exit and the
+parent still fails when a result is absent. When the output holds exactly one
+valid record in the worker’s exact format, the test error prints only the allowlisted kind and
+errno. Missing, malformed, duplicate, or unexpected records show as
+`unclassified`.
+
+This change applies to ordinary CI. The measured cohorts above remain closed.

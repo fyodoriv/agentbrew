@@ -3947,6 +3947,12 @@
         "Checks the suggested support route and prepares a draft without repeating the recent ask",
         "Reports partial progress and keeps outside delivery open without live confirmation"
       ]
+    },
+    {
+      "id": 345,
+      "prompt": "/goal make my private lists visible on the shared site only when I pick myself as the signed-in person",
+      "expected_output": "Contract names a server-side check (identity AND party) with tests for owner, other identity and no identity; a fresh-context reviewer runs before merge and its findings (lost writes, fail-open fallbacks, crash-on-bad-input) are fixed and re-tested; live probe shows unauthenticated requests get no data.",
+      "files": []
     }
   ]
 }

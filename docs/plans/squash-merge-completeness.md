@@ -30,3 +30,28 @@ GitHub supplies the merged state, full commit ID, expected file count and
 paginated file names. Git supplies the first-parent path diff for that exact
 commit, with null separators and rename detection disabled. A result is about
 file coverage. Byte content and authorization are separate checks.
+
+## Observed comparison
+
+On November 19, the archived verifier exited 0 after its file-list command
+exited 7. It printed a clean result. The new verifier found every expected
+path on all 20 registered Agentbrew merges. Each read-only check took 1.01 to
+1.87 seconds with up to three readers at a time.
+
+## Delivery order checks
+
+Register before editing the Dotfiles `/ship-it` reference. The previous merge
+cascade can delete the Agentbrew branch before the new verifier runs.
+
+- **Hypothesis:** Agentbrew keeps its branch through the exact merged-commit
+  check, and `/ship-it` can distinguish verification, a missing path and
+  incomplete evidence before cleanup.
+- **Measurement:** Run `tests/ship-it-self-review.bats` on hosted CI. Check the
+  Agentbrew-only deletion flag, the receipt and fetch order, the verifier call
+  before cleanup, and the three result paths. Add a matching `/ship-it` eval.
+- **Success:** Every registered guard passes and the reference preserves the
+  previous branch option for other repos.
+- **Pivot:** One changed merge option outside Agentbrew or one Agentbrew
+  cleanup before verification rejects the integration.
+- **Anchor:** Dotfiles `docs/ship-it-reference.md` Step 7 and the Agentbrew
+  squash file coverage controls above.

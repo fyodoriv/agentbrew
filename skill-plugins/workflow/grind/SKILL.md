@@ -49,7 +49,8 @@ keyboard, or `claude -p`. Then:
 
 A long run needs preflight, sync, stuck-task, all-blocked,
 stall, empty-queue, and network checks. Do them yourself: read
-`references/run-guards.md` before the first task.
+`references/run-guards.md` before the first task. To make a repo grind-ready (a committed
+grind prompt with skip rules), see `references/repo-setup.md`.
 
 ## Related Skills
 
@@ -209,10 +210,10 @@ This helps the next session (or the user) understand where things stand.
 7. **Don't get stuck** — if a task takes more than 30 minutes of wall time with no progress,
    or you hit any ambiguity that could stall you, add `**Blocked by**:` with a clear
    description and move on. Prefer shipping 10 unambiguous tasks over deliberating on 1.
-8. **Merge immediately and aggressively** — don't accumulate open PRs. Merge each one
-   before starting the next. Escalate through every strategy: normal merge → fix status
-   checks → rebase conflicts → admin override. The only thing that can legitimately block
-   a merge is a required approvals check with no admin override available.
+8. **Merge immediately when merging is approved** — don't accumulate open PRs. When the
+   user or a standing rule approves merges for this repo, merge each PR before starting
+   the next: fix status checks, then rebase conflicts. Admin override only with explicit
+   approval. Without approval, follow the public-write rules in `references/run-guards.md`.
 9. **Scout while implementing** — if you find new issues while working on a task,
    add them to TASKS.md in the same commit.
 10. **Verify before claiming done** — run the full verify gate. No exceptions.

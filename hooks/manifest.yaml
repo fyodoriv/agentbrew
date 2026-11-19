@@ -573,7 +573,7 @@ hooks:
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: retry-failed-before-stop
-    description: Block a stop once when a tool call failed this turn (is_error, "not connected", "timed out") and no later call of the same tool succeeded; ask the agent to retry it
+    description: Remind the agent once to check unresolved tool failures and repeat only authorized actions that are safe to repeat
     event: Stop
     script: checks/retry-failed-before-stop.sh
     tier: deterministic

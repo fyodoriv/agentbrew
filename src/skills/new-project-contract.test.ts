@@ -407,6 +407,55 @@ describe("new-project skill", () => {
     expect(result.stdout).toMatch(/check-docs: AGENTS\.md is \d+ bytes; keep it under 10000/);
   });
 
+  it("checks actual scaffold docs filenames when opted in", () => {
+    const dir = fresh("tool-none", "filename-case");
+    const check = (enabled: string, extra: Record<string, string> = {}) =>
+      spawnSync("/bin/bash", [join(dir, "scripts", "check.sh"), "fast"], {
+        cwd: dir,
+        encoding: "utf-8",
+        env: { ...env, CHECK_OFFLINE: "1", CHECK_FILENAME_CASE: enabled, ...extra },
+      });
+
+    const clean = check("1");
+    expect(clean.status, clean.stderr).toBe(0);
+    expect(clean.stdout).toContain("filename-case: docs filenames passed.");
+    const repeated = check("1");
+    expect(repeated.status, repeated.stderr).toBe(0);
+    expect(repeated.stdout).toContain("filename-case: docs filenames passed.");
+    expect(repeated.stdout).not.toContain("filename-case cached");
+
+    const index = join(dir, "docs", "README.md");
+    writeFileSync(join(dir, "docs", "Getting-Started.md"), "# Getting started\n");
+    writeFileSync(index, "\n[Getting started](Getting-Started.md)\n", { flag: "a" });
+    const disabled = check("0");
+    expect(disabled.status, disabled.stderr).toBe(0);
+    expect(disabled.stdout).not.toContain("filename-case");
+
+    const enabled = check("1");
+    expect(enabled.status).toBe(1);
+    expect(enabled.stderr).toContain("docs/Getting-Started.md needs a lowercase kebab-case Markdown filename");
+    const ordinary = join(dir, "docs", "getting-started.md");
+    renameSync(join(dir, "docs", "Getting-Started.md"), ordinary);
+    writeFileSync(index, readFileSync(index, "utf-8").replace("Getting-Started.md", "getting-started.md"));
+    git(dir, "add", "-A");
+    const corrected = check("1");
+    expect(corrected.status, corrected.stderr).toBe(0);
+
+    const renamedPath = join(dir, "docs", "getting-started.MD");
+    const tempPath = join(dir, "docs", "getting-started.rename");
+    renameSync(ordinary, tempPath);
+    renameSync(tempPath, renamedPath);
+    const renamed = check("1");
+    expect(renamed.status).toBe(1);
+    expect(renamed.stderr).toContain("docs/getting-started.MD needs a lowercase kebab-case Markdown filename");
+
+    const bashEnv = join(scratch, "case-insensitive-bash");
+    writeFileSync(bashEnv, "shopt -s nocasematch\n");
+    const insensitive = check("1", { BASH_ENV: bashEnv });
+    expect(insensitive.status).toBe(1);
+    expect(insensitive.stderr).toContain("docs/getting-started.MD needs a lowercase kebab-case Markdown filename");
+  });
+
   it("lets an existing repo map an area to its own files or waive it with a reason", () => {
     const dir = fresh("tool-none", "mapped");
     renameSync(join(dir, "docs", "VISION.md"), join(dir, "VISION.md"));

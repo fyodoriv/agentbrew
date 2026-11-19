@@ -30,6 +30,12 @@ cat >"$fixture/change.sh" <<'SCRIPT'
 #!/bin/bash
 git reset --hard
 SCRIPT
+cat >"$fixture/alias.sh" <<'SCRIPT'
+#!/bin/bash
+shopt -s expand_aliases
+alias fixture_git=git
+fixture_git reset --hard
+SCRIPT
 
 cd "$fixture/shared"
 /usr/bin/env PATH="$fixture_path" /bin/sh -c 'git reset --hard' >"$fixture/baseline"
@@ -71,6 +77,7 @@ allowed() {
 
 blocked /bin/sh -c 'git reset --hard'
 blocked /bin/bash "$fixture/change.sh"
+blocked /bin/bash "$fixture/alias.sh"
 blocked git clean -fd
 blocked git clean -if
 blocked git checkout HEAD -- .

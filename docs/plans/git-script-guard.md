@@ -67,3 +67,15 @@ failure of the existing fixed PATH guard, or timing over the threshold.
 
 Anchor: Dotfiles `agent-hooks/prepend-endpoint-path.sh`, Dotfiles
 `bin/git`, and the Claude Code session environment contract above.
+
+## Results
+
+The deployed-layout fixture refused the ten registered operations and
+forwarded the ten allowed calls unchanged. The additional shell script
+and Bash alias exercised the same guard. A real scratch checkout kept
+its status output byte for byte.
+
+Ten exclusive Mac pairs added a median of 12.6 ms for the standalone
+Git guard and 5.8 ms on the Dotfiles decision path. Both are within the
+registered 20 ms limit. The Dotfiles path used the merged support from
+[Dotfiles #790](https://github.com/fyodoriv/dotfiles/pull/790).

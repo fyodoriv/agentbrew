@@ -14,3 +14,20 @@ A local test can show whether an extra rule improves follow-up decisions before 
 - Model: `qwen3:4b` SHA-256 `31d9857b5705086d352d4d6db04e86c5d0f6a2b5d59a4dc7ce5cdb271ccf9141`. Use temperature 0, no thinking and no streaming.
 - Protocol: `scripts/chat-rule-schema-protocol.mjs` SHA-256 `6aa8a467e6c406f9ff52c3f0bd21c07169428ebb71cf7bc84f5aa46c675ac6f9`. Allow only a strict JSON object with one EDIT, POST or HOLD value.
 - Before execution, commit the exact runner and invocation, including the fixture and harness identity. Permit two metadata requests and six generation requests. Bound each generation to 60 seconds and the full process to 390 seconds. The runner must reject a second attempt before a request. Record only case IDs and enum choices. No real chat, account, or content is used.
+
+## Baseline invocation
+
+Set `CHAT_FOLLOWUP_RECEIPT` to the one reserved, unused file name in a
+private output directory. The earlier experiment used a different file.
+The existing metadata helper has SHA-256
+`612adc6581b6d96a09f0cc21fa6a49c1824e8e9e32ae953029b9285bf1fcddf3`.
+
+```sh
+HEAVY_RUN_EXCLUSIVE_WAIT=2400 heavy-run --exclusive gtimeout 390 node \
+  scripts/eval-chat-followup-821.mjs "$CHAT_FOLLOWUP_RECEIPT" \
+  1c0be23477723604a0fb1ee4788daa16a28513c4ab8a36bd97f46a62b0dbdacf
+```
+
+The runner writes only enum choices and the frozen identity to its receipt.
+Accept it only after the runner exits successfully. Keep an incomplete
+receipt if the run fails. No candidate rule exists at baseline time.

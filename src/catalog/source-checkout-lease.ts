@@ -106,7 +106,12 @@ function tryAcquire(target: PreparedTarget): HeldCheckout | undefined {
     mkdirSync(target.lockPath, { mode: 0o700 });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    assertPrivateDirectory(target.lockPath);
+    try {
+      assertPrivateDirectory(target.lockPath);
+    } catch (inspectionError) {
+      // The owner can release the lease between mkdir and this inspection.
+      if ((inspectionError as NodeJS.ErrnoException).code !== "ENOENT") throw inspectionError;
+    }
     return undefined;
   }
   const inode = assertPrivateDirectory(target.lockPath).ino;

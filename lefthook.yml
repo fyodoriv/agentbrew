@@ -10,6 +10,11 @@
 # lockfile-sync: block a push whose package.json and package-lock.json
 # disagree for npm 10 (`npm ci` would fail for npm 10 users). It runs only
 # when a pushed commit touches a package file; about 1 s with npm 10 cached.
+pre-commit:
+  commands:
+    readme-budget:
+      run: hooks/pre-commit
+
 pre-push:
   commands:
     oss-readiness:

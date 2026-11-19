@@ -26,9 +26,15 @@ const TRIVIAL_COMMAND = /^\s*(true|:|exit 0|echo\b.*)\s*;?\s*$/;
 // A threshold is a number or a zero-tolerance quantifier ("any X rejects", "no eval separates").
 const QUANTIFIER = /\d|\b(zero|none|no|any|all|every|half|never)\b/i;
 // Phrases that use those words without stating a threshold.
-const NOT_A_THRESHOLD = /\b(?:not at all|at all|no longer|any more|anymore|anyway|all the)\b/gi;
-// A placeholder in angle brackets: <reason>, <exact command>. Not "a < b" and not <https://...>.
-const ANGLE_PLACEHOLDER = /<[a-z][a-z0-9 _-]*>/i;
+const NOT_A_THRESHOLD = /\b(?:not at all|at all|no longer|any more|anymore|anyway)\b/gi;
+// A placeholder in angle brackets: <reason>, <exact command>. Not "a < b", not <https://...>,
+// and not an inline HTML tag such as <br>.
+const ANGLE_PLACEHOLDER = /<([a-z][a-z0-9 _-]*)>/gi;
+const HTML_TAGS = new Set(
+  "a abbr b br code del details div em hr i img ins kbd li mark ol p pre s samp small span strong sub summary sup table td th tr u ul".split(
+    " ",
+  ),
+);
 const ANCHOR_SOURCE = /\b(19|20)\d{2}\b|doi\.org|\b10\.\d{4,9}\/|arxiv|https?:\/\//i;
 const WEAK_ANCHOR = /\bblog\b|medium\.com|best practice/i;
 const VANITY =
@@ -124,7 +130,9 @@ function withoutCode(value) {
 function isPlaceholder(value) {
   const bare = value.replace(/[*_]/g, "").trim();
   const prose = withoutCode(value);
-  return PLACEHOLDER.test(bare) || /^\s*(TBD|TODO)\b/.test(prose) || ANGLE_PLACEHOLDER.test(prose);
+  // TBD is never a real value. TODO can be a noun ("0 TODO left"), so only a leading TODO counts.
+  const angle = [...prose.matchAll(ANGLE_PLACEHOLDER)].some((match) => !HTML_TAGS.has(match[1].toLowerCase()));
+  return PLACEHOLDER.test(bare) || /\bTBD\b/.test(prose) || /^\s*TODO\b/.test(prose) || angle;
 }
 
 function measurementProblems(value) {
@@ -203,15 +211,17 @@ function main() {
       failed = true;
       continue;
     }
-    if (exempt) {
+    const fields = extractFields(block.lines);
+    // Exempt excuses missing fields only; a field that is written must still be sound.
+    const problems = fieldProblems(fields, opts.selfGrade).filter(([, problem]) => !exempt || problem !== "missing");
+    if (exempt && problems.length === 0) {
       console.log(`${block.label}: exempt (${exempt[0].trim()})`);
       continue;
     }
-    const fields = extractFields(block.lines);
     if (fields.Anchor && WEAK_ANCHOR.test(fields.Anchor)) {
       console.log(`${block.label}: Anchor: warning: prefer a primary source over a blog or "best practice"`);
     }
-    for (const [field, problem] of fieldProblems(fields, opts.selfGrade)) {
+    for (const [field, problem] of problems) {
       console.error(`${block.label}: ${field}: ${problem}`);
       failed = true;
     }

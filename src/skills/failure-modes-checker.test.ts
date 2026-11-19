@@ -149,6 +149,7 @@ describe("check-failure-modes.mjs", () => {
       HEADER,
       "| Disk full | fill tmp | crash loudly | tests/test_sync.py |",
       "| Disk full twice | fill tmp | crash loudly | `tests/test_sync.py::test_disk_full` |",
+      "| Disk full param | fill tmp | crash loudly | `tests/test_sync.py::test_disk_full[1]` |",
       "| Network drop | cut net | circuit-break and notify | `network drop fails loudly` |",
     ].join("\n");
     withRepo(
@@ -185,6 +186,18 @@ describe("check-failure-modes.mjs", () => {
     const bare = "Mode | Trigger | Expected | Test\n--- | --- | --- | ---\nX | y | crash loudly | t";
     withRepo({ "README.md": section({ table: bare }) }, (_root, run) => {
       expect(run("README.md").status).toBe(0);
+    });
+  });
+
+  it("accepts an escape hatch written only as a code block", () => {
+    const labels = LABELS.replace(
+      "**Escape hatch:** `launchctl bootout gui/$UID/com.example.nightly-sync`.",
+      "**Escape hatch:**\n\n```sh\nlaunchctl bootout gui/501/com.example.nightly-sync\n```",
+    );
+    withRepo({ "README.md": section({ labels }) }, (_root, run) => {
+      const result = run("README.md");
+      expect(result.stderr).toBe("");
+      expect(result.status).toBe(0);
     });
   });
 

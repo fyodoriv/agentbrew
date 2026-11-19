@@ -97,12 +97,15 @@ Rule in prose: "Never put a home path in docs."
 5. Check (exits 1 on a match, 0 when clean or when no Markdown is staged):
 
    ```sh
-   files=$(git diff --cached --name-only -- '*.md')
+   files=$(git diff --cached --name-only --diff-filter=d -- '*.md')
    [ -z "$files" ] && exit 0
-   ! grep -nE '/(Users|home)/[a-z][a-z0-9_-]+/' $files
+   status=0
+   grep -nE '/(Users|home)/[a-z][a-z0-9_-]+/' $files || status=$?
+   [ "$status" -eq 1 ]
    ```
 
-   `grep` alone exits 0 on a match, so the `!` turns a match into a failure.
+   `grep` exits 0 on a match, 1 when clean, and 2 on an error, so only 1 passes.
+   `--diff-filter=d` leaves out staged deletions, which `grep` cannot read.
    Message: `docs/setup.md:12: home path; write ~/ instead`.
 6. Wire: add it to the pre-commit config and the CI lint job; commit the red fixture once to see it block.
 7. Shrink: the AGENTS.md paragraph becomes `No home paths in docs — enforced by scripts/check-home-paths.sh`.

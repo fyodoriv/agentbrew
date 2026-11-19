@@ -157,6 +157,21 @@ describe("pre-register checker", () => {
     expect(vague.out).toContain("Pivot: no numeric threshold");
   });
 
+  it("still checks the fields an exempt body writes", () => {
+    const run = check("Exempt: only typo fixes qualify for this.\n\n- **Pivot**: worse\n");
+    expect(run.status, run.out).toBe(1);
+    expect(run.out).toContain("Pivot: no numeric threshold");
+  });
+
+  it("reads 'all the' as a threshold, flags TBD anywhere, and allows inline HTML", () => {
+    const all = check(body({ ...GOOD_FIELDS, Success: "all the red fixtures fail and all the allowed ones pass." }));
+    expect(all.status, all.out).toBe(0);
+    const tbd = check(body({ ...GOOD_FIELDS, Hypothesis: "latency drops from TBD to 200 ms." }));
+    expect(tbd.out).toContain("Hypothesis: placeholder text");
+    const html = check(body({ ...GOOD_FIELDS, Hypothesis: "cold sync drops<br>from 9 s to under 5 s." }));
+    expect(html.status, html.out).toBe(0);
+  });
+
   it("reads stdin when the file is -", () => {
     const run = spawnSync(process.execPath, [script, "-"], { input: body(GOOD_FIELDS), encoding: "utf8" });
     expect(run.status, `${run.stdout}${run.stderr}`).toBe(0);

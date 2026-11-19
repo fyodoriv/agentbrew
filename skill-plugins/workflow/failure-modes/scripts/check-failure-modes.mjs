@@ -68,14 +68,18 @@ function parseArgs(argv) {
   return { file, repo };
 }
 
+// Stands in for a fenced line: label text for a code-only escape hatch, but never a
+// table row or a heading.
+const CODE_LINE = "[code block]";
+
 // Returns the lines under the first "failure modes" heading. Fenced lines become
-// blank, so an example table inside a code fence does not count.
+// CODE_LINE, so an example table inside a code fence does not count.
 function findSection(rawLines) {
   let inFence = false;
   const lines = rawLines.map((line) => {
     const fence = /^\s*(```|~~~)/.test(line);
     if (fence) inFence = !inFence;
-    return fence || inFence ? "" : line;
+    return fence || inFence ? CODE_LINE : line;
   });
   let start = -1;
   let level = 0;
@@ -188,7 +192,8 @@ function testExists(token, root) {
   // A pytest node id: tests/test_sync.py::test_disk_full (or ::Class::test).
   const [path, ...names] = token.split("::");
   if (names.length > 0) {
-    const name = names[names.length - 1];
+    // A parametrized id (test_x[1]) names the function test_x in the file.
+    const name = names[names.length - 1].replace(/\[.*\]$/, "");
     return existsSync(join(root, path)) && readOrEmpty(join(root, path)).includes(name);
   }
   if (token.includes("/") || PATH_LIKE.test(token)) return existsSync(join(root, token));

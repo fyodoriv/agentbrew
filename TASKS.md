@@ -698,6 +698,7 @@
   - **Measurement**: `npx vitest run src/agent-bloat-lint.test.ts` and `agentbrew lint`
   - **Success**: 3 of 3 seeded violations flagged; 0 findings on the current tree.
   - **Pivot**: Any finding on the current tree that needs more than a one-line fix rejects the threshold; set the threshold from the measured distribution.
+  - **Registered boundaries**: Require a purpose in the first readable paragraph of root AGENTS.md and README.md. Cap README.md at 128 KiB and top-level entries in built-in skill Rules sections at 16. Measure raw UTF-8 bytes and ignore fenced examples when counting rules. Seed one violation per boundary, keep matching controls green, and expect zero new findings on the current tree. If a threshold causes a current-tree finding that needs more than a one-line fix, remeasure before proceeding.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Pyramid principle for docs (Minto, 1987).
 
 - [ ] Time the pre-push hook and fail it over 10 seconds

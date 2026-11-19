@@ -19,7 +19,9 @@ set -euo pipefail
 
 # Resolve the log-decision lib once at source time. Hook scripts source this
 # file from .../hooks/lib/verdict.sh, so __VERDICT_LIB_DIR is the lib dir.
-__VERDICT_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+__VERDICT_LIB_DIR="${BASH_SOURCE[0]%/*}"
+[[ "${BASH_SOURCE[0]}" == */* ]] || __VERDICT_LIB_DIR=.
+__VERDICT_LIB_DIR="$(CDPATH='' cd -- "${__VERDICT_LIB_DIR:-/}" && pwd)"
 # shellcheck source=./log-decision.sh
 source "$__VERDICT_LIB_DIR/log-decision.sh"
 

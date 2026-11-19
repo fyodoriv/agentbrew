@@ -20,7 +20,7 @@ Where this ledger and minsky `absorbed.md` disagree, this ledger wins. For examp
 | vision #19 operator-explicit-start | dotfiles `AGENTS.md`: heavy LaunchAgents are opt-in |
 | skill `experiment-validate`, `check-pivot-success-margin`, `check-anchor-primary-source`, `check-measurement-inspects-output` | tasks.md `packages/lint/src/rule9.ts` `qualityWarningsIn()` (tasksmd/tasks.md#53); the output-inspection check is reduced to "Measurement has a command in backticks" |
 | `check-orphan-tests.mjs` | task `check-tests-import-only-existing-exports` |
-| `verify-squash-merge-completeness.mjs` | task `verify-squash-merge-completeness` |
+| `verify-squash-merge-completeness.mjs` | shipped: `scripts/verify-squash-merge-completeness.mjs` (agentbrew #1142) |
 | `check-toolchain.mjs` + lefthook `piped: true` | shipped in the new-project scaffold (agentbrew #1144) |
 | `check-readme-byte-budget.mjs` | task `readme-byte-budget` |
 | `check-lockfile-integrity.mjs` (docs/security/supply-chain.md layer 1) | shipped (agentbrew #1149) |
@@ -124,7 +124,7 @@ Total rows: 61
 | .claude/skills/minsky-supervisor | DROP | daemon start/stop; minsky archived |
 | .claude/skills/openhands-shim-knobs | DROP | OpenHands shim |
 | .claude/skills/poll-merge | ALREADY-THERE | ship-it command (merge when green) + watch-issues |
-| .claude/skills/pr-merge-no-shortcuts | PORT | shared-rules.md Git and delivery "Merge means merge"; squash file check → task `verify-squash-merge-completeness`; `--admin` → task `block-remaining-dangerous-commands` |
+| .claude/skills/pr-merge-no-shortcuts | PORT | shared-rules.md Git and delivery "Merge means merge"; squash file check → `scripts/verify-squash-merge-completeness.mjs` (#1142); `--admin` → task `block-remaining-dangerous-commands` |
 | .claude/skills/reader-priority-docs | ALREADY-THERE | agentbrew/skill-plugins/workflow/readme/SKILL.md + shared "answer first" language rule + docs/agent-guide-baseline.md |
 | .claude/skills/spec-driven-development | ALREADY-THERE | catalog spec-driven-development |
 | .claude/skills/task-slice | ALREADY-THERE | catalog to-issues (vertical tracer-bullet slices) + writing-plans |

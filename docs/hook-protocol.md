@@ -305,6 +305,9 @@ Claude Code Bash sessions. Preview with `agentbrew sync --dry-run`, run
 `agentbrew sync`, then start a new session. The session adds the managed
 Git wrapper to PATH. On a machine with Dotfiles, use a version that
 keeps the [session guard first](https://github.com/fyodoriv/dotfiles/blob/feat/chezmoi/docs/agent-hooks.md).
+The session also exports the exact managed guard path so the Dotfiles
+Git wrapper can check the arguments when the Claude command hook rewrites
+PATH. Dotfiles runs the allowed Git command.
 
 The wrapper checks recognized destructive Git arguments, including calls
 from a script. A branch creation or whole-tree operation needs a verified

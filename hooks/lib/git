@@ -2,16 +2,24 @@
 set -e
 
 real_git=
-paths="${PATH:-}:"
-while [[ -n "$paths" ]]; do
-  directory="${paths%%:*}"
-  paths="${paths#*:}"
-  candidate="${directory:-.}/git"
-  if [[ -f "$candidate" && -x "$candidate" && ! "$candidate" -ef "$0" ]]; then
-    real_git="$candidate"
-    break
-  fi
-done
+check_only=false
+if [[ "${1:-}" == --agentbrew-check-only ]]; then
+  real_git="${2:-}"
+  [[ "$real_git" == /* && -f "$real_git" && -x "$real_git" && ! "$real_git" -ef "$0" ]] || exit 64
+  check_only=true
+  shift 2
+else
+  paths="${PATH:-}:"
+  while [[ -n "$paths" ]]; do
+    directory="${paths%%:*}"
+    paths="${paths#*:}"
+    candidate="${directory:-.}/git"
+    if [[ -f "$candidate" && -x "$candidate" && ! "$candidate" -ef "$0" ]]; then
+      real_git="$candidate"
+      break
+    fi
+  done
+fi
 
 if [[ -z "$real_git" ]]; then
   printf '%s\n' 'agentbrew git guard: Git was not found after the session wrapper.' >&2
@@ -19,12 +27,17 @@ if [[ -z "$real_git" ]]; then
 fi
 
 original=("$@")
+allow() {
+  if $check_only; then exit 0; fi
+  exec "$real_git" "${original[@]}"
+}
+
 options=()
 hooks_overridden=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -C|-c|--git-dir|--work-tree|--namespace)
-      [[ $# -gt 1 ]] || exec "$real_git" "${original[@]}"
+      [[ $# -gt 1 ]] || allow
       if [[ "$1" == -c && "${2%%=*}" == [Cc][Oo][Rr][Ee].[Hh][Oo][Oo][Kk][Ss][Pp][Aa][Tt][Hh] ]]; then
         hooks_overridden=true
       fi
@@ -180,4 +193,4 @@ case "$command" in
     ;;
 esac
 
-exec "$real_git" "${original[@]}"
+allow

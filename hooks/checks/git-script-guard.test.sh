@@ -46,6 +46,7 @@ export PATH="$fixture_path"
 # A shell inside this fixture gets the same environment file Claude uses.
 source "$CLAUDE_ENV_FILE"
 [[ "$KEEP_ME" == present ]]
+[[ "${AGENTBREW_SESSION_GIT_GUARD:-}" == "$fixture/deployed/lib/git" ]]
 
 blocked() {
   local rc=0
@@ -98,6 +99,11 @@ allowed reset HEAD -- --hard
 allowed push -f main topic
 allowed commit --no-verify --verify -m sample
 GIT_FIXTURE_PROBE_ERROR=1 blocked git reset --hard
+
+blocked "$AGENTBREW_SESSION_GIT_GUARD" --agentbrew-check-only "$fixture/bin/git" reset --hard
+rm -f "$GIT_FIXTURE_RECORD"
+"$AGENTBREW_SESSION_GIT_GUARD" --agentbrew-check-only "$fixture/bin/git" status --short
+[[ ! -e "$GIT_FIXTURE_RECORD" ]]
 
 mkdir -p "$fixture/real"
 scratch_git() {

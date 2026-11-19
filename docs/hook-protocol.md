@@ -290,6 +290,16 @@ transcript in batches, so a contract printed 6 to 8 seconds earlier was
 often not on disk yet, and real contracts were blocked. A hook cannot wait
 that long (the hook timeout is 5 s).
 
+## Retry failed calls before stop
+
+`retry-failed-before-stop` (Stop, opt-in) reads the transcript for the
+current turn. It lists tool calls that failed (`is_error`, or text such as
+"not connected" or "timed out") with no later success of the same tool.
+User denials do not count. It blocks the stop once and asks the agent to
+retry them; if a retry fails again, the agent says so. `stop_hook_active`
+allows the next stop. Bypass: `HOOK_BYPASS_RETRY_FAILED_BEFORE_STOP=1`.
+Enable it in the hooks overlay `enabled:` list.
+
 ## Cross-workspace publishing
 
 The opt-in hook `no-cross-workspace-publish` blocks three commands before the

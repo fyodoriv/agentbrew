@@ -572,6 +572,17 @@ hooks:
     agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
+  - id: retry-failed-before-stop
+    description: Block a stop once when a tool call failed this turn (is_error, "not connected", "timed out") and no later call of the same tool succeeded; ask the agent to retry it
+    event: Stop
+    script: checks/retry-failed-before-stop.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: HOOK_BYPASS_RETRY_FAILED_BEFORE_STOP
+    sourceRule: 'docs/hook-protocol.md "Retry failed calls before stop"'
+    agents: ["claude-code"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
+
   - id: poll-loop-hint
     description: Hint, never block, when a Bash call polls with an until/while loop that sleeps; name background runs and blocking waits instead
     event: PreToolUse

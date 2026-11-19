@@ -344,15 +344,15 @@
   - **Pivot**: no eval separates with-skill from without-skill runs.
   - **Anchor**: Zeller 2009 (Why Programs Fail, scientific debugging).
 
-- [ ] Agent hooks block the last five destructive commands minsky blocked
+- [ ] Agent hooks block the destructive commands minsky blocked and we still allow
   - **ID**: block-remaining-dangerous-commands
   - **Tags**: hooks, safety, from-minsky
-  - **Details**: minsky `.claude/hooks/block-dangerous-bash.sh` blocked commands our hooks still allow: `git stash drop` and `git stash clear` (stashes are shared by every worktree, so one agent can delete another's work), `gh pr merge --admin` (skips branch protection), `gh repo delete`, `git -c core.hooksPath=<x> commit` (a quiet hook bypass), and `rm -rf` outside the temp and scratch folders. Add them to `hooks/checks/` (or extend `no-commit-no-verify.sh` for the hooksPath case), each with a fixture test, and register them in the hook manifest.
+  - **Details**: minsky `.claude/hooks/block-dangerous-bash.sh` blocked commands our hooks still allow: `git stash drop` and `git stash clear` (stashes are shared by every worktree, so one agent can delete another's work), `gh pr merge --admin` (skips branch protection), `gh repo delete`, `git -c core.hooksPath=<x> commit` (a quiet hook bypass), and `rm -rf` outside the temp and scratch folders. Also block: creating or switching branches in a shared main checkout (`git checkout -b/-B`, `git switch -c/-C`, `git checkout <type>/...`) when the git dir equals the common git dir, unless the command uses `git -C`, `cd` into a worktree, or `git worktree` (a sibling agent once switched branches and wiped another session's edits); wholesale reverts `git checkout <ref> -- .` and `git restore :/`; and direct `npm publish` (releases go through the tag workflow with its SBOM and provenance gates). Add them to `hooks/checks/` (or extend `no-commit-no-verify.sh` for the hooksPath case), each with a fixture test, and register them in the hook manifest.
   - **Files**: `hooks/checks/no-destructive-commands.sh`, its `.test.sh`, `hooks/checks/no-commit-no-verify.sh`, hook manifest, `docs/` hook list.
-  - **Acceptance**: each of the 6 command shapes is blocked in a fixture; `git stash list`, `gh pr merge --squash`, and `rm -rf $TMPDIR/x` still pass.
+  - **Acceptance**: each of the 10 command shapes is blocked in a fixture; `git stash list`, `gh pr merge --squash`, and `rm -rf $TMPDIR/x` still pass.
   - **Hypothesis**: agent runs that destroy shared stashes or bypass branch protection go from possible to 0.
   - **Measurement**: `bash hooks/checks/no-destructive-commands.test.sh; echo exit=$?`.
-  - **Success**: all 6 blocked cases and all 3 allowed cases pass.
+  - **Success**: all 10 blocked cases and all 3 allowed cases pass, plus a branch switch inside a linked worktree is allowed.
   - **Pivot**: more than 1 false block per week in hook observation logs.
   - **Anchor**: Reason 1990 (Human Error, defenses in depth).
 

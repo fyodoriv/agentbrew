@@ -24,9 +24,10 @@ Where this ledger and minsky `absorbed.md` disagree, this ledger wins. For examp
 | `check-toolchain.mjs` + lefthook `piped: true` | task `new-project-toolchain-first-hook` |
 | `check-readme-byte-budget.mjs` | task `readme-byte-budget` |
 | `check-no-hardcoded-user-paths.mjs`, `check-no-personal-paths-in-docs.mjs` | task `no-literal-home-paths` |
+| working-tasks.md UI is P0-P1 | `docs/shared-rules.md` Task queues |
 | skill `triage` out-of-scope memory | `skill-plugins/workflow/watch-issues/SKILL.md` step 3, eval 17 |
 | skill `diagnose` feedback-loop ladder + ranked hypotheses | task `diagnose-loop-ladder-and-ranked-hypotheses` |
-| hook `block-dangerous-bash.sh` (stash drop/clear, `gh pr merge --admin`, `gh repo delete`, `-c core.hooksPath` commit, `rm -rf` outside temp) | task `block-remaining-dangerous-commands` |
+| hook `block-dangerous-bash.sh` (stash drop/clear, `gh pr merge --admin`, `gh repo delete`, `-c core.hooksPath` commit, `rm -rf` outside temp, branch switch in a shared checkout, `checkout <ref> -- .`, `restore :/`, `npm publish`) | task `block-remaining-dangerous-commands` |
 
 
 ## minsky harvest A — item-level pass (2026-11-19)
@@ -80,7 +81,8 @@ Where this ledger and minsky `absorbed.md` disagree, this ledger wins. For examp
 | docs/agents/running-minsky.md | DROP | minsky CLI and ~/.minsky config |
 | docs/agents/working-tasks.md: Task hygiene | ALREADY-THERE | tasks.md linter + shared-rules "## Task queues" |
 | docs/agents/working-tasks.md: Tool-call discipline for non-Claude models | PORT | agentbrew/skill-plugins/local-llm-warmup/SKILL.md: "Local models in agent frameworks (OpenHands, opencode) must attach a tool call to every reply; a prose-only 'Let me check X' ends the run. Put this line in the system brief and pin it with a test." Observed 13/13 dead runs with qwen3-coder. |
-| docs/agents/working-tasks.md: OMC modes, personas, UI is P0-P1 | DROP | minsky persona/mode routing |
+| docs/agents/working-tasks.md: OMC modes, personas | DROP | minsky persona/mode routing |
+| docs/agents/working-tasks.md: UI is P0-P1 | PORT | `docs/shared-rules.md` Task queues: user-facing friction is P0 or P1; its sub-rules (one command per operation, sane no-args defaults) are already in the global "One command to start any app" and "Every action through CLI, agent, and UI" rules |
 | RECURRING.md | DROP | observer-dogfood and other minsky cadence loops; dotfiles LaunchAgents doc covers its own jobs |
 | ask-human.md | ALREADY-THERE | ask-human MCP in agentbrew/src/catalog.yaml + docs/decisions/re-promote-ask-human-mcp-after-stdio-fix.md; async-human-comms-blocks hook |
 | templates/repo.yaml | ALREADY-THERE | tasks.md / Agentfile `task_backend` + .agents/tasks.config.yaml (rest is runner-only) |

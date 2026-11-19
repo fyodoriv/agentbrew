@@ -52,6 +52,7 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - Default task file format is tasks.md: `# Tasks`, `## P0`..`## P3`, checkbox tasks, metadata labels (`ID`, `Tags`, `Details`, `Files`, `Acceptance`).
 - Completed tasks are removed, not checked off.
 - Stability, regression-catching, observability, deployment-infra, auth-path, data-integrity, and CI-gate work is P0 unless a repo explicitly says otherwise.
+- User-facing friction is P0 or P1: a wrong or surprising default, or a workaround the user must remember, is P0; an inconsistency between entry points or missing `--help` is P1. P2 needs a written reason for the deferral.
 - Validate task files with `npx @tasks-md/lint TASKS.md` when edited.
 - **Measure every task (IRON LAW):** every task block, at every priority, carries `Hypothesis`, `Measurement`, `Success`, `Pivot`, and `Anchor`. Check with `npx @tasks-md/lint --require-prereg TASKS.md`. The agentbrew task schema tests also require a valid `ID` and a separate, nonempty `Success` field on every task. Add the required fields before filing a task.
 - **Measure in use, not only in tests:** a task that changes what a user gets also names where the effect shows after it ships: a telemetry event, a dashboard tile, or a metrics command. When that number does not exist, the task adds it, or a first task does. A change that adds or changes an event also updates the events doc and the dashboard tile, and reads the tile back when real data arrives. Never invent an event to fill a tile.

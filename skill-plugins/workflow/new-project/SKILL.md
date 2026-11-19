@@ -64,6 +64,9 @@ CHECK_FILENAME_CASE=1 scripts/check.sh fast
 The check reads filenames on every run. See
 [requirements and conventions](references/requirements-map.md).
 
+JavaScript and TypeScript scaffolds can opt in to the
+[unit test import and placement checks](references/requirements-map.md#6-optional-unit-test-rules).
+
 ## Steps
 
 1. **Interview (one round, three questions at most).** Ask only what changes the

@@ -40,6 +40,17 @@
         "Adds a task that measures each unmeasured claim",
         "Explains the gap to the user plainly"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "My README with a recorded 100-byte baseline and 10% headroom is now 120 bytes. Check the budget before committing.",
+      "expected_output": "Runs the README budget mode, finds the 110-byte limit, and explains the 10-byte overrun. The agent checks the staged README and budget before committing.",
+      "expectations": [
+        "Uses the existing README checker with --budget",
+        "Compares UTF-8 bytes with the tracked baseline plus headroom",
+        "Checks the staged README and budget before commit",
+        "Records a reason in review if the baseline needs a deliberate increase"
+      ]
     }
   ]
 }

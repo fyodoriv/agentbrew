@@ -1,0 +1,5 @@
+{
+  "baseline_bytes": 116879,
+  "headroom_percent": 10,
+  "reason": "Record the Agentbrew README size before adding the growth check."
+}

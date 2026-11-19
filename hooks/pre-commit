@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+if git diff --cached --quiet -- README.md .readme-budget.json; then
+  exit 0
+else
+  changed=$?
+fi
+[ "$changed" -eq 1 ] || exit 2
+exec python3 skill-plugins/workflow/readme/scripts/check-readme.py --budget --staged README.md

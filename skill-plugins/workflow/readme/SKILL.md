@@ -132,3 +132,18 @@ exist. It checks:
 
 It cannot judge usefulness order. Judge that yourself, by the default order
 above.
+
+### Project byte budget
+
+Run `python3 <skill-dir>/scripts/check-readme.py --budget README.md` for a
+project with a budget. Commit `.readme-budget.json` beside the README with
+`baseline_bytes`, `headroom_percent`, and a `reason`. Get the baseline with
+`wc -c < README.md`. A 100-byte baseline and 10% headroom permit 110 bytes.
+
+Use `--budget --staged README.md` in pre-commit to check the staged README
+and staged budget. Exit 1 identifies growth over the limit. Exit 2 means
+the README or budget needs a valid file. To raise the budget, update the
+baseline and reason in the same review as the README change.
+
+Agentbrew uses one repo-local hook for both native Lefthook and the Dotfiles
+dispatcher. It runs the budget check when the README or budget is staged.

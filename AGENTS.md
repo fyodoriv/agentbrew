@@ -104,6 +104,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - Per-user schedulers: `src/core/`, fakes; [queue handoff](docs/plans/scheduled-repair-queue-admission.md).
 - PR hooks match `gh pr` even inside heredocs; write hook test input with the Write tool.
 - Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.
+- Use `hook_python` for Python.
 - Install e2e is scratch-only (`sandbox-exec`). Register new install paths in `scripts/install-e2e-if-needed.sh`.
 - `.agents/requirements.yaml` maps each new-project area to the files that meet it. Change a mapped file, keep the map true.
 - `gh auth token` returns an env `GITHUB_TOKEN`/`GH_TOKEN` before its keyring; `resolveEnvVar` strips both so the keyring wins. Tests stub `gh` on `PATH`.

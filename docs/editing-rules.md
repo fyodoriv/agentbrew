@@ -95,13 +95,23 @@ no hardcoded secret may reach the repo.** Full design lives in
    pull request ([`docs/ci.md`](ci.md)). Run `npm run verify:changed` before
    a push; run the full gate locally only when Actions is off.
    The CI workflow (`.github/workflows/oss-readiness.yml`) runs the
-   no-internal-refs test and a private-email check on every pull request.
+   public-release privacy checks and a private-email check on every pull request.
    A hosted runner has no private-pattern file, so the local gates stay
    the authority for leaks ([`docs/ci.md`](ci.md)).
 
 `dotfiles/lib/oss-readiness.sh` reads the same `oss-readiness.env` as
 [`src/oss/no-internal-refs.test.ts`](src/oss/no-internal-refs.test.ts).
 Update the overlay file to extend coverage.
+
+Run `npm run check:oss` to check the tracked checkout before a public
+release. The release preflight runs the same check. It reports literal
+home-directory names in shell or JS/TS source and Markdown, and direct JS/TS
+`fetch` calls with a body and a literal non-loopback HTTP destination.
+Findings show the file and line. Use a relative path or the platform home
+API for real paths, and use `example` for a user name in a sample path.
+The upload check blocks these direct calls without running them. Dynamic
+URLs need separate review. The local check reads tracked files in the
+working checkout. Hosted CI checks its own checkout of the change.
 
 ## Command and gotcha details
 

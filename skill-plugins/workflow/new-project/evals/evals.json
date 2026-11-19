@@ -220,6 +220,16 @@
         "The agent moves detail into docs/ and links it until the fast gate passes",
         "AGENTS.md ends under 10,000 bytes at every commit, not only at the final score"
       ]
+    },
+    {
+      "id": 20,
+      "prompt": "My scaffolded JavaScript repo uses an older Node version than the number in .node-version. Try a commit and explain which check runs first.",
+      "expected_output": "The toolchain check reports the pinned version mismatch before the secret and docs steps. The local fallback runs the same toolchain check and a healthy installation can run the later steps.",
+      "expectations": [
+        "Checks the numeric Node pin before running secret or docs checks",
+        "Reports a single actionable diagnostic for a mismatch",
+        "Keeps the same toolchain check in the local fallback"
+      ]
     }
   ]
 }

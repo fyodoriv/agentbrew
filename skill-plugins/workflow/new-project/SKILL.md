@@ -55,6 +55,12 @@ ADRs, `docs/plans/`, `Agentfile.yaml`, `.gitignore`, `.env.example`,
 `lefthook.yml` (secret scan, docs check, fast gate), and `scripts/check.sh`
 (`fast` per commit, full with e2e per PR).
 
+Pre-commit runs `scripts/check-toolchain.sh` before secret and docs checks.
+The check compares the major and optional minor in `.node-version`. It starts
+the local Biome and Lefthook launchers for declared dependencies. The
+repo-local hook checks that Lefthook can start before handing off. It uses
+the shared toolchain check when Lefthook is absent.
+
 To check documentation filename casing, run this command:
 
 ```bash

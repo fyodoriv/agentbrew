@@ -370,6 +370,57 @@ describe("new-project skill", () => {
     expect(run("metrics.sh")).toMatch(/unit\s+1\s+3\.0/);
   });
 
+  it("checks the pinned Node version and the native launcher before later pre-commit checks", () => {
+    const dir = fresh("tool-none", "pre-commit-toolchain");
+    const bin = join(dir, "fixture-bin");
+    const marker = join(dir, "hook-calls");
+    mkdirSync(bin);
+    symlinkSync(process.execPath, join(bin, "node"));
+    for (const [file, label] of [
+      [join(bin, "gitleaks"), "secret"],
+      [join(dir, "scripts", "check-docs.sh"), "docs"],
+    ]) {
+      writeFileSync(file, `#!/bin/sh\nprintf '%s\\n' ${label} >> "$HOOK_CALLS"\n`, { mode: 0o755 });
+    }
+    const hookEnv = {
+      HOME: dir,
+      PATH: `${bin}:/usr/bin:/bin`,
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_CONFIG_GLOBAL: "/dev/null",
+      HOOK_CALLS: marker,
+    };
+    execFileSync("git", ["init", "--quiet", "--template="], { cwd: dir, env: hookEnv });
+    const config = yaml.load(readFileSync(join(dir, "lefthook.yml"), "utf8"));
+    expect(config).toMatchObject({
+      "pre-commit": { piped: true, commands: { toolchain: { priority: 1, run: "scripts/check-toolchain.sh" } } },
+    });
+    const run = () => spawnSync("/bin/bash", ["hooks/pre-commit"], { cwd: dir, env: hookEnv, encoding: "utf8" });
+    writeFileSync(join(dir, "package.json"), '{"devDependencies":{"@biomejs/biome":"0.0.0"}}');
+    writeFileSync(join(dir, ".node-version"), "0.0.0\n");
+    const wrong = run();
+    expect(wrong.status).toBe(1);
+    expect(wrong.stderr).toMatch(/^toolchain: .+\.node-version[^\n]*\n$/);
+    expect(existsSync(marker)).toBe(false);
+    writeFileSync(join(dir, ".node-version"), `${process.versions.node}\n`);
+    const missing = run();
+    expect(missing.status).toBe(1);
+    expect(missing.stderr).toMatch(/^toolchain: biome cannot start[^\n]*\n$/);
+    expect(existsSync(marker)).toBe(false);
+    const nativeBin = join(dir, "node_modules", ".bin");
+    mkdirSync(nativeBin, { recursive: true });
+    writeFileSync(join(nativeBin, "biome"), '#!/bin/sh\nprintf "native\\n" >> "$HOOK_CALLS"\n', { mode: 0o755 });
+    expect(run().status).toBe(0);
+    expect(readFileSync(marker, "utf8")).toBe("native\nsecret\ndocs\n");
+    unlinkSync(marker);
+    writeFileSync(join(bin, "lefthook"), '#!/bin/sh\nprintf "opaque native failure\\n" >&2\nexit 17\n', {
+      mode: 0o755,
+    });
+    const brokenDispatcher = run();
+    expect(brokenDispatcher.status).toBe(1);
+    expect(brokenDispatcher.stderr).toMatch(/^toolchain: lefthook cannot start[^\n]*\n$/);
+    expect(existsSync(marker)).toBe(false);
+  });
+
   it("keeps check-docs and e2e right with prose, helpers, and required env keys", () => {
     const dir = fresh("tool-none", "edge");
     const stories = join(dir, "docs", "user-stories.md");

@@ -767,6 +767,18 @@
   - **Pivot**: If the lint cannot tell a stub from a real small function without more than 2 false positives on the template, drop it.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Meszaros (2007), xUnit Test Patterns (test doubles).
 
+- [ ] Count guard stops reading a time span as an agent count
+  - **ID**: volatile-count-time-units
+  - **Tags**: quality, docs-guard
+  - **Details**: `src/docs/volatile-count-scan.ts` flags a number, up to three words, then an inventory noun. So a time span before such a noun reads as a count. On 2026-11-19 a TASKS.md acceptance line with a 15-minute timebox, followed by "makes the agent", failed hosted CI and cost one full CI cycle. Exempt a match whose first word after the number is a time unit (ms, second, minute, hour, day, week), next to the existing threshold exemption.
+  - **Files**: `src/docs/volatile-count-scan.ts`, `src/docs/volatile-count-claims.test.ts`
+  - **Acceptance**: a fixture line with a time span before "the agent" passes; a fixture with a real inventory count of agents still fails.
+  - **Hypothesis**: CI failures from a time span read as a count drop from 1 this week to 0 over the next 30 days, with no real count missed.
+  - **Measurement**: `npx vitest run src/docs/volatile-count-claims.test.ts` with the new time-span and real-count fixtures.
+  - **Success**: the time-span fixture passes and 100% of the existing violation fixtures still fail.
+  - **Pivot**: more than 1 real-count fixture passes; then drop the exemption and reword prose instead.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
+
 ## P3
 
 - [ ] Propose the guard start-budget note to the built-in workflow-authoring skill

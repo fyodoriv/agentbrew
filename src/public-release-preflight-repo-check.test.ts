@@ -50,11 +50,11 @@ describe("public release preflight repo check", () => {
     chmodSync(path, 0o755);
   }
 
-  function runPreflight(temporaryDirectory: string) {
+  function runPreflight(temporaryDirectory: string, extraEnv: NodeJS.ProcessEnv = {}) {
     return spawnSync("bash", [join(temporaryDirectory, "scripts", "preflight-public-release.sh")], {
       cwd: temporaryDirectory,
       encoding: "utf-8",
-      env: isolatedScriptEnv(join(temporaryDirectory, "bin")),
+      env: isolatedScriptEnv(join(temporaryDirectory, "bin"), extraEnv),
     });
   }
 
@@ -130,6 +130,10 @@ EOF
 fi
 
 if [[ "$1" == "repo" && "$2" == "view" ]]; then
+  if [[ "\${FIXTURE_PUBLIC_REPO_FOUND:-0}" == "1" ]]; then
+    echo '{"url":"https://github.com/example/agentbrew"}'
+    exit 0
+  fi
   exit 1
 fi
 
@@ -160,11 +164,12 @@ exit 1
 set -euo pipefail
 
 if [[ "$1" == "whoami" ]]; then
+  [[ "\${FIXTURE_PUBLIC_REPO_FOUND:-0}" == "1" ]] && exit 0
   exit 1
 fi
 
-if [[ "$1" == "--prefix" ]]; then
-  exit 0
+if [[ "$1" == "--prefix" && "$2" -ef "$PWD" && "$3" == "run" && "$4" == "check:oss" ]]; then
+  exit "\${FIXTURE_OSS_EXIT:-37}"
 fi
 
 echo "unexpected npm args: $*" >&2
@@ -179,6 +184,15 @@ exit 1
     expect(result.stdout).toContain("viewerIsAMember: true");
     expect(result.stdout).toContain("viewerCanCreateRepositories: false");
     expect(result.stdout).toContain("repoExists: false");
+    expect(result.stdout).toContain("Public release privacy check failed.");
     expect(result.stdout).toContain("Create the public repo, then rerun this preflight.");
+
+    const privacyFailure = runPreflight(temporaryDirectory, { FIXTURE_PUBLIC_REPO_FOUND: "1" });
+    expect(privacyFailure.status).toBe(1);
+    expect(privacyFailure.stdout).toContain("Public release privacy check failed.");
+
+    const clean = runPreflight(temporaryDirectory, { FIXTURE_PUBLIC_REPO_FOUND: "1", FIXTURE_OSS_EXIT: "0" });
+    expect(clean.status).toBe(0);
+    expect(clean.stdout).toContain("Public release privacy check passed");
   });
 });

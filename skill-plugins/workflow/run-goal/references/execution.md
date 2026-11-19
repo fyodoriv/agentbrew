@@ -75,6 +75,12 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
   loop): read [references/parallel-workers.md](references/parallel-workers.md)
   first. It covers the base commit, the heavy-run queue, messages to running
   agents, session-owned files, merges, stacked PRs, and watch pollers.
+- When a session restarts, check which workers and scheduled jobs still
+  exist. Resume only missing owned work. For an explicitly requested
+  recurring job, check its schedule before restoring it. Verify the worker
+  state and that exactly one schedule exists after recovery. A handoff record
+  can complete the escalation step when it identifies the owner and the
+  observed ask. Keep the outside result open until the source confirms it.
 - A scheduled or recurring job that runs a repo's code builds from its own
   clean worktree of the default branch (`git worktree add --detach <state
   dir> origin/main`, refreshed each run), never from the user's main
@@ -418,6 +424,15 @@ start it again after the edits; never report its result for the new code.
   that whole gate. One leaked step filter made unit tests fail only in CI.
 - A test of one operating system's feature runs only there
   (`it.runIf(process.platform === "darwin")`). Never weaken its assertion.
+
+## Required reviewer approvals
+
+Keep a merge criterion open while a required approval is missing. Check the
+current review requirement and name the pending reviewer or approval rule.
+An independent agent review can find defects. The repository still needs
+each required approval from an eligible reviewer. Use one quiet live wait
+for that review during this run. Finish other authorized work while you wait,
+and record the merge only after it happens.
 
 ## Proof inputs and decided measurements
 

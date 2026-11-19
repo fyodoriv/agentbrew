@@ -227,15 +227,36 @@ describe("check-failure-modes.mjs", () => {
   });
 
   it("rejects a forbidden span or silent-retry prose beside an allowed span", () => {
-    const rows = [
-      "| A | t | `crash-loudly` first, then `retry-silently` | `tests/sync.test.ts` |",
-      "| B | t | `graceful-degrade`; on 5xx log and continue | `tests/sync.test.ts` |",
+    const cells = [
+      "`crash-loudly` first, then `retry-silently`",
+      "`crash-loudly`; the worker retries silently",
+      "`crash-loudly` then `retry_silently`",
+      "`crash-loudly` then `log-and-continue;`",
+      "`crash-loudly` then `ignore-errors`",
+      "`retry-silently`, not `crash-loudly`",
     ];
-    for (const row of rows) {
-      withRepo({ "README.md": section({ table: `${HEADER}\n${row}` }) }, (_root, run) => {
+    for (const cell of cells) {
+      withRepo({ "README.md": section({ table: `${HEADER}\n| A | t | ${cell} | t |` }) }, (_root, run) => {
         const result = run("README.md");
-        expect(result.status).toBe(1);
         expect(result.stderr).toContain("is forbidden");
+        expect(result.status).toBe(1);
+      });
+    }
+  });
+
+  it("accepts code spans, negated phrases, and visible-degrade prose beside an allowed span", () => {
+    const cells = [
+      "`degrade-gracefully` with `ignore_errors`",
+      "`degrade-gracefully` — runs `pnpm install --ignore-scripts`",
+      "`crash-loudly`, never `retry-silently`",
+      "`crash-loudly` instead of silently retrying",
+      "`graceful-degrade` — the daemon logs and continues; the dashboard shows the miss",
+    ];
+    for (const cell of cells) {
+      withRepo({ "README.md": section({ table: `${HEADER}\n| A | t | ${cell} | t |` }) }, (_root, run) => {
+        const result = run("README.md");
+        expect(result.stderr).toBe("");
+        expect(result.status).toBe(0);
       });
     }
   });
@@ -247,6 +268,12 @@ describe("check-failure-modes.mjs", () => {
       expect(result.status).toBe(1);
       expect(result.stderr).toContain("Test is empty");
     });
+    for (const header of ["Chaos-test", "Unit / e2e test", "Unit tests"]) {
+      const named = `| Mode | Trigger | Expected | ${header} |\n|---|---|---|---|\n| A | t | crash loudly | t |`;
+      withRepo({ "README.md": section({ table: named }) }, (_root, run) => {
+        expect(run("README.md").status).toBe(0);
+      });
+    }
   });
 
   it("rejects a file with no failure modes section", () => {

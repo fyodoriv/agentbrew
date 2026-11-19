@@ -62,8 +62,10 @@ one step is slow, add finer caching for it:
 | Task cache by inputs | [Nx](https://nx.dev) or Turborepo (local cache; `inputs`/`outputs` per target) | Nx with `@nxlv/python`, or a per-step input hash | cargo's incremental build + `sccache` |
 | Affected tests only | `vitest related` / `vitest --changed`, `nx affected` | `pytest-testmon` | `cargo nextest` with a filter per changed crate |
 
-Keep one rule: a cache may skip work only when every input it depends on is in
-its key. When in doubt, run with `NO_CACHE=1` and compare.
+Cache hits require a complete input fingerprint. The gate records the
+scaffold's `CLAUDE.md` link as metadata and fingerprints `AGENTS.md` separately.
+For an untracked link with any other target, or an input it cannot read, it
+runs without a cache. When in doubt, run with `NO_CACHE=1` and compare.
 
 Turborepo in an npm workspace (proven in tasks.md, 2026-10-16: full gate 78 s,
 all-cached 4.2 s):

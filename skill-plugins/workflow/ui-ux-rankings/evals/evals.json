@@ -284,6 +284,17 @@
         "Stops when every page averages at least 80, or proposes cut or merge for a page that plateaus",
         "Sends the billing page findings to the session that owns it instead of fixing them"
       ]
+    },
+    {
+      "id": 26,
+      "prompt": "Judge the vote buttons on this page; they change colour instantly when tapped.",
+      "expected_output": "Fails the button-state check: names the missing hover, press and focus transitions, recommends one shared adapter on a maintained library (Motion or shadcn/Radix), and a gate step plus a UI test that samples each state mid-transition.",
+      "expectations": [
+        "Fails a control whose state changes with no transition",
+        "Recommends a shared adapter on a maintained library, not one-off CSS",
+        "Names a gate check for raw buttons and a UI test for hover, press and focus",
+        "Requires no motion under Reduce motion"
+      ]
     }
   ]
 }

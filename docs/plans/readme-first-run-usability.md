@@ -14,3 +14,7 @@
 - **Anchor:** `readme-human-first-run-test` and the archived Minsky
   user-test protocol. The Skill eval checks the protocol. Verified human
   sessions provide the usability result.
+
+Both local links resolved in the source tree. The new-project guide links
+to the matching canonical README skill section. The new eval contains six
+expectations. Participant sessions are still open in the task queue.

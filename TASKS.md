@@ -335,9 +335,9 @@
 - [ ] Three strangers reach a first run from the README alone
   - **ID**: readme-human-first-run-test
   - **Tags**: readme, new-project, usability, from-minsky
-  - **Details**: Port minsky `docs/user-tests/README.md` and `template.md` into the `readme` skill (and point to it from new-project owner practices). Protocol: 3 people who have never seen the project follow only the README with no help, on a clean machine or account; log time to first successful run and every point of friction with its time. Any friction over 5 minutes becomes a P1 README task. Automated stranger-install tests (dotfiles `tests/stranger-readiness.bats`) stay; this adds the human check they cannot do.
-  - **Files**: `skill-plugins/workflow/readme/references/human-first-run-test.md`, `skill-plugins/workflow/readme/SKILL.md`, `skill-plugins/workflow/new-project/references/owner-practices.md`, a readme eval.
-  - **Acceptance**: the readme skill links the protocol and template; an eval asks for a usability check and the agent proposes the 3-stranger protocol with the 5-minute bar.
+  - **Details**: Run the README skill's first-run protocol on Agentbrew and Dotfiles. Recruit 3 people per project who have never used it. Give each a clean environment and only the README link. Record the first result, elapsed time and friction. Turn any friction over 5 minutes into a P1 README task.
+  - **Files**: `skill-plugins/workflow/readme/references/human-first-run-test.md` and private session records.
+  - **Acceptance**: three verified unassisted first runs per project. Record the median and scrubbed findings.
   - **Hypothesis**: README gaps that block first-time users are found before release instead of from issues.
   - **Measurement**: median time to first run across the 3 sessions, recorded in the template.
   - **Success**: median at or under 5 minutes for agentbrew and dotfiles.

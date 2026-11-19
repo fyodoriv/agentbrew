@@ -84,6 +84,12 @@ Prove each claim. Be honest about how strong the proof is.
    wins over this skill: keep both green.
 6. In the PR, paste the checker output before and after.
 
+## First-run usability test
+
+When the user asks whether people can start from the README alone, use the
+[first-run protocol](references/human-first-run-test.md) and its run template.
+Measure three unfamiliar people on clean setups against a five-minute median.
+
 ## Reader-priority tiers
 
 Use the tiers to judge "everything else". Tag each section, then sort by tier.

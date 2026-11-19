@@ -192,7 +192,7 @@
   - **Tags**: security, stability, sync, cli
   - **Mode**: AFK
   - **Details**: Source review found additional preflight cases outside the explicit-pull correction. An empty selection currently falls through truthiness guards, and plain sync calls native plugin output before filtering its modules. Freeze synthetic empty-API, empty-pull, unknown-plain and selected-plain exclusion controls before changing these paths. The [continuation handoff](docs/plans/sync-selection-continuation-handoff-20261106.md) preserves current evidence and unapproved design; register and land bounded measurement infrastructure before capturing target cases. The [isolated binding pivot](docs/plans/sync-binding-exclusion-pivot.md) covers synthetic builder wiring only; CLI/update and real-output evidence remain. Preserve the explicit-pull guards and ordinary default behavior; do not use real plugin or credential data.
-  - **Progress**: [Invalid selection preflight](docs/plans/sync-selection-invalid-preflight.md) passed the three hosted invalid-input controls and the standard compatibility suite. The invalid inputs left the isolated scratch tree unchanged. Signed [interruption controls](docs/plans/native-publication-facet-ownership.md#test-process-loss-at-three-output-checkpoints) reached payload, marketplace index and settings. Every replacement process refused with zero new changes. The signed scratch CLI also kept the selected outputs separate and observed publication before redaction. Native receipt and repair controls preserved private Mac file modes. Live selected publication still needs coordinated writer rollout and verified interruption handling.
+  - **Progress**: [Invalid selection preflight](docs/plans/sync-selection-invalid-preflight.md) passed the three hosted invalid-input controls and the standard compatibility suite. The invalid inputs left the isolated scratch tree unchanged. Signed [interruption controls](docs/plans/native-publication-facet-ownership.md#test-process-loss-at-three-output-checkpoints) reached payload, marketplace index and settings. Every replacement process refused with zero new changes. The signed scratch CLI also kept the selected outputs separate and observed publication before redaction. Native receipt and repair controls preserved private Mac file modes. [Selected skill preparation](docs/plans/selected-skill-preparation.md) now runs only for a selection with `skills` or no selection, checked at the runner's imported boundaries. Remaining: a selection with hooks, MCP or rules still refreshes the complete native marketplace. Live selected publication still needs coordinated writer rollout and verified interruption handling.
   - **Files**: `src/cli.ts`, `src/cli-helpers.ts`, `src/update.ts`, existing CLI/update/native-output tests, README and a registered preparation plan.
   - **Output**: code
   - **Acceptance**: Empty or unknown selections fail before state application, installation or publication. A valid selection excludes native plugin publication and live content preparation for every unselected module. An invocation without a selection retains normal configured behavior.
@@ -330,14 +330,26 @@
   - **Field review**: the exact first seven-day replay is complete and independently checked. Every observed loop syntax row paired with a timed tool call. The old report label was absent. The current data leaves background duration, unknown execution mode, timeout cause, and comparison with the prior measurement unresolved. The aggregate report stays private.
   - **Blocked**: needs-comparable-field-evidence — register a comparable polling measurement and timeout baseline before applying the original thresholds. The existing syntax and tool-call evidence leaves Success and Pivot undecided.
 
+- [ ] PR bodies and new task blocks pass the pre-register checker in CI
+  - **ID**: preregistration-ci-gate
+  - **Tags**: quality, ci, pre-registration, from-minsky
+  - **Details**: The new `pre-register` skill ships `scripts/check-preregistration.mjs`, but nothing runs it. On 2026-11-19 it reported all five fields missing in the bodies of the last five merged agentbrew PRs, although AGENTS.md Delivery asks for a hypothesis block, and it reported 58 findings across existing TASKS.md blocks (mostly a Measurement with no backticked command). Run it in CI on the PR body (an `Exempt: <gate>` line passes) and on TASKS.md blocks that the PR adds or changes, as a ratchet that leaves untouched blocks alone.
+  - **Files**: the PR-body check workflow or `scripts/check-pr-vision-trace.mjs`, `scripts/verify-changed.sh`, a ratchet helper and its test, AGENTS.md Delivery.
+  - **Acceptance**: a PR body with no hypothesis block and no `Exempt:` line fails the check; a PR that adds a task block with a manual measurement fails; an untouched old block never fails.
+  - **Hypothesis**: merged PRs with no pre-registration go from 5 of the last 5 to 0 of the next 10.
+  - **Measurement**: `for n in $(gh pr list --state merged --limit 10 --json number --jq '.[].number'); do gh pr view $n --json body --jq .body | node skill-plugins/workflow/pre-register/scripts/check-preregistration.mjs - >/dev/null || echo "fail $n"; done`
+  - **Success**: 0 failing bodies among the next 10 merged PRs.
+  - **Pivot**: more than 2 false blocks in the next 20 PRs.
+  - **Anchor**: Munafò et al. 2017 (A manifesto for reproducible science, Nature Human Behaviour).
+
 ## P2
 
 - [ ] Three strangers reach a first run from the README alone
   - **ID**: readme-human-first-run-test
   - **Tags**: readme, new-project, usability, from-minsky
-  - **Details**: Port minsky `docs/user-tests/README.md` and `template.md` into the `readme` skill (and point to it from new-project owner practices). Protocol: 3 people who have never seen the project follow only the README with no help, on a clean machine or account; log time to first successful run and every point of friction with its time. Any friction over 5 minutes becomes a P1 README task. Automated stranger-install tests (dotfiles `tests/stranger-readiness.bats`) stay; this adds the human check they cannot do.
-  - **Files**: `skill-plugins/workflow/readme/references/human-first-run-test.md`, `skill-plugins/workflow/readme/SKILL.md`, `skill-plugins/workflow/new-project/references/owner-practices.md`, a readme eval.
-  - **Acceptance**: the readme skill links the protocol and template; an eval asks for a usability check and the agent proposes the 3-stranger protocol with the 5-minute bar.
+  - **Details**: Run the README skill's first-run protocol on Agentbrew and Dotfiles. Recruit 3 people per project who have never used it. Give each a clean environment and only the README link. Record the first result, elapsed time and friction. Turn any friction over 5 minutes into a P1 README task.
+  - **Files**: `skill-plugins/workflow/readme/references/human-first-run-test.md` and private session records.
+  - **Acceptance**: three verified unassisted first runs per project. Record the median and scrubbed findings.
   - **Hypothesis**: README gaps that block first-time users are found before release instead of from issues.
   - **Measurement**: median time to first run across the 3 sessions, recorded in the template.
   - **Success**: median at or under 5 minutes for agentbrew and dotfiles.
@@ -371,6 +383,7 @@
 - [ ] Agent hooks block the destructive commands minsky blocked and we still allow
   - **ID**: block-remaining-dangerous-commands
   - **Tags**: hooks, safety, from-minsky
+  - **Progress**: The opt-in hook covers leading direct Git stash discard commands. Extend it to the other listed operations and to any additional shell forms after verifying their command boundaries.
   - **Details**: minsky `.claude/hooks/block-dangerous-bash.sh` blocked commands our hooks still allow: `git stash drop` and `git stash clear` (stashes are shared by every worktree, so one agent can delete another's work), `gh pr merge --admin` (skips branch protection), `gh repo delete`, `git -c core.hooksPath=<x> commit` (a quiet hook bypass), and `rm -rf` outside the temp and scratch folders. Also block: creating or switching branches in a shared main checkout (`git checkout -b/-B`, `git switch -c/-C`, `git checkout <type>/...`) when the git dir equals the common git dir, unless the command uses `git -C`, `cd` into a worktree, or `git worktree` (a sibling agent once switched branches and wiped another session's edits); wholesale reverts `git checkout <ref> -- .` and `git restore :/`; and direct `npm publish` (releases go through the tag workflow with its SBOM and provenance gates). Add them to `hooks/checks/` (or extend `no-commit-no-verify.sh` for the hooksPath case), each with a fixture test, and register them in the hook manifest.
   - **Files**: `hooks/checks/no-destructive-commands.sh`, its `.test.sh`, `hooks/checks/no-commit-no-verify.sh`, hook manifest, `docs/` hook list.
   - **Acceptance**: every command shape listed in Details is blocked in a fixture; `git stash list`, `gh pr merge --squash`, and `rm -rf $TMPDIR/x` still pass.
@@ -754,6 +767,30 @@
   - **Success**: 1 of 1 unmarked stub fails; 1 of 1 marked stub passes; 0 findings on a clean scaffold.
   - **Pivot**: If the lint cannot tell a stub from a real small function without more than 2 false positives on the template, drop it.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Meszaros (2007), xUnit Test Patterns (test doubles).
+
+- [ ] Count guard stops reading a time span as an agent count
+  - **ID**: volatile-count-time-units
+  - **Tags**: quality, docs-guard
+  - **Details**: `src/docs/volatile-count-scan.ts` flags a number, up to three words, then an inventory noun. So a time span before such a noun reads as a count. On 2026-11-19 a TASKS.md acceptance line with a 15-minute timebox, followed by "makes the agent", failed hosted CI and cost one full CI cycle. Exempt a match whose first word after the number is a time unit (ms, second, minute, hour, day, week), next to the existing threshold exemption.
+  - **Files**: `src/docs/volatile-count-scan.ts`, `src/docs/volatile-count-claims.test.ts`
+  - **Acceptance**: a fixture line with a time span before "the agent" passes; a fixture with a real inventory count of agents still fails.
+  - **Hypothesis**: CI failures from a time span read as a count drop from 1 this week to 0 over the next 30 days, with no real count missed.
+  - **Measurement**: `npx vitest run src/docs/volatile-count-claims.test.ts` with the new time-span and real-count fixtures.
+  - **Success**: the time-span fixture passes and 100% of the existing violation fixtures still fail.
+  - **Pivot**: more than 1 real-count fixture passes; then drop the exemption and reword prose instead.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
+
+- [ ] Skill eval cases can be run for a pass rate
+  - **ID**: skill-eval-pass-rate
+  - **Tags**: quality, skills, measurement
+  - **Details**: Task blocks measure skill changes with `npx agentbrew eval <skill>`, but that command does not exist. `agentbrew skills` has only `coverage` and `validate`, which check that `evals/evals.json` cases exist, not that they pass. On 2026-11-19 a reviewer found the command in the `diagnose` block and in the blocks filed for the runner-rule skills, so those Measurement lines could never run. Either add a runner (for example `agentbrew skills eval <name>`, reusing the skill-creator grader) or change the convention to a runnable proxy. Then fix the `diagnose` block.
+  - **Files**: `src/commands/` (a new `skills eval` subcommand) or `docs/task-backend-contract.md`; the `diagnose` block in TASKS.md.
+  - **Acceptance**: the Measurement of every open TASKS.md block names a command that exists; a new runner, if built, prints a pass rate for one skill's eval cases.
+  - **Hypothesis**: open task blocks whose Measurement names a missing command drop from 1 to 0 and stay at 0.
+  - **Measurement**: `grep -c "npx agentbrew eval" TASKS.md`
+  - **Success**: 0 matches, and a new runner, if built, prints a pass rate for one skill.
+  - **Pivot**: grading a single skill run costs more than 1 US dollar; then keep the proxy convention and drop the runner.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
 
 ## P3
 

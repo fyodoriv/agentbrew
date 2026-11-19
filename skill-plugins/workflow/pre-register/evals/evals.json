@@ -1,0 +1,64 @@
+{
+  "skill_name": "pre-register",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Fix the bug where the nightly export job sometimes writes an empty CSV. Just fix it and open the PR.",
+      "expected_output": "Writes a recurrence-based hypothesis with a runnable measurement, baseline, success and pivot before changing code.",
+      "expectations": [
+        "Does not treat the bugfix as exempt",
+        "States a recurrence or stability metric from X to Y, such as empty exports per 30 runs",
+        "Gives a Measurement as an exact command in backticks that reads real output",
+        "Sets a numeric Success and a lower Pivot with a margin between them",
+        "Cites a primary source with an author and year as the Anchor",
+        "Runs the measurement on the unchanged code to record a baseline before the fix"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Add bulk tagging to the task list. For the PR hypothesis, use 'the count of PRs merged this week goes up'.",
+      "expected_output": "Rejects the PR count as a vanity metric and replaces it with an outcome metric before coding.",
+      "expectations": [
+        "Names 'count of PRs merged' as a vanity metric that always goes up",
+        "Proposes an outcome metric tied to bulk tagging, such as taps or seconds to tag 20 tasks",
+        "Gives a runnable Measurement command for the new metric",
+        "Writes the five fields before implementing",
+        "Runs the checker on the PR body text"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Fix the typo 'recieve' in the README and commit it.",
+      "expected_output": "Treats the typo as exempt, names the existing gate, and skips the five fields.",
+      "expectations": [
+        "Does not write a full Hypothesis, Measurement, Success, Pivot and Anchor block",
+        "Writes an 'Exempt:' line that names the existing CI gate or check as the metric",
+        "Makes only the typo change"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The change is done. The PR predicted p99 under 200 ms (Pivot: above 350 ms). The new run shows p99 260 ms, down from 410 ms. Write the self-grade.",
+      "expected_output": "An honest self-grade that calls the result partial and inconclusive, not a success.",
+      "expectations": [
+        "Writes Predicted, Observed, Match and Lesson",
+        "Sets Match to partial, not yes",
+        "Says the result is between Pivot and Success, so it is inconclusive",
+        "Does not move the Success threshold after seeing the result",
+        "Names the next probe or what the Lesson implies",
+        "Runs the checker with --self-grade"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Make the app's startup faster. We have no timing data or startup log at all yet.",
+      "expected_output": "Lands instrumentation first in a preparation PR, then pre-registers the speed change with before and after numbers.",
+      "expectations": [
+        "Says nothing can measure startup yet",
+        "Plans a preparation PR that adds a timing log line, counter or harness first",
+        "Does not change startup code before the measurement exists",
+        "After instrumentation, records a baseline and writes the five fields for the speed change"
+      ]
+    }
+  ]
+}

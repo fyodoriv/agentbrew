@@ -40,7 +40,7 @@ describe("run-goal /goal deliver shorthand", () => {
   });
 
   it("has an eval that runs a bare /goal deliver end to end", () => {
-    const scenario = evals.find(({ id }) => id === 352);
+    const scenario = evals.find(({ id }) => id === 353);
     expect(scenario?.prompt.startsWith("/goal deliver")).toBe(true);
     const expected = [scenario?.expected_output, ...(scenario?.expectations ?? [])].join(" ");
     expect(expected).toMatch(/does not ask the user what 'deliver' means/);

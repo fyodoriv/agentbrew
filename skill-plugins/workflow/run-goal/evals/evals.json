@@ -4029,6 +4029,16 @@
     },
     {
       "id": 352,
+      "prompt": "/goal add a new CLI command group that reports on my private records, with tests and docs, and ship it. The repo's hosted checks take 30 minutes per run and local test runs are blocked.",
+      "expected_output": "Contract first; starts a fresh-context diff review before or with the first push and batches its fixes with the first CI fixes; tells the reviewer to classify every agent-visible output field as id, count, or owner text; gives each subagent its own scratch file names.",
+      "expectations": [
+        "The fresh-context diff review starts before or together with the first hosted push, not after the first hosted run ends.",
+        "The reviewer is told to list each field an agent can read and classify it as an id, a count, or owner text.",
+        "The review fixes and the first CI fixes go in one push, so the hosted cycle runs once for both."
+      ]
+    },
+    {
+      "id": 353,
       "prompt": "/goal deliver\n\n(Context: this session added four workflow skills to agentbrew. PR A files the tasks and PR B implements them; both are open and their hosted checks are still running. Nothing is installed on this Mac yet.)",
       "expected_output": "Contract first, expanding 'deliver' without asking what it means: lists PR A and PR B by URL, takes a before number (the skills are absent on this Mac and recent PR bodies the new checker would flag), waits for green hosted checks at each current head, has a fresh reviewer read each diff, merges per the repo's delivery rules under a cited approval, runs agentbrew sync, reads the installed files back byte-equal to the merged source, proves the skills work where users meet them (the installed checker on real input, a fresh agent session that lists the skills), and publishes a before/after report with a plain-words explanation.",
       "expectations": [

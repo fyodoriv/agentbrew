@@ -230,6 +230,17 @@
         "Reports a single actionable diagnostic for a mismatch",
         "Keeps the same toolchain check in the local fallback"
       ]
+    },
+    {
+      "id": 21,
+      "prompt": "Start a new developer tool: a CLI that imports bank CSV files and runs a nightly categorize job.",
+      "expected_output": "The scaffold gives each top-level operation one content-free event with its outcome and duration.",
+      "expectations": [
+        "Lists the import command and the nightly job as top-level operations in docs/observability.md",
+        "Has each operation write exactly one event when it ends, with ok, seconds, and degraded when it falls back",
+        "Describes inputs by counts or a hash, never by file contents or transaction text",
+        "Adds a test that runs each operation and asserts its event"
+      ]
     }
   ]
 }

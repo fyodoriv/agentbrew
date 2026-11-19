@@ -95,6 +95,17 @@
         "Uses Conventional Commits types instead of a custom iterate: prefix",
         "Does not modify or relax the guard command, and reworks or discards changes that fail the guard or do not improve the metric"
       ]
+    },
+    {
+      "id": 9,
+      "prompt": "Iteration 4: I started replacing the config loader 20 minutes ago. It still does not compile and nothing is committed. Keep going?",
+      "expected_output": "Treats the 15-minute timebox as passed, splits the change, and commits the smallest verifiable part.",
+      "expectations": [
+        "Says the change ran past the 15-minute timebox without a commit",
+        "Splits the change instead of continuing the large edit",
+        "Commits only the smallest part that can be verified alone, staging named files",
+        "Makes the rest of the change the next hypothesis"
+      ]
     }
   ]
 }

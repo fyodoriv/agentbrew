@@ -1,0 +1,60 @@
+{
+  "skill_name": "failure-modes",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add a LaunchAgent that runs every night at 02:00 and syncs ~/Documents/notes to a backup folder on an external drive.",
+      "expected_output": "Writes a Failure modes section with steady state, blast radius, escape hatch, and a tested row per real fault before calling the job done.",
+      "expectations": [
+        "Writes a measurable steady state, such as one ok log line per night and an empty diff between source and backup",
+        "Names the exact escape hatch command, such as launchctl bootout for the job label, or a config switch",
+        "Adds rows for the drive not mounted, two runs at once or a stale lock, and a crash mid-copy",
+        "Uses only crash loudly, circuit-break and notify, or degrade gracefully in the Expected column",
+        "Writes a fault-injection test for each row and runs the checker with --repo before claiming done"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Review this PR: it wraps fetchPrices() in a while loop that retries every 5 seconds forever and only logs failures at debug level.",
+      "expected_output": "Flags the unbounded silent retry as a forbidden failure behavior and asks for a visible circuit-break or a loud crash with a test.",
+      "expectations": [
+        "Names the silent, unbounded retry as hiding the failure",
+        "Proposes a bounded retry whose last failure crashes loudly or circuit-breaks and notifies",
+        "Asks for a fault-injection test that forces repeated failures and asserts the visible outcome",
+        "Asks for a Failure modes row for the dependency-down case"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Add a pure helper formatDuration(ms) that returns strings like '1h 05m'. It has no I/O and no state.",
+      "expected_output": "Does not apply the failure-mode table to a pure function and writes ordinary unit tests instead.",
+      "expectations": [
+        "Says the skill does not apply because the helper is a pure function with no I/O or state",
+        "Does not add a Failure modes section or a fault table",
+        "Covers edge inputs such as 0, negative, and very large values with ordinary unit tests"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Our web app's search endpoint now calls an LLM to rerank results. Add the call.",
+      "expected_output": "Writes rows for LLM timeout, quota, and outage, and picks degrade gracefully for the user path with a reason.",
+      "expectations": [
+        "Walks the slow-or-timeout, rate-limit-or-quota, and dependency-down axes",
+        "Picks degrade gracefully (return the unranked results and mark them) for the request path, and explains why a crash is wrong for a waiting user",
+        "Considers circuit-break and notify for repeated LLM outages so the endpoint stops waiting on every request",
+        "Sets an explicit timeout and writes a test that stubs a slow LLM and asserts the degraded response"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Here is my Failure modes table. The row 'Disk full' names `tests/backup-disk-full.test.ts`, but I have not written that test yet. Can we ship?",
+      "expected_output": "Says no: the named test must exist and pass first; writes it, sees it fail, then pass, and reruns the checker.",
+      "expectations": [
+        "Does not claim the table is done while a named test is missing",
+        "Runs the checker with --repo and quotes its not-found line",
+        "Writes the disk-full fault-injection test, sees it fail first, then pass",
+        "Reruns the checker and reports its OK line before saying it can ship"
+      ]
+    }
+  ]
+}

@@ -41,6 +41,10 @@ step() {
 }
 
 step docs scripts/check-docs.sh
+if [ "${CHECK_FILENAME_CASE:-0}" = 1 ]; then
+  # Git can ignore a rename that changes only case. Read actual filenames.
+  key="" step filename-case bash scripts/check-filename-case.sh
+fi
 if [ "${CHECK_ORPHAN_TESTS:-0}" = 1 ]; then
   key="" step orphan-tests node scripts/check-orphan-tests.mjs
 fi

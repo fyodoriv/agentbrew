@@ -23,6 +23,8 @@ Where this ledger and minsky `absorbed.md` disagree, this ledger wins. For examp
 | `verify-squash-merge-completeness.mjs` | task `verify-squash-merge-completeness` |
 | `check-toolchain.mjs` + lefthook `piped: true` | task `new-project-toolchain-first-hook` |
 | `check-readme-byte-budget.mjs` | task `readme-byte-budget` |
+| `check-lockfile-integrity.mjs` (docs/security/supply-chain.md layer 1) | task `lockfile-integrity-flip-check` |
+| docs/security/dashboard-exposure.md per-run token | `docs/shared-rules.md` Security and secrets |
 | `check-no-hardcoded-user-paths.mjs`, `check-no-personal-paths-in-docs.mjs` | task `no-literal-home-paths` |
 | working-tasks.md UI is P0-P1 | `docs/shared-rules.md` Task queues |
 | skill `triage` out-of-scope memory | `skill-plugins/workflow/watch-issues/SKILL.md` step 3, eval 17 |
@@ -219,7 +221,8 @@ Total rows: 61
 | scripts/check-no-hardcoded-user-paths.mjs, check-no-personal-paths-in-docs.mjs | PORT | agentbrew/scripts/lint-repo-artifacts.sh: fail on `/Users/<name>/` or `/home/<name>/` literals in tracked code/docs (allow `~`, `$HOME`). Generic public-repo hygiene, not covered by the private-pattern gate. |
 | scripts/check-orphan-tests.mjs | PORT | tasks.md/scripts (or package test lint): every symbol a test imports from `../src` must exist as a named export; catches src/test API drift before tsc in mjs tests. Lower priority. |
 | scripts/check-lockfile-registry.mjs | ALREADY-THERE | agentbrew/scripts/check-locked-dependencies.mjs + dotfiles oss-readiness gate cover registry/leak; generic allowlist idea optional |
-| scripts/check-lockfile-integrity.mjs, check-sbom-shape.mjs | DROP | supply-chain slice for minsky's pnpm publish; tooling repos use check-lockfile-sync.sh |
+| scripts/check-lockfile-integrity.mjs | PORT | task `lockfile-integrity-flip-check`: `check-lockfile-sync.sh` only checks that package.json and the lockfile agree, not that a same-version entry kept its hash |
+| scripts/check-sbom-shape.mjs | DROP | SBOM shape for minsky's pnpm publish pipeline |
 | scripts/scan-secrets.mjs | ALREADY-THERE | dotfiles/lib/secret-scan.sh + .github/workflows/oss-readiness.yml |
 | scripts/check-no-no-verify-bypass.mjs | ALREADY-THERE | agentbrew/hooks/checks/no-commit-no-verify.sh |
 | scripts/check-bot-commit-hook-bypass.mjs | DROP | only matters for CI bots committing with lefthook; no such workflow in targets |

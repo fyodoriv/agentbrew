@@ -332,6 +332,18 @@
 
 ## P2
 
+- [ ] A lockfile entry cannot change its hash without changing its version
+  - **ID**: lockfile-integrity-flip-check
+  - **Tags**: supply-chain, ci, from-minsky
+  - **Details**: Port minsky `scripts/check-lockfile-integrity.mjs` (layer 1 of its `docs/security/supply-chain.md`). Diff `package-lock.json` against `origin/<default>` and fail when an entry keeps the same `name@version` but its `integrity` hash changes, which is the signature of a republished or hijacked package (the 2025 chalk/debug attack). `check-lockfile-sync.sh` only checks that package.json and the lockfile agree. Run it in the hosted verify job; do the same for tasks.md, which also publishes to npm.
+  - **Files**: `scripts/check-lockfile-integrity.mjs`, its test, the verify workflow, `docs/ci.md`.
+  - **Acceptance**: a fixture with a same-version integrity change exits 1 and names the package; a version bump with a new hash exits 0; the current tree exits 0.
+  - **Hypothesis**: same-version hash flips reaching main go from undetected to blocked in CI.
+  - **Measurement**: `node scripts/check-lockfile-integrity.mjs --base origin/main; echo exit=$?` on the fixtures and the tree.
+  - **Success**: fixture exits 1, bump and tree exit 0.
+  - **Pivot**: more than 1 false block in the next 20 dependency PRs.
+  - **Anchor**: Ohm et al. 2020 (Backstabber's Knife Collection, software supply chain attacks).
+
 - [ ] Debugging starts from a reliable failing signal and ranked hypotheses
   - **ID**: diagnose-loop-ladder-and-ranked-hypotheses
   - **Tags**: skills, debugging, from-minsky

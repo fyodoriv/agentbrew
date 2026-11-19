@@ -127,7 +127,7 @@ A long task or a user-requested deadline remains valid.
 - Assist with defensive security only.
 - Never search for, expose, log, or commit secrets/credentials/tokens/cookies/keys.
 - Do not perform destructive operations without explicit confirmation for that exact action.
-- A local web UI or dashboard binds to `127.0.0.1` by default. Binding `0.0.0.0` needs an explicit opt-in setting and a doc note.
+- A local web UI or dashboard binds to `127.0.0.1` by default. Binding `0.0.0.0` needs an explicit opt-in setting and a doc note. A local endpoint that changes state also requires a per-run token, even on loopback.
 - Never send emails, payments, Slack/Jira/GitHub comments/reviews, or other public side effects without approval unless repo rules explicitly authorize that delivery step.
 
 ## Org-overlay routing

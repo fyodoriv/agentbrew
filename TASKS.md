@@ -686,6 +686,20 @@
   - **Pivot**: A gate over 10 seconds on a scaffold rejects the approach; move that lint to the full gate only.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Forsgren, Humble and Kim (2018), Accelerate (fast feedback).
 
+- [ ] Fingerprint symlinks without opening their targets in new project gates
+  - **ID**: new-project-cache-symlinks
+  - **Tags**: new-project, reliability, cache
+  - **Mode**: AFK
+  - **Details**: An untracked directory symlink makes the scaffold fast gate exit before running checks. The cache passes untracked paths to shasum, which follows links. Record link text as data and preserve regular-file fingerprints. An unsupported input or a failed fingerprint should run checks without a cache.
+  - **Files**: `skill-plugins/workflow/new-project/templates/scripts/check.sh`, its requirements and scaffold tests
+  - **Output**: code
+  - **Acceptance**: Scratch scaffold handles an untracked link to a directory or a missing target. A changed link target and changed untracked file both rerun the affected cached step. An incomplete fingerprint runs the gate with no cache.
+  - **Hypothesis**: a valid scaffold with an untracked directory link goes from a failed startup to exit 0. The gate reads no target bytes and misses no registered input change.
+  - **Measurement**: Run the scaffold contract suite with untracked directory and dangling links, a changed link, a regular-file change, and an unsupported file type.
+  - **Success**: clean gate exits 0 after each valid input change. The unchanged run reports a cache hit. Expect zero reads through any observed link and zero reuse when the input is unsupported.
+  - **Pivot**: Any stale or unsafe cache hit rejects the fingerprint. Use the full check for the affected entry type.
+  - **Anchor**: Git `git-ls-files(1)`, `readlink(2)`, and the original Linux fixture exit 123 in Agentbrew PR #1127.
+
 - [ ] Doc-quality lints for AGENTS.md and skills: why-first paragraph, README byte budget, skill rule cap
   - **ID**: doc-quality-lints
   - **Tags**: docs, lint, skills, absorbed-from-minsky

@@ -172,3 +172,19 @@ The trace used `devtools.timeline`, `disabled-by-default-devtools.timeline`,
 event source for the complete gate. The trace completion flag covers the
 trace buffer. Production capture still needs a verified cutoff for each
 owned Runtime and Network session.
+
+## Loopback close acknowledgement
+
+The local nine-family fixture run failed in L08 at the peer's flush with
+`BrokenPipe`. The client can finish its close write and drop the socket before
+the peer returns its close frame. The pinned tokio-tungstenite close sink
+drives the write. The stream reads the reply.
+
+Hold the peer reply until a test-owned barrier releases it. Predict one
+premature client return on the unchanged fixture and zero after the client
+waits for the reply. Run the new case by name, then the existing loopback
+and reducer suite with the command above. Keep zero failures in the held
+reply case, all nine existing families, and all 59 reducer cases. Reject
+any change to capture decisions, target cleanup checks or existing
+deadlines. Anchor: L08 terminal result and tokio-tungstenite 0.30.0
+`poll_close` and `poll_next`.

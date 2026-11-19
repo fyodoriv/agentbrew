@@ -120,9 +120,10 @@ function findTimeouts(path, text) {
     if (ts.isCallExpression(node) && isVitestCase(node.expression, checker, bindings)) {
       const timeout = timeoutLiteral(node.arguments);
       if (timeout) {
-        const key = JSON.stringify([enclosingSuites(node, file, checker, suites), Number(timeout.text)]);
+        const value = Number(timeout.text);
+        const key = JSON.stringify([enclosingSuites(node, file, checker, suites), value]);
         const { line } = file.getLineAndCharacterOfPosition(timeout.getStart(file));
-        found.push({ key, line: line + 1 });
+        found.push({ key, value, line: line + 1 });
       }
     }
     ts.forEachChild(node, visit);
@@ -141,6 +142,7 @@ function changedHunks(root, base, path, prior) {
       "--no-color",
       "--no-ext-diff",
       "--no-textconv",
+      "--text",
       "--find-renames",
       "--inter-hunk-context=0",
       "--unified=0",
@@ -173,13 +175,44 @@ function addedTimeouts(previous, current, hunk) {
   });
 }
 
+function originalLine(line, hunks) {
+  let shift = 0;
+  for (const hunk of hunks) {
+    const start = hunk.newCount > 0 ? hunk.newStart : hunk.newStart + 1;
+    if (line < start) break;
+    if (line < start + hunk.newCount) return null;
+    shift += hunk.oldCount - hunk.newCount;
+  }
+  return line + shift;
+}
+
+function newlyRecognizedTimeouts(previous, current, hunks) {
+  const known = new Map();
+  for (const { line, value } of previous) {
+    const id = JSON.stringify([line, value]);
+    known.set(id, (known.get(id) ?? 0) + 1);
+  }
+  return current.filter(({ line, value }) => {
+    const before = originalLine(line, hunks);
+    if (before === null) return false;
+    const id = JSON.stringify([before, value]);
+    const remaining = known.get(id) ?? 0;
+    known.set(id, remaining - 1);
+    return remaining <= 0;
+  });
+}
+
 function newTimeouts(root, base, path, prior) {
   const fullPath = join(root, path);
   if (!lstatSync(fullPath).isFile()) throw new Error("A changed Vitest path is not a regular file.");
   const current = findTimeouts(path, readFileSync(fullPath, "utf8"));
   if (!prior) return current;
   const previous = findTimeouts(prior, git(["show", [base, prior].join(":")], root));
-  return changedHunks(root, base, path, prior).flatMap((hunk) => addedTimeouts(previous, current, hunk));
+  const hunks = changedHunks(root, base, path, prior);
+  return [
+    ...hunks.flatMap((hunk) => addedTimeouts(previous, current, hunk)),
+    ...newlyRecognizedTimeouts(previous, current, hunks),
+  ];
 }
 
 function main(args) {

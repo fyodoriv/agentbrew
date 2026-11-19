@@ -106,6 +106,34 @@ describe("Vitest timeout lint", () => {
     });
   });
 
+  it("detects a newly recognized Vitest timeout on an unchanged line", () => {
+    fixture((root, git, run) => {
+      const path = "src/legacy.test.ts";
+      writeFileSync(join(root, path), initial.replace('"vitest"', '"./local-tests.js"'));
+      git("add", "--", path);
+      git("commit", "--quiet", "-m", "test: fixture local binding");
+      const previous = git("rev-parse", "HEAD").trim();
+      writeFileSync(join(root, path), initial);
+      const result = run(previous);
+      expect(result.status, result.stderr).toBe(1);
+      expect(result.stderr).toContain("src/legacy.test.ts:2:");
+    });
+  });
+
+  it("still checks source when Git attributes disable text diffs", () => {
+    fixture((root, git, run) => {
+      const path = "src/legacy.test.ts";
+      writeFileSync(join(root, ".gitattributes"), "*.test.ts -diff\n");
+      git("add", "--", ".gitattributes");
+      git("commit", "--quiet", "-m", "test: fixture file attributes");
+      const previous = git("rev-parse", "HEAD").trim();
+      writeFileSync(join(root, path), initial.replace("2_000", "2_100"));
+      const result = run(previous);
+      expect(result.status, result.stderr).toBe(1);
+      expect(result.stderr).toContain("src/legacy.test.ts:2:");
+    });
+  });
+
   it("detects a same-titled test added in a different suite", () => {
     fixture((root, git, run) => {
       const path = "src/suites.test.ts";

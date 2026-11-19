@@ -108,7 +108,8 @@ The gate runs `node scripts/check-vitest-timeouts.mjs` against the
 `origin/main` merge base. Pass a different base ref for another branch.
 Use a named constant for a new numeric timeout in a Vitest `it` or `test`
 call. The check compares deadline values within changed Git hunks and their
-enclosing suites. It keeps unchanged test lines, Git-detected file renames,
+enclosing suites. It also catches a test that becomes a Vitest case after
+an import change. It keeps established deadlines, Git-detected file renames,
 and global defaults.
 Its scope is ordinary source test cases. Shell, subprocess, polling, fixture
 and separately scheduled tests retain their own timeout controls.

@@ -103,9 +103,6 @@ describe("us14 recommended after upgrade", () => {
       await createSkillSourceRepo(remoteRoot, "currents-dev", "playwright-best-practices-skill", [
         { name: "playwright-best-practices", description: "Playwright testing guidance" },
       ]);
-      await createSkillSourceRepo(remoteRoot, "fyodoriv", "code-smells", [
-        { name: "code-smells-aware", description: "Static analysis audits for TS/React" },
-      ]);
       await createSkillSourceRepo(remoteRoot, "modelcontextprotocol", "ext-apps", [
         { name: "create-mcp-app", description: "Create MCP apps" },
         { name: "add-app-to-server", description: "Add MCP app UI to servers" },

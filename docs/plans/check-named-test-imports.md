@@ -17,3 +17,21 @@ Anchor: Minsky's `scripts/check-orphan-tests.mjs`, Agentbrew task `check-tests-i
 ## Reuse decision
 
 Use Agentbrew's pinned TypeScript compiler and its module resolver. The Minsky script describes the failure and synchronous workflow. Its regex parser assumes a separate `novel` tree and cannot parse re-export declarations as the compiler does. Keep package imports and TypeScript tests on their existing paths. Add no dependency or second export parser.
+
+## Baseline
+
+Prediction `8a532dd0` preceded the test. Biome passed both changed fixture
+files. Node then refused the test because the local module did not export
+`missing`. The equivalent fixture assertions moved to
+`src/scripts/check-orphan-tests.test.ts` so the standard Vitest gate runs them.
+
+## Runtime path control
+
+The compiler can choose a type or source file with the same stem as a
+JavaScript file. Register a scratch control with a `.ts` file and an
+explicit `.js` import. The JavaScript file exports one different name.
+Node must accept the actual JavaScript export and reject the type-file
+name. The lint must agree on both inputs and name the missing export.
+Two disagreements reject the default compiler resolution. Any candidate
+disagreement or median added time above 500 ms rejects the adapter.
+The child Git process may initialize only the scratch repository.

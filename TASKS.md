@@ -381,18 +381,6 @@
   - **Pivot**: more than 1 false block per week in hook observation logs.
   - **Anchor**: Reason 1990 (Human Error, defenses in depth).
 
-- [ ] Squash merges never silently drop a PR file
-  - **ID**: verify-squash-merge-completeness
-  - **Tags**: ship-it, git, from-minsky
-  - **Details**: Port minsky `scripts/verify-squash-merge-completeness.mjs` (see the archived repo). After a squash merge, compare the PR head's changed files with the files the squash commit changed and report any file that did not land. Call it from ship-it after each merge.
-  - **Files**: `scripts/verify-squash-merge-completeness.mjs`, its test, ship-it command docs.
-  - **Acceptance**: a fixture where the squash commit omits one PR file makes the script exit 1 and name the file; a normal merge exits 0.
-  - **Hypothesis**: files lost in squash merges go from unnoticed to caught at merge time.
-  - **Measurement**: `node scripts/verify-squash-merge-completeness.mjs --pr <n>; echo exit=$?` on the fixture and on the last 20 merged PRs.
-  - **Success**: fixture exits 1, all 20 real PRs exit 0.
-  - **Pivot**: more than 1 false alarm in the 20 real PRs.
-  - **Anchor**: Forsgren, Humble, Kim 2018 (Accelerate, change failure rate).
-
 - [ ] New projects check the toolchain before every other hook
   - **ID**: new-project-toolchain-first-hook
   - **Tags**: new-project, lefthook, from-minsky

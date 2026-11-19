@@ -2,9 +2,8 @@
 # git-hooks dir (core.hooksPath). lefthook must be on PATH or resolvable in
 # node_modules for these to fire — see AGENTS.md "Global git hooks".
 #
-# pre-push: block a push that would leak internal identifiers to GitHub.com.
-# Fast (~250ms) — runs only the OSS-readiness gate under src/oss/, so a leak
-# is caught before it can reach main. Nothing rewrites history later.
+# pre-push: run public-release privacy checks on the working checkout.
+# The same OSS checks run on the change's hosted checkout before merge.
 #
 # lockfile-sync: block a push whose package.json and package-lock.json
 # disagree for npm 10 (`npm ci` would fail for npm 10 users). It runs only

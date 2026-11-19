@@ -27,3 +27,17 @@ only pin compares only the major. Native checks use existing local
 launchers for declared Biome and Lefthook dependencies. The fixture uses a
 fixed wrong version and local synthetic launchers, with no install or push
 from the scratch project.
+
+## Observed
+
+On November 19, both baseline routes admitted the wrong Node pin. Each
+ran the secret and docs probes and printed zero toolchain diagnostics.
+Both candidate routes passed seven controls. The wrong pin and a broken
+declared launcher each produced one diagnostic before later checks.
+Working Node, Python, Rust, and tool-free fixtures reached later checks.
+The repo-local hook originally exposed a broken dispatcher's exit 17. The
+corrected hook returned 1 with one diagnostic and zero later calls. The
+final candidate passed seven controls in each of the direct, delegated, and
+fallback routes. Ten paired healthy runs per route with the local Biome
+launcher added median times of 83.4 ms through Lefthook 2.2.2, 93.3 ms
+through its delegated route, and 82.2 ms through the fallback.

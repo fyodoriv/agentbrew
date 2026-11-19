@@ -5,7 +5,10 @@ description: >
   axe-core WCAG 2.2, the Vercel Web Interface Guidelines, target size, text and state contrast,
   keyboard, Reduce motion and dark scheme, readability, Nielsen's heuristics, task time (KLM),
   Lighthouse, performance at real scale, and a design panel that rates the look as ten design-award
-  sites would, plus a principal-engineer judge panel scored by issues. Use for "rate my UI", "judge this page", "UX audit", "make it look modern", "iterate on the UI until it
+  sites would, plus a principal-engineer judge panel scored by issues. Also audits a whole site the
+  owner owns for usefulness: every page, three blind panels (design, UX, usefulness), a private
+  local report, and fix waves. Use for "rate my UI", "judge this page", "UX audit", "audit every
+  page of my site for usefulness", "which parts of my app should I cut", "make it look modern", "iterate on the UI until it
   scores N", before shipping a page, and before building or reshaping any UI (build to its comfort
   budget from the start). Don't use for one Lighthouse run alone (use web-quality-audit) or for
   creative direction from scratch (use hallmark).
@@ -29,6 +32,15 @@ comfort budget as a test in the repo's gate: no serious axe problem, no touch ta
 no text under 14 px, no text that spills out of its box, no raw ISO dates in app text,
 no sideways scroll, and a tap budget per everyday job. Then the rankings below confirm the work
 instead of finding all of it.
+
+## Whole-site usefulness audit
+
+To audit every page of a site the owner owns, follow
+[references/site-audit.md](references/site-audit.md): inventory every page and element, take
+private local shots and page text on real data, run three blind panels (design, UX, usefulness)
+as separate subagents, merge them with `scripts/site-report.mjs` into a private `report.html`, then
+fix in waves of 6 or fewer until every page averages at least 80, or propose a cut or merge for a
+page that plateaus.
 
 ## 0. Serve the page with realistic, synthetic data
 

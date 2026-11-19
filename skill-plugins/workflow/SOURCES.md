@@ -45,8 +45,8 @@ Guidelines (`vercel-labs/web-interface-guidelines`, fetched at run time) and poi
 `web-quality-audit` skill (`addyosmani/web-quality-skills`) for single Lighthouse runs. Local
 delta: one script (`scripts/rankings.cjs`) for the rankings those leave out (touch targets,
 selected-state contrast and readability in both themes, focus under sticky bars, Reduce motion),
-the round-per-ranking loop, KLM task time, scale checks, and a design-panel rubric.
-
+the round-per-ranking loop, KLM task time, scale checks, and a design-panel rubric, plus a whole-site usefulness audit mode (`scripts/site-report.mjs`
+merges three blind panels into a private report).
 AgentBrew installs a skill from this directory only when it is selected by name
 (catalog entry with `source: fyodoriv/agentbrew`, or an Agentfile `skills:` list).
 Nothing here is deployed by default.

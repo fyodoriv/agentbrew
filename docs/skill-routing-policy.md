@@ -211,7 +211,7 @@ Chrome's pinned release and the project's browser support policy.
 | Implement a browser feature or fallback | Modern Web Guidance |
 | Update existing design tokens | The project's design system. Use effective-ui-design for requested defaults when the project lacks them. |
 | Run one live page audit | web-quality-audit |
-| Run a broader quality review | ui-ux-rankings |
+| Run a broader quality review, or a whole-site usefulness audit | ui-ux-rankings |
 | Decide framework architecture | The appropriate framework skill |
 
 The frontend-kit includes one implementation guide and one broad quality

@@ -21,6 +21,9 @@
 | `skill-body-soft` | SKILL.md | body > 3500 tokens | warning |
 | `skill-body-hard` | SKILL.md | body > 5000 tokens | warning |
 | `skill-lines` | SKILL.md | > 500 lines | warning |
+| `skill-rule-cap` | built-in SKILL.md | top-level Rules entries > `SKILL_MAX_RULES` | error |
+| `doc-opening-purpose` | root AGENTS.md, README.md | first readable paragraph omits purpose | error |
+| `readme-byte-budget` | root README.md | > 128 KiB of UTF-8 | error |
 | `skill-no-progressive-disclosure` | SKILL.md | > 5000 tokens, no `references/` | warning |
 | `skill-baseline-growth` | built-in skills | > ~200 tokens vs `docs/skill-baselines.json` | error (warn if trim task open) |
 | `command-soft` | commands | > 4000 chars | warning |
@@ -31,6 +34,20 @@
 | `mdc-always-apply-broad` | `.mdc` | alwaysApply + broad glob | error |
 
 Shared-rules duplicate headings, section token budgets, and **core** growth vs `docs/shared-rules.md` remain in `rules-hygiene.ts` (same `agentbrew lint` run). Baseline growth ignores sync-managed `<!-- rule: -->` and `<!-- agentfile-rules: -->` blocks so recommended catalog installs do not false-positive against the committed core backup.
+
+Start the root guide or README with a purpose statement. Begin with a
+phrase such as “Use this guide to”, “This guide shows”, “One CLI that”,
+or “Agentbrew syncs”. Follow it with a concrete action or outcome.
+The lint checks this wording convention. It skips badges, headings, comments,
+and fenced examples.
+
+The README budget counts the whole file, including generated sections. It
+allows modest growth from the current README. Move reference material to a
+linked doc before raising the ceiling.
+
+In a skill's `## Rules` section, a top-level list item or a `###` subsection
+counts as an entry. The cap is 16. Lists under a rule subsection describe that rule. The
+check skips nested details, comments, and fenced examples.
 
 ## CI
 

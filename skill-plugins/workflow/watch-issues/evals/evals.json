@@ -170,6 +170,17 @@
         "Arms the Monitor on tail -f of that log",
         "Does not keep a Monitor whose every read is a skip"
       ]
+    },
+    {
+      "id": 17,
+      "prompt": "A watch pass lists a new outside issue asking for Windows support. The repo has .out-of-scope/windows-support.md saying the owner rejected it, citing issues #12 and #40. What do you do?",
+      "expected_output": "The agent reads .out-of-scope/windows-support.md, sees the same concept was rejected, does not build it, adds the new issue number to that file in a PR, and parks the issue for the owner instead of commenting on or closing it.",
+      "expectations": [
+        "Reads the .out-of-scope folder before working the issue",
+        "Does not implement the rejected concept",
+        "Adds the new issue number to the existing out-of-scope file",
+        "Parks the issue for the owner; never comments on or closes it without a yes"
+      ]
     }
   ]
 }

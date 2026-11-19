@@ -78,3 +78,16 @@ The runner rejects a changed baseline or rule before it reserves the
 candidate. It preserves a complete candidate receipt even if the score
 misses the threshold. Trial results use fictional inputs and do not
 establish performance in a real workspace.
+
+## Candidate result
+
+The run at `00f40276` completed all six cases and kept the served model
+digest stable. It scored 3 of 6 against the 4 of 6 baseline. It also
+missed one of the two HOLD cases. The runner exited 1 under the
+registered score rule. The baseline receipt still matches its recorded
+hash. The separate completed candidate receipt has SHA-256
+`bba0863683bbcde9b92fe05e3f878007365f41798a1fd1a5ea74af7e8de7a0bd`.
+
+The candidate failed the registered threshold. Keep the existing opt-in
+rule, keep both receipts, and close this experiment. It sent no chat
+messages and did not measure real-workspace behavior.

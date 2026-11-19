@@ -34,7 +34,9 @@ describe("run-goal /goal deliver shorthand", () => {
     expect(section).toMatch(/Never bypass a check/);
     expect(section).toMatch(/park the merge and ask once at the end/);
     expect(section).toMatch(/write the BLOCKED report/);
-    expect(section).toMatch(/deploy to a shared or production\s+target, a publish, or a release needs a cited approval/);
+    expect(section).toMatch(
+      /deploy to a shared or production\s+target, a publish, or a release needs a cited approval/,
+    );
   });
 
   it("has an eval that runs a bare /goal deliver end to end", () => {

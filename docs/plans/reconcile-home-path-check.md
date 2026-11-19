@@ -19,3 +19,8 @@ JavaScript or TypeScript. It runs in the pre-push hook.
   the task open. Reuse and correct the existing scope before adding a gate.
 - **Anchor:** Agentbrew #1134, `src/oss/public-release-privacy.ts`, and
   OWASP 2021 A01, information exposure.
+
+On November 19, the scanner reported both planted paths and no findings in
+the portable fixture or the tracked base plus this registration. The
+pre-push hook and the existing OSS suite called the expected scan path.
+Reuse that gate for the queued home-path check.

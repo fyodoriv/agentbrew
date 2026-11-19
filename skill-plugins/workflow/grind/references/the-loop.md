@@ -50,6 +50,11 @@ gh pr list --author @me --state open               # PRs left open
 Also read the last session report if the run left one (the final message of
 the previous `/loop` or `/goal` pass, or a `claude -p` log you redirected).
 
+Classify each earlier pass by its main arc (Roth, "543 Hours",
+https://michael.roth.rocks/research/543-hours/): Release, Feature, Build,
+Quick, Debug, Idle, Sweep, Review. Many Debug or Idle arcs in a row mean the
+queue needs splitting or unblocking before more passes.
+
 **What to look for and what to do:**
 
 | Pattern | Signal | Action |

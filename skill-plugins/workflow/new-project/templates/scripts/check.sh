@@ -41,6 +41,10 @@ step() {
 }
 
 step docs scripts/check-docs.sh
+if [ "${CHECK_FILENAME_CASE:-0}" = 1 ]; then
+  # Git can ignore a rename that changes only case. Read actual filenames.
+  key="" step filename-case bash scripts/check-filename-case.sh
+fi
 if command -v gitleaks >/dev/null 2>&1 && git rev-parse -q --verify HEAD >/dev/null; then
   step secrets gitleaks git --no-banner --redact -l warn --log-opts=-20
 fi

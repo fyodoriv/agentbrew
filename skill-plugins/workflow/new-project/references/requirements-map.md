@@ -10,6 +10,7 @@ keeps its own layout and says where each area lives. It may also push back.
 2. Waive an area (push back for this repo)
 3. Change a requirement (push back for every repo)
 4. Monthly audit
+5. Opt-in documentation filename check
 
 ## 1. Map an area to the repo's own files
 
@@ -77,3 +78,10 @@ Checkup commands run this once a month per repo:
 5. A waiver that also shows up in another repo becomes a requirement-change
    proposal (section 3).
 6. `bash <skill>/scripts/audit-due.sh <repo> --record`.
+
+## 5. Opt-in documentation filename check
+
+Run `CHECK_FILENAME_CASE=1 scripts/check.sh fast` from a scaffolded repo.
+Files directly inside `docs/` use lowercase names with words joined by
+hyphens. Keep the scaffold's exact `README.md` and `VISION.md` names.
+The check reads the files on disk on each opted-in run.

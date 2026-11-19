@@ -779,6 +779,18 @@
   - **Pivot**: more than 1 real-count fixture passes; then drop the exemption and reword prose instead.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
 
+- [ ] Skill eval cases can be run for a pass rate
+  - **ID**: skill-eval-pass-rate
+  - **Tags**: quality, skills, measurement
+  - **Details**: Task blocks measure skill changes with `npx agentbrew eval <skill>`, but that command does not exist. `agentbrew skills` has only `coverage` and `validate`, which check that `evals/evals.json` cases exist, not that they pass. On 2026-11-19 a reviewer found the command in the `diagnose` block and in the blocks filed for the runner-rule skills, so those Measurement lines could never run. Either add a runner (for example `agentbrew skills eval <name>`, reusing the skill-creator grader) or change the convention to a runnable proxy. Then fix the `diagnose` block.
+  - **Files**: `src/commands/` (a new `skills eval` subcommand) or `docs/task-backend-contract.md`; the `diagnose` block in TASKS.md.
+  - **Acceptance**: the Measurement of every open TASKS.md block names a command that exists; a new runner, if built, prints a pass rate for one skill's eval cases.
+  - **Hypothesis**: open task blocks whose Measurement names a missing command drop from 1 to 0 and stay at 0.
+  - **Measurement**: `grep -c "npx agentbrew eval" TASKS.md`
+  - **Success**: 0 matches, and a new runner, if built, prints a pass rate for one skill.
+  - **Pivot**: grading a single skill run costs more than 1 US dollar; then keep the proxy convention and drop the runner.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
+
 ## P3
 
 - [ ] Propose the guard start-budget note to the built-in workflow-authoring skill

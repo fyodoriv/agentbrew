@@ -172,12 +172,14 @@ function findTable(section) {
     const header = cells(section[i]).map((cell) => strip(cell).toLowerCase());
     const column = (name) => header.findIndex((cell) => COLUMNS[name].test(cell));
     const expected = column("expected");
+    const named = (pattern) => header.findIndex((cell, index) => index !== expected && pattern.test(cell));
+    const exactTest = named(/^tests?$/);
     const cols = {
       mode: column("mode"),
       trigger: column("trigger"),
       expected,
-      // The first "...test" header that is not the Expected one ("Expected under test").
-      test: header.findIndex((cell, index) => index !== expected && COLUMNS.test.test(cell)),
+      // A plain "Test" header wins; else the first "...test" header that is not the Expected one.
+      test: exactTest === -1 ? named(COLUMNS.test) : exactTest,
     };
     if (Object.values(cols).some((index) => index === -1)) continue;
     const rows = [];

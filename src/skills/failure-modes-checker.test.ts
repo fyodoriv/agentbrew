@@ -277,6 +277,11 @@ describe("check-failure-modes.mjs", () => {
     withRepo({ "README.md": section({ table: second }) }, (_root, run) => {
       expect(run("README.md").stderr).toContain("Test is empty");
     });
+    const reversed =
+      "| Mode | Trigger | Expected | Component under test | Test |\n|---|---|---|---|---|\n| A | t | crash loudly | c |  |";
+    withRepo({ "README.md": section({ table: reversed }) }, (_root, run) => {
+      expect(run("README.md").stderr).toContain("Test is empty");
+    });
     for (const header of ["Chaos-test", "Unit / e2e test", "Unit tests"]) {
       const named = `| Mode | Trigger | Expected | ${header} |\n|---|---|---|---|\n| A | t | crash loudly | t |`;
       withRepo({ "README.md": section({ table: named }) }, (_root, run) => {

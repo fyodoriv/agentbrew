@@ -381,18 +381,6 @@
   - **Pivot**: more than 1 false block per week in hook observation logs.
   - **Anchor**: Reason 1990 (Human Error, defenses in depth).
 
-- [ ] New projects check the toolchain before every other hook
-  - **ID**: new-project-toolchain-first-hook
-  - **Tags**: new-project, lefthook, from-minsky
-  - **Details**: Port minsky `scripts/check-toolchain.mjs` plus its `lefthook.yml` toolchain-first `piped: true` group into the new-project lefthook template. The first pre-commit command checks that the running node matches `.node-version` and that native binaries load, and stops the chain with one clear line instead of many MODULE_NOT_FOUND traces.
-  - **Files**: `skill-plugins/workflow/new-project/templates/` lefthook template and its scorer test.
-  - **Acceptance**: a scaffolded repo with a wrong node version fails pre-commit with one toolchain line and runs no later hook.
-  - **Hypothesis**: time to diagnose a wrong-toolchain commit failure drops from reading several stack traces to one line.
-  - **Measurement**: `npx vitest run skill-plugins/workflow/new-project` with a wrong-version fixture.
-  - **Success**: the fixture prints exactly one toolchain error line.
-  - **Pivot**: the check adds more than 300 ms to a normal commit.
-  - **Anchor**: Nygard 2007 (Release It!, fail fast).
-
 - [ ] README size cannot creep back up
   - **ID**: readme-byte-budget
   - **Tags**: readme, docs, from-minsky

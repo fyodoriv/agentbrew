@@ -8,8 +8,8 @@ description: >
   documents the verify command (`npx code-smells@0.2.11`), and specifies the iteration
   loop so a single run catches your own regressions before the human (or CI)
   does. Use whenever writing or modifying code in a TS/React repo. Don't use
-  for non-JS/TS repos (graceful skip), pure styling work (use fix-styles or
-  taste), or PR review of someone else's code (use review).
+  for non-JS/TS repos (graceful skip), pure styling work (use ui-ux-rankings or
+  hallmark), or PR review of someone else's code (use requesting-code-review).
 ---
 
 ## Role
@@ -30,7 +30,7 @@ violations.
 
 | This skill | Not this skill |
 |---|---|
-| Writing new TS/React code that passes 50+ audits | One-off styling fixes (use `fix-styles`) |
+| Writing new TS/React code that passes 50+ audits | One-off styling fixes (use `ui-ux-rankings`) |
 | Running `npx code-smells@0.2.11` as a verify gate | Audit configuration / threshold tuning (read [references/audit-review.md](references/audit-review.md)) |
 | Iterating until report is clean | Bulk-fixing legacy violations (separate refactor task) |
 | Auto-detecting applicability (TS/React only) | Non-JS/TS repos (Python, Go, Rust — skip silently) |
@@ -411,16 +411,11 @@ audits for legitimate reasons.
 
 ## Related skills
 
-- **`fix-styles`** — visual-only iteration loop for one component (use
-  after this skill flags a styling-shaped issue).
-- **`taste`** — proactive UI design rules for premium aesthetics.
-- **`react-best-practices`** — Vercel-curated performance + patterns
-  guide (complements this skill on the React-specific audits).
-- **`debug`** — when an audit fires and you can't tell why.
-- **`refactor`** — for fixing legacy violations as a dedicated task.
-- **`project-audit`** — broader code-quality + deps + docs audit (this
-  skill is the targeted code-smells subset).
-- **`design-review`** — multi-page UX/visual audit (different lens).
+- **`ui-ux-rankings`** — measure and fix a page's UI and UX after this skill
+  flags a styling-shaped issue.
+- **`hallmark`** — design direction for new pages.
+- **`systematic-debugging`** — when an audit fires and you can't tell why.
+- **`requesting-code-review`** — review before merge.
 
 ## Quick reference
 
@@ -433,5 +428,5 @@ audits for legitimate reasons.
 | Read the report | `cat reports/report.md` |
 | Read the JSON for tooling | `jq . reports/report.json` |
 | Repo-local thresholds | check `code-pushup.config.ts` at repo root |
-| Audit decisions log | `docs/audit-review.md` (repo-local or code-smells) |
-| Install globally for speed | `npm install -g code-smells` |
+| Audit decisions log | repo-local `docs/audit-review.md`, else [references/audit-review.md](references/audit-review.md) |
+| Install globally for speed | `npm install -g code-smells@0.2.11` |

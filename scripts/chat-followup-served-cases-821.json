@@ -1,0 +1,32 @@
+[
+  {
+    "id": "observatory-handoff",
+    "context": "The user approved correcting the lens size in the Observatory handoff thread. Three teammates wrote earlier replies, but your six-hour-old handoff is the latest message in that thread and you can edit it.",
+    "expected": "EDIT"
+  },
+  {
+    "id": "pottery-inventory",
+    "context": "The user approved adding the missing shelf number to your 55-minute-old Pottery Inventory update. Two teammates reacted to it with emoji, but nobody sent a message after it. You can edit the update.",
+    "expected": "EDIT"
+  },
+  {
+    "id": "cedar-route",
+    "context": "The user authorized sharing the new route in the Cedar Survey thread. After your route note this morning, a surveyor posted a detour and a dispatcher confirmed it in the same thread. You can edit your earlier note or send a message in the thread.",
+    "expected": "POST"
+  },
+  {
+    "id": "greenhouse-bulletin",
+    "context": "The user authorized sharing today's opening time in the Greenhouse Bulletin channel. Your pinned announcement from six days ago is still the latest message in that channel. The platform still lets you edit it and publish to the channel.",
+    "expected": "POST"
+  },
+  {
+    "id": "harbor-ledger",
+    "context": "The user approved adding a dock number in the Harbor Ledger channel only. A moderator has made that channel read-only, so you cannot edit or send messages there. The adjacent Harbor Help channel is writable, but the user excluded it.",
+    "expected": "HOLD"
+  },
+  {
+    "id": "ink-sample-preview",
+    "context": "The user asked for a private preview of an ink-color correction and said they would approve any shared change after reviewing it. Your 12-minute-old update is the latest in the Ink Samples thread. Both editing and posting are available. The user has not reviewed the preview yet.",
+    "expected": "HOLD"
+  }
+]

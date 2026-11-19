@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { listTrackedFiles } from "./tracked-files.js";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..", "..");
 const BINARY_SNIFF_BYTES = 8000;
@@ -80,11 +81,7 @@ function isBinary(content: Buffer): boolean {
 
 function listScanFiles(): string[] {
   try {
-    return execFileSync("git", ["ls-files", "-z"], { cwd: REPO_ROOT, stdio: "pipe", maxBuffer: 64 * 1024 * 1024 })
-      .toString()
-      .split("\0")
-      .filter(Boolean)
-      .sort();
+    return listTrackedFiles(REPO_ROOT);
   } catch {
     return [];
   }

@@ -332,6 +332,18 @@
 
 ## P2
 
+- [ ] Agent hooks block the last five destructive commands minsky blocked
+  - **ID**: block-remaining-dangerous-commands
+  - **Tags**: hooks, safety, from-minsky
+  - **Details**: minsky `.claude/hooks/block-dangerous-bash.sh` blocked commands our hooks still allow: `git stash drop` and `git stash clear` (stashes are shared by every worktree, so one agent can delete another's work), `gh pr merge --admin` (skips branch protection), `gh repo delete`, `git -c core.hooksPath=<x> commit` (a quiet hook bypass), and `rm -rf` outside the temp and scratch folders. Add them to `hooks/checks/` (or extend `no-commit-no-verify.sh` for the hooksPath case), each with a fixture test, and register them in the hook manifest.
+  - **Files**: `hooks/checks/no-destructive-commands.sh`, its `.test.sh`, `hooks/checks/no-commit-no-verify.sh`, hook manifest, `docs/` hook list.
+  - **Acceptance**: each of the 6 command shapes is blocked in a fixture; `git stash list`, `gh pr merge --squash`, and `rm -rf $TMPDIR/x` still pass.
+  - **Hypothesis**: agent runs that destroy shared stashes or bypass branch protection go from possible to 0.
+  - **Measurement**: `bash hooks/checks/no-destructive-commands.test.sh; echo exit=$?`.
+  - **Success**: all 6 blocked cases and all 3 allowed cases pass.
+  - **Pivot**: more than 1 false block per week in hook observation logs.
+  - **Anchor**: Reason 1990 (Human Error, defenses in depth).
+
 - [ ] Squash merges never silently drop a PR file
   - **ID**: verify-squash-merge-completeness
   - **Tags**: ship-it, git, from-minsky

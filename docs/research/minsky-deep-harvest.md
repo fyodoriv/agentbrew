@@ -22,6 +22,7 @@ task with an exact spec), ALREADY-THERE (the target path holds it), DROP
 | `check-toolchain.mjs` + lefthook `piped: true` | task `new-project-toolchain-first-hook` |
 | `check-readme-byte-budget.mjs` | task `readme-byte-budget` |
 | `check-no-hardcoded-user-paths.mjs`, `check-no-personal-paths-in-docs.mjs` | task `no-literal-home-paths` |
+| hook `block-dangerous-bash.sh` (stash drop/clear, `gh pr merge --admin`, `gh repo delete`, `-c core.hooksPath` commit, `rm -rf` outside temp) | task `block-remaining-dangerous-commands` |
 
 
 ## minsky harvest A — item-level pass (2026-11-19)
@@ -81,7 +82,7 @@ task with an exact spec), ALREADY-THERE (the target path holds it), DROP
 | templates/repo.yaml | ALREADY-THERE | tasks.md / Agentfile `task_backend` + .agents/tasks.config.yaml (rest is runner-only) |
 | CONTRIBUTING.md | ALREADY-THERE | agentbrew/dotfiles CONTRIBUTING.md with "Report problems and ideas" |
 | INSTALL.md | ALREADY-THERE | agentbrew/dotfiles INSTALL.md playbooks (doctor, audit, first run); OpenHands step DROP |
-| hook block-dangerous-bash.sh | ALREADY-THERE | agentbrew hooks (no-force-push-protected, no-commit-no-verify, no-git-add-all) + dotfiles/docs/agent-hooks.md |
+| hook block-dangerous-bash.sh | PORT (partial) | force-push, `--no-verify`, `reset --hard`, `clean -f`, `checkout .` already blocked (agentbrew no-force-push-protected, no-commit-no-verify; dotfiles agent-hooks/block-dangerous-git.sh). The rest is task `block-remaining-dangerous-commands` |
 | hook block-vision-md-edit.sh | DROP | Protects minsky vision.md for MAPE-K loop |
 | hook live-fire-smoke-post-edit.sh | DROP | Smoke test of minsky launchd/systemd scripts |
 | hook post-edit.sh (single-file lint) | DROP | Runs minsky check-rule-* lints; dotfiles/agentbrew use their own gates |

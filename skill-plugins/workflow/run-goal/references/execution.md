@@ -75,6 +75,12 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
   loop): read [references/parallel-workers.md](references/parallel-workers.md)
   first. It covers the base commit, the heavy-run queue, messages to running
   agents, session-owned files, merges, stacked PRs, and watch pollers.
+- When a session restarts, check which workers and scheduled jobs still
+  exist. Resume only missing owned work. For an explicitly requested
+  recurring job, check its schedule before restoring it. Verify the worker
+  state and that exactly one schedule exists after recovery. A handoff record
+  can complete the escalation step when it identifies the owner and the
+  observed ask. Keep the outside result open until the source confirms it.
 - A scheduled or recurring job that runs a repo's code builds from its own
   clean worktree of the default branch (`git worktree add --detach <state
   dir> origin/main`, refreshed each run), never from the user's main

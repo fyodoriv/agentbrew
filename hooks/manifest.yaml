@@ -215,6 +215,17 @@ hooks:
     agents: ["claude-code", "codex"]
     defaultEnabled: false
 
+  - id: no-destructive-commands
+    description: Block direct Git stash discard commands that can lose work from another worktree
+    event: PreToolUse
+    matcher: Bash
+    script: checks/no-destructive-commands.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: TASKS.md#block-remaining-dangerous-commands
+    agents: ["claude-code", "codex"]
+    defaultEnabled: false
+
   - id: no-binary-screenshots
     description: Block git add of PNG/JPG/GIF outside __storyshots__/favicon/fixtures paths
     event: PreToolUse

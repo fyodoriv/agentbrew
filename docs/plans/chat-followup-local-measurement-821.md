@@ -31,3 +31,16 @@ HEAVY_RUN_EXCLUSIVE_WAIT=2400 heavy-run --exclusive gtimeout 390 node \
 The runner writes only enum choices and the frozen identity to its receipt.
 Accept it only after the runner exits successfully. Keep an incomplete
 receipt if the run fails. No candidate rule exists at baseline time.
+
+## Recorded result
+
+The 2026-11-19 run at `78d2ce75` exited 1 and left its private receipt
+empty with mode 600. It recorded zero scored decisions. Its empty SHA-256
+is `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+
+A separate read-only check found that the running service advertised one
+`qwen3:4b` tag with a different valid digest from the local manifest.
+That mismatch fails the admission condition. The runner produced no
+stage record, so the receipt alone cannot identify its stopping point.
+No candidate rule is eligible from this receipt. Preserve it and leave
+this cohort closed.

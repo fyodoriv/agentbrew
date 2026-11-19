@@ -796,7 +796,7 @@
 - [ ] Skill scripts get the same Biome lint as src and scripts
   - **ID**: lint-skill-plugin-scripts
   - **Tags**: lint, skills, ci
-  - **Details**: `npm run lint` and `scripts/lint-changed.sh` run Biome only on `src`, `scripts`, and `real-e2e`. Checker scripts under `skill-plugins/*/*/scripts/` (for example `failure-modes/scripts/check-failure-modes.mjs`) ship to users through `agentbrew sync`, but no lint reads them. On 2026-11-19 a format error in that checker passed both commands and showed up only in a manual `node_modules/.bin/biome check` run. A first `biome check skill-plugins` run that day found 5 errors in 10 files. Add the skill script folders to both commands, then fix what the first run finds.
+  - **Details**: `npm run lint` and `scripts/lint-changed.sh` run Biome only on `src`, `scripts`, and `real-e2e`. Checker scripts under `skill-plugins/*/*/scripts/` (for example `failure-modes/scripts/check-failure-modes.mjs`) ship to users through `agentbrew sync`, but no lint reads them. On 2026-11-19 a format error in that checker passed both commands and showed up only in a manual `node_modules/.bin/biome check` run. A first `biome check skill-plugins` run that day found 5 errors. Add the skill script folders to both commands, then fix what the first run finds.
   - **Files**: `package.json` (`lint`, `lint:fix`), `scripts/lint-changed.sh`, `scripts/verify.sh`
   - **Output**: code
   - **Acceptance**: `npm run lint` and `npm run lint:changed` both report a Biome error planted in a `skill-plugins/workflow/*/scripts/*.mjs` file.

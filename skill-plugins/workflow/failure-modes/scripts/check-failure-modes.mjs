@@ -29,16 +29,19 @@ const ALLOWED = new Map([
   ["graceful degrade", "degrade gracefully"],
   ["loud crash supervisor restart", "crash loudly"],
 ]);
-const SILENT_RETRY = "retr\\w*\\s+silently|silent(?:ly)?\\s+retr";
+// Retry forms only: "retrieved silently" is not a retry.
+const RETRY = "retr(?:y|ies|ied|ying)";
+const SILENT_RETRY = `${RETRY}\\s+silently|silent(?:ly)?\\s+${RETRY}`;
 const LOG_AND_CONTINUE = "\\blogs?\\s+and\\s+continues?\\b";
 // A behavior name or a whole cell fails on any of these.
 const FORBIDDEN = new RegExp(`${SILENT_RETRY}|${LOG_AND_CONTINUE}|\\bignore`);
 // Code (`ignore_errors`, `--ignore-scripts`) can name "ignore" without ignoring a failure.
 const FORBIDDEN_CODE = new RegExp(`${SILENT_RETRY}|${LOG_AND_CONTINUE}`);
-// Prose beside an allowed behavior fails only on a silent retry: "logs and continues" and
-// "ignores them" describe a visible degrade in real stories.
-const FORBIDDEN_PROSE = new RegExp(SILENT_RETRY, "g");
-const NEGATED = /\b(?:never|not|no|without|instead of|rather than)\W*$/i;
+// Prose beside an allowed behavior fails on a silent retry or the step-4 phrase "log and
+// continue". "logs and continues" and "ignores them" describe a visible degrade in real stories.
+const FORBIDDEN_PROSE = new RegExp(`${SILENT_RETRY}|\\blog\\s+and\\s+continue\\b`, "gi");
+// Only spaces or emphasis between the negation and the phrase: "if not, retry silently" counts.
+const NEGATED = /(?:^|[^a-z])(?:never|not|no|without|instead of|rather than)[\s*]*$/i;
 const TEST_FILE = /\.(test|spec)\.|_test\.|(^|\/)test_|\.bats$/;
 // Dependency, build, and sibling-worktree folders: a match there is not this repo's test.
 const SKIP_DIRS = new Set([
@@ -173,8 +176,8 @@ function findTable(section) {
       mode: column("mode"),
       trigger: column("trigger"),
       expected,
-      // The rightmost "...test" header that is not the Expected one ("Expected under test").
-      test: header.findLastIndex((cell, index) => index !== expected && COLUMNS.test.test(cell)),
+      // The first "...test" header that is not the Expected one ("Expected under test").
+      test: header.findIndex((cell, index) => index !== expected && COLUMNS.test.test(cell)),
     };
     if (Object.values(cols).some((index) => index === -1)) continue;
     const rows = [];
@@ -235,13 +238,14 @@ const words = (text) =>
     .replace(/[^a-z]+/g, " ")
     .trim();
 // A behavior name is plain words (`retry-silently`); `ignore_errors` or `--ignore-scripts` is code.
-const isBehaviorName = (text) => /^[A-Za-z]+(?:[- ][A-Za-z]+)*$/.test(text) && !/[a-z][A-Z]/.test(text);
+const isBehaviorName = (text) => /^\s*[A-Za-z]+(?:(?:-| +)[A-Za-z]+)*\s*$/.test(text) && !/[a-z][A-Z]/.test(text);
 
 // A cell may name the behavior in backticks among other code and prose:
 // `graceful-degrade` — `parseEvents` drops the bad line. Use the span that names a behavior,
 // but a forbidden span or silent-retry prose fails the cell, unless negated ("never ...").
 function behaviorOf(cell) {
-  const negated = (index) => NEGATED.test(cell.slice(0, index));
+  // A short window before the phrase keeps this linear in the cell length.
+  const negated = (index) => NEGATED.test(cell.slice(Math.max(0, index - 64), index));
   const spans = [...cell.matchAll(/`([^`]+)`/g)];
   for (const span of spans) {
     if (negated(span.index)) continue;
@@ -252,11 +256,8 @@ function behaviorOf(cell) {
   const allowed = spans.map((span) => normalize(span[1])).find((span) => ALLOWED.has(span));
   if (!allowed) return normalize(cell);
   // Blank the code spans with same-length padding, so match indexes still point into the cell.
-  const prose = cell
-    .replace(/`[^`]+`/g, (code) => " ".repeat(code.length))
-    .toLowerCase()
-    .replace(/[*_-]/g, " ");
-  for (const match of prose.matchAll(FORBIDDEN_PROSE)) if (!negated(match.index)) return match[0];
+  const prose = cell.replace(/`[^`]+`/g, (code) => " ".repeat(code.length)).replace(/[*_-]/g, " ");
+  for (const match of prose.matchAll(FORBIDDEN_PROSE)) if (!negated(match.index)) return match[0].toLowerCase();
   return allowed;
 }
 

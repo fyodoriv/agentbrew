@@ -234,6 +234,8 @@ describe("check-failure-modes.mjs", () => {
       "`crash-loudly` then `log-and-continue;`",
       "`crash-loudly` then `ignore-errors`",
       "`retry-silently`, not `crash-loudly`",
+      "`graceful-degrade`; on 5xx log and continue",
+      "`crash-loudly` on a bad config; if not, `retry-silently`",
     ];
     for (const cell of cells) {
       withRepo({ "README.md": section({ table: `${HEADER}\n| A | t | ${cell} | t |` }) }, (_root, run) => {
@@ -251,6 +253,8 @@ describe("check-failure-modes.mjs", () => {
       "`crash-loudly`, never `retry-silently`",
       "`crash-loudly` instead of silently retrying",
       "`graceful-degrade` — the daemon logs and continues; the dashboard shows the miss",
+      "`degrade-gracefully` — serve the copy retrieved silently from disk",
+      "`crash-loudly`, **never** `retry-silently`",
     ];
     for (const cell of cells) {
       withRepo({ "README.md": section({ table: `${HEADER}\n| A | t | ${cell} | t |` }) }, (_root, run) => {
@@ -267,6 +271,11 @@ describe("check-failure-modes.mjs", () => {
       const result = run("README.md");
       expect(result.status).toBe(1);
       expect(result.stderr).toContain("Test is empty");
+    });
+    const second =
+      "| Mode | Trigger | Expected | Test | Component under test |\n|---|---|---|---|---|\n| A | t | crash loudly |  | c |";
+    withRepo({ "README.md": section({ table: second }) }, (_root, run) => {
+      expect(run("README.md").stderr).toContain("Test is empty");
     });
     for (const header of ["Chaos-test", "Unit / e2e test", "Unit tests"]) {
       const named = `| Mode | Trigger | Expected | ${header} |\n|---|---|---|---|\n| A | t | crash loudly | t |`;

@@ -29,7 +29,9 @@
 
 set -euo pipefail
 
-__HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+__HOOK_DIR="${BASH_SOURCE[0]%/*}"
+[[ "${BASH_SOURCE[0]}" == */* ]] || __HOOK_DIR=.
+__HOOK_DIR="$(CDPATH='' cd -- "${__HOOK_DIR:-/}" && pwd)"
 if [ -d "$__HOOK_DIR/lib" ]; then __HOOK_LIB_DIR="$__HOOK_DIR/lib"; else __HOOK_LIB_DIR="$__HOOK_DIR/../lib"; fi
 # shellcheck source=../lib/stdin-json.sh
 source "$__HOOK_LIB_DIR/stdin-json.sh"
@@ -60,7 +62,7 @@ fi
 
 # Parse argument words without executing them. Quoted metadata is opaque;
 # unsupported shell syntax clears the target instead of guessing its repo.
-PR_TARGET=$(python3 "$__HOOK_LIB_DIR/pr-command-target.py" "$TRANSCRIPT_PATH" 2>/dev/null || true)
+PR_TARGET=$(hook_python "$__HOOK_LIB_DIR/pr-command-target.py" "$TRANSCRIPT_PATH" 2>/dev/null || true)
 if ! printf '%s' "$PR_TARGET" | jq -e 'type == "object" and .unavailable == false' >/dev/null 2>&1; then
   verdict_warn "$HOOK_ID" "Couldn't resolve PR command arguments; verify the target and status before claiming done."
 fi

@@ -3970,6 +3970,18 @@
         "Every task in X gets a verdict",
         "Archives only after the moving PRs merge"
       ]
+    },
+    {
+      "id": 347,
+      "prompt": "/goal have repos A, B and C absorb everything useful from tool T so T can be archived",
+      "expected_output": "The contract lists every T feature and open task as absorb (with its target), covered, or drop (with a reason) in a committed map; it counts live references to T as the metric; it asks once where T's core job moves and whether to archive (archiving is public and hard to undo); a test that hash-pins old eval cases is respected by appending, not editing.",
+      "expectations": [
+        "Writes a feature-by-feature absorb/covered/drop map before porting code",
+        "Uses live references to the tool across the target repos as the metric, separating history mentions from live ones",
+        "Asks once, with full context, where the tool's core job goes and whether to archive",
+        "Parks the archive until the user says yes",
+        "Appends new eval cases instead of editing hash-pinned ones"
+      ]
     }
   ]
 }

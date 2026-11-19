@@ -3,7 +3,7 @@
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  0a. ANALYZE — read past taskgrind logs          │
+│  0a. ANALYZE — read past run outcomes            │
 │  0b. DETECT — identify project type & commands   │
 │  1. TIDY — merge dangling PRs, clean stale state │
 │  2. CHECK QUEUE — are there actionable tasks?    │
@@ -38,32 +38,27 @@ inventing test-writing tasks that produce commits without advancing the roadmap.
 
 ### Phase 0a: ANALYZE PAST GRINDS
 
-Before doing anything else, read the taskgrind logs for this repo to learn from
-prior sessions. This takes 30 seconds and prevents repeating mistakes.
+Before doing anything else, look at what earlier runs did in this repo. This
+takes 30 seconds and prevents repeating mistakes.
 
 ```bash
-# Find all grind logs for the current repo (filter by repo= header)
-repo_path=$(pwd)
-grep -l "repo=$repo_path" /tmp/taskgrind-*.log 2>/dev/null | sort | tail -5
+git log --since=2.days --oneline | head -30       # what shipped
+rg -n 'Blocked by\*\*: attempted' TASKS.md        # tasks that hit the stuck cap
+gh pr list --author @me --state open               # PRs left open
 ```
 
-For each matching log, extract the structured data:
-
-```bash
-# Parse session outcomes from a log file
-grep -E 'session=.*ended|grind_done|stall_warning|stall_bail|git_sync failed' "$log_file"
-```
+Also read the last session report if the run left one (the final message of
+the previous `/loop` or `/goal` pass, or a `claude -p` log you redirected).
 
 **What to look for and what to do:**
 
 | Pattern | Signal | Action |
 |---------|--------|--------|
-| `shipped=0` on 3+ consecutive sessions | Agent stalled on hard tasks | Check which tasks were in the queue then — are they still there? If so, decompose them NOW in Phase 4 |
-| `stall_bail` | Marathon gave up | The tasks that stalled the marathon are likely still in TASKS.md. Prioritize decomposing them |
-| `git_sync failed` | Agent left repo on wrong branch | Already fixed in taskgrind, but if you see it, verify you're on main |
-| `tasks_after > tasks_before` | Session added tasks without completing any | Sweep-generated busywork — don't repeat this. Skip sweep, go to Phase 4 |
-| `duration=` < 60s on real sessions | Sessions crashing fast | Check for broken verify gate, missing dependencies, or env issues |
-| Many sessions, low total shipped | Poor efficiency | Focus on small, shippable tasks — decompose aggressively |
+| No task commits over several passes | Agent stalled on hard tasks | Decompose the tasks still in the queue NOW in Phase 4 |
+| Tasks marked `attempted 3 times` | Stuck-task cap hit | Decompose them or record the real blocker |
+| Open PRs or a feature branch checked out | Last pass did not hand off | Merge or close them, return to the default branch |
+| Queue grew, nothing shipped | Sweep-generated busywork | Skip sweep, go to Phase 4 |
+| Many passes, few tasks shipped | Poor efficiency | Focus on small, shippable tasks — decompose aggressively |
 
 **Turn findings into tasks:** If the log reveals a repo-specific pattern that caused
 stalling (e.g., "sessions 3-10 all stalled at 19 tasks"), add a P1 task to TASKS.md:
@@ -72,12 +67,12 @@ stalling (e.g., "sessions 3-10 all stalled at 19 tasks"), add a P1 task to TASKS
 - [ ] Decompose remaining P0 tasks into shippable sub-tasks
   **ID**: decompose-stalled-epics
   **Tags**: grind, productivity
-  **Details**: taskgrind log shows sessions stalled after shipping easy tasks.
+  **Details**: past grind passes stalled after shipping easy tasks.
     Remaining tasks are large epics that need decomposition before the next grind.
   **Acceptance**: Every P0/P1 task is either one-commit-sized or has sub-tasks
 ```
 
-Then commit: `chore: add tasks from grind log analysis`
+Then commit: `chore: add tasks from grind run analysis`
 
 **Skip this phase** if no logs exist for this repo (first-ever grind).
 
@@ -323,7 +318,7 @@ tasks → make zero roadmap progress. Decompose and implement instead.
 
 #### 4e. Claim and implement
 
-Add your identity to the task line: `- [ ] Task description (@devin)`
+Add your identity to the task line: `- [ ] Task description (@claude)`
 
 Create a branch (if repo convention requires it — check AGENTS.md):
 ```bash

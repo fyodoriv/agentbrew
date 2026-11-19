@@ -686,6 +686,8 @@
   - **Pivot**: If the median exceeds 10 seconds, move the slowest step to the full gate; do not raise the limit.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (fast feedback loops).
 
+## P3
+
 - [ ] Propose the guard start-budget note to the built-in workflow-authoring skill
   - **ID**: workflow-authoring-guard-budget-upstream
   - **Tags**: workflow, agents, third-party

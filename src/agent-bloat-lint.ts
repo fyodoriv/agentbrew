@@ -17,7 +17,7 @@ import { COMMANDS_DIR } from "./paths.js";
 import { estimateTokens } from "./sync/instructions-content.js";
 import { expandHome } from "./utils.js";
 
-export type AgentBloatSurface = "skill" | "command" | "rule";
+export type AgentBloatSurface = "skill" | "command" | "rule" | "doc";
 
 export type AgentBloatSeverity = "error" | "warning";
 
@@ -27,6 +27,9 @@ export const BLOAT_RULE = {
   SKILL_BODY_SOFT: "skill-body-soft",
   SKILL_BODY_HARD: "skill-body-hard",
   SKILL_LINES: "skill-lines",
+  SKILL_RULE_CAP: "skill-rule-cap",
+  DOC_OPENING_PURPOSE: "doc-opening-purpose",
+  README_BYTE_BUDGET: "readme-byte-budget",
   SKILL_NO_PROGRESSIVE_DISCLOSURE: "skill-no-progressive-disclosure",
   SKILL_BASELINE_GROWTH: "skill-baseline-growth",
   COMMAND_SOFT: "command-soft",
@@ -54,6 +57,8 @@ export const SKILL_BODY_TOKEN_SOFT = 3500;
 export const SKILL_BODY_TOKEN_HARD = 5000;
 /** audit-skill SK-022. */
 export const SKILL_MAX_LINES = 500;
+export const SKILL_MAX_RULES = 16;
+export const README_MAX_BYTES = 128 * 1024;
 /** agentskills.io spec max description length. */
 export const SKILL_DESCRIPTION_MAX_CHARS = 1024;
 /** ~200 tokens — matches SHARED_RULES_GROWTH_CHAR_THRESHOLD in rules-hygiene.ts. */
@@ -75,15 +80,159 @@ export type SkillBaselines = Record<string, SkillBaselineEntry>;
 const DEFAULT_REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 function splitSkillContent(content: string): { frontmatter: Record<string, unknown>; body: string } | undefined {
-  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  const match = content.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/u);
   if (!match) return undefined;
   try {
     const frontmatter = yaml.load(match[1]) as Record<string, unknown>;
     if (!frontmatter || typeof frontmatter !== "object") return undefined;
-    return { frontmatter, body: match[2] };
+    return { frontmatter, body: match[2].replace(/\r\n/g, "\n") };
   } catch {
     return undefined;
   }
+}
+
+function withoutComments(line: string, scan: { inComment: boolean }): string {
+  let cursor = 0;
+  let visible = "";
+  while (cursor < line.length) {
+    const delimiter = scan.inComment ? "-->" : "<!--";
+    const next = line.indexOf(delimiter, cursor);
+    if (!scan.inComment) visible += line.slice(cursor, next === -1 ? undefined : next);
+    if (next === -1) break;
+    cursor = next + delimiter.length;
+    scan.inComment = !scan.inComment;
+  }
+  return visible;
+}
+
+function closingFence(marker: RegExpExecArray | null, fence: string): boolean {
+  return Boolean(marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim());
+}
+
+function proseLines(content: string): string[] {
+  const lines = content.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/u, "").split(/\r?\n/);
+  let fence: string | undefined;
+  const scan = { inComment: false };
+  return lines.map((line) => {
+    const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/u.exec(line);
+    if (fence) {
+      if (closingFence(marker, fence)) fence = undefined;
+      return "";
+    }
+    if (marker && !scan.inComment) {
+      fence = marker[1];
+      return line;
+    }
+    return withoutComments(line, scan);
+  });
+}
+
+function openingParagraph(content: string): string {
+  const parts: string[] = [];
+  for (const raw of proseLines(content)) {
+    const line = raw.trim();
+    if (!line || /^#{1,6}\s|^\[?!\[|^[-*+]\s|^\d+[.)]\s|^\||^`{3,}|^~{3,}/u.test(line)) {
+      if (parts.length > 0) break;
+      continue;
+    }
+    parts.push(line);
+  }
+  return parts.join(" ");
+}
+
+const LIST_ENTRY = /^ {0,3}(?:[-*+]|\d+[.)])[ \t]{1,4}/u;
+
+function topLevelLines(content: string): string[] {
+  let listIndent = Infinity;
+  let afterBlank = false;
+  const topLevel: string[] = [];
+  for (const line of proseLines(content)) {
+    if (!line.trim()) {
+      afterBlank = true;
+      continue;
+    }
+    const indent = line.length - line.trimStart().length;
+    if (indent < listIndent) {
+      const entry = LIST_ENTRY.exec(line);
+      if (entry) listIndent = entry[0].length;
+      else if (afterBlank || /^ {0,3}(?:#{1,6}[ \t]|`{3,}|~{3,})/u.test(line)) listIndent = Infinity;
+      topLevel.push(line);
+    }
+    afterBlank = false;
+  }
+  return topLevel;
+}
+
+function skillRuleCount(body: string): number {
+  let count = 0;
+  let inRules = false;
+  let inSubsection = false;
+  for (const line of topLevelLines(body)) {
+    if (/^ {0,3}#{1,2}[ \t]/u.test(line)) {
+      inRules = /^ {0,3}##[ \t]+Rules(?:[ \t]+#+)?[ \t]*$/iu.test(line);
+      inSubsection = false;
+    } else if (inRules && /^ {0,3}###[ \t]/u.test(line)) {
+      count += 1;
+      inSubsection = true;
+    } else if (inRules && !inSubsection && LIST_ENTRY.test(line)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+const DOC = "this (?:file|doc(?:ument)?|guide|page)";
+const PURPOSE_OPENING = new RegExp(
+  `^(?:use ${DOC} to|${DOC} (?:helps|exists to|explains|shows|describes|provides|guides|defines|covers)|(?:one|a) CLI that|agentbrew (?:syncs|synchronizes|manages)) `,
+  "iu",
+);
+
+function hasOpeningPurpose(content: string): boolean {
+  const opening = openingParagraph(content).replace(/^(?:>\s*|\*{1,2})+/u, "");
+  const match = PURPOSE_OPENING.exec(opening);
+  return Boolean(match && (opening.slice(match[0].length).match(/\p{L}+/gu)?.length ?? 0) >= 3);
+}
+
+export function lintDocQuality(content: string | Buffer, path: "AGENTS.md" | "README.md"): AgentBloatFinding[] {
+  const findings: AgentBloatFinding[] = [];
+  if (!hasOpeningPurpose(content.toString())) {
+    findings.push({
+      ruleId: BLOAT_RULE.DOC_OPENING_PURPOSE,
+      surface: "doc",
+      severity: "error",
+      path,
+      message: "explain what a reader can do in the opening paragraph",
+    });
+  }
+  const bytes = typeof content === "string" ? Buffer.byteLength(content, "utf-8") : content.length;
+  if (path === "README.md" && bytes > README_MAX_BYTES) {
+    findings.push({
+      ruleId: BLOAT_RULE.README_BYTE_BUDGET,
+      surface: "doc",
+      severity: "error",
+      path,
+      message: `README is ${bytes} UTF-8 bytes. Limit: ${README_MAX_BYTES}.`,
+      measured: bytes,
+      threshold: README_MAX_BYTES,
+    });
+  }
+  return findings;
+}
+
+function skillRuleFindings(body: string, path: string): AgentBloatFinding[] {
+  const count = skillRuleCount(body);
+  if (count <= SKILL_MAX_RULES) return [];
+  return [
+    {
+      ruleId: BLOAT_RULE.SKILL_RULE_CAP,
+      surface: "skill",
+      severity: "error",
+      path,
+      message: `Rules has ${count} entries. Limit: ${SKILL_MAX_RULES}. Move detail to references/.`,
+      measured: count,
+      threshold: SKILL_MAX_RULES,
+    },
+  ];
 }
 
 function bodyTokenCount(body: string): number {
@@ -251,6 +400,7 @@ export function lintSkillBloat(
   const findings = [
     ...skillDescriptionFindings(description, options.path),
     ...skillBodyFindings(tokens, lines, options.path, options.skillDir),
+    ...skillRuleFindings(split.body, options.path),
   ];
   if (options.baseline) {
     const baselineFinding = skillBaselineFinding(tokens, options.path, options.baseline, options.hasOpenTrimTask);
@@ -370,6 +520,14 @@ function collectBuiltinSkillFindings(
   return findings;
 }
 
+function collectRootDocFindings(repoRoot: string): AgentBloatFinding[] {
+  const docs = ["AGENTS.md", "README.md"] as const;
+  return docs.flatMap((doc) => {
+    const path = join(repoRoot, doc);
+    return existsSync(path) ? lintDocQuality(readFileSync(path), doc) : [];
+  });
+}
+
 function collectCommandFindings(commandsDir: string): AgentBloatFinding[] {
   if (!existsSync(commandsDir)) return [];
   const findings: AgentBloatFinding[] = [];
@@ -426,6 +584,7 @@ export function collectAgentBloatFindings(options: CollectAgentBloatOptions = {}
   const baselines = loadSkillBaselines(repoRoot);
   return [
     ...collectBuiltinSkillFindings(repoRoot, baselines, tasksContent),
+    ...collectRootDocFindings(repoRoot),
     ...collectCommandFindings(commandsDir),
     ...collectMdcTemplateFindings(repoRoot),
   ];

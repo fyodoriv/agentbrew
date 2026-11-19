@@ -1,0 +1,214 @@
+#!/bin/bash
+# Test fixture for checks/retry-failed-before-stop.sh
+#
+# Stop hook: blocks once when a tool call in this turn failed and was never
+# retried with success. Silent otherwise, on stop_hook_active, and on bypass.
+# Run: `bash retry-failed-before-stop.test.sh`
+
+set -uo pipefail
+
+HERE="$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0")")"
+SCRIPT="$HERE/retry-failed-before-stop.sh"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+DOTFILES_JQ="$(command -v jq)"
+export DOTFILES_JQ
+export HOME="$TMP/home" XDG_STATE_HOME="$TMP/state"
+mkdir -p "$HOME" "$XDG_STATE_HOME"
+unset HOOK_BYPASS_RETRY_FAILED_BEFORE_STOP
+PASS=0
+FAIL=0
+FAIL_DETAILS=()
+
+check() { # $1 label, $2 condition result (0 = pass)
+  if [ "$2" = "0" ]; then PASS=$((PASS + 1)); else
+    FAIL=$((FAIL + 1))
+    FAIL_DETAILS+=("$1")
+  fi
+}
+
+user() { printf '{"type":"user","message":{"role":"user","content":"%s"}}\n' "$1"; }
+call() { # $1 id, $2 tool, $3 input json
+  printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"%s","name":"%s","input":%s}]}}\n' "$1" "$2" "$3"
+}
+result() { # $1 id, $2 is_error, $3 text
+  printf '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"%s","is_error":%s,"content":"%s"}]}}\n' "$1" "$2" "$3"
+}
+run_hook() { # $1 transcript file, $2 stop_hook_active
+  printf '{"hook_event_name":"Stop","session_id":"s","transcript_path":"%s","stop_hook_active":%s}' "$1" "$2" | bash "$SCRIPT" 2>/dev/null
+}
+
+# Fixture: an old-turn failure, then a new turn whose Chrome call failed and was never retried.
+T1="$TMP/never-retried.jsonl"
+{
+  user "old turn"
+  call o1 OldTool '{}'
+  result o1 true "old failure"
+  user "find gifts"
+  call a1 mcp__claude-in-chrome__tabs_context_mcp '{}'
+  result a1 true "Claude in Chrome is not connected"
+  call a2 Read '{"file_path":"/x/notes.md"}'
+  result a2 false "ok"
+  call a3 Bash '{"command":"git push"}'
+  result a3 true "The user doesn't want to proceed with this tool use. The tool use was rejected"
+} >"$T1"
+
+OUT="$(run_hook "$T1" false)"
+REASON="$(printf '%s' "$OUT" | jq -r '.reason // ""' 2>/dev/null)"
+check "Test 1a never retried → block ($OUT)" "$(printf '%s' "$OUT" | jq -e '.decision=="block"' >/dev/null 2>&1 && echo 0 || echo 1)"
+check "Test 1b reason names the tool" "$(case "$REASON" in (*"mcp__claude-in-chrome__tabs_context_mcp"*"Retry"*) echo 0 ;; (*) echo 1 ;; esac)"
+check "Test 1c old turn ignored" "$(case "$REASON" in (*OldTool*) echo 1 ;; (*) echo 0 ;; esac)"
+check "Test 1d user denial ignored" "$(case "$REASON" in (*"git push"*) echo 1 ;; (*) echo 0 ;; esac)"
+
+# Fixture: failure followed by success of the same tool.
+T2="$TMP/retried.jsonl"
+{
+  user "find gifts"
+  call b1 mcp__claude-in-chrome__navigate '{"url":"https://a.example.com"}'
+  result b1 false "Error: request timed out"
+  call b2 mcp__claude-in-chrome__navigate '{"url":"https://a.example.com"}'
+  result b2 false "navigated"
+} >"$T2"
+OUT="$(run_hook "$T2" false)"
+check "Test 2 retried with success → allow ($OUT)" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
+# Known failure text without is_error still counts.
+T3="$TMP/text-fail.jsonl"
+{
+  user "go"
+  call c1 WebFetch '{"url":"https://b.example.com"}'
+  result c1 false "Error: request timed out"
+} >"$T3"
+OUT="$(run_hook "$T3" false)"
+check "Test 3 failure text → block ($OUT)" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("WebFetch"))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+OUT="$(run_hook "$T1" true)"
+check "Test 4 stop_hook_active → allow ($OUT)" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
+OUT="$(HOOK_BYPASS_RETRY_FAILED_BEFORE_STOP=1 run_hook "$T1" false)"
+check "Test 5 bypass → allow ($OUT)" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
+T6="$TMP/clean.jsonl"
+{
+  user "go"
+  call d1 Read '{"file_path":"/x"}'
+  result d1 false "fine"
+} >"$T6"
+OUT="$(run_hook "$T6" false)"
+check "Test 6 no failures → allow ($OUT)" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
+OUT="$(run_hook "$TMP/missing.jsonl" false)"
+check "Test 7 missing transcript → allow ($OUT)" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
+# A reminder can name the tool without copying its input into the next turn.
+T8="$TMP/private-input.jsonl"
+{
+  user "check an outcome"
+  call e1 Query '{"value":"fixture-private-input-1112"}'
+  result e1 true "connection refused"
+} >"$T8"
+OUT="$(run_hook "$T8" false)"
+check "Test 8 private input stays out of the safe follow-up" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("Query") and contains("safe to repeat") and (contains("fixture-private-input-1112")|not))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+# A different successful action through the same tool leaves the failure open.
+T9="$TMP/another-action.jsonl"
+{
+  user "check two outcomes"
+  call f1 Query '{"value":"first"}'
+  result f1 true "not connected"
+  call f2 Query '{"value":"second"}'
+  result f2 false "ok"
+} >"$T9"
+OUT="$(run_hook "$T9" false)"
+check "Test 9 success for another input leaves the failure open" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("Query"))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+T10="$TMP/later-denial.jsonl"
+{
+  user "check an outcome"
+  call g1 Query '{"value":"first"}'
+  result g1 true "connection refused"
+  call g2 Query '{"value":"first"}'
+  result g2 true "user denied"
+} >"$T10"
+OUT="$(run_hook "$T10" false)"
+check "Test 10 a later denial resolves the same action" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
+T11="$TMP/no-user-turn.jsonl"
+{
+  call h1 Query '{"value":"first"}'
+  result h1 true "connection refused"
+} >"$T11"
+OUT="$(run_hook "$T11" false)"
+check "Test 11 no current user turn allows stop" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
+T12="$TMP/service-denial.jsonl"
+{
+  user "check an outcome"
+  call i1 Query '{"value":"first"}'
+  result i1 true "connection refused"
+  call i2 Query '{"value":"first"}'
+  result i2 true "Error: permission denied"
+} >"$T12"
+OUT="$(run_hook "$T12" false)"
+check "Test 12 a service permission error stays unresolved" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("Query"))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+T13="$TMP/missing-input.jsonl"
+{
+  user "check an outcome"
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"j1","name":"Query"}]}}'
+  result j1 true "connection refused"
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"j2","name":"Query"}]}}'
+  result j2 false "ok"
+} >"$T13"
+OUT="$(run_hook "$T13" false)"
+check "Test 13 missing input cannot prove the same action" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("Query"))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+T14="$TMP/invalid-label.jsonl"
+{
+  user "check an outcome"
+  call k1 'Query\n' '{}'
+  result k1 true "connection refused"
+} >"$T14"
+OUT="$(run_hook "$T14" false)"
+check "Test 14 malformed label uses the safe placeholder" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("unnamed tool") and (contains("\n")|not))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+T15="$TMP/unknown-tool-identity.jsonl"
+{
+  user "check an outcome"
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"l1","input":{"value":"first"}}]}}'
+  result l1 true "connection refused"
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"l2","input":{"value":"first"}}]}}'
+  result l2 false "ok"
+} >"$T15"
+OUT="$(run_hook "$T15" false)"
+check "Test 15 missing names cannot prove identical tools" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("unnamed tool"))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+T16="$TMP/missing-call-id.jsonl"
+{
+  user "check an outcome"
+  call '' Query '{}'
+  result '' true "connection refused"
+} >"$T16"
+OUT="$(run_hook "$T16" false)"
+check "Test 16 missing IDs cannot correlate a call and result" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
+T17="$TMP/duplicate-ids.jsonl"
+{
+  user "check an outcome"
+  call m1 Query '{}'
+  result m1 true "connection refused"
+  result m1 false "ok"
+  call m2 Query '{}'
+  call m2 Read '{}'
+  result m2 true "connection refused"
+} >"$T17"
+OUT="$(run_hook "$T17" false)"
+check "Test 17 duplicate calls or results do not establish an outcome" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
+echo ""
+echo "retry-failed-before-stop.sh: $PASS passed, $FAIL failed"
+if [ "$FAIL" -gt 0 ]; then
+  for detail in "${FAIL_DETAILS[@]}"; do echo "  ✗ $detail"; done
+  exit 1
+fi
+exit 0

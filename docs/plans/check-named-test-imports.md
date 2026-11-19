@@ -57,3 +57,17 @@ Use `heavy-run npx --offline vitest run src/scripts/check-orphan-tests.test.ts
 cases and the 500 ms ceiling. Any extra file write, observed test execution,
 Node disagreement, checkout false report, or required gate failure rejects
 this candidate.
+
+The linker can otherwise use a TypeScript sibling when an explicitly named
+JavaScript file is absent. The file-existence check keeps that fallback
+out of static relative JavaScript imports. The direct controls compared
+Node with the candidate on five cases. Both accepted the exact runtime
+export and the explicit star selection. Both refused a TypeScript-only
+name, conflicting star exports, and an absent JavaScript file with a
+TypeScript sibling. The candidate wrote no bundle.
+
+The normal lint entry point also checks source deletions. In a scratch
+repository with one deleted module and one unchanged importing test,
+the first entry point exited zero before running the checker. The repair
+exits one and prints the missing module. Biome still receives only files
+that exist.

@@ -57,14 +57,22 @@ describe("optional judged delivery safeguards", () => {
       })),
     });
     saveSharedRules("# Synthetic rules\n");
-    const rules = loadCatalog().rules.filter((entry) => entry.name in safeguards);
+    const catalog = loadCatalog();
+    const rules = catalog.rules.filter((entry) => entry.name in safeguards);
     expect(rules).toHaveLength(Object.keys(safeguards).length);
     for (const rule of rules) installRule(rule);
+    const reviewPolicy = catalog.rules.find((entry) => entry.name === "public-impersonation-ban");
+    if (!reviewPolicy) throw new Error("Missing public delivery policy");
+    expect(reviewPolicy.recommended).toBe(true);
+    installRule(reviewPolicy);
     await syncRules({ quiet: true });
     for (const host of hosts) {
       const deployed = readFileSync(host.path, "utf-8");
       expect(deployed).toContain(`${host.name} owner text`);
       for (const rule of rules) expect(deployed).toContain(rule.content.trim());
+      expect(deployed).toContain("Request only named reviewers.");
+      expect(deployed).toContain("Keep the PR in draft if a team could receive a request or the rules are unclear.");
+      expect(deployed).toContain("Preserve existing review requests and requirements.");
     }
   });
 

@@ -80,7 +80,7 @@ A long task or a user-requested deadline remains valid.
 - **Scope:** no bypass outside approved repo families; never bypass someone else's PR.
 - **Pushes:** agents push approved feature branches; on git-push guard retry with explicit repo path + `/bin/bash -lc`.
 - **PRs, stacks, Jira:** use `gh` for PRs and the Jira MCP server (or a team overlay's Jira skill) for tickets. No `Status:` lines or file inventories in PR bodies. Vision trace: **## Session entry**. E2E/automation non-blocking. Report **`Merged N/M PRs`**.
-- **PR review recipients.** Request only named reviewers. Before opening a ready PR, use the delivery workflow to check automatic review assignments. Keep the PR in draft if a team could receive a request or the rules are unclear. Preserve existing review requests and requirements.
+- **PR review recipients.** Request only named reviewers. Use the approved delivery workflow to check automatic review assignments before opening a non-draft PR or marking one ready. Keep the PR in draft if a team could receive a request or the rules are unclear. Preserve existing review requests and requirements.
 - **PR opener (IRON LAW):** `## Summary` (2–3 sentences): what the change does, then why it is useful. Follow with `## Details`; rewrite from verified facts before merge. Add a `## Real vs mocked` table when tests, fixtures, mocks, stubs, a simulator, harness, or POC change. Inventory every changed test group and name what each mock replaces. Date one-off observations and label screenshot captions as real or simulated.
 - Commit format: `type: subject TICKET`, header ≤72 chars.
 - **Rebase:** see `rebase-verification.mdc`.

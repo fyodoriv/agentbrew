@@ -10,11 +10,11 @@ hook_dir="${BASH_SOURCE[0]%/*}"
 [[ "${BASH_SOURCE[0]}" == */* ]] || hook_dir=.
 hook_dir="$(CDPATH='' cd -- "${hook_dir:-/}" && pwd)"
 if [ -d "$hook_dir/lib" ]; then hook_lib="$hook_dir/lib"; else hook_lib="$hook_dir/../lib"; fi
+source "$hook_lib/stdin-json.sh"
 source "$hook_lib/verdict.sh"
 
 readonly HOOK_ID=tasks-md-lint-on-edit
-INPUT=""
-IFS= read -r -d '' INPUT || true
+INPUT="$(read_hook_stdin)"
 
 status=0
 tool=$(/usr/bin/python3 -I -S - "$tool_path:$PATH" 3<<<"$INPUT" 2>/dev/null <<'PY'

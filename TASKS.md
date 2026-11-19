@@ -712,6 +712,7 @@
   - **Measurement**: `npx vitest run` on the new timing test, which prints the measured seconds.
   - **Success**: At most 10 seconds on a 5-file diff, on 5 runs out of 5.
   - **Pivot**: If the median exceeds 10 seconds, move the slowest step to the full gate; do not raise the limit.
+  - **Registered fixture**: Use the real Lefthook pre-push command for each current configuration. Use an isolated repository and a five-file diff with no manifest changes. Record five samples per hook, after scratch setup. Every successful sample must take at most ten seconds. A hook exit other than zero is a failure, and missing Lefthook leaves the timing check unqualified. Use only local scratch refs.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (fast feedback loops).
 
 - [ ] Track flaky hosted checks and ban hardcoded timeouts

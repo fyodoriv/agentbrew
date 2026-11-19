@@ -432,11 +432,13 @@ describe("new-project skill", () => {
     const linkedTest = join(linkedTree, "unit", "ignored.test.ts");
     writeFileSync(linkedTest, 'import "./intentionally-missing.js";\n');
     symlinkSync(linkedTree, testsTree, "junction");
+    git(dir, "add", "--", "tests");
     const linked = check("1", "1");
-    expect(linked.status, linked.stderr).toBe(0);
+    expect(linked.status, linked.stdout + linked.stderr).toBe(0);
     unlinkSync(testsTree);
     unlinkSync(linkedTest);
     renameSync(linkedTree, testsTree);
+    git(dir, "add", "--", "tests");
 
     const nonUnit = [join(dir, "src", "integration"), join(dir, "test", "e2e"), join(dir, "tests", "unit", "fixtures")];
     for (const folder of nonUnit) {

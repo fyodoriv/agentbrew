@@ -107,6 +107,37 @@ by feel.
   takes more than a day, downgrade the job to non-blocking and file a
   follow-up.
 
+## Test timeout check
+
+The gate runs `node scripts/check-vitest-timeouts.mjs` against the
+`origin/main` merge base. Pass a different base ref for another branch.
+Use a named constant for a new numeric timeout in a Vitest `it` or `test`
+call. The check compares deadline values within changed Git hunks and their
+enclosing suites. It also catches a test that becomes a Vitest case after
+an import change. It keeps established deadlines, Git-detected file renames,
+and global defaults.
+Its scope is ordinary source test cases. Shell, subprocess, polling, fixture
+and separately scheduled tests retain their own timeout controls.
+
+**Hypothesis.** A syntax-based check can flag new inline deadlines in Vitest
+test calls while preserving existing deadlines and unrelated fixture values.
+
+**Measurement.** Run the timeout lint fixtures and compare change-base results
+for positional, options-object, and parameterized test cases. Use the
+repository gate after checking a named constant and an unchanged legacy deadline.
+
+**Success.** Flag all three inline-deadline forms and zero normal controls.
+Preserve both global 30-second defaults. A title-only edit must keep an
+existing deadline. A same-titled test in a different suite cannot inherit
+that deadline. A .prep.test.ts filename alone does not exempt a test. Fail
+when the change base or source cannot be read.
+
+**Pivot.** Any false block on an unrelated edit or an eligible existing
+deadline rejects the gate design.
+
+**Anchor.** [Vitest test API](https://vitest.dev/api/test) and the existing
+flake tracker task's one seeded literal control.
+
 ## Merge rule
 
 Merge only when every hosted check on the pull request is green. Never merge on a pending or red check. Wait with `gh pr checks <n> --watch`.

@@ -58,21 +58,26 @@ means: take this session's work from where it stands to proven and live, in
 whatever repo, app, or machine the session is in. Expand it into the
 contract with these criteria. Do not ask what "deliver" means.
 
-1. **Related work, listed.** Find this session's commits, branches, worktrees,
-   uncommitted files, and PRs, plus PRs of sessions it started. Name each one
-   in the contract with its URL or path. Leave out work the session did not touch.
+1. **Related work, listed.** Find what this session created: its commits,
+   branches, worktrees, uncommitted files, and PRs, plus PRs opened by
+   sessions it started. Name each one in the contract with its URL or path.
+   Another author's PR is out of scope: deliver never merges, closes, or
+   force-pushes work this session did not create.
 2. **Green and reviewed.** Every related PR passes its hosted checks at its
    current head. A fresh-context reviewer reads each diff before merge. Read
    the log of a failed check before you fix it.
 3. **Merged.** Merge each PR the way the repo's delivery rules say, under a
-   cited approval (repo `AGENTS.md`, the user's standing rules). Without one,
-   park the merge and ask once at the end.
+   cited approval (repo `AGENTS.md`, the user's standing rules), with every
+   required review approved. Never bypass a check, also on an outage. Without
+   an approval, park the merge and ask once at the end; if nothing else is
+   left, write the BLOCKED report.
 4. **Live in the final environment.** Find where users meet the work from the
-   repo docs (install, deploy, or sync sections). Run that step: `agentbrew
-   sync` for skills and rules, `dotfiles apply` for machine config, the deploy
-   command for an app. A publish or release still needs its own approval. Then
-   read the live state back: installed files byte-equal to the merged source,
-   the loaded service, the served page.
+   repo docs (install, deploy, or sync sections). A local install step those
+   docs name runs as part of delivery: `agentbrew sync` for skills and rules,
+   `dotfiles apply` for machine config. A deploy to a shared or production
+   target, a publish, or a release needs a cited approval; without one, park
+   it. Then read the live state back: installed files byte-equal to the
+   merged source, the loaded service, the served page.
 5. **Proved there.** Use the delivered thing where users meet it, on real
    input, with the baseline taken before the merge: run the installed script,
    start a fresh agent session that sees the skill, open the live URL.

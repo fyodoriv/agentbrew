@@ -29,7 +29,12 @@ describe("run-goal /goal deliver shorthand", () => {
     expect(section).toMatch(/byte-equal to the merged source/);
     expect(section).toMatch(/baseline taken before the merge/);
     expect(section).toMatch(/before\/after table/);
-    expect(section).toMatch(/publish or release still needs its own approval/);
+    expect(section).toMatch(/never merges, closes, or\s+force-pushes work this session did not create/);
+    expect(section).toMatch(/every\s+required review approved/);
+    expect(section).toMatch(/Never bypass a check/);
+    expect(section).toMatch(/park the merge and ask once at the end/);
+    expect(section).toMatch(/write the BLOCKED report/);
+    expect(section).toMatch(/deploy to a shared or production\s+target, a publish, or a release needs a cited approval/);
   });
 
   it("has an eval that runs a bare /goal deliver end to end", () => {

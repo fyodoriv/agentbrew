@@ -5,10 +5,9 @@ description: >
   axe-core WCAG 2.2, the Vercel Web Interface Guidelines, target size, text and state contrast,
   keyboard, Reduce motion and dark scheme, readability, Nielsen's heuristics, task time (KLM),
   Lighthouse, performance at real scale, and a design panel that rates the look as ten design-award
-  sites would, plus a principal-engineer judge panel scored by issues. Also audits a whole site the
-  owner owns for usefulness: every page, three blind panels (design, UX, usefulness), a private
-  local report, and fix waves. Use for "rate my UI", "judge this page", "UX audit", "audit every
-  page of my site for usefulness", "which parts of my app should I cut", "make it look modern", "iterate on the UI until it
+  sites would, plus a principal-engineer judge panel scored by issues, and a whole-site usefulness
+  audit. Use for "rate my UI", "judge this page", "UX audit", "audit every page of my site for
+  usefulness", "make it look modern", "iterate on the UI until it
   scores N", before shipping a page, and before building or reshaping any UI (build to its comfort
   budget from the start). Don't use for one Lighthouse run alone (use web-quality-audit) or for
   creative direction from scratch (use hallmark).

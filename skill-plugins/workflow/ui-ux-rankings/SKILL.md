@@ -29,7 +29,13 @@ at least 14 px, one add button everywhere, state-specific controls with rare act
 capped lists, friendly dates, and an accent picked by measured contrast in both themes. Pin the
 comfort budget as a test in the repo's gate: no serious axe problem, no touch target under 44 px,
 no text under 14 px, no text that spills out of its box, no raw ISO dates in app text,
-no sideways scroll, and a tap budget per everyday job. Then the rankings below confirm the work
+no sideways scroll, and a tap budget per everyday job.
+Every button and tappable control has a hover, active (pressed) and keyboard-focus state that
+changes over a short transition (about 120-200 ms; none under Reduce motion), built once in a
+shared adapter on a maintained library (React: Motion `whileHover`/`whileTap`/`whileFocus`, or
+shadcn/Radix), never one-off CSS per control. Pin it with a gate step that fails a raw `<button>`
+outside the adapter and a UI test that samples each state mid-transition and settled.
+**Judges fail a control whose state changes with no transition.** Then the rankings below confirm the work
 instead of finding all of it.
 
 ## Whole-site usefulness audit

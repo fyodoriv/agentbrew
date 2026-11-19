@@ -38,12 +38,16 @@
 
 set -euo pipefail
 
-__LOG_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+__LOG_LIB_DIR="${BASH_SOURCE[0]%/*}"
+[[ "${BASH_SOURCE[0]}" == */* ]] || __LOG_LIB_DIR=.
+__LOG_LIB_DIR="$(CDPATH='' cd -- "${__LOG_LIB_DIR:-/}" && pwd)"
 # shellcheck source=./bootstrap-endpoint-path.sh
 source "$__LOG_LIB_DIR/bootstrap-endpoint-path.sh"
 
 __LOG_FILE="${HOOK_DECISIONS_LOG:-${HOME}/.cache/agentbrew/hook-decisions.jsonl}"
-__LOG_DIR="$(dirname "$__LOG_FILE")"
+__LOG_DIR="${__LOG_FILE%/*}"
+[[ "$__LOG_FILE" == */* ]] || __LOG_DIR=.
+__LOG_DIR="${__LOG_DIR:-/}"
 
 # Ensure the log dir exists. Done lazily on the first call.
 __ensure_log_dir() {

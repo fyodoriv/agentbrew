@@ -35,10 +35,12 @@ _dotfiles_resolve_dir() {
 _dotfiles_bootstrap_endpoint_hook_env() {
   local dotfiles_dir="${1:-}"
   local home="${2:-${HOME:-}}"
-  local lib_root="$dotfiles_dir"
+  local lib_root="$dotfiles_dir" bootstrap_dir
 
   if [ -z "$lib_root" ] || [ ! -f "$lib_root/lib/dotfiles-endpoint-paths.sh" ]; then
-    lib_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd 2>/dev/null || true)"
+    bootstrap_dir="${BASH_SOURCE[0]%/*}"
+    [[ "${BASH_SOURCE[0]}" == */* ]] || bootstrap_dir=.
+    lib_root="$(CDPATH='' cd -- "${bootstrap_dir:-/}/.." && pwd 2>/dev/null || true)"
   fi
   [ -f "$lib_root/lib/dotfiles-endpoint-paths.sh" ] || return 0
 
@@ -82,7 +84,8 @@ fi
 
 # Standalone: consume hook stdin (if any) and exit 0.
 if [ ! -t 0 ]; then
-  cat >/dev/null || true
+  while IFS= read -r _hook_line; do :; done
+  unset _hook_line
 fi
 _df_dir="$(_dotfiles_resolve_dir || true)"
 _dotfiles_bootstrap_endpoint_hook_env "$_df_dir" "${HOME:-}"

@@ -23,3 +23,15 @@ affected checks and two Python callers.
 
 The fixtures measure the reported startup paths. Timing on the managed
 machine remains separate field evidence.
+
+## Observed results
+
+Each of the three Bash payloads returned exit 0 before and after the
+repair. Each went from five `dirname` launches and one `cat` launch to
+zero of either. The isolated bootstrap also used neither executable.
+
+All 34 focused startup, manifest, and agent-guide checks passed. The
+search helper passed 69 existing cases and the PR helper passed 50.
+The Xcode-selected interpreter on this Mac passed signature verification
+and ran in isolated mode. The fixtures also checked explicit override
+precedence and confirmed the managed timeout default.

@@ -41,7 +41,9 @@ def is_literal_note(command):
     if not doc or (doc["prior"] and doc["later"]):
         return False
     delimiter = doc["delimiter"]
-    lines = body.removesuffix("\n").split("\n")
+    if body.endswith("\n"):
+        body = body[:-1]
+    lines = body.split("\n")
     return lines[-1] == delimiter and delimiter not in lines[:-1]
 
 

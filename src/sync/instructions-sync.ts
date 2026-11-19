@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, symlinkSync, unlinkSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, symlinkSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { Context } from "../core/context.js";
 import { createContext } from "../core/context.js";
@@ -6,7 +6,7 @@ import { errorMessage } from "../core/errors.js";
 import type { Logger } from "../core/logger.js";
 import { logSkipped } from "../core/logger.js";
 import type { Manifest } from "../manifest.js";
-import { loadManifest, saveManifest, writeIfChanged } from "../manifest.js";
+import { contentHash, loadManifest, saveManifest, writeIfChanged } from "../manifest.js";
 import { CANONICAL_INSTRUCTIONS_PATH } from "../paths.js";
 import { loadState } from "../state.js";
 import type { AgentConfig, SyncOptions } from "../types.js";
@@ -22,6 +22,7 @@ import {
   mergeInstructionsWithManagedSection,
   usesAgentsMdStandardPath,
 } from "./instructions-content.js";
+import { extractManagedSection, wrapManaged } from "./rules-sync.js";
 
 // Re-export all content helpers so existing imports keep working
 export {
@@ -110,40 +111,40 @@ export function getCanonicalInstructionsPath(): string {
   return expandHome(CANONICAL_INSTRUCTIONS_PATH);
 }
 
-/** True when a symlink at `linkPath` resolves to `canonicalPath`. */
-function isSymlinkTo(linkPath: string, canonicalPath: string): boolean {
-  if (!existsSync(linkPath)) return false;
+/** Identify the standard instruction paths Agentbrew may manage. */
+export function inspectInstructionsPath(
+  targetPath: string,
+  canonicalPath: string,
+): "missing" | "canonical-link" | "separate" {
   try {
-    if (!lstatSync(linkPath).isSymbolicLink()) return false;
-    const rawTarget = readlinkSync(linkPath);
-    const resolved = rawTarget.startsWith("/") ? rawTarget : resolve(dirname(linkPath), rawTarget);
-    return resolved === canonicalPath;
+    const entry = lstatSync(targetPath, { throwIfNoEntry: false });
+    if (!entry) return "missing";
+    if (!entry.isSymbolicLink()) return "separate";
+    const rawTarget = readlinkSync(targetPath);
+    const resolved = rawTarget.startsWith("/") ? rawTarget : resolve(dirname(targetPath), rawTarget);
+    return resolved === canonicalPath ? "canonical-link" : "separate";
   } catch (e) {
-    logSkipped("instructions-sync/isSymlinkTo", e);
-    return false;
+    logSkipped("instructions-sync/inspectInstructionsPath", e);
+    return "separate";
   }
 }
 
-/** Pick existing file content to seed the canonical merge (canonical first, then any target). */
-function readExistingForCanonicalMerge(
-  canonicalPath: string,
+function firstManagedRules(
   targets: ReadonlyArray<Omit<AgentConfig, "detected">>,
+  manifest: Manifest,
 ): string | undefined {
-  if (existsSync(canonicalPath)) {
-    try {
-      return readFileSync(canonicalPath, "utf-8");
-    } catch (e) {
-      logSkipped("instructions-sync/readCanonical", e);
-    }
-  }
   for (const agent of targets) {
     const targetPath = expandHome(agent.rulesFile ?? "");
-    if (!existsSync(targetPath) || isSymlinkTo(targetPath, canonicalPath)) continue;
+    const recorded = manifest.hashes[targetPath];
+    if (!recorded) continue;
     try {
-      if (!lstatSync(targetPath).isFile()) continue;
-      return readFileSync(targetPath, "utf-8");
+      if (!lstatSync(targetPath, { throwIfNoEntry: false })?.isFile()) continue;
+      const deployed = readFileSync(targetPath, "utf-8");
+      if (contentHash(deployed) !== recorded) continue;
+      const managed = extractManagedSection(deployed);
+      if (managed) return wrapManaged(managed);
     } catch (e) {
-      logSkipped(`instructions-sync/readExisting/${agent.name}`, e);
+      logSkipped("instructions-sync/firstManagedRules", e);
     }
   }
   return undefined;
@@ -157,7 +158,9 @@ function syncCanonicalInstructions(
 ): SyncResultItem {
   const canonicalPath = getCanonicalInstructionsPath();
   try {
-    const existing = readExistingForCanonicalMerge(canonicalPath, targets);
+    const existing = existsSync(canonicalPath)
+      ? readFileSync(canonicalPath, "utf-8")
+      : firstManagedRules(targets, manifest);
     const merged = mergeInstructionsWithManagedSection(content, existing);
 
     if (dryRun) {
@@ -204,18 +207,19 @@ function ensureInstructionsSymlink(
 ): SyncResultItem {
   const targetPath = expandHome(agent.rulesFile ?? "");
   try {
-    if (isSymlinkTo(targetPath, canonicalPath)) {
-      return { name: agent.name, changed: false };
+    const kind = inspectInstructionsPath(targetPath, canonicalPath);
+    if (kind === "canonical-link") return { name: agent.name, changed: false };
+    if (kind === "separate") {
+      return {
+        name: agent.name,
+        changed: false,
+        error: "Existing instructions kept. Link adoption requires an unused file path.",
+      };
     }
 
-    if (dryRun) {
-      return { name: agent.name, changed: true };
-    }
+    if (dryRun) return { name: agent.name, changed: true };
 
     mkdirSync(dirname(targetPath), { recursive: true });
-    if (existsSync(targetPath)) {
-      unlinkSync(targetPath);
-    }
     symlinkSync(canonicalPath, targetPath);
     return { name: agent.name, changed: true };
   } catch (err) {

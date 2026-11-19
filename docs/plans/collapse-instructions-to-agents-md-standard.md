@@ -54,8 +54,8 @@ in place and seed a new canonical file without another agent's local text.
   verified managed rules block without importing local instructions.
 - **Measurement**: Run `npx vitest run src/sync/instructions-sync.test.ts src/drift.test.ts src/status.test.ts`
   on hosted CI. Run the CLI's install, instructions preview, and retry in
-  disposable homes. Partition the first-run fixture by presence of a
-  matching manifest record for the managed rules file.
+  disposable homes. Use `sync --dry-run --only instructions --verbose` to see the kept
+  result. Test matching, missing, and stale manifest records for managed rules.
 - **Success**: Both local markers survive twice. Zero separate path changes
   occur during preview, and a fresh path links to its canonical file.
   A matching manifest permits one managed block and zero local markers in

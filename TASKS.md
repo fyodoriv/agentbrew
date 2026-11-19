@@ -187,19 +187,6 @@
 
 ## P1
 
-- [ ] Preserve existing local instructions during canonical link adoption
-  - **ID**: preserve-owner-agent-instructions-on-link
-  - **Tags**: reliability, instructions, sync
-  - **Details**: A disposable first catalog rule install in a home with distinct Claude and Codex instruction files copied the Claude text into the canonical file and replaced the separate Codex file with a link. Its distinct synthetic text disappeared. `readExistingForCanonicalMerge` uses the first file, while `ensureInstructionsSymlink` removes an existing target.
-  - **Files**: `src/sync/instructions-sync.ts`, `src/sync/instructions-sync.test.ts`, instruction adoption guidance
-  - **Output**: code
-  - **Acceptance**: A first sync and retry both preserve distinct local instructions. Fresh targets and existing owned links retain their supported behavior. Preview performs no writes and reports any target kept for safety.
-  - **Hypothesis**: A file-ownership check prevents loss of both distinct owner markers in the first-run case, while normal canonical links stay supported.
-  - **Measurement**: Run `npx vitest run src/sync/instructions-sync.test.ts` on hosted CI with exact cold, warm and conflicting-file controls. Verify the same disposable CLI install and safe preview with normal configuration after registering the candidate boundary.
-  - **Success**: Both distinct markers and all unrelated bytes survive first sync and retry. Fresh and owned-link cases pass, preview changes zero paths, and the full hosted gate passes.
-  - **Pivot**: Any lost marker, moved owner file without consent, unknown link accepted as owned, changed fresh behavior, or preview write rejects the candidate. Leave an ambiguous target untouched.
-  - **Anchor**: [Canonical instructions contract](docs/plans/collapse-instructions-to-agents-md-standard.md); disposable two-agent configuration, Nov 18, 2026.
-
 - [ ] Validate every sync selection before preparation can publish outputs
   - **ID**: sync-selection-preflight
   - **Tags**: security, stability, sync, cli

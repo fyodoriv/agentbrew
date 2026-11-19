@@ -920,6 +920,21 @@ describe("checkInstructionsDrift", () => {
     expect(result[0]).toMatchObject({ type: "instructions", detail: "instructions file unreadable" });
   });
 
+  it.each([false, true])("leaves separate Codex instructions outside repairable drift (symlink: %s)", (isLink) => {
+    mockLoadState.mockReturnValue(
+      makeState({
+        agents: [{ name: "codex", detected: true, skillsDir: "x", rulesFile: "~/.codex/AGENTS.md" }],
+      }),
+    );
+    mockLoadInstructions.mockReturnValue("# Shared instructions");
+    mockExistsSync.mockReturnValue(!isLink);
+    mockLstatSync.mockReturnValue({ isSymbolicLink: () => isLink } as ReturnType<typeof lstatSync>);
+    mockReadlinkSync.mockReturnValue("/tmp/owner-instructions.md" as unknown as ReturnType<typeof readlinkSync>);
+
+    expect(checkInstructionsDrift()).toEqual([]);
+    expect(mockReadFileSync).not.toHaveBeenCalled();
+  });
+
   it("skips non-detected agents", () => {
     mockLoadState.mockReturnValue(
       makeState({

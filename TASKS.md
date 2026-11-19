@@ -479,7 +479,9 @@
 - [ ] Editing TASKS.md lints it right away
   - **ID**: tasks-md-lint-on-edit
   - **Tags**: hooks, tasks-md, from-minsky
-  - **Details**: Port the TASKS.md branch of minsky `.claude/hooks/post-edit.sh`: after an Edit or Write to `TASKS.md`, run `@tasks-md/lint` (including rule 9 fields and quality warnings) and block the next turn with the errors until fixed.
+  - **Details**: Port the TASKS.md branch of minsky `.claude/hooks/post-edit.sh`: after an Edit or Write to the root `TASKS.md`, run the installed `tasks-lint` with the preregistration fields required. Show a correction prompt in the same turn and enforce the task rules at commit.
+  - **Progress**: The [post-edit control](docs/plans/tasks-lint-on-edit.md) checks the root task file after a Claude Code edit. It requires an installed validator outside the project and keeps task text out of hook output. The commit check remains the delivery gate.
+  - **Blocked**: needs-opt-in-field-window — measure the registered thirty-day CI outcome after a verified opt-in.
   - **Files**: `hooks/checks/tasks-md-lint-on-edit.sh`, its fixture test, `hooks/manifest.yaml`.
   - **Acceptance**: an edit that drops a task's Pivot is reported in the same turn; a valid edit is silent.
   - **Hypothesis**: TASKS.md lint failures found in CI drop to near zero because the edit hook catches them first.

@@ -15,5 +15,17 @@ Pivot: any unexpected refusal, private output, unbounded linter, project executi
 Anchor: Minsky's `.claude/hooks/post-edit.sh`, the installed `tasks-lint` CLI, and the [Claude Code post-tool hook contract](https://code.claude.com/docs/en/hooks#posttooluse).
 
 Claude Code runs the check after the file tool succeeds. The result tells
-the agent to correct the file in that turn. The existing commit check
-enforces the task rules at delivery.
+the agent to correct the file in that turn. Missing-tool and timeout
+warnings go to hook diagnostics. The existing commit check enforces
+the task rules at delivery.
+
+## Baseline and controls
+
+Prediction `b85e1b6b` preceded the controls. The installed validator
+accepted a valid fixture and rejected the same file without Pivot.
+The hook manifest had no post-edit task entry. Eight scratch cases
+then verified a silent valid edit; a visible invalid edit; skips for
+a nested task, unrelated file, and unrelated tool; warnings for
+project-owned tools in either checkout; and a bounded linter with a
+child process. The private marker stayed out of the hook output and
+decision log, and the task file bytes matched.

@@ -395,7 +395,7 @@
   - **Tags**: skills, throughput, from-minsky
   - **Details**: In minsky's overnight runs, telling workers to commit a green step within 15 minutes or split the slice raised throughput. iterate and grind have no such timebox, so a stuck slice can burn an hour with nothing committed. Add the rule to both skills.
   - **Files**: `skill-plugins/workflow/iterate/SKILL.md`, `skill-plugins/workflow/grind/SKILL.md`, and their evals.
-  - **Acceptance**: an eval where a slice is still red after 15 minutes makes the agent split it and commit the smaller green part.
+  - **Acceptance**: an eval where a slice is still red at the 15-minute mark: the agent splits it and commits the smaller green part.
   - **Hypothesis**: slices that run past 30 minutes with no commit drop from common to rare in grind runs.
   - **Measurement**: `npx agentbrew eval iterate` and `npx agentbrew eval grind` pass rates.
   - **Success**: the new evals pass with the skill text and fail without it.

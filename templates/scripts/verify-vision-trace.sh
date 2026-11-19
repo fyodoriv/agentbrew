@@ -24,9 +24,9 @@ fi
 
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || repo_root=$(pwd -P)
 
-# VISION.md (any case) in the repo root, docs/, or .minsky/ — first hit wins.
+# VISION.md (any case) in the repo root or docs/ — first hit wins.
 vision_rel=""
-for dir in "" "docs/" ".minsky/"; do
+for dir in "" "docs/"; do
   for path in "$repo_root/$dir"*; do
     [ -f "$path" ] || continue
     case "${path##*/}" in
@@ -132,7 +132,7 @@ awk -v root="$repo_root" -v vision_rel="$vision_rel" -v body_name="$body_file" -
       print "exit 1 — nothing to verify"
       exit 1
     }
-    if (vision_rel == "") { print "  ⚠ no VISION.md in the repo root, docs/, or .minsky/ — validation skipped"; exit 0 }
+    if (vision_rel == "") { print "  ⚠ no VISION.md in the repo root or docs/ — validation skipped"; exit 0 }
     print "  VISION.md: " vision_rel
     if (!fm_closed) {
       print "  ⚠ VISION.md lacks frontmatter — validation skipped"

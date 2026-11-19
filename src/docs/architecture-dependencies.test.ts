@@ -17,7 +17,7 @@ function dependencyRows(): { tool: string; files: string[]; adapter: string }[] 
 describe("ARCHITECTURE.md external dependency table", () => {
   it("lists the delegated tools", () => {
     const tools = dependencyRows().map((row) => row.tool);
-    for (const name of ["MCP Registry", "Minsky rule lints", "skills CLI", "mcpm.sh", "ai-rules"]) {
+    for (const name of ["MCP Registry", "skills CLI", "mcpm.sh", "ai-rules"]) {
       expect(
         tools.some((tool) => tool.startsWith(name)),
         name,

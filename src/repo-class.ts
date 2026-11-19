@@ -16,7 +16,7 @@
  *   - `unsetRepoClass(repoPath)` — remove the override (revert to auto-detect).
  *
  * **Default behaviour**: lazy / on-demand. No daemon, no sync-step. Callers
- * (minsky, scripts) consult the classifier as a passive lookup.
+ * (orchestrators, scripts) consult the classifier as a passive lookup.
  *
  * **Auto-detection**: walk the repo's last-365-day committer set via
  * `git log --format='%aE' --since='1 year ago' | sort -u`. ≤1 unique

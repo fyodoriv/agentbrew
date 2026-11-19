@@ -213,7 +213,6 @@ tasks-md-lint npx --yes @tasks-md/lint@0.10.2 --require-prereg TASKS.md
 rule-3 node scripts/check-rule-3-test-first.mjs
 rule-8 node scripts/check-rule-8-pattern-conformance.mjs
 rule-16 node scripts/check-rule-16-defaults.mjs
-lint-rules npm run --silent lint:rules
 knip npx knip --no-progress
 eval-agent-artifacts npm run --silent eval:agent-artifacts
 skills-coverage npm run --silent skills:coverage

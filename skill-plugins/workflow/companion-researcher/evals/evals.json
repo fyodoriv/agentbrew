@@ -15,10 +15,10 @@
     },
     {
       "id": 2,
-      "prompt": "Help in the background across my workspace while another agent implements fixes. Exclude minsky and only use docs, tests, competitors, and skills lanes.",
-      "expected_output": "A workspace companion loop that enumerates eligible repos, excludes minsky, rotates safe lanes, and keeps each lane bounded.",
+      "prompt": "Help in the background across my workspace while another agent implements fixes. Exclude the legacy-runner repo and only use docs, tests, competitors, and skills lanes.",
+      "expected_output": "A workspace companion loop that enumerates eligible repos, excludes legacy-runner, rotates safe lanes, and keeps each lane bounded.",
       "expectations": [
-        "Scans workspace repositories and excludes minsky by default or by the explicit exclude option",
+        "Scans workspace repositories and excludes repos named by the explicit exclude option",
         "Prioritizes eligible repos with TASKS.md or README.md rather than arbitrary directories",
         "Routes docs, tests, competitors, and skills work to their corresponding companion sub-skills",
         "Avoids long-running dev servers, watch commands, and state-mutating setup commands",
@@ -92,7 +92,7 @@
       "expectations": [
         "Delegates docs-sync and test-gaps to read-only subagents instead of running sub-skills in-process",
         "Refuses `npm run dev`, `vitest --watch`, and other long-blocking or watch commands in companion mode",
-        "Runs worker-active snapshotting before any lane invocation and respects excluded repos such as minsky",
+        "Runs worker-active snapshotting before any lane invocation and respects excluded repos named by the user",
         "Never pushes to main or master; uses the `companion/<lane>-YYYY-MM-DD-<short-session-id>` branch convention and PR flow",
         "Reports skipped lanes, cooldowns, and status rather than forcing conflicting work"
       ]

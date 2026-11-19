@@ -117,13 +117,6 @@ skills:
     recommended: true
     rationale: "Use the maintained upstream implementation instead of maintaining a local copy."
 
-  - name: minsky
-    description: "Observer for the Minsky autonomous runner: start it, watch its health, heal bounded failures, and report progress. Use when the user says run, watch, observe, or monitor minsky."
-    source: fyodoriv/minsky
-    category: productivity
-    recommended: false
-    rationale: "One install command replaces cloning Minsky and running its install script; the skill stays in the Minsky repo."
-
   - name: perf-review
     description: "Find the slowest recurring agent steps from the agentbrew perf log (agent-perf.mjs report) and turn real speedups into tasks. Use for a Time review or 'what took longest'. Don't use for tokens alone (use session-report)."
     source: fyodoriv/agentbrew
@@ -199,6 +192,13 @@ skills:
     category: productivity
     recommended: false
     rationale: "Long sessions accumulate verbose overhead. The auto-suspend safety valve for destructive operations preserves safety without sacrificing efficiency. Adapted from mattpocock/skills."
+
+  - name: karpathy-disciplines
+    description: "Four disciplines before touching code: think before coding, simplicity first, surgical changes, and a goal-driven loop that runs a real check until it passes."
+    source: fyodoriv/agentbrew
+    category: development
+    recommended: false
+    rationale: "Agents fail the same four ways: silent assumptions, scope creep, vague 'done', and over-engineering. A short primer with a runnable success check counters each one. Adapted from Karpathy's 2024 notes on LLM coding failures."
 
   - name: verification-before-completion
     description: "Gate function before any completion claim — run verification command, read output, THEN claim. Evidence before assertions, always."
@@ -293,15 +293,15 @@ skills:
     rationale: "Architecture review — when to pivot, what to kill, build vs buy."
 
   - name: aggressive-cut
-    description: "Brutal-honest moat audit + staged aggressive deletion of a codebase that has outgrown its 1-FTE maintenance budget. Codified from the 2026-05-24 Minsky Path A pivot (70K → 7K LOC)."
+    description: "Brutal-honest moat audit + staged aggressive deletion of a codebase that has outgrown its 1-FTE maintenance budget. Codified from a real 70K → 7K LOC cut."
     source: built-in
     category: quality
     recommended: false
     rationale: |
       Solo-maintained projects accumulate code faster than the operator can maintain it. The 1-FTE sustainable
       LOC budget is ~5-10K; many projects pass that without realising. This skill operationalises the
-      "brutal-honest moat audit + staged deletion with parity-test-before-delete" pattern that shipped Minsky's
-      Path A pivot. Use it before any major rewrite — if 80%+ of the codebase is reproducible from existing OSS
+      "brutal-honest moat audit + staged deletion with parity-test-before-delete" pattern that shipped a
+      real 70K → 7K LOC cut. Use it before any major rewrite — if 80%+ of the codebase is reproducible from existing OSS
       composed with a thin shell, the rewrite is "delete + write the shell", not "build a v2 from scratch".
       Sequels strategic-review (which decides whether to pivot) — once the answer is "yes, cut", this skill
       runs the cut with parity-test-before-delete discipline.
@@ -2203,7 +2203,7 @@ rules:
     description: "Add `## Vision trace` to PR bodies only when the repo has adopted the pr-vision-trace CI gate — never on enterprise GHE product repos."
     category: quality
     recommended: true
-    rationale: "The `load-project-context` rule loads VISION/user-story context for reasoning, but most repos — especially enterprise GHE product repos — do not run the pr-vision-trace CI gate. Agents were polluting those PRs with Vision trace sections copied from minsky-style templates. This rule scopes Vision trace to repos that explicitly adopted `scripts/check-pr-vision-trace.mjs` + `.github/workflows/pr-vision-trace.yml`."
+    rationale: "The `load-project-context` rule loads VISION/user-story context for reasoning, but most repos — especially enterprise GHE product repos — do not run the pr-vision-trace CI gate. Agents were polluting those PRs with Vision trace sections copied from other repos' templates. This rule scopes Vision trace to repos that explicitly adopted `scripts/check-pr-vision-trace.mjs` + `.github/workflows/pr-vision-trace.yml`."
     content: |
       Add `## Vision trace` only if root has pr-vision-trace CI gate (check script or workflow). Otherwise omit; enterprise GHE cites Jira. See shared-rules **## Session entry**.
   - name: agent-attribution-footer

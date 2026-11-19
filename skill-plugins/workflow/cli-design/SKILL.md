@@ -32,6 +32,22 @@ For each flag that's opt-in, ask: "would most users want this?" If yes, flip it:
 
 Look for `--help` / `--help-all` splits, `doctor` / `status --fix` overlaps, `update` / `sync --pull` duplicates. If two commands do nearly the same thing, merge them — one visible command with a flag, the other hidden as an alias.
 
+### Extend before adding
+
+Before you add a new subcommand, answer all three in the PR body or task:
+
+1. Is it a refinement of an existing command? Then add a flag.
+2. Should it happen by default when the user runs the parent command? Then make it the default.
+3. Are its semantics different from every existing command? Only then add a subcommand.
+
+Checklist:
+
+- [ ] A `--flag` on an existing command was considered and rejected, with a reason.
+- [ ] A new default on the parent command was considered and rejected, with a reason.
+- [ ] A folded-in old verb stays as a hidden alias that prints a one-line deprecation note to stderr.
+
+Bad: `tool doctor` plus `tool bash-doctor`. Good: one `doctor` that detects the case.
+
 ## 4. Declarative config as source of truth
 
 If there's a declarative config file (Agentfile, package.json, Brewfile):

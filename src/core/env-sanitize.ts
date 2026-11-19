@@ -3,7 +3,7 @@ import { ICON_SUCCESS, ICON_WARNING } from "../ui/output.js";
 
 /**
  * Default list of env vars that can leak across agent boundaries and cause failures.
- * When an orchestrator (e.g. minsky) launches child agent sessions, these vars
+ * When an orchestrator (e.g. a task runner) launches child agent sessions, these vars
  * from the parent shell override each child's defaults — often pointing to models
  * the child process doesn't have access to. Unsetting them before launch prevents
  * 100% failure rates in multi-agent pipelines.

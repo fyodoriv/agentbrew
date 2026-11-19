@@ -69,6 +69,23 @@ Run lint, typecheck and build on your machine. Push the branch and let hosted CI
 The clean health-check fixture in `src/integration.test.ts` deploys its own
 commands and hooks. You can filter it by its test name to check it in isolation.
 
+## Check a squash merge
+
+Run this after each Agentbrew squash merge, from a checkout that contains the
+merged commit and its parent. Fetch the default branch first if needed.
+
+```sh
+node scripts/verify-squash-merge-completeness.mjs --pr <number>
+```
+
+The check reads the merged pull request's file list from GitHub and compares
+it with the exact commit's paths in Git. It checks both sides of a rename.
+Exit 0 confirms file coverage.
+Exit 1 lists the missing paths. Check whether each change was already in the
+parent before preparing a repair. Exit 2 means the check lacks complete
+evidence. Resolve that gap before reporting verification or cleanup. The
+check is read-only.
+
 ## Cache measurements
 
 Measured 2026-11-16 from `gh run view --log` and the jobs API on `ci.yml` runs: 10 warm `main` runs (2026-11-15 to 11-16) and the cold runs of 2026-11-10 (the first `main` run and the `ci/hosted-gate-on` PR runs, before any entry existed). Each cell is the median seconds the cache touches: restore + save + the work it saves.

@@ -1,0 +1,58 @@
+{
+  "skill_name": "rule-to-lint",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Agents keep writing real home paths (the users folder plus a real user name) into our docs even though AGENTS.md says not to. Fix this for good.",
+      "expected_output": "Treats the rule as decidable, writes a red fixture from a real violation plus an allowed placeholder fixture, adds a hook or lint, wires it, and shrinks the AGENTS.md paragraph to one line naming the check.",
+      "expectations": [
+        "States that a script can decide the rule from file contents",
+        "Writes a fixture from a real violation and shows the check fails it before calling it done",
+        "Adds an allowed near-miss fixture, such as a ~/ placeholder, that must pass",
+        "Wires the check into a hook, pre-commit, or CI and shows it running there",
+        "Replaces the prose with one line that names the check path"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Turn our rule 'write friendly, helpful PR descriptions' into a lint.",
+      "expected_output": "Explains that friendliness is a judgment call no script can decide, keeps it as prose or a skill, and offers to check only decidable parts such as required sections.",
+      "expectations": [
+        "Says a script cannot judge friendliness or helpfulness",
+        "Keeps that part as prose or moves it into a skill instead of writing a fake lint",
+        "Offers a deterministic check only for decidable parts, such as required headings"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Let's make an LLM judge the only required check before merge. It reads the diff and approves or rejects.",
+      "expected_output": "Refuses the LLM judge as the sole merge gate, proposes deterministic checks for the decidable parts, and keeps the LLM judge advisory.",
+      "expectations": [
+        "Does not make the LLM judge the only load-bearing merge gate",
+        "Proposes deterministic checks for the parts a script can decide",
+        "Keeps the LLM judge as advisory next to those checks"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Our new no-home-paths lint now blocks docs that show a <you> placeholder in place of the user name in an install guide. People are annoyed.",
+      "expected_output": "Adds the placeholder as an allowed fixture, fixes the pattern until the red fixture still fails and the near-miss passes, and counts the false block against the pivot.",
+      "expectations": [
+        "Adds the blocked placeholder as an allowed fixture first",
+        "Changes the check so the allowed fixture passes",
+        "Re-runs the real-violation fixture to show it still fails",
+        "Tracks false blocks against the pre-registered pivot"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "We moved three rules from shared-rules.md into hooks. How do we show it saved context?",
+      "expected_output": "Measures the always-loaded file with wc -c before and after the prose was shrunk and reports both numbers.",
+      "expectations": [
+        "Uses wc -c on the always-loaded file before and after",
+        "Reports both byte counts and the difference",
+        "Checks that each removed paragraph became one line naming its check"
+      ]
+    }
+  ]
+}

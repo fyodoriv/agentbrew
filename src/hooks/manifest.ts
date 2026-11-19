@@ -274,8 +274,8 @@ export function manifestEntryToManagedHook(entry: ManifestHookEntry, deployScrip
     matcher: entry.matcher,
     type: "command",
     command: `bash ${deployedPath}`,
-    // 60s default Claude Code timeout is way too generous for our hooks.
-    timeout: 5,
+    // Leave room for process startup on endpoint-managed hosts.
+    timeout: 15,
     agents: entry.agents,
     source: "agentbrew-hooks-manifest",
   };

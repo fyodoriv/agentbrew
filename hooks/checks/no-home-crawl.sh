@@ -31,7 +31,9 @@
 
 set -euo pipefail
 
-__HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+__HOOK_DIR="${BASH_SOURCE[0]%/*}"
+[[ "${BASH_SOURCE[0]}" == */* ]] || __HOOK_DIR=.
+__HOOK_DIR="$(CDPATH='' cd -- "${__HOOK_DIR:-/}" && pwd)"
 if [ -d "$__HOOK_DIR/lib" ]; then __HOOK_LIB_DIR="$__HOOK_DIR/lib"; else __HOOK_LIB_DIR="$__HOOK_DIR/../lib"; fi
 # shellcheck source=../lib/stdin-json.sh
 source "$__HOOK_LIB_DIR/stdin-json.sh"
@@ -72,16 +74,15 @@ case "$HOOK_TOOL_NAME" in
     ;;
 esac
 
-if ! command -v python3 >/dev/null 2>&1; then
-  verdict_bypass "$HOOK_ID" "python3 not found"
-fi
-
 CWD="$(json_get "$INPUT" '.cwd')"
 [ -n "$CWD" ] || CWD="$PWD"
 
 # Prints "<tool>\t<root>" for the first too-broad search, or nothing.
+python_status=0
 FINDING="$(NHC_TOOL="$HOOK_TOOL_NAME" NHC_COMMAND="$COMMAND" NHC_PATH="$TOOL_PATH" NHC_GLOB="$TOOL_GLOB" \
-  NHC_CWD="$CWD" NHC_HOME="${HOME:-}" NHC_USER="${USER:-}" python3 "$__HOOK_LIB_DIR/no-home-crawl.py" 2>/dev/null || true)"
+  NHC_CWD="$CWD" NHC_HOME="${HOME:-}" NHC_USER="${USER:-}" hook_python "$__HOOK_LIB_DIR/no-home-crawl.py" 2>/dev/null)" ||
+  python_status=$?
+[ "$python_status" -ne 127 ] || verdict_bypass "$HOOK_ID" "python3 not found"
 
 if [ -n "$FINDING" ]; then
   TOOL="${FINDING%%$'\t'*}"

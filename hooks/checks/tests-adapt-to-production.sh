@@ -31,7 +31,9 @@
 
 set -euo pipefail
 
-__HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+__HOOK_DIR="${BASH_SOURCE[0]%/*}"
+[[ "${BASH_SOURCE[0]}" == */* ]] || __HOOK_DIR=.
+__HOOK_DIR="$(CDPATH='' cd -- "${__HOOK_DIR:-/}" && pwd)"
 if [ -d "$__HOOK_DIR/lib" ]; then __HOOK_LIB_DIR="$__HOOK_DIR/lib"; else __HOOK_LIB_DIR="$__HOOK_DIR/../lib"; fi
 # shellcheck source=../lib/stdin-json.sh
 source "$__HOOK_LIB_DIR/stdin-json.sh"

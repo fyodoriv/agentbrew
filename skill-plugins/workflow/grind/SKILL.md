@@ -4,8 +4,9 @@ description: >
   Autonomous sweep-then-implement loop: run a full-sweep audit, merge findings
   into TASKS.md, then pick and ship tasks one by one (commit, push, PR, merge).
   After every batch of tasks (or when the queue empties), sweep again to find
-  new work. Designed for multi-session marathons via taskgrind — each session
-  runs until context is exhausted, then the outer loop starts a fresh one.
+  new work. Designed for long marathons under Claude Code's native `/loop` or
+  `/goal`: state lives in TASKS.md and git, so a fresh or compacted context
+  picks up where the last one stopped.
   Use when asked to "grind", "marathon", "sweep and implement", "keep working",
   or "run autonomously". Don't use for a single task (just say "next task").
 argument-hint: "[batch-size: number of tasks between sweeps, default 10]"
@@ -17,13 +18,15 @@ triggers:
 
 You are an autonomous agent running a continuous improve loop on this codebase.
 You alternate between **finding work** (sweep) and **doing work** (implement).
-You run until context is exhausted or there is no more work — then the outer
-`taskgrind` loop starts a fresh session that picks up from TASKS.md and git.
+You run until the deadline, the queue, or a stop rule ends the run. State
+lives in TASKS.md and git, never only in your context.
 
-**Interactive mode:** When a user invokes grind directly (not via taskgrind), you
-still follow the same loop but can use interactive tools (ask questions, show
-progress). The "NEVER ask the user" rules in the Rules section only apply under
-`taskgrind` autonomous mode.
+**How to run it:**
+- Long unattended run: `/goal grind this repo until <time> or the queue is empty`,
+  or `/loop /grind` (self-paced). Both keep going across context compaction.
+- Headless: `claude -p "/grind"` once per session from cron or a LaunchAgent.
+- Interactive: the same loop, but you may ask questions. The "never ask" rules
+  below apply only to unattended runs.
 
 ## Step 0: Detect the task backend
 
@@ -35,24 +38,25 @@ Before you touch any task, run the `detect-task-backend` skill.
 
 ## Execution Model
 
-You run under `taskgrind`, an outer bash loop that:
+Unattended means no user is present: `/loop` or `/goal` with nobody at the
+keyboard, or `claude -p`. Then:
+- Never ask the user anything; never use interactive tools.
+- Stopping is safe. The next wake-up or session starts from TASKS.md and git.
+- Note the run's deadline at the start (from the goal text or prompt) and
+  check the clock before each task.
 
-1. Launches `devin -p "<prompt>" --permission-mode dangerous` (non-interactive, all permissions auto-approved)
-2. Waits for the session to exit (context exhausted or prompt fully processed)
-3. Starts a new session with a fresh prompt including session number and remaining time
-4. Repeats until the marathon deadline expires
+## Run guards
 
-**What this means for you:**
-- There is **no user** to interact with. Never use `ask_user_question` or any interactive tool.
-- **Stopping is safe.** When you finish processing or exhaust context, the outer loop restarts.
-- **State lives in TASKS.md and git**, not in your context. Every commit and task update persists across sessions.
-- The prompt will tell you "session N of a multi-session marathon" and "M minutes remaining".
+The archived taskgrind runner did preflight, sync, stuck-task, all-blocked,
+stall, empty-queue, and network checks. Do them yourself: read
+`references/run-guards.md` before the first task.
 
 ## Related Skills
 
 | If you need... | Use |
 |---|---|
 | Autonomous local loop (this) | **grind** |
+| Watch several repos for new issues | `watch-issues` |
 | Autonomous fleet loop (pipelines do the work) | `fleet-grind` |
 | One-shot fleet fill (launch max pipelines, no monitoring) | `full-sweep` |
 | One-shot fleet status + triage | `pipeline-ops` |
@@ -72,7 +76,7 @@ Track consecutive failures. When tasks fail repeatedly, escalate:
 | 1-2 | Normal — skip and move on |
 | 3 | **REFINE** — re-read the failing task, try a different approach. Check if the task needs decomposing into sub-tasks. |
 | 5 | **PIVOT** — skip all remaining tasks of the same type/tag. Sweep fresh to find different work. |
-| 2 PIVOTs in one session | **STOP** — the codebase may need human attention. Print a session report and exit cleanly. The outer loop will start a fresh session. |
+| 2 PIVOTs in one session | **STOP** — the codebase may need human attention. Print a session report and exit cleanly. The next `/loop` wake-up or session starts fresh. |
 
 **Failure classification** — classify each failure to pick the right response:
 
@@ -89,7 +93,7 @@ Track consecutive failures. When tasks fail repeatedly, escalate:
 
 ## Time-Aware Scope
 
-The taskgrind prompt includes remaining marathon time. Adjust your behavior:
+Check the remaining run time before each task. Adjust your behavior:
 
 | Remaining time | Strategy |
 |---------------|----------|
@@ -103,8 +107,8 @@ The taskgrind prompt includes remaining marathon time. Adjust your behavior:
 
 In `-p` mode, the CLI exits when you finish your response without making more
 tool calls. **To exit: stop calling tools and produce your final text (the
-session report).** The process terminates with exit code 0 and taskgrind starts
-the next session.
+session report).** The process exits 0 and the next `/loop` wake-up or
+scheduled session continues.
 
 You have **no way to check context usage** — `/context` is interactive-only.
 Use heuristics instead:
@@ -112,18 +116,17 @@ Use heuristics instead:
 | Heuristic | Action |
 |-----------|--------|
 | Shipped 5+ tasks this session | Flush and exit — you've done good work |
-| Prompt said < 30 min remaining | Flush and exit after current task |
+| < 30 min left before the run's deadline | Flush and exit after current task |
 | Tool calls are taking noticeably longer | Context is likely filling — flush and exit |
 | You notice repeated tool errors or truncated output | Context is at the limit — exit immediately |
 
 **Do not wait for context exhaustion.** If the context fills completely, the API
-rejects the request and the session crashes. The `|| true` in taskgrind catches
-the crash and the loop continues, but any unflushed findings are lost. Exit
+rejects the request and the session crashes. Any unflushed findings are lost. Exit
 early and cleanly rather than risk a crash with uncommitted work.
 
 **Always return to main before exiting.** After pushing any open branch, run
 `git checkout main && git pull --rebase` as the last git operation. If
-taskgrind's between-session `git pull` runs on a feature branch, it fails when
+the next session's `git pull` runs on a feature branch, it fails when
 the branch is local-only or already squash-merged — breaking all subsequent
 sessions.
 
@@ -177,8 +180,8 @@ Queue depth:     N remaining in TASKS.md
 ```
 
 The "Tasks attempted but not completed" line is critical for cross-session dedup.
-taskgrind extracts these IDs and includes them in the next session's prompt so
-the agent skips previously-failed tasks or tries a different approach.
+The next session reads these IDs (from the report or the task's attempt
+note) so it skips previously-failed tasks or tries a different approach.
 
 This helps the next session (or the user) understand where things stand.
 
@@ -187,7 +190,7 @@ This helps the next session (or the user) understand where things stand.
 ## Rules
 
 1. **NEVER ask the user anything. NEVER wait for input.** You are fully autonomous
-   running under `devin -p` with no user present. If a task is ambiguous, make the
+   in an unattended run with no user present. If a task is ambiguous, make the
    best decision you can. If you truly cannot proceed without a human decision, add
    `**Blocked by**: user decision — <describe what you need>` to the task and
    immediately move to the next one. The user will unblock it later.
@@ -195,8 +198,7 @@ This helps the next session (or the user) understand where things stand.
    no `select`/`inquirer`. Every action must be non-blocking.
 3. **Exit early and often.** After 5 shipped tasks, when time is short, or when
    you notice signs of context pressure (see "How to Exit"), run the session
-   handoff checklist and stop. The outer taskgrind loop will restart you with
-   fresh context. Exiting cleanly after 5 tasks beats crashing after 8.
+   handoff checklist and stop. The next wake-up starts with fresh context. Exiting cleanly after 5 tasks beats crashing after 8.
 4. **One task = one commit** — keep changes atomic. If a task would touch many files (rough guide: over 5)
    or span multiple concerns, **decompose it first**: split into 2-4 smaller tasks
    in TASKS.md, then implement each one separately. Small commits are fast to verify,
@@ -224,7 +226,7 @@ This helps the next session (or the user) understand where things stand.
     if a skill exists to obtain them first.
 13. **Always return to main before exiting.** Run `git checkout main && git pull --rebase`
     as the last git operation before printing the session report. Never leave the repo on
-    a feature branch — taskgrind's between-session `git pull` will fail.
+    a feature branch — the next session's `git pull` will fail.
 14. **Every commit must correspond to a task** (a TASKS.md block, or an issue in an issues-backed repo). If you find work that isn't in
     the queue (lint warnings, complexity, dead code, refactoring opportunities), add it as
     a task first, then implement it. Never commit work that doesn't remove or progress a

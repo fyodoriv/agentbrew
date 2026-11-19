@@ -66,7 +66,7 @@ fi
 
 **Exception — opportunistic adding always allowed.** If during Tier 1 (verify gate) you uncover something that's clearly a P0 bug (security regression, test that's been failing for weeks, deps audit warning the queue doesn't already track), file it as a task. The pressure rule throttles *proactive* sweeping (Tiers 2–8), not *reactive* note-taking when something jumps out during the always-on Tier 1.
 
-The threshold (`> 10` for P0–P2 unclaimed) matches the [taskgrind prompt template](https://github.com/tasksmd/tasks.md/blob/main/taskgrind/prompt-template.md) and the equivalent fleet-grind skill in your orchestrator overlay (if you ship one). All surfaces share one threshold so an operator running grind in one repo and sweep in another sees consistent behavior. Don't tune per session — only edit if a pattern across multiple repos demands it.
+The threshold (`> 10` for P0–P2 unclaimed) matches the `grind` skill and the equivalent fleet-grind skill in your orchestrator overlay (if you ship one). All surfaces share one threshold so an operator running grind in one repo and sweep in another sees consistent behavior. Don't tune per session — only edit if a pattern across multiple repos demands it.
 
 ### Step 1: Capture baseline
 

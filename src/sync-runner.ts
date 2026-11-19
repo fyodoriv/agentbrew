@@ -196,8 +196,11 @@ async function prepareSync(options?: SyncRunnerOptions): Promise<PreparedSync> {
   // global Agentfile) so managed skills stay current without `sync --pull`.
   // Within the cache TTL (30 min) this is a cheap state scan + no network.
   // See `src/sync/soft-update.ts` for the TTL and origin filter.
-  softUpdateOverlaySourcesBeforeSync(dryRun);
-  refreshManagedInstalledSkillsBeforeSync(dryRun);
+  // Only the skills module reads these caches: a selection without it leaves them alone.
+  if (options?.syncModules?.includes("skills") ?? true) {
+    softUpdateOverlaySourcesBeforeSync(dryRun);
+    refreshManagedInstalledSkillsBeforeSync(dryRun);
+  }
 
   return { virtualState };
 }

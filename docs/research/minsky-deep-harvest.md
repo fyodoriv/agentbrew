@@ -23,7 +23,7 @@ Where this ledger and minsky `absorbed.md` disagree, this ledger wins. For examp
 | `verify-squash-merge-completeness.mjs` | shipped: `scripts/verify-squash-merge-completeness.mjs` (agentbrew #1142) |
 | `check-toolchain.mjs` + lefthook `piped: true` | shipped in the new-project scaffold (agentbrew #1144) |
 | `check-readme-byte-budget.mjs` | task `readme-byte-budget` |
-| `check-lockfile-integrity.mjs` (docs/security/supply-chain.md layer 1) | shipped (agentbrew #1149) |
+| `check-lockfile-integrity.mjs` (docs/security/supply-chain.md layer 1) | shipped in agentbrew (#1149); tasks.md port is task `lockfile-integrity-flip-check` |
 | docs/security/dashboard-exposure.md per-run token | `docs/shared-rules.md` Security and secrets |
 | `docs/user-tests/*` | task `readme-human-first-run-test` |
 | `docs/validated-learnings.md`, `docs/experiment-tracker.md` | `docs/shared-rules.md` Task queues: re-check, Stances expire, Contract first |

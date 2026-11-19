@@ -22,3 +22,17 @@ reason. Verify the staged versions in the pre-commit hook.
   legitimate update in a month needs a raise.
 - **Anchor:** The archived Minsky README byte budget and Sweller (1988),
   cognitive load theory.
+
+On November 19, the 100- and 110-byte controls passed. The 120-byte control
+failed. A real scratch commit also refused the staged 120-byte README
+after the working README and budget had changed. Missing and malformed
+budgets returned 2. The original shape output matched. The three pinned
+default-branch README copies passed against their own baselines.
+
+## Verify the Dotfiles dispatch route
+
+The local Git setup uses the Dotfiles pre-commit dispatcher. Predict that
+its unchanged source in a scratch checkout also refuses the 120-byte
+staged README with one budget diagnostic, while an unrelated staged change
+gets no budget output. A successful over-budget commit or double check
+rejects the wiring. Use the exact dispatcher from Dotfiles `366d7750`.

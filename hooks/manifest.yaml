@@ -450,6 +450,16 @@ hooks:
     agents: ["claude-code"]
     defaultEnabled: false
 
+  - id: git-script-guard
+    description: Put the managed Git argument guard first in the Claude Code Bash session
+    event: SessionStart
+    script: checks/git-script-guard.sh
+    tier: deterministic
+    verdict: allow
+    sourceRule: 'shared-rules.md#git-and-delivery'
+    agents: ["claude-code"]
+    defaultEnabled: false
+
   # ── Goal setting (UserPromptSubmit — loads run-goal on /goal) ───────────
 
   - id: goal-set-loads-run-goal

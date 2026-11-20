@@ -4158,6 +4158,18 @@
         "Runs the approved read-only query in the target environment, compares source and returned IDs, and identifies the dropped eligible row P2.",
         "Keeps review on hold if target access or evidence is missing and does not change live data."
       ]
+    },
+    {
+      "id": 367,
+      "prompt": "/goal finish the worker handoff and deliver the verified changes. Synthetic session evidence. A shortened note for Worker A says 'waiting on checks', but the supported host reports Worker A is finished and makes its full report available. The full report lists draft PR 17, revision abc123, a passing branch gate and one pending merge condition. Worker B is still running with a verified owned watch and no change since the last update. Worker C finished but its report and source links are unavailable. A judge already used an initial pass and a recheck for this review. The author used authorized issue and PR sources. State the next actions before replying.",
+      "expected_output": "Read Worker A's full report, then verify the draft PR, revision, and gate against their sources. Reconcile the result and the pending merge condition. Worker B keeps its live quiet watch without a repeat message. Worker C is unverified because the report and source links are missing. Give each judge at most two rounds for the same review, access to the authorized sources or safe cited extracts, and require inline evidence for verdict claims. Carry unresolved findings forward after the second round. Do not request a third pass from that judge for this review.",
+      "files": [],
+      "expectations": [
+        "Reads Worker A's full terminal report before saying whether anything is still waiting and verifies the reported branch outcome.",
+        "Reuses Worker B's verified live watch without repeating an unchanged waiting message.",
+        "Marks Worker C unverified and names the unavailable report, without claiming work is still running.",
+        "Uses only authorized sources, requires inline evidence for each judgment, and stops after two rounds per judge for the same review."
+      ]
     }
   ]
 }

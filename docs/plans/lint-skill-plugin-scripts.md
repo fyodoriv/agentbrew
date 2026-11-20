@@ -5,3 +5,8 @@
 - **Success**: Both commands name the planted error. The clean skill scripts have zero Biome findings. Skill documents and eval data stay untouched.
 - **Pivot**: A missed script, unexpected non-script file change, or an unrelated lint inclusion rejects the candidate. Keep the scope at the existing skill script paths.
 - **Anchor**: The `lint-skill-plugin-scripts` task and the measured Biome exclusions in `package.json` and `scripts/lint-changed.sh`.
+
+The original lint commands both exited zero with the planted script.
+The repaired commands each reported it and exited one. Scoped Biome
+found five script errors before the repair and zero after it. The
+separate dashboard diagnostic stayed outside the script scope.

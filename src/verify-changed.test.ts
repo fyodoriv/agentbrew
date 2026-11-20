@@ -213,6 +213,14 @@ describe("verify-changed.sh", () => {
     expect(result.stdout).toContain("the hosted check must pass npm run verify before merge");
   });
 
+  it("schedules Biome for a shipped skill script", () => {
+    const root = repoWithChange("skill-plugins/workflow/fixture/scripts/check.mjs");
+    const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("  env LINT_CHANGED_BASE=main bash scripts/lint-changed.sh\n");
+    expect(result.stdout).toContain("the hosted check must pass npm run verify before merge");
+  });
+
   it("runs the docs and privacy guards for a task-queue-only change", () => {
     const root = repoWithChange("TASKS.md");
     const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], {

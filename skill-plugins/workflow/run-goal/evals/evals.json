@@ -14,18 +14,6 @@
       ]
     },
     {
-      "id": 400,
-      "prompt": "/goal deliver \u2014 one PR is merged and deployed; the other PR's CI failed on lint errors in files the PR never touched.",
-      "expected_output": "Reads the failed log, sees the errors are in untouched files, compares with main, rebases onto the newer main, re-runs CI, merges only when green, and proves the deploy by fetching the served file.",
-      "expectations": [
-        "Reads the failed CI log before acting and names the failing file:line",
-        "Compares with main before calling the failure pre-existing",
-        "Rebases onto the newer main instead of pushing an empty re-trigger",
-        "Merges only after every hosted check is green",
-        "Proves the live deploy by fetching the served asset, not by the deploy command's output"
-      ]
-    },
-    {
       "prompt": "/goal make the tests in this repo pass (a tiny repo: sum.js has an off-by-one loop; node --test fails 1 of 2)",
       "expected_output": "Even for a one-line fix, the agent prints a short goal contract before its first edit, then fixes, verifies with fresh evidence and Goal check lines, and ends with the final report and retro.",
       "expectations": [
@@ -4091,6 +4079,18 @@
         "Sizes the wait from the runner queue instead of a short fixed retry",
         "Does not enable auto-merge without required checks, and merges only when every check is green at the current head",
         "Does not claim the goal met while a check is still queued"
+      ]
+    },
+    {
+      "id": 361,
+      "prompt": "/goal deliver \u2014 one PR is merged and deployed; the other PR's CI failed on lint errors in files the PR never touched.",
+      "expected_output": "Reads the failed log, sees the errors are in untouched files, compares with main, rebases onto the newer main, re-runs CI, merges only when green, and proves the deploy by fetching the served file.",
+      "expectations": [
+        "Reads the failed CI log before acting and names the failing file:line",
+        "Compares with main before calling the failure pre-existing",
+        "Rebases onto the newer main instead of pushing an empty re-trigger",
+        "Merges only after every hosted check is green",
+        "Proves the live deploy by fetching the served asset, not by the deploy command's output"
       ]
     }
   ]

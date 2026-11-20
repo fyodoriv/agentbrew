@@ -103,6 +103,11 @@ baseline before the first merge.
   slides through a connector (not a sign-in page), and diff a local clone
   against its upstream (it may be a stale fork). List each source in the
   contract with what it gave.
+- **The goal integrates an existing service**: search authorized projects and
+  their current docs for a working client first. Cite the source and the
+  documented route before choosing a new transport. Keep its consent and
+  credential checks. When deployment needs the owner, cite the source for the
+  remaining step and report the unverified outcome.
 - **The goal asks for current readiness**: read the authorized system of record
   and record the read time. Report the observed tier and the requested target
   separately. Derive the gaps from the live checks for the target tier. Give

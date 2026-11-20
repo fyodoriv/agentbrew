@@ -123,6 +123,18 @@ baseline before the first merge.
   cancel the temporary path without submitting. Cite any policy that blocks
   permanent access and report the verified current role.
 
+## Ticket gates before first push
+
+Ask for required fields, such as priority and estimate, in the first
+question round.
+Read the ticket from the tracker and check the repository's active PR gate.
+A Done or Closed ticket cannot satisfy a gate that requires work in progress.
+Reuse a matching open ticket when one is available. Create or change a ticket
+only with authorization. Read back the required status and assignee before
+the first push. Use the verified key in the commit header and pull request
+title when the gate requires it. If the tracker or required permission is
+unavailable, hold the push and state what remains unverified.
+
 ## Host authentication intake
 
 Before the contract, identify each Git host the goal must fetch from and check

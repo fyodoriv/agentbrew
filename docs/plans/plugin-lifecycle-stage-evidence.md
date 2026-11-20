@@ -83,6 +83,12 @@ processes so a closed descriptor cannot affect the test runner.
 | O04 | Close stderr after begin and throw a synthetic action error. Retain that error object, emit one fallback marker, leave begin open and exit 17 |
 | O05 | Close both channels before begin. Expect no output, zero actions and independent exit 17 |
 
+All five cases passed in the local Mac run. The fallback produced its
+fixed marker for each primary-only failure. The two-closed-channel
+control stayed quiet and returned 17. The nine recorder health controls
+passed, and the existing synthetic worker emitted the same five stage
+records. Type checking also passed.
+
 The exit 17 receipt belongs to the test fixture. Before a real lifecycle
 run, register how a missing or broken channel affects the diagnostic
 verdict. The earlier lifecycle timeout and its cause stay open.

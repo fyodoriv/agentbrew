@@ -369,6 +369,12 @@ showed why: most of its time went to code diffs, where it ran the whole
 | Code (`src/`, `scripts/`, `real-e2e/`, `templates/`) | The same, plus `npx tsc --noEmit` and `npm run lint:changed` when source files changed, and `vitest related` on the changed source files instead of the whole suite. |
 | Package files, `tsconfig`, vitest, Biome, or knip config | The full `npm run verify`. |
 
+Changed-file lint checks named imports from relative modules in JavaScript
+tests under `src/`, `scripts/` and `real-e2e/`. It also checks an unchanged
+test when its source changes. The diagnostic gives the file, line and
+missing name. Run `node scripts/check-orphan-tests.mjs` from the repo root
+to check those imports on their own.
+
 A code diff ends with "the hosted check must pass npm run verify before
 merge": the hosted check runs the full gate on the pull request, not you in
 the loop. `npm test` runs `vitest related` on

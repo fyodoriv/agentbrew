@@ -51,6 +51,42 @@ separate goal summary. Add two lines to it:
 **Parked for later:** <split-off ideas, if any>
 ```
 
+## Shorthand goals
+
+`/goal deliver` (also "deliver it", "ship and prove it") is a full goal. It
+means: take this session's work from where it stands to proven and live, in
+whatever repo, app, or machine the session is in. Expand it into the
+contract with these criteria. Do not ask what "deliver" means.
+
+1. **Related work, listed.** Find what this session created: its commits,
+   branches, worktrees, uncommitted files, and PRs, plus PRs opened by
+   sessions it started. Name each one in the contract with its URL or path.
+   Another author's PR is out of scope: deliver never merges, closes, or
+   force-pushes work this session did not create.
+2. **Green and reviewed.** Every related PR passes its hosted checks at its
+   current head. A fresh-context reviewer reads each diff before merge. Read
+   the log of a failed check before you fix it.
+3. **Merged.** Merge each PR the way the repo's delivery rules say, under a
+   cited approval (repo `AGENTS.md`, the user's standing rules), with every
+   required review approved. Never bypass a check, also on an outage. Without
+   an approval, park the merge and ask once at the end; if nothing else is
+   left, write the BLOCKED report.
+4. **Live in the final environment.** Find where users meet the work from the
+   repo docs (install, deploy, or sync sections). A local install step those
+   docs name runs as part of delivery: `agentbrew sync` for skills and rules,
+   `dotfiles apply` for machine config. A deploy to a shared or production
+   target, a publish, or a release needs a cited approval; without one, park
+   it. Then read the live state back: installed files byte-equal to the
+   merged source, the loaded service, the served page.
+5. **Proved there.** Use the delivered thing where users meet it, on real
+   input, with the baseline taken before the merge: run the installed script,
+   start a fresh agent session that sees the skill, open the live URL.
+6. **Shown and explained.** Publish a report with a before/after table, and
+   explain in plain words what changed for the user.
+
+The metric is the before/after number from step 5. Pick it and take its
+baseline before the first merge.
+
 ## Special cases
 
 - **The goal is only the user's own work** (no agent work in it): do not arm

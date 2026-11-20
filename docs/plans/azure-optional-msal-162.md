@@ -10,9 +10,17 @@ Nunjucks peer issue remains in its own task.
 - **Pivot:** Reject if 1 required optional edge disappears, 1 affected MSAL copy or unexpected graph problem remains, 1 unrelated record changes, or normal install needs a peer override.
 - **Anchor:** [MSAL advisory](https://github.com/advisories/GHSA-xcx6-jx8p-x3h5), [Azure Identity 4.14.1 manifest](https://registry.npmjs.org/@azure%2fidentity/4.14.1), and [existing dependency controls](dependency-alert-controls.md).
 
-The initial lock has Azure Identity 4.13.3 with MSAL ^6.0.0. The direct
-optional MSAL is 7.0.1 and the nested copy is 6.0.1. The published Identity
-4.14.1 manifest permits MSAL ^7.1.0 and keeps the same Node requirement.
-Keep both root optional declarations. Use npm's normal resolver. Do not
-drop optional dependencies or change the existing peer policy to make
-this stage pass.
+The initial lock has Azure Identity 4.13.3 with MSAL ^6.0.0. Promptfoo
+declares the two optional Azure dependencies. The initial MSAL paths
+resolve to 7.0.1 through Promptfoo and 6.0.1 through Azure Identity.
+Keep both declarations and use npm's normal resolver.
+
+## Scoped resolver result
+
+npm resolved Azure Identity 4.14.1 and one MSAL 7.2.3 copy. The published
+Identity manifest permits MSAL ^7.1.0 and keeps the same Node requirement.
+The lock changed 11 records, all reachable from the old or new optional
+Azure dependencies. The app manifest, root lock record, and Promptfoo
+optional declarations matched the baseline. The strict tree comparison
+reported the same single existing Nunjucks watcher peer problem before
+and after. Hosted installation and alert ingestion remain pending.

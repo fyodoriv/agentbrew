@@ -407,18 +407,6 @@
   - **Pivot**: under 30% fewer, or hook runtime over 2 s.
   - **Anchor**: Forsgren, Humble, Kim 2018 (Accelerate, shift-left testing).
 
-- [ ] Tests only import exports that exist
-  - **ID**: check-tests-import-only-existing-exports
-  - **Tags**: lint, tests, from-minsky
-  - **Details**: Port minsky `scripts/check-orphan-tests.mjs`: every named symbol a `.mjs`/`.js` test imports from a source file must exist as a named export there, catching source/test API drift that `tsc` does not see. Add it to `lint-changed.sh`.
-  - **Files**: `scripts/check-orphan-tests.mjs`, its test, `scripts/lint-changed.sh`.
-  - **Acceptance**: a fixture test importing a removed export fails with file and symbol; the current tree passes.
-  - **Hypothesis**: orphaned test imports are caught at lint time instead of at test run.
-  - **Measurement**: `node scripts/check-orphan-tests.mjs; echo exit=$?` on the fixture and the tree.
-  - **Success**: fixture exits 1, tree exits 0.
-  - **Pivot**: more than 2 false positives on the tree.
-  - **Anchor**: Meszaros 2007 (xUnit Test Patterns, obsolete tests).
-
 - [ ] Closing a superseded PR proves nothing is lost
   - **ID**: lossless-pr-close
   - **Tags**: ship-it, watch-issues, git, from-minsky

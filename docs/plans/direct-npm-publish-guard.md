@@ -26,3 +26,15 @@ Apply this policy to literal leading words before shell expansion. Use
 `npm pack --dry-run` to preview the package from the agent. Keep aliases,
 options before the subcommand, wrappers and later commands outside this
 phase. The fixture uses synthetic text and never publishes a package.
+
+## Keep the npm screen independent
+
+- **Hypothesis:** Separating npm-only text matches from the GitHub parser preserves normal commands whose multiline values mention npm publishing.
+- **Measurement:** Run `bash hooks/checks/no-destructive-commands.test.sh npm` with the 2 review controls, then run the full fixture.
+- **Success:** Allow both multiline inputs, preserve the 60 previous decisions, and execute 0 Git, GitHub or npm commands.
+- **Pivot:** Stop on 1 wrong decision or 1 tool call.
+- **Anchor:** The prior [direct GitHub guard registration](github-destructive-command-guard.md) and the [GitHub CLI merge body argument](https://cli.github.com/manual/gh_pr_merge).
+
+The new controls pass a multiline body to an ordinary GitHub CLI merge
+and a multiline message to an ordinary Git command. Each includes the
+literal phrase `npm publish` before the first newline in the quote.

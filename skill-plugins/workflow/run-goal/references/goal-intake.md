@@ -103,6 +103,11 @@ baseline before the first merge.
   slides through a connector (not a sign-in page), and diff a local clone
   against its upstream (it may be a stale fork). List each source in the
   contract with what it gave.
+- **The goal asks for current readiness**: read the authorized system of record
+  and record the read time. Report the observed tier and the requested target
+  separately. Derive the gaps from the live checks for the target tier. Give
+  an independent reviewer the same authorized capture and ask them to verify
+  each gap. If the current source cannot be read, keep readiness unverified.
 - **The goal grants someone access**: read your own rights first (for a
   GitHub repo, `permissions.admin`). Find the person's account, but invite
   only after the operator confirms it. Without admin rights, write a short

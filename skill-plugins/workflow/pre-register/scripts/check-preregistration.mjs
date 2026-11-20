@@ -50,14 +50,22 @@ function parseArgs(argv) {
   const opts = { file: undefined, selfGrade: false, baseline: undefined, pullRequestEvent: false };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
-    if (arg === "--self-grade") opts.selfGrade = true;
-    else if (arg === "--pull-request-event") opts.pullRequestEvent = true;
-    else if (arg === "--baseline") {
-      index += 1;
-      opts.baseline = argv[index];
-      if (!opts.baseline || opts.baseline.startsWith("-")) usage("--baseline needs a file path");
-    } else if (arg === "-" || !arg.startsWith("-")) opts.file = arg;
-    else usage(`unknown option ${arg}`);
+    switch (arg) {
+      case "--self-grade":
+        opts.selfGrade = true;
+        break;
+      case "--pull-request-event":
+        opts.pullRequestEvent = true;
+        break;
+      case "--baseline":
+        index += 1;
+        opts.baseline = argv[index];
+        if (!opts.baseline || opts.baseline.startsWith("-")) usage("--baseline needs a file path");
+        break;
+      default:
+        if (arg !== "-" && arg.startsWith("-")) usage(`unknown option ${arg}`);
+        opts.file = arg;
+    }
   }
   if (!opts.file) usage("missing input file");
   if (opts.baseline && opts.pullRequestEvent) usage("--baseline requires a task file");
@@ -106,7 +114,7 @@ function splitBlocks(text, tasksOnly = false) {
   }
   for (const block of blocks) {
     const id = block.lines.map((line) => line.match(/\*\*ID\*\*:\s*(\S+)/)).find(Boolean);
-    if (id) block.label = id[1];
+    block.label = id?.[1] ?? block.label;
   }
   return blocks;
 }

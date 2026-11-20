@@ -10,3 +10,8 @@ The original lint commands both exited zero with the planted script.
 The repaired commands each reported it and exited one. Scoped Biome
 found five script errors before the repair and zero after it. The
 separate dashboard diagnostic stayed outside the script scope.
+
+After the prediction check merged, the new lint scope found two extra
+complexity errors in its argument and task parsers. The fixed checkout
+passed Biome. Fourteen before/after invocations returned the same statuses
+and output, and all 70 affected tests passed.

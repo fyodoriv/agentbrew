@@ -36,3 +36,10 @@ The production check gave the intended unknown result at its deadline.
 - **Success:** The prior fixture loses 1 expected result. The repaired fixture keeps that result, the 9 expected calls and all offline checks. The production control requests 1000 ms, returns no confirmed lag and makes 0 retry calls. Both hosted platform gates pass.
 - **Pivot:** Reject on 1 altered production option, 1 retry, 1 offline or preservation regression, or 1 expected result missing on the controlled delay.
 - **Anchor:** The [classified hosted failure](https://github.com/fyodoriv/agentbrew/actions/runs/44728517625/job/136262123680) and the isolated Git probe fixture.
+
+## Local regression result
+
+The old fixture returned no confirmed lag after the controlled delay,
+matching the hosted assertion. The same delayed fixture passed after
+the test-only budget change. The three focused tests preserved the
+1000 ms production request, no retry, and all original offline checks.

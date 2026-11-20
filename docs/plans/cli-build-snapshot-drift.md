@@ -9,3 +9,8 @@
 The comparison uses the saved origin tracking revision of an existing local
 source checkout. It qualifies the built commit by ancestry and compares
 build inputs. A regular status read performs no fetch.
+
+The compiled control passed on macOS with the build stamp equal to the
+checkout revision. It observed one stale copy warning and zero warnings in
+each of five fresh checkout reads. The installed copy can come from a
+local tool outside the checkout. Use its original installer to replace it.

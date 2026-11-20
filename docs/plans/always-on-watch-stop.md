@@ -81,3 +81,8 @@ real session remains a separate operator action.
 These controls judge the observed snapshot. Stamp writers replace
 records atomically. The hook rechecks live watch and wrap-up before
 issuing a reminder. It treats observed changes as uncertain evidence.
+
+Local Mac result: 26 of 26 controls passed, with six reminders, 20
+allowed or safely refused outcomes, and zero input disclosures. No hook
+changed a stamp. The existing manifest, deployment and fixture-coverage
+suites passed all 28 tests.

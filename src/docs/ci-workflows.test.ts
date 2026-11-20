@@ -61,6 +61,7 @@ describe("hosted workflows", () => {
       "ci.yml": ["pull_request", "push", "workflow_dispatch"],
       "oss-readiness.yml": ["pull_request", "push", "workflow_dispatch"],
       "pr-vision-trace.yml": ["workflow_dispatch"],
+      "preregistration.yml": ["pull_request"],
       "publish.yml": ["push"],
       "rust-inventory-core.yml": ["pull_request"],
     };

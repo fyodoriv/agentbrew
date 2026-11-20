@@ -11,10 +11,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 const SCRIPT = resolve(import.meta.dirname, "..", "scripts", "verify-changed.sh");
+const PREDICTION_CHECKER = "skill-plugins/workflow/pre-register/scripts/check-preregistration.mjs";
 const roots: string[] = [];
 
 afterEach(() => {
@@ -27,10 +28,10 @@ const completeTask = `- [ ] Preserve a valid task
   - **Details**: A synthetic task for the verification boundary.
   - **Output**: code
   - **Hypothesis**: Invalid approvals fall from four to zero.
-  - **Measurement**: Run the execution fixture.
+  - **Measurement**: \`node scripts/check-rule-8-pattern-conformance.mjs\`.
   - **Success**: Zero invalid approvals and both valid controls pass.
   - **Pivot**: Any invalid approval or valid refusal.
-  - **Anchor**: The existing strict task gate.
+  - **Anchor**: Basili, Caldiera, and Rombach (1994), Goal Question Metric.
 `;
 const queueCases = [
   { name: "orphan task fields", valid: false, text: `${emptyQueue}\n${completeTask.split("\n").slice(1).join("\n")}` },
@@ -50,6 +51,11 @@ const queueCases = [
     text: `${emptyQueue}\n${completeTask}\n<<<<<<< HEAD\nleft\n=======\nright\n>>>>>>> incoming\n`,
   },
   { name: "complete preregistered task", valid: true, text: `${emptyQueue}\n${completeTask}` },
+  {
+    name: "manual task measurement",
+    valid: false,
+    text: `${emptyQueue}\n${completeTask.replace(/^ {2}- \*\*Measurement\*\*:.*$/m, "  - **Measurement**: Check manually.")}`,
+  },
   { name: "empty queue with EOF whitespace", valid: false, text: `${emptyQueue}\n` },
   { name: "format-clean edited empty queue", valid: true, text: `${emptyQueue}\n## P2\n` },
 ];
@@ -80,6 +86,9 @@ function pinnedTaskTools(): string {
 function executionRepo(): string {
   const root = repoWithChange("TASKS.md");
   cpSync(pinnedTaskTools(), join(root, "node_modules"), { recursive: true });
+  const checker = join(root, PREDICTION_CHECKER);
+  mkdirSync(dirname(checker), { recursive: true });
+  cpSync(resolve(import.meta.dirname, "..", PREDICTION_CHECKER), checker);
   mkdirSync(join(root, "scripts"));
   mkdirSync(join(root, ".fixture-bin"));
   writeFileSync(join(root, "TASKS.md"), emptyQueue);
@@ -161,6 +170,9 @@ describe("fast gate task decisions with the real pinned parser", () => {
         expect(result.stdout + result.stderr).toContain("new blank line at EOF");
       } else {
         expect(existsSync(argv)).toBe(true);
+      }
+      if (fixture.name === "manual task measurement") {
+        expect(result.stdout + result.stderr).toContain("fixture-valid: Measurement: manual");
       }
       if (existsSync(argv)) {
         expect(readFileSync(argv, "utf8")).toBe("--yes\n@tasks-md/lint@0.10.2\n--require-prereg\nTASKS.md\n");

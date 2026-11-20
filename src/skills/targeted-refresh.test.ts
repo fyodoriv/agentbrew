@@ -1,6 +1,60 @@
+import { fork, spawnSync } from "node:child_process";
+import { once } from "node:events";
+import { mkdtempSync, realpathSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { CURRENT_SCHEMA_VERSION, createStateManager, type StateIO } from "../core/state-manager.js";
 import type { AgentBrewState } from "../types.js";
+
+const worker = fileURLToPath(new URL("./targeted-refresh-state-fixture.ts", import.meta.url));
+const workerArgs = ["--import", import.meta.resolve("tsx")];
+const workerLimit = 8_000;
+
+async function observeDiskWrites(overlap: boolean) {
+  const home = realpathSync(mkdtempSync(join(tmpdir(), "ab-state-writers-")));
+  const options = { cwd: home, env: { HOME: home, TMPDIR: home, PATH: "/usr/bin:/bin", AGENTBREW_EVENTS: "0" } };
+  const run = (role: "seed" | "server" | "read"): string => {
+    const result = spawnSync(process.execPath, [...workerArgs, worker, role, home], {
+      ...options,
+      encoding: "utf8",
+      maxBuffer: 8_192,
+      timeout: workerLimit,
+    });
+    expect(result.error === undefined, `state worker did not complete: ${role}`).toBe(true);
+    expect(result.status, `state worker: ${role}`).toBe(0);
+    return result.stdout;
+  };
+
+  try {
+    run("seed");
+    const first = fork(worker, ["catalog", home], {
+      ...options,
+      execArgv: workerArgs,
+      stdio: ["ignore", "ignore", "ignore", "ipc"],
+      timeout: 12_000,
+    });
+    const exited = once(first, "exit");
+    try {
+      const [phase] = await once(first, "message", { signal: AbortSignal.timeout(workerLimit) });
+      expect(phase).toBe("loaded");
+      if (overlap) expect(JSON.parse(run("server"))).toEqual({ catalog: "before", servers: ["fixture"] });
+      first.send("save");
+      expect(await exited).toEqual([0, null]);
+      if (!overlap) expect(JSON.parse(run("server"))).toEqual({ catalog: "first-edit", servers: ["fixture"] });
+      const statePath = join(home, ".config", "agentbrew", "state.yaml");
+      expect(statSync(statePath).mode & 0o777).toBe(0o600);
+      expect(statSync(`${statePath}.bak`).mode & 0o777).toBe(0o600);
+      return JSON.parse(run("read"));
+    } finally {
+      if (first.connected) first.disconnect();
+      await exited;
+    }
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+}
 
 function sharedStore() {
   let state = {
@@ -20,6 +74,20 @@ function sharedStore() {
 }
 
 describe("targeted skill refresh state baseline", () => {
+  it("loses one server edit when state-file writes overlap", async () => {
+    expect(await observeDiskWrites(true)).toEqual({
+      current: { catalog: "first-edit", servers: [] },
+      backup: { catalog: "before", servers: ["fixture"] },
+    });
+  }, 45_000);
+
+  it("retains both edits when state-file writes run in sequence", async () => {
+    expect(await observeDiskWrites(false)).toEqual({
+      current: { catalog: "first-edit", servers: ["fixture"] },
+      backup: { catalog: "first-edit", servers: [] },
+    });
+  }, 45_000);
+
   it("shows overlapping reloads still lose an unrelated edit", () => {
     const overlapping = sharedStore();
     const first = createStateManager(overlapping.io);

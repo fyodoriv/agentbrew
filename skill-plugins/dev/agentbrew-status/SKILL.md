@@ -7,11 +7,6 @@ description: >
   can type ("show my setup", "what commands can I type").
 ---
 
-## What You Do
-
-Run health checks and report what's deployed. Interpret output — don't just
-dump raw command output at the user.
-
 ## Quick Status
 
 ```bash
@@ -33,11 +28,10 @@ mcpm ls                    # all registered MCP servers per intersection client
 agentbrew rules show       # shared rules content
 agentbrew status --verbose # skills per agent + per-source counts (was `skills status`)
 agentbrew commands list    # deployed slash commands
-agentbrew status           # also shows drift inline (no separate `diff` subcommand)
 ```
 
-For chat that you send yourself, use `agentbrew install chat-drafts-only`.
-Preview the rule deployment with `agentbrew sync --dry-run`.
+To send your own chats, use `agentbrew install chat-drafts-only`.
+Preview with `agentbrew sync --dry-run`.
 
 ## Setup Overview and Commands
 

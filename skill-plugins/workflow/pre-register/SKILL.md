@@ -1,6 +1,6 @@
 ---
 name: pre-register
-description: Pre-register a non-trivial change as an experiment before you write code - Hypothesis, Measurement, Success, Pivot and Anchor, plus a baseline - then grade it afterwards with Predicted, Observed, Match and Lesson, and check both with a script. Use when you start a non-trivial bugfix, feature or refactor, write a task block, write a PR body, or finish a change and grade it. Don't use for typos, formatting or no-op moves that an existing CI gate covers (write "Exempt: <gate>" instead), or for pure research with no change.
+description: Pre-register a non-trivial change as an experiment before you write code - Hypothesis, Measurement, Success, Pivot and Anchor, plus a baseline - then grade it afterwards with Predicted, Observed, Match and Lesson, and check both with a script. Use when you start a non-trivial bugfix, feature or refactor, write a task block, write a PR body, or finish a change and grade it. Don't use for typos, formatting or no-op moves that an existing CI gate covers (write an "Exempt" line that names the gate instead), or for pure research with no change.
 ---
 
 # Pre-register

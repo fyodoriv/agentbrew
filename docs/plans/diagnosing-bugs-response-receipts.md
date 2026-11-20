@@ -45,3 +45,11 @@ no premature hypothesis or edit claim, and no claim of executing it.
 Use the same case text, prompt limits and runtime settings for both
 skills. The private review file gives the reviewer anonymous responses
 grouped by case. Reveal the variants only after scoring.
+
+## Observed setup result
+
+The setup request reported the matching model, a finished response and
+stop reason. It returned 40 words when the plan required the single
+word READY. The driver exited 1 at the setup check. No comparison
+response was requested and there is no behavior score. The catalog
+decision remains open.

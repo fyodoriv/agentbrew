@@ -239,6 +239,11 @@ served output after the deploy, not only the pipeline's output.
   check unverified. If the fresh result fails, leave the criterion open and
   record the cause only when you can verify it. Keep release status and
   approval fields tied to their own evidence.
+- When a dashboard or report must show current data, register the freshness
+  window and identify the live query or scheduled refresh that feeds it.
+  Verify the mechanism ran for the data viewers see. Read the deployed panel
+  values and record both the read time and the data's as-of time. Keep data
+  delivery open if the mechanism is missing or the data is stale.
 - For a dashboard or report goal, include a done-criterion that compares at
   least the headline numbers with source-of-truth data: raw events, the source
   channel, or the database. Use the same time window, filters, and counting unit.

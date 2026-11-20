@@ -313,7 +313,8 @@
       "expected_output": "Notes that no brand doc exists and offers to write docs/brand.md (mark, sizes, colors, voice, do/don't) before scoring brand fit.",
       "expectations": [
         "Looks for docs/brand.md, BRAND.md or a Brand section and reports none",
-        "Offers to write a brand doc before judging brand fit"
+        "Offers to write a brand doc before judging brand fit",
+        "Does not invent brand rules: scores brand fit only against a doc that exists or one the user approved"
       ]
     }
   ]

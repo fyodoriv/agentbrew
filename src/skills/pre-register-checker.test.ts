@@ -45,7 +45,71 @@ function check(text: string, ...args: string[]) {
   }
 }
 
+function task(id: string, fields: Fields): string {
+  return [
+    `- [ ] Task ${id}`,
+    `  - **ID**: ${id}`,
+    ...Object.entries(fields).map(([name, value]) => `  - **${name}**: ${value}`),
+  ].join("\n");
+}
+
+function checkTaskChanges(text: string, baseline: string) {
+  const dir = mkdtempSync(join(tmpdir(), "pre-register-base-"));
+  try {
+    const file = join(dir, "tasks.md");
+    writeFileSync(file, baseline);
+    return check(text, "--baseline", file);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 describe("pre-register checker", () => {
+  it("checks a PR description from a GitHub pull request event", () => {
+    const event = (text: string | null) => JSON.stringify({ pull_request: { body: text } });
+    const missing = check(event(null), "--pull-request-event");
+    expect(missing.status, missing.out).toBe(1);
+    expect(missing.out).toContain("Hypothesis: missing");
+    const exempt = check(event("Exempt: Markdown lint is the check for this typo."), "--pull-request-event");
+    expect(exempt.status, exempt.out).toBe(0);
+    const checklist = check(
+      event(`${body(GOOD_FIELDS)}\n- [ ] Pull request checklist\n  - **ID**: notes\n`),
+      "--pull-request-event",
+    );
+    expect(checklist.status, checklist.out).toBe(0);
+  });
+
+  it.each([
+    "<!--\nExempt: Markdown lint.\n-->",
+    "```md\nExempt: Markdown lint.\n```",
+  ])("ignores a hidden exemption in a PR description", (body) => {
+    const run = check(JSON.stringify({ pull_request: { body } }), "--pull-request-event");
+    expect(run.status, run.out).toBe(1);
+    expect(run.out).toContain("Hypothesis: missing");
+  });
+
+  it("checks a new task without reading an unchanged legacy task", () => {
+    const manual = { ...GOOD_FIELDS, Measurement: "Obtain the count manually." };
+    const legacy = task("legacy", manual);
+    const baseline = `## P1\n\n${legacy}\n`;
+    const newTask = task("new-task", manual).replace("- [ ] ", "-   [ ]  ");
+    const current = `## P2\n\n${legacy}\n\n${newTask}\n`;
+    const run = checkTaskChanges(current, baseline);
+    expect(run.status, run.out).toBe(1);
+    expect(run.out).toContain("new-task: Measurement: manual");
+    expect(run.out).not.toContain("legacy:");
+  });
+
+  it("checks an edited task and ignores section headings around the same task", () => {
+    const legacy = task("legacy", { ...GOOD_FIELDS, Measurement: "Obtain the count manually." });
+    const edited = task("edited", { ...GOOD_FIELDS, Measurement: "Read the stats manually." });
+    const baseline = `## P1\n\n${legacy}\n\n## P2\n\n${edited}\n`;
+    const current = `## P2\n\n${task("edited", GOOD_FIELDS)}\n\n## P3\n\n${legacy}\n`;
+    const run = checkTaskChanges(current, baseline);
+    expect(run.status, run.out).toBe(0);
+    expect(run.out).toContain("OK: 1 block(s) checked");
+  });
+
   it("passes a complete PR body", () => {
     const run = check(body(GOOD_FIELDS));
     expect(run.status, run.out).toBe(0);

@@ -165,7 +165,7 @@ for repo in "${repos[@]}"; do
   elif ! git -C "$repo" fetch --quiet origin "refs/heads/$def:refs/remotes/origin/$def" 2>/dev/null; then
     echo "skip  $name: git fetch failed (tasks not checked)"
     incomplete=1
-  elif ! task_entry="$(git -C "$repo" ls-tree "refs/remotes/origin/$def" -- TASKS.md 2>/dev/null)"; then
+  elif ! task_entry="$(git -C "$repo" ls-tree --full-tree "refs/remotes/origin/$def" -- TASKS.md 2>/dev/null)"; then
     echo "skip  $name: could not check the fetched task file"
     incomplete=1
   elif [ -n "$task_entry" ]; then

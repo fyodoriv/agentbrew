@@ -250,6 +250,14 @@ describe("watch-issues pass", () => {
     expect(out).toContain(line("issue acme/demo#13", "by me (owner): my own bug"));
   });
 
+  it("reads the root task file when given a nested checkout path", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-priority-"));
+    const nested = join(fixtureRepo(root), "nested");
+    mkdirSync(nested);
+    const out = pass(root, fakeGh(root, [], []), ["--limit", "1", nested]);
+    expect(out).toContain(line("task nested/fix-sync-crash", "Fix the sync crash"));
+  });
+
   it("withholds work when the default tree points to a task file outside that tree", () => {
     const root = mkdtempSync(join(tmpdir(), "watch-priority-"));
     const repo = fixtureRepo(root, undefined, { tasks: null });

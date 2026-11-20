@@ -26,7 +26,7 @@ point to a retired queue. A recent-item limit can hide older priority labels.
 ## Bind the queue read to its fetched ref
 
 - **Hypothesis**: An exact remote ref and its queue object ID keep a colliding local branch from changing the read. A tree lookup separates an absent optional queue from a failed object read.
-- **Measurement**: Add a local branch named `origin/current` pointing to old tasks to the remote-default control. Compare abbreviated and exact lookups. Check a repository with no task file and the existing failed-source control.
+- **Measurement**: Add a local branch named `origin/current` pointing to old tasks to the remote-default control. Compare abbreviated and exact lookups. Check a nested checkout path, a repository with no task file, and the existing failed-source control.
 - **Success**: The current remote queue wins with 0 retired tasks. An absent queue still permits other work. A failed read selects 0 items.
 - **Pivot**: Any selection from the colliding ref, or a read error presented as an absent queue, rejects the candidate.
 - **Anchor**: Git ref disambiguation and the existing [task backend contract](../task-backend-contract.md).

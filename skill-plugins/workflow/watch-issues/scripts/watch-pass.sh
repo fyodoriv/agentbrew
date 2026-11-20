@@ -11,12 +11,11 @@
 #   new<TAB><kind> <key><TAB><text>
 # where "<kind> <key>" is the exact --done argument. Then "watch: N new (showing S), M handled".
 # A PR key carries its state and head commit, so a PR that breaks again shows up as new.
-# It never changes a repo. --done appends handled items to the seen list; nothing else is written.
+# The pass leaves working files alone. --done only appends to the seen list.
 # --wait SEC runs the pass every N seconds (--interval, default 300) until one shows a new
 # item, then prints that pass; after SEC with nothing new it prints only the last line. Keep
 # SEC under a tool's time limit (540 for a 10-minute limit); a Monitor can run it in a loop.
-# Issues assigned to someone else, or with a label that starts with "blocked", are left out
-# (all assigned issues stay when the signed-in login cannot be read).
+# Issues assigned to someone else, or with a label that starts with "blocked", are left out.
 set -uo pipefail
 
 include_p3=0
@@ -96,6 +95,7 @@ if [ "${#repos[@]}" -eq 0 ]; then
 fi
 
 new_count=0 open_count=0
+incomplete=0
 buckets=$'P0\nP1\nP2\nP3\npr\nowner\ntask\noutside'
 work="$(mktemp -d "${TMPDIR:-/tmp}/watch-pass.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
@@ -141,6 +141,14 @@ me="$(gh api user --jq .login 2>/dev/null || true)"
 # gh --jq takes no --arg; a GitHub login is letters, digits, and dashes only.
 me_jq=""; printf '%s\n' "$me" | grep -qE '^[A-Za-z0-9-]+$' && me_jq="$me"
 priority_query='def priority: ([.labels[]?.name | ascii_upcase | sub("^PRIORITY:[[:space:]]*"; "") | select(test("^P[0-3]$"))] | min) // "unranked";'
+scan_limit=1000
+
+# The first line is the list size before the jq filter drops ineligible work.
+scan_is_complete() {
+  local count="${1%%$'\n'*}"
+  case "$count" in ""|*[!0-9]*) return 1 ;; esac
+  [ "$count" -lt "$scan_limit" ]
+}
 
 for repo in "${repos[@]}"; do
   if ! git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then
@@ -149,13 +157,14 @@ for repo in "${repos[@]}"; do
   name="$(basename "$repo")"
   slug="$(git -C "$repo" config --get remote.origin.url 2>/dev/null |
     sed -nE 's#/*$##; s#\.git$##; s#.*github\.com[:/]+([^/]+/[^/]+)$#\1#p')"
-  def="$(git -C "$repo" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')"
-  [ -n "$def" ] || def="$(git -C "$repo" ls-remote --symref origin HEAD 2>/dev/null |
-    sed -nE 's#^ref: refs/heads/([^[:space:]]+)[[:space:]]+HEAD$#\1#p')"
+  def="$(git -C "$repo" ls-remote --symref origin HEAD 2>/dev/null |
+    sed -nE 's#^ref: refs/heads/([^[:space:]]+)[[:space:]]+HEAD$#\1#p')" || def=""
   if [ -z "$def" ]; then
-    echo "skip  $name: no default branch for origin (tasks not checked)"
+    echo "skip  $name: could not read the remote default branch (tasks not checked)"
+    incomplete=1
   elif ! git -C "$repo" fetch --quiet origin "refs/heads/$def:refs/remotes/origin/$def" 2>/dev/null; then
     echo "skip  $name: git fetch failed (tasks not checked)"
+    incomplete=1
   elif tasks="$(git -C "$repo" show "origin/$def:TASKS.md" 2>/dev/null)"; then
     while IFS="$(printf '\t')" read -r priority key title; do
       [ -n "$key" ] && emit task task "$name/$key" "$title" "$priority"
@@ -163,43 +172,57 @@ for repo in "${repos[@]}"; do
   fi
 
   [ -n "$slug" ] || { echo "skip  $name: origin is not a GitHub repo (issues and PRs not checked)"; continue; }
+  if [ -z "$me_jq" ]; then
+    echo "skip  $name: could not read the signed-in GitHub login (assignees not checked)"
+    incomplete=1
+    continue
+  fi
   # Left out: issues assigned to someone else, and issues with a "blocked..." label.
-  if issues="$(gh issue list -R "$slug" --state open --limit 50 --json number,title,author,assignees,labels \
-      --jq "$priority_query"'.[]
-        | select("'"$me_jq"'" == "" or ((.assignees // []) | length) == 0 or ((.assignees // []) | any(.login == "'"$me_jq"'")))
+  if issues="$(gh issue list -R "$slug" --state open --limit "$scan_limit" --json number,title,author,assignees,labels \
+      --jq "$priority_query"'length, (.[]
+        | select(((.assignees // []) | length) == 0 or ((.assignees // []) | any(.login == "'"$me_jq"'")))
         | select(((.labels // []) | any(.name | ascii_downcase | startswith("blocked"))) | not)
-        | "\(priority)\t\(.number)\t\(.author.login)\t\(.title)"' 2>/dev/null)"; then
+        | [priority, .number, (.author.login // "unknown"), .title] | @tsv)' 2>/dev/null)" &&
+      scan_is_complete "$issues"; then
     while IFS="$(printf '\t')" read -r priority num who title; do
       [ -n "$num" ] || continue
       whose=outside; [ -n "$me" ] && [ "$who" = "$me" ] && whose=owner
       emit "$whose" issue "$slug#$num" "by $who ($whose): $title" "$priority"
-    done <<<"$issues"
+    done <<<"${issues#*$'\n'}"
   else
-    echo "skip  $name: gh issue list failed (signed in? gh auth status)"
+    echo "skip  $name: GitHub issues unavailable or reached the $scan_limit-item scan limit"
+    incomplete=1
   fi
 
   # Your open PRs that need a fix. Drafts, PRs whose branch a worktree here has checked out,
   # and PRs updated in the last 30 minutes (another session may be on them) are left alone.
   busy="$(git -C "$repo" worktree list --porcelain 2>/dev/null | sed -n 's#^branch refs/heads/##p')"
-  if prs="$(gh pr list -R "$slug" --author @me --state open --limit 50 \
+  if prs="$(gh pr list -R "$slug" --author @me --state open --limit "$scan_limit" \
       --json number,title,headRefName,headRefOid,isDraft,mergeable,statusCheckRollup,updatedAt,labels \
-      --jq "$priority_query"'.[] | select(.isDraft | not)
+      --jq "$priority_query"'length, (.[] | select(.isDraft | not)
           | select((now - (.updatedAt | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601)) > 1800)
           | [priority, .number, .headRefName, .headRefOid[0:7], .title,
           (if .mergeable == "CONFLICTING" then "conflicting"
            elif ([.statusCheckRollup[]? | (.conclusion // .state)]
                  | any(. == "FAILURE" or . == "ERROR" or . == "TIMED_OUT"
                        or . == "STARTUP_FAILURE" or . == "ACTION_REQUIRED")) then "red"
-           else "" end)] | @tsv' 2>/dev/null)"; then
+           else "" end)] | @tsv)' 2>/dev/null)" &&
+      scan_is_complete "$prs"; then
     while IFS="$(printf '\t')" read -r priority num head sha title why; do
       [ -n "$num" ] && [ -n "$why" ] || continue
       printf '%s\n' "$busy" | grep -qxF "$head" && continue
       emit pr pr "$slug#$num $why $sha" "$title" "$priority"
-    done <<<"$prs"
+    done <<<"${prs#*$'\n'}"
   else
-    echo "skip  $name: gh pr list failed (signed in? gh auth status)"
+    echo "skip  $name: GitHub PRs unavailable or reached the $scan_limit-item scan limit"
+    incomplete=1
   fi
 done
+
+if [ "$incomplete" -ne 0 ]; then
+  echo "watch: priority read incomplete (no work selected)"
+  exit 1
+fi
 
 shown=0
 show() { # show <bucket> <max total>

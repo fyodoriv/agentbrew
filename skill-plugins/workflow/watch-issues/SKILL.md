@@ -38,7 +38,9 @@ or the user's words in this session).
    Each line is `new<TAB><kind> <key><TAB><text>`. The middle column is
    the exact `--done` argument. The last line is
    `watch: N new (showing S), M handled`. A `skip` line names a failed read.
-   If a task-file fetch fails, the pass skips that repo's cached task entries.
+   The pass checks the remote default branch on each run. If a source read
+   fails or a GitHub list reaches 1,000 items, the pass reports the incomplete
+   read and recommends no new work until you can check the missing source.
    The list leaves out issues assigned to someone else or labelled `blocked…`,
    P3 tasks (they need the user's yes; `--include-p3`
    adds them), tasks claimed by another agent, blocked tasks, draft PRs, and

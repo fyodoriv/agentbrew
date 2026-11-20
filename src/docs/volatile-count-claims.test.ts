@@ -70,6 +70,10 @@ describe("volatile count scan helpers", () => {
     ["After 250 ms the agent checks 12 agents.", ["12 agents"]],
     ["2–4 hour runs for agents still track 12 agents.", ["12 agents"]],
     ["15 second-line agents are configured.", ["15 second-line agents"]],
+    ["After 1 second the agent checks status.", []],
+    ["3 MS tools are configured.", ["3 MS tools"]],
+    ["3 second wave agents are configured.", ["3 second wave agents"]],
+    ["1 second wave agent is configured.", ["1 second wave agent"]],
   ])("distinguishes durations from inventory in %s", (line, expected) => {
     expect(scanTextForVolatileCounts(line)).toEqual(expected);
   });

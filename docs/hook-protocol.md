@@ -114,6 +114,11 @@ read literal command words and arguments without executing them. Ordinary
 merges and read-only GitHub operations stay available. Shell wrappers, expansions, and later commands are
 outside this check. The GitHub CLI check also leaves shell redirections alone.
 
+Use `npm pack --dry-run` to inspect the package. The hook refuses a
+direct leading `npm publish`, including when it has a dry-run option.
+The owner publishes through the [documented release process](ci.md).
+The npm check applies when `publish` immediately follows the executable.
+
 Add `no-destructive-commands` to `enabled:` in the hooks overlay and run
 `agentbrew sync` to turn on the check.
 

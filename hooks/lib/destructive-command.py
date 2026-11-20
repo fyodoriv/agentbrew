@@ -1,4 +1,4 @@
-"""Classify leading Git and GitHub CLI invocations without running its shell input."""
+"""Classify leading Git, GitHub CLI, and npm invocations without running its shell input."""
 
 import os
 import re
@@ -74,13 +74,17 @@ def gh_option_states(words):
     return admin, help_requested
 
 
-def classify(source):
+def classify(source, npm_only=False):
     command_line, has_redirection = leading_command(source)
     words = shlex.shlex(command_line, posix=True, punctuation_chars="<>")
     words.whitespace_split = True
     words.commenters = ""
     executable = os.path.basename(next(words, ""))
 
+    if executable == "npm" and next(words, "") == "publish":
+        return "npm-publish"
+    if npm_only:
+        return "allow"
     if executable == "git" and discards_stash(words):
         return "stash"
     if executable == "gh" and not has_redirection:
@@ -97,6 +101,6 @@ def classify(source):
 
 if __name__ == "__main__":
     try:
-        print(classify(sys.stdin.read()))
+        print(classify(sys.stdin.read(), npm_only=sys.argv[1:] == ["npm"]))
     except ValueError:
         sys.exit(2)

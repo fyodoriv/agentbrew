@@ -68,7 +68,12 @@ Skip it for pure functions, docs, and one-line fixes.
    ```
 
    It checks the three labels, the table, the allowed behaviors, and (with
-   `--repo`) that each named test exists.
+   `--repo`) that each named test exists. It also reads the wording minsky
+   used: `Steady-state hypothesis`, `Operator escape hatch`, a `Failure mode`
+   or `Chaos test` column, and `graceful-degrade` style behaviors. A row
+   fails when its Expected cell names a forbidden behavior, or says "log
+   and continue" or a silent retry next to an allowed one. Code such as `ignore_errors` and a
+   negated phrase such as "never `retry-silently`" do not count.
 
 ## Fault axes to walk
 

@@ -33,24 +33,25 @@ const [ranking, ...urls] = args;
 const SIZES = { phone: { width: 390, height: 844 }, desktop: { width: 1280, height: 800 } };
 const VIEWS = urls.map((u) => [u.replace(/^https?:\/\/[^/]+\//, "") || "/", u]);
 
-// Wait until every picture on screen has loaded; a local test server can drop a request under load,
-// so a broken picture gets its src set again (up to 10 s). A shot of a half-loaded page rates a fake flaw.
+function pendingImages() {
+  let n = 0;
+  for (const img of document.images) {
+    const r = img.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight * 2 || !img.currentSrc) continue;
+    if (img.complete && img.naturalWidth === 0) {
+      const s = img.src;
+      img.src = "";
+      img.src = s;
+      n++;
+    } else if (!img.complete) n++;
+  }
+  return n;
+}
+
+// Wait for every visible image to load. Retry failed requests for up to 10 seconds.
 async function settleImages(p) {
   for (let i = 0; i < 40; i++) {
-    const pending = await p.evaluate(() => {
-      let n = 0;
-      for (const img of document.images) {
-        const r = img.getBoundingClientRect();
-        if (r.bottom < 0 || r.top > innerHeight * 2 || !img.currentSrc) continue;
-        if (img.complete && img.naturalWidth === 0) {
-          const s = img.src;
-          img.src = "";
-          img.src = s;
-          n++;
-        } else if (!img.complete) n++;
-      }
-      return n;
-    });
+    const pending = await p.evaluate(pendingImages);
     if (!pending) return;
     await p.waitForTimeout(250);
   }

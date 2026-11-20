@@ -86,6 +86,17 @@ describe("lint-changed.sh", () => {
     expect(biomeArgs()).toEqual(["check", "--error-on-warnings", "--write", "src/edited.ts"]);
   });
 
+  it("checks shipped skill scripts while skipping the skill guide and dashboard", () => {
+    const { write, run, biomeArgs } = setup();
+    const skill = "skill-plugins/workflow/fixture";
+    write(`${skill}/scripts/check.mjs`, "export const n = 1;\n");
+    write(`${skill}/SKILL.md`, "# Fixture\n");
+    write(`${skill}/dashboard/index.html`, "<p>Fixture</p>\n");
+    const result = run();
+    expect(result.status, result.stderr).toBe(0);
+    expect(biomeArgs()).toEqual(["check", "--error-on-warnings", `${skill}/scripts/check.mjs`]);
+  });
+
   it("does not call biome when no source file changed", () => {
     const { write, run, biomeArgs } = setup();
     write("docs/guide.md", "# guide 2\n");

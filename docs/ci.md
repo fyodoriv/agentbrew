@@ -4,6 +4,9 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 
 ## What runs where
 
+The full and changed-file lint commands include shipped skill scripts in
+`skill-plugins/*/*/scripts/`. Skill pages and eval data use their own checks.
+
 | Check | Hosted runner | Your machine |
 |---|---|---|
 | Full gate, `npm run verify` | Every pull request to `main`, every push to `main`, and by hand (`gh workflow run ci.yml`) | Only when Actions is off, or to reproduce a hosted failure. Iterate with `npm run verify:changed` |

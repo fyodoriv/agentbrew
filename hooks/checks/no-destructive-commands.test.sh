@@ -6,7 +6,7 @@ scratch="$(mktemp -d)"
 trap 'rm -r -- "$scratch"' EXIT
 mkdir -p "$scratch/bin" "$scratch/deployed"
 export PATH="$scratch/bin:$PATH"
-export HOOK_DECISIONS_LOG="$scratch/decisions.jsonl" GIT_CALL_RECEIPT="$scratch/git-called" GH_CALL_RECEIPT="$scratch/gh-called"
+export HOOK_DECISIONS_LOG="$scratch/decisions.jsonl" GIT_CALL_RECEIPT="$scratch/git-called" GH_CALL_RECEIPT="$scratch/gh-called" NPM_CALL_RECEIPT="$scratch/npm-called"
 
 cat > "$scratch/bin/git" <<'STUB'
 #!/bin/bash
@@ -18,7 +18,12 @@ cat > "$scratch/bin/gh" <<'STUB'
 touch "$GH_CALL_RECEIPT"
 exit 1
 STUB
-chmod +x "$scratch/bin/git" "$scratch/bin/gh"
+cat > "$scratch/bin/npm" <<'STUB'
+#!/bin/bash
+touch "$NPM_CALL_RECEIPT"
+exit 1
+STUB
+chmod +x "$scratch/bin/git" "$scratch/bin/gh" "$scratch/bin/npm"
 cp "$hook_dir/no-destructive-commands.sh" "$scratch/deployed/"
 cp -R "$hook_dir/../lib" "$scratch/deployed/lib"
 cd "$scratch"
@@ -75,10 +80,35 @@ check_github() {
   return "$failed"
 }
 
-if [ "${1:-}" = github ]; then
-  check_github
-  exit 0
-fi
+check_npm() {
+  local failed=0
+  check 'direct npm publish' 2 Bash 'npm publish' || failed=1
+  check 'publish a tarball with a tag' 2 Bash 'npm publish fixture.tgz --tag canary' || failed=1
+  check 'explicit npm path and joined words' 2 Bash "\"$scratch/bin/npm\" pu'bli'sh" || failed=1
+  check 'escape in publish word' 2 Bash 'npm pub\lish' || failed=1
+  check 'dry-run option on a direct publish' 2 Bash 'npm publish --dry-run' || failed=1
+  check 'package preview' 0 Bash 'npm pack --dry-run' || failed=1
+  check 'package help' 0 Bash 'npm help publish' || failed=1
+  check 'package version inspection' 0 Bash 'npm view example version' || failed=1
+  check 'publish words as prose' 0 Bash 'printf "%s" "npm publish"' || failed=1
+  check 'unrelated npm script name' 0 Bash 'npm run publish' || failed=1
+  check 'owner release entry point name' 0 Bash 'npm run publish:latest' || failed=1
+  check 'publish words in another tool' 0 Read 'npm publish' || failed=1
+  check 'later publish command' 0 Bash 'true; npm publish' || failed=1
+  check 'npm text in a multiline merge body' 0 Bash $'gh pr merge 123 --squash --body "mention npm publish\nmore text"' || failed=1
+  check 'npm text in a multiline Git message' 0 Bash $'git commit -m "mention npm publish\nmore text"' || failed=1
+  if [ -e "$NPM_CALL_RECEIPT" ]; then
+    printf '%s\n' 'Unexpected npm execution' >&2
+    return 1
+  fi
+  printf '%s\n' 'npm commands executed: 0'
+  return "$failed"
+}
+
+case "${1:-}" in
+  github) check_github; exit 0 ;;
+  npm) check_npm; exit 0 ;;
+esac
 
 check 'drop' 2 Bash 'git stash drop'
 check 'clear' 2 Bash 'git stash clear'
@@ -110,3 +140,4 @@ HOOK_PYTHON="$scratch/bin/interpreter-override" check 'shared interpreter route'
 [ ! -e "$GIT_CALL_RECEIPT" ]
 printf '%s\n' 'Git commands executed: 0'
 check_github
+check_npm

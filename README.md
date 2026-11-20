@@ -66,7 +66,7 @@ Something breaks silently: nobody notices until a tool stops working.
 - **Never destroys your data.** Manual edits, user-added servers, custom rules — all survive every sync, update, and auto-repair.
 - **Declarative.** Commit an `Agentfile.yaml` to your dotfiles; a fresh machine bootstraps in one command.
 - **Curated 200+-item catalog.** It holds skills from [Vercel][], [Anthropic][], [obra/superpowers][], [Every Compound Engineering][], [gstack][], [Supabase][], [Trail of Bits][], [slavingia/skills][], and [awesome-design-md][]. The team overlay adds more when enabled.
-- **Rollback is always available.** Every sync snapshots pre-state; `sync --rollback` restores it.
+- **Restore the last snapshot.** A real sync saves the previous configuration. Run `sync --rollback` to restore it. The CLI rejects `--rollback` and `--dry-run` together.
 - **Repo verification.** [`/verify`](commands/verify.md) detects the repo type,
   runs its gate, and reports the actual result for each changed repo.
 - **Offline handoff.** [`/offline`](commands/offline.md) preserves active work

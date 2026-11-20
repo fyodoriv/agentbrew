@@ -165,10 +165,20 @@ for repo in "${repos[@]}"; do
   elif ! git -C "$repo" fetch --quiet origin "refs/heads/$def:refs/remotes/origin/$def" 2>/dev/null; then
     echo "skip  $name: git fetch failed (tasks not checked)"
     incomplete=1
-  elif tasks="$(git -C "$repo" show "origin/$def:TASKS.md" 2>/dev/null)"; then
-    while IFS="$(printf '\t')" read -r priority key title; do
-      [ -n "$key" ] && emit task task "$name/$key" "$title" "$priority"
-    done < <(printf '%s\n' "$tasks" | ready_tasks)
+  elif ! task_entry="$(git -C "$repo" ls-tree "refs/remotes/origin/$def" -- TASKS.md 2>/dev/null)"; then
+    echo "skip  $name: could not check the fetched task file"
+    incomplete=1
+  elif [ -n "$task_entry" ]; then
+    read -r mode kind object _ <<<"$task_entry"
+    if [ "$kind" != blob ] || [ "$mode" = 120000 ] ||
+      ! tasks="$(git -C "$repo" cat-file blob "$object" 2>/dev/null)"; then
+      echo "skip  $name: could not read the fetched task file"
+      incomplete=1
+    else
+      while IFS="$(printf '\t')" read -r priority key title; do
+        [ -n "$key" ] && emit task task "$name/$key" "$title" "$priority"
+      done < <(printf '%s\n' "$tasks" | ready_tasks)
+    fi
   fi
 
   [ -n "$slug" ] || { echo "skip  $name: origin is not a GitHub repo (issues and PRs not checked)"; continue; }

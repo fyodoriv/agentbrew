@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, renameSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -98,14 +98,16 @@ function git(cwd: string, ...args: string[]): void {
 function fixtureRepo(
   root: string,
   url = "git@github.com:acme/demo.git",
-  options: { name?: string; tasks?: string } = {},
+  options: { name?: string; tasks?: string | null } = {},
 ): string {
   const seed = join(root, "seed");
   mkdirSync(seed, { recursive: true });
   git(seed, "init", "-q", "-b", "main");
-  writeFileSync(join(seed, "TASKS.md"), options.tasks ?? TASKS);
-  git(seed, "add", "TASKS.md");
-  git(seed, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", "seed");
+  if (options.tasks !== null) {
+    writeFileSync(join(seed, "TASKS.md"), options.tasks ?? TASKS);
+    git(seed, "add", "TASKS.md");
+  }
+  git(seed, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--allow-empty", "-qm", "seed");
   git(seed, "branch", "busy-branch");
   const bare = join(root, "origin.git");
   git(root, "clone", "-q", "--bare", seed, bare);
@@ -225,7 +227,7 @@ describe("watch-issues pass", () => {
     expect(keys).toEqual(["issue acme/demo#18", "pr acme/demo#7 red abcdef1"]);
   });
 
-  it("uses the remote default when the cached default still points at an older open branch", () => {
+  it("uses the current remote queue even with a cached default and a colliding local branch", () => {
     const root = mkdtempSync(join(tmpdir(), "watch-priority-"));
     const repo = fixtureRepo(root);
     const seed = join(root, "seed");
@@ -235,9 +237,31 @@ describe("watch-issues pass", () => {
     git(seed, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qam", "current task");
     git(seed, "push", origin, "current");
     git(origin, "symbolic-ref", "HEAD", "refs/heads/current");
+    git(repo, "branch", "origin/current", "main");
     const out = pass(root, fakeGh(root, [], []), ["--limit", "1", repo]);
     expect(out).toContain(line("task demo/current", "Current task"));
     expect(out).not.toContain("task demo/fix-sync-crash");
+  });
+
+  it("allows GitHub work when the remote tree has no optional task file", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-priority-"));
+    const repo = fixtureRepo(root, undefined, { tasks: null });
+    const out = pass(root, fakeGh(root, ISSUES, []), ["--limit", "1", repo]);
+    expect(out).toContain(line("issue acme/demo#13", "by me (owner): my own bug"));
+  });
+
+  it("withholds work when the default tree points to a task file outside that tree", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-priority-"));
+    const repo = fixtureRepo(root, undefined, { tasks: null });
+    const seed = join(root, "seed");
+    symlinkSync("other-queue", join(seed, "TASKS.md"));
+    git(seed, "add", "TASKS.md");
+    git(seed, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", "unexpected queue link");
+    git(seed, "push", join(root, "origin.git"), "main");
+    const result = run(root, fakeGh(root, ISSUES, []), ["--limit", "1", repo]);
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("could not read the fetched task file");
+    expect(result.stdout).not.toContain("new\t");
   });
 
   it("does not recommend lower-priority work when a GitHub source reaches its scan limit", () => {

@@ -216,7 +216,7 @@ hooks:
     defaultEnabled: false
 
   - id: no-destructive-commands
-    description: Block direct Git stash discard commands that can lose work from another worktree
+    description: Block direct stash discard, GitHub repository deletion, and administrator merges
     event: PreToolUse
     matcher: Bash
     script: checks/no-destructive-commands.sh

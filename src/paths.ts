@@ -45,6 +45,9 @@ export const CLAUDE_DESKTOP_MAIN_LOG_PATH = "~/Library/Logs/Claude/main.log";
 /** MCP probe health snapshot written by the auto-repair cron path. */
 export const MCP_HEALTH_PATH = "~/.cache/agentbrew/mcp-health.json";
 
+/** Legacy Git checkouts used by Git-backed MCP sources. */
+export const MCP_GIT_REPOS_PATH = "~/.config/agentbrew/mcp-repos";
+
 /** Last-seen timestamps for freshness checks. */
 export const LAST_SEEN_PATH = "~/.config/agentbrew/last-seen.json";
 

@@ -209,6 +209,9 @@ Merge only when every hosted check on the pull request is green. Never merge on 
 
 ## When a hosted check fails
 
+The volatile inventory checker accepts numeric durations. It still flags
+separate counts on the same line.
+
 1. Read the log first: `gh run view <run-id> --log-failed`.
 2. Reproduce it locally with the failing step's command.
 3. Fix the cause. Never push an empty commit to start the run again.

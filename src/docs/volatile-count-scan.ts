@@ -19,6 +19,13 @@ const INVENTORY_QUALIFIER = "(?:(?:[A-Za-z][\\w/-]*\\s+){0,3})";
 /** Spelled counts for aggregate inventory (exclude one/two — transactional English, not inventory). */
 const SPELLED_INVENTORY_NUMBERS = "three|four|five|six|seven|eight|nine|ten|eleven|twelve";
 
+// A singular unit needs time context so "day shift" still qualifies inventory.
+const TIME_UNIT = "second|minute|hour|day|week";
+const DURATION_PREFIX = new RegExp(
+  String.raw`^${VOLATILE_COUNT}\s+(?:(?:ms|(?:${TIME_UNIT})s)\s|(?:${TIME_UNIT})\s+(?:after|before|for|from|later|the|then|until)\s)`,
+  "u",
+);
+
 const VOLATILE_COUNT_CLAIM = new RegExp(
   String.raw`(?<![.\w-])${VOLATILE_COUNT}\s+${INVENTORY_QUALIFIER}${INVENTORY_NOUN}\b`,
   "giu",
@@ -219,7 +226,8 @@ function matchSpan(match: RegExpMatchArray): TextSpan {
   return { start, end: start + match[0].length };
 }
 
-function isMatchInThresholdExemption(text: string, match: RegExpMatchArray): boolean {
+function isMatchInThresholdExemption(text: string, match: RegExpMatchArray, pattern: RegExp): boolean {
+  if (pattern === VOLATILE_COUNT_CLAIM && DURATION_PREFIX.test(match[0])) return true;
   const mSpan = matchSpan(match);
   return collectThresholdSpans(text).some((threshold) => spansOverlap(mSpan, threshold));
 }
@@ -495,7 +503,7 @@ function findVolatileMatchesInText(text: string): RawVolatileMatch[] {
       const key = `${value}@${match.index ?? 0}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      if (isMatchInThresholdExemption(text, match)) {
+      if (isMatchInThresholdExemption(text, match, pattern)) {
         continue;
       }
       if (isMatchInNonInventoryExemption(text, match)) {

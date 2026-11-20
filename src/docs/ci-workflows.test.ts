@@ -89,9 +89,7 @@ describe("hosted workflows", () => {
     const text = workflows.find((workflow) => workflow.name === "preregistration.yml")?.text ?? "";
     expect(text).not.toMatch(/^concurrency:/m);
     expect(text).toContain("    concurrency:\n      group: preregistration-");
-    expect(text).toContain(
-      "github.event.pull_request.number || format('run-{0}', github.run_id)",
-    );
+    expect(text).toContain("github.event.pull_request.number || format('run-{0}', github.run_id)");
     expect(text).toContain("      cancel-in-progress: true");
   });
 

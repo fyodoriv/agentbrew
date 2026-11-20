@@ -100,3 +100,22 @@ enable either check in the fast gate.
 Both checks read `.test` and `.spec` files in `src/`, `test/`, and
 `tests/unit/`. They skip `e2e`, `integration`, fixture, and build folders.
 Use regular source and test files in these trees. The checks skip symlinks.
+
+## 7. Optional fake marker check
+
+Run `CHECK_FAKE_MARKERS=1 scripts/check.sh fast` in a JavaScript or TypeScript
+repo with the `typescript` dev dependency. The check reads the same regular
+`src/` files as the unit rules. It skips unit tests, `__tests__/` folders, and fixture files.
+
+The check looks for functions named `fake`, `mock`, or `stub`, including names
+such as `fakeCatalog` and `stub_catalog`. It checks function declarations
+and functions assigned to variables or properties. It also checks functions that
+only throw a placeholder error such as `new Error("not implemented")`.
+Put a line comment directly above each definition, including its reason
+and tracking task. Give each fake in a grouped declaration its own line
+and comment.
+
+```ts
+// FAKE: returns a synthetic catalog - tracked at connect-catalog
+export const fakeCatalog = () => [];
+```

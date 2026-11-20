@@ -393,18 +393,6 @@
   - **Pivot**: more than 1 false block per week in hook observation logs.
   - **Anchor**: Reason 1990 (Human Error, defenses in depth).
 
-- [ ] Git calls from scripts and sh -c pass the same safety blocks
-  - **ID**: git-path-shim
-  - **Tags**: hooks, git, from-minsky
-  - **Details**: Port minsky `.claude/shims/git` (see the archived repo): a `git` wrapper put first on the agent PATH that applies the dangerous-git blocks to the real argv, so `sh -c`, scripts and aliases cannot bypass the Bash-text hook. Opt-in via the hook manifest; pass through to the real git otherwise.
-  - **Files**: `hooks/shims/git`, its fixture test, `hooks/manifest.yaml`.
-  - **Acceptance**: a blocked git call wrapped in `sh -c` is blocked under the shim; `git status` passes through unchanged.
-  - **Hypothesis**: destructive git calls hidden inside scripts go from unblocked to blocked.
-  - **Measurement**: `bats tests/hooks/git-shim.bats` on 10 blocked and 10 allowed fixtures.
-  - **Success**: 10/10 blocked and 10/10 allowed.
-  - **Pivot**: any allowed fixture blocked, or added latency over 20 ms per git call.
-  - **Anchor**: Reason 1990 (Human Error, defenses in depth).
-
 - [ ] Editing TASKS.md lints it right away
   - **ID**: tasks-md-lint-on-edit
   - **Tags**: hooks, tasks-md, from-minsky

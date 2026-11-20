@@ -164,7 +164,7 @@ describe("sync build health", () => {
     ["normal", ["--only", "mcp", "--no-recommended"], runSyncParallel],
     ["dry-run", ["--dry-run", "--only", "mcp", "--no-recommended"], runSyncParallel],
     ["pull", ["--pull", "--dry-run"], update],
-    ["rollback", ["--rollback", "--dry-run"], rollbackAgentConfigs],
+    ["rollback", ["--rollback"], rollbackAgentConfigs],
   ])("warns before %s sync work and still runs it", async (_name, args, operation) => {
     health.mockReturnValue([{ agent: "agentbrew", type: "cli-build", detail: "stale fixture — run `npm run build`" }]);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -201,7 +201,7 @@ describe("initialized sync root-hook ordering", () => {
     ["normal", ["--only", "mcp", "--no-recommended"], runSyncParallel],
     ["dry-run", ["--dry-run", "--only", "mcp", "--no-recommended"], runSyncParallel],
     ["pull", ["--pull", "--dry-run"], update],
-    ["rollback", ["--rollback", "--dry-run"], rollbackAgentConfigs],
+    ["rollback", ["--rollback"], rollbackAgentConfigs],
   ])("initialized %s warns before root-hook output and writes", async (_name, args, operation) => {
     health.mockReturnValue([{ agent: "agentbrew", type: "cli-build", detail: "stale synthetic build" }]);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});

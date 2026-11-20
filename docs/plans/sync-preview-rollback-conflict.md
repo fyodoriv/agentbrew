@@ -10,3 +10,10 @@ Registration date: 2026-11-20. Target: `643e1b5d`.
 
 No test is allowed to restore or touch actual agent configuration. The fixture
 already mocks the restore and command setup. No rollback preview is added.
+
+## Baseline
+
+The [unchanged Ubuntu parser](https://github.com/fyodoriv/agentbrew/actions/runs/44780404388/job/136441259004)
+dispatched the mock restore once in each flag order. Both cases reached the
+build check, repair-log clear and last-seen writer. They returned no argument
+error. All other tests in the same file passed.

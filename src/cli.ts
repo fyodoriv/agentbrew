@@ -471,7 +471,9 @@ function registerSyncCommand(program: Command): void {
     )
     .option("--sequential", "Run sync categories sequentially (default is parallel)")
     .option("--pull", "Fetch latest from all sources before syncing")
-    .option("--rollback", "Restore agent config files from the last pre-sync snapshot")
+    .addOption(
+      new Option("--rollback", "Restore agent config files from the last pre-sync snapshot").conflicts("dryRun"),
+    )
     .option(
       "--only <modules>",
       "Run only specific modules (comma-separated: mcp,rules,commands,agents,skills,hooks,models,instructions)",

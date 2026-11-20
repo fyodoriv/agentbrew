@@ -38,7 +38,9 @@ const BLOCKER_CAP = 6;
 export function shotList(dir) {
   let names = [];
   try {
-    names = readdirSync(dir).filter((f) => /\.(png|jpe?g|webp)$/i.test(f)).sort();
+    names = readdirSync(dir)
+      .filter((f) => /\.(png|jpe?g|webp)$/i.test(f))
+      .sort();
   } catch {
     return `- every screenshot in ${dir} (phone and desktop, light and dark)`;
   }
@@ -199,6 +201,15 @@ const sameElement = (a, b, ea = "", eb = "") => {
   return shared >= Math.min(2, a.size, b.size) && overlap(a, b) >= 0.5;
 };
 
+function appendRoundConflicts(fixes, conflicts) {
+  for (let a = 0; a < fixes.length; a++)
+    for (let b = a + 1; b < fixes.length; b++) {
+      const [x, y] = [fixes[a], fixes[b]];
+      if (x.judge !== y.judge && x.d && opposite(x.d) === y.d && sameElement(x.w, y.w, x.element, y.element))
+        conflicts.push({ kind: "round", element: x.element, asks: [`${x.judge}: ${x.fix}`, `${y.judge}: ${y.fix}`] });
+    }
+}
+
 /** Fixes that ask opposite things on one element, in this round or against the ledger. */
 export function conflicts(byJudge, decisions = "") {
   const fixes = byJudge.flatMap(({ judge, issues }) =>
@@ -208,12 +219,7 @@ export function conflicts(byJudge, decisions = "") {
   // one fix per issue: "X or Y" leaves the builder to choose, so settle it first
   for (const f of fixes)
     if (/\bor\b/i.test(f.fix)) out.push({ kind: "ambiguous", element: f.element, asks: [`${f.judge}: ${f.fix}`] });
-  for (let a = 0; a < fixes.length; a++)
-    for (let b = a + 1; b < fixes.length; b++) {
-      const [x, y] = [fixes[a], fixes[b]];
-      if (x.judge !== y.judge && x.d && opposite(x.d) === y.d && sameElement(x.w, y.w, x.element, y.element))
-        out.push({ kind: "round", element: x.element, asks: [`${x.judge}: ${x.fix}`, `${y.judge}: ${y.fix}`] });
-    }
+  appendRoundConflicts(fixes, out);
   for (const line of String(decisions)
     .split("\n")
     .filter((l) => l.trim())) {
@@ -246,19 +252,18 @@ export const MAX_ROUNDS = 8;
  */
 export function stopRound(means, target = Infinity) {
   let flat = 0;
-  let structural = 0;
+  let structural = false;
   // a change of exactly 0.30 or less (rounded to 0.01) is noise
   const flatStep = (r) => Math.round(Math.abs(means[r] - means[r - 1]) * 100) / 100 <= NOISE;
   for (let r = 1; r < means.length; r++) {
     if (means[r] >= target) return { round: r, reason: "target" };
-    if (structural && r === structural) {
+    if (structural) {
       if (flatStep(r)) return { round: r, reason: "stall" };
-      structural = 0;
       flat = 0;
     } else {
       flat = flatStep(r) ? flat + 1 : 0;
-      if (flat === 2) structural = r + 1;
     }
+    structural = flat === 2;
     if (r >= MAX_ROUNDS) return { round: r, reason: "budget" };
   }
   return { round: means.length - 1, reason: structural ? "structural round next" : "continue" };

@@ -43,12 +43,35 @@ if [[ -z "$changed" ]]; then
   exit 0
 fi
 
+has() { grep -qE "$1" <<<"$changed"; }
+
+# step <command...>: run it, or print it in a dry run.
+step() {
+  if [[ "$dry_run" == 1 ]]; then
+    echo "  $*"
+    return 0
+  fi
+  echo ""
+  echo "▶ $*"
+  "$@"
+}
+
+check_changed_task_predictions() {
+  local baseline
+  baseline="$(git show "$base:TASKS.md")"
+  node skill-plugins/workflow/pre-register/scripts/check-preregistration.mjs \
+    TASKS.md --baseline <(printf '%s\n' "$baseline")
+}
+
 # Files that every test or build depends on: only the full gate covers them.
 full_gate_paths='^(package\.json|package-lock\.json|\.npmrc|\.node-version|tsconfig[^/]*\.json|tsup\.config\.ts|vitest[^/]*\.ts|biome\.json|knip\.json)$'
 full="$(grep -E "$full_gate_paths" <<<"$changed" || true)"
 if [[ -n "$full" ]]; then
   echo "verify:changed: these files need the full gate:"
   sed 's/^/  /' <<<"$full"
+  if has '^TASKS\.md$'; then
+    step check_changed_task_predictions
+  fi
   [[ "$dry_run" == 1 ]] && exit 0
   exec npm run verify
 fi
@@ -67,8 +90,6 @@ verdict() {
     sed 's/^/  /' <<<"$needs_full"
   fi
 }
-
-has() { grep -qE "$1" <<<"$changed"; }
 
 # The tests that read the changed files:
 # - src/docs and src/oss always run. They scan the docs and the task queue,
@@ -156,19 +177,11 @@ if [[ "$dry_run" == 1 ]]; then
   echo "verify:changed: steps:"
 fi
 
-# step <command...>: run it, or print it in a dry run.
-step() {
-  if [[ "$dry_run" == 1 ]]; then
-    echo "  $*"
-    return 0
-  fi
-  echo ""
-  echo "▶ $*"
-  "$@"
-}
-
 step git diff --check "$base"
 step npx --yes @tasks-md/lint@0.10.2 --require-prereg TASKS.md
+if has '^TASKS\.md$'; then
+  step check_changed_task_predictions
+fi
 step node scripts/lint-tasks-stability.mjs TASKS.md
 step node scripts/check-rule-8-pattern-conformance.mjs
 step node scripts/check-rule-16-defaults.mjs
@@ -178,7 +191,7 @@ step bash scripts/lint-repo-artifacts.sh
 if has '^(src|scripts|real-e2e)/.*\.(ts|tsx|mts|cts)$'; then
   step npx tsc --noEmit
 fi
-if [[ "${#code_files[@]}" -gt 0 ]]; then
+if [[ "${#code_files[@]}" -gt 0 ]] || has '^skill-plugins/[^/]+/[^/]+/scripts/.*\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$'; then
   step env LINT_CHANGED_BASE="$base_ref" bash scripts/lint-changed.sh
 fi
 if has '^(hooks|scripts|src)/'; then

@@ -4069,6 +4069,72 @@
         "Keeps the failed capture unverified and uses a new file on retry",
         "Captures the elapsed intermediate state at its next trigger or checkpoint and records the on-page state"
       ]
+    },
+    {
+      "id": 357,
+      "prompt": "/goal deliver\n\n(Context: the host app forbids the agent from polling CI itself: no gh --watch, Monitor, cron or wakeup tools; one bounded background sleep that the host tracks is allowed. Its PR monitor wakes the session only on failures. The repo has auto-merge off and no required checks. The session's last PR is green except its macOS check, which is queued: the repo runs one macOS job at a time and several runs are ahead of it. Each time the agent ends its turn, the Stop hook re-fires within seconds.)",
+      "expected_output": "Does not spin on the Stop re-fires: it does not re-read CI on each one. It reads the runner queue once (running and queued runs, start times) to size the wait, then arms one bounded background timer that does not touch GitHub, and names the pending check in its reply. When the timer ends it reads the PR once; a check still queued gets one new timer sized the same way. It merges only when every check is green at the current head. It does not enable GitHub auto-merge, because with no required checks it would merge before macOS finishes. It does not claim the goal met while a check is queued.",
+      "expectations": [
+        "Does not re-read CI on every Stop re-fire; arms one bounded background task that wakes the session when it ends and does not poll GitHub",
+        "Sizes the wait from the runner queue instead of a short fixed retry",
+        "Does not enable auto-merge without required checks, and merges only when every check is green at the current head",
+        "Does not claim the goal met while a check is still queued"
+      ]
+    },
+    {
+      "id": 361,
+      "prompt": "/goal deliver \u2014 one PR is merged and deployed; the other PR's CI failed on lint errors in files the PR never touched.",
+      "expected_output": "Reads the failed log, sees the errors are in untouched files, compares with main, rebases onto the newer main, re-runs CI, merges only when green, and proves the deploy by fetching the served file.",
+      "expectations": [
+        "Reads the failed CI log before acting and names the failing file:line",
+        "Compares with main before calling the failure pre-existing",
+        "Rebases onto the newer main instead of pushing an empty re-trigger",
+        "Merges only after every hosted check is green",
+        "Proves the live deploy by fetching the served asset, not by the deploy command's output"
+      ]
+    },
+    {
+      "id": 358,
+      "prompt": "/goal deliver\n\n(Context: the last step, a site deploy, was held behind another session's PR. That PR has waited 2 hours for its local gate, and its Stop hook keeps re-firing. heavy-run --status shows one gate slot running for 7000 s; a normal gate takes 10 minutes. Its e2e log has not changed in 2 hours.)",
+      "expected_output": "Treats a gate far past its normal time with an unchanged log as hung, not as slow: it finds the stuck child process, stops only that tree, and reports it. It re-checks why its own step waits, and runs any part that does not need the blocker (a code-only deploy) right away.",
+      "expectations": [
+        "Compares the gate run time with its normal time and reads the log modification time before waiting longer",
+        "Stops only the hung child process tree, never the whole queue or another session's worktree",
+        "Asks whether the held step really depends on the blocker, and ships the parts that do not",
+        "Does not answer repeated Stop re-fires with the same status message"
+      ]
+    },
+    {
+      "id": 362,
+      "prompt": "/goal deliver (the PR changed one API route; its full gate failed with hundreds of UI tests not finding elements in views the PR never touched, while main is green)",
+      "expected_output": "Before blaming or bisecting the diff, the agent loads one failing page and reads its page error, reinstalls dependencies from the lockfile and finds a missing package main added, reruns the full gate, and merges only after it passes.",
+      "expectations": [
+        "Loads one failing page and reads its page error before bisecting the diff",
+        "Reinstalls dependencies from the lockfile and finds the missing package",
+        "Reruns the full gate and merges only after it passes"
+      ]
+    },
+    {
+      "id": 363,
+      "prompt": "/goal deliver (the retro adds a skill eval in a repo whose hosted checks include a pre-registration check on the PR body)",
+      "expected_output": "The agent writes Hypothesis, Measurement, Success, Pivot and Anchor into the PR body before it opens the PR, runs the repo pre-registration validator on that body locally, and appends the eval without rewriting older cases, so every hosted check passes on the first run.",
+      "expectations": [
+        "The PR body carries all five prediction fields before gh pr create",
+        "The repo pre-registration validator passes locally on the body",
+        "Older eval cases are byte-identical; only the new case is appended"
+      ]
+    },
+    {
+      "id": 364,
+      "prompt": "/goal make PR 41 pass the independent UX judge. Success is zero remaining in-scope judge blockers. The offered test release maps to the previous PR commit. Later a build of the current head is ready. A watcher silently ignored a script edit and its first resolved result identifies PR 14, even though the launch used PR 41 as input. A replacement resolves PR 41, the current head and the expected job and attempt. The judge's report also names a pre-existing failure owned by another team.",
+      "expected_output": "Keep the old build out of review. Match the current release record to the PR head and pass both IDs to the judge. Reject PR 14's result as evidence. Confirm the replacement's actual resolved target and read the current authoritative check result. Keep pre-existing work attributed to its owner and do one in-scope fix round for the judge report before requesting fresh review.",
+      "expectations": [
+        "Uses zero remaining in-scope judge blockers as the contract metric",
+        "Checks the release record against the PR head before each judge handoff and holds an old build",
+        "Compares the watcher's first resolved target with planned identity and treats a mismatched event only as a wake-up",
+        "Allows the matching build and matching watch to reach their normal next step without skipping authoritative readback",
+        "Attributes unrelated failures to their owner and handles one in-scope fix round per judge report"
+      ]
     }
   ]
 }

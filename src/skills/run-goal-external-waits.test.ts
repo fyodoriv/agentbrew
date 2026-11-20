@@ -45,6 +45,16 @@ describe("P0 goal external waits and metric binding", () => {
     expect(waits).toMatch(/existing[\s\S]*watcher[\s\S]*before[\s\S]*another/i);
   });
 
+  it("waits on a timer, not GitHub, when the host forbids polling", () => {
+    const scenario = evals.find((entry) => entry.id === 357);
+    expect(scenario, "missing behavioral scenario 357").toBeDefined();
+    expect(scenario?.prompt).toMatch(/forbids[\s\S]*polling/i);
+    expect(scenario?.expectations.join("\n")).toMatch(/background task[\s\S]*wakes the session/i);
+    expect(waits).toMatch(/### Host forbids polling[\s\S]*runner queue once[\s\S]*bounded background `sleep`/);
+    expect(waits).toMatch(/never calls GitHub[\s\S]*read the PR once/i);
+    expect(waits).toMatch(/requires no checks[\s\S]*never enable\s+auto-merge/i);
+  });
+
   it("binds results to the watched revision and refuses missing notification evidence", () => {
     expect(waits).toMatch(/repository[\s\S]*head[\s\S]*run[\s\S]*attempt/i);
     expect(waits).toMatch(/expired[\s\S]*unknown/i);

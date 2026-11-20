@@ -50,3 +50,32 @@ and age settings apply per hook invocation.
 
 The fixture tests the hook event and local evidence. Enabling it for a
 real session remains a separate operator action.
+
+## Additional owner and concurrency controls
+
+- **Hypothesis**: A bounded transcript read and the final stamp recheck
+  preserve owner intent even if records are ambiguous or replaced
+  during the check.
+- **Measurement**: Extend the same fixture command with C19–C24.
+  Inject the owner update at the boundary after transcript read. Test
+  atomic replacement between an open file and its identity check.
+- **Success**: All 24 controls pass. Exactly 6 request reminders and
+  18 permit stop or refuse unstable evidence. Zero fixture input leaks.
+- **Pivot**: One reminder after the injected owner update, one ambiguous
+  request used for a block, one unstable stamp accepted as current or
+  one leak rejects the hook.
+- **Anchor**: The initial registered cases and the independent source
+  review of transcript and stamp handling.
+
+| Case | Evidence | Decision |
+| --- | --- | --- |
+| C19 | Latest user row has text and a tool result | Allow |
+| C20 | Latest user text is empty | Allow |
+| C21 | Last user request says not to wrap up | Block |
+| C22 | Latest transcript row is incomplete | Allow |
+| C23 | The owner publishes wrap-up after the transcript read | Allow |
+| C24 | A stamp file is atomically replaced during a read | Refuse that record |
+
+These controls judge the observed snapshot. Stamp writers replace
+records atomically. The hook rechecks live watch and wrap-up before
+issuing a reminder. It treats observed changes as uncertain evidence.

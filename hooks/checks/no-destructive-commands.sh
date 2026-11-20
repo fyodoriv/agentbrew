@@ -22,18 +22,21 @@ command_text="$(json_get "$input" '.tool_input.command')"
 screen="${command_text//\'/}"
 screen="${screen//\"/}"
 screen="${screen//\\/}"
+classify_scope=all
 case "$screen" in
   *stash*drop*|*stash*clear*|*repo*delete*|*pr*merge*admin*) ;;
+  *npm*publish*) classify_scope=npm ;;
   *) verdict_allow "$HOOK_ID" "no guarded command to check" ;;
 esac
 
-if ! decision="$(printf '%s' "$command_text" | hook_python -S "$lib/destructive-command.py" 2>/dev/null)"; then
+if ! decision="$(printf '%s' "$command_text" | hook_python -S "$lib/destructive-command.py" "$classify_scope" 2>/dev/null)"; then
   verdict_block "$HOOK_ID" "The command could not be checked. Use a read-only command to inspect the target."
 fi
 case "$decision" in
   stash) verdict_block "$HOOK_ID" "Git stashes are shared across worktrees. Ask the owner before discarding one." ;;
   repo-delete) verdict_block "$HOOK_ID" "Repository deletion requires the owner." ;;
   admin-merge) verdict_block "$HOOK_ID" "Use an ordinary pull request merge after the required checks pass." ;;
+  npm-publish) verdict_block "$HOOK_ID" "Use npm pack --dry-run to inspect the package. The owner publishes from a real terminal." ;;
   allow) verdict_allow "$HOOK_ID" "no guarded operation detected" ;;
   *) verdict_block "$HOOK_ID" "The command could not be checked. Use a read-only command to inspect the target." ;;
 esac

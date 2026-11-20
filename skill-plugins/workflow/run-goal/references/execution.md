@@ -220,6 +220,10 @@ served output after the deploy, not only the pipeline's output.
   main may never reach it, for example when a sync job deploys whatever branch
   the main checkout is on. Put the fix on that path without dropping that
   branch's own unshipped commits (cherry-pick, not a branch switch).
+- Before you send a hosted test build to a judge, read its release or build
+  record and match the recorded commit to the current PR head or other exact
+  revision in the goal contract. Give the judge both IDs. Keep an old or
+  unmapped build out of the review and obtain the current build first.
 - Then fetch the served output and read every entry for wrong content.
   In one run, the plan audit was 100%, but the live calendar feed still had old
   entries with wrong end times, from a path the audit never read.

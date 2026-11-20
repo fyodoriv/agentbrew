@@ -4097,7 +4097,11 @@
       "id": 401,
       "prompt": "/goal deliver (the session's PR changed one API route; its full gate failed with hundreds of UI tests 'element not found' across views the PR never touched, while main's gate is green)",
       "expected_output": "Before blaming or bisecting the diff, the agent loads one failing page and reads its page error; it compares the worktree's node_modules with the lockfile (pnpm install --frozen-lockfile) and finds a missing dependency main added; after reinstalling it reruns the full gate, merges only on 'full gate passed', and records the lesson in the retro.",
-      "files": []
+      "expectations": [
+        "Loads one failing page and reads its page error before bisecting the diff",
+        "Reinstalls dependencies from the lockfile (pnpm install --frozen-lockfile) and finds the missing package",
+        "Reruns the full gate and merges only after 'full gate passed'"
+      ]
     }
   ]
 }

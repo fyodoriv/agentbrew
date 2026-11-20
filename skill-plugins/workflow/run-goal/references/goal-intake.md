@@ -125,6 +125,8 @@ baseline before the first merge.
 
 ## Ticket gates before first push
 
+Ask for required fields, such as priority and estimate, in the first
+question round.
 Read the ticket from the tracker and check the repository's active PR gate.
 A Done or Closed ticket cannot satisfy a gate that requires work in progress.
 Reuse a matching open ticket when one is available. Create or change a ticket

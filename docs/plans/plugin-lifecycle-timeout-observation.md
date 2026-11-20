@@ -144,6 +144,11 @@ assertions unchanged.
 | S04 | A supervisor in the wrong group refuses the request before reaching the signal function. Its test signal function cannot send a real signal |
 | S05 | No ready acknowledgment leaves the result unqualified. No signal request is sent |
 
+On macOS, all five cases passed under the shared queue. The admitted stop
+recorded the worker's terminal signal and the supervisor's normal exit.
+The sentinel answered after both returned. The failed signal and the
+two refusal controls all ended within 4.1 seconds. Type checking passed.
+
 These controls qualify only the synthetic ownership and failed-signal
 boundary. The real test and the external recorder channel still need
 separate evidence before an observed timeout can be classified.

@@ -104,6 +104,27 @@ This contract follows the Hexagonal Architecture pattern (Ports & Adapters):
 
 Skills and agents depend on the port (the contract), not the adapters. Adding a new backend in the future is a matter of adding a new adapter without changing consumer code.
 
+## Skill behavior measurements
+
+For a task that measures skill behavior, run each case from the skill's
+`evals/evals.json` in fresh sessions with and without the skill. Use the same
+model and case inputs in both sessions. Follow the installed `skill-creator`
+skill's evaluation steps to grade both outputs against the same expectations.
+Keep the reports in a private scratch directory.
+
+After grading, set `skill_creator_dir` to the installed skill directory,
+`eval_dir` to the private iteration directory, and `skill_name` to the skill
+under test. Run:
+
+```sh
+python3 "$skill_creator_dir/scripts/aggregate_benchmark.py" "$eval_dir" --skill-name "$skill_name"
+```
+
+Check that both groups have a graded run for each selected case before using
+the two pass rates in `benchmark.json`. If a group or case is missing, complete
+the run before recording a result. The `skills coverage` command checks the
+eval definitions and is appropriate for a structure-only measurement.
+
 ## Loop skills
 
 The `grind` and `sweep` workflow skills start with a "Detect the task backend"

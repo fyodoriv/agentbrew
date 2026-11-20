@@ -360,12 +360,13 @@
 
 - [ ] PR bodies and new task blocks pass the pre-register checker in CI
   - **ID**: preregistration-ci-gate
+  - **Blocked**: needs-time — measure the first 10 merged descriptions and the first 20 pull requests after the check lands.
   - **Tags**: quality, ci, pre-registration, from-minsky
-  - **Details**: The new `pre-register` skill ships `scripts/check-preregistration.mjs`, but nothing runs it. On 2026-11-19 it reported all five fields missing in the bodies of the last five merged agentbrew PRs, although AGENTS.md Delivery asks for a hypothesis block, and it reported 58 findings across existing TASKS.md blocks (mostly a Measurement with no backticked command). Run it in CI on the PR body (an `Exempt: <gate>` line passes) and on TASKS.md blocks that the PR adds or changes, as a ratchet that leaves untouched blocks alone.
+  - **Details**: Check the pull request description and each new or changed task block with `check-preregistration.mjs`. An unchanged task stays outside this check. Continue with the field observation after the gate lands.
   - **Files**: the PR-body check workflow or `scripts/check-pr-vision-trace.mjs`, `scripts/verify-changed.sh`, a ratchet helper and its test, AGENTS.md Delivery.
   - **Acceptance**: a PR body with no hypothesis block and no `Exempt:` line fails the check; a PR that adds a task block with a manual measurement fails; an untouched old block never fails.
   - **Hypothesis**: merged PRs with no pre-registration go from 5 of the last 5 to 0 of the next 10.
-  - **Measurement**: `for n in $(gh pr list --state merged --limit 10 --json number --jq '.[].number'); do gh pr view $n --json body --jq .body | node skill-plugins/workflow/pre-register/scripts/check-preregistration.mjs - >/dev/null || echo "fail $n"; done`
+  - **Measurement**: `for n in $(gh pr list --state merged --limit 10 --json number --jq '.[].number'); do gh pr view $n --json body | jq '{pull_request: .}' | node skill-plugins/workflow/pre-register/scripts/check-preregistration.mjs - --pull-request-event >/dev/null || echo "fail $n"; done`
   - **Success**: 0 failing bodies among the next 10 merged PRs.
   - **Pivot**: more than 2 false blocks in the next 20 PRs.
   - **Anchor**: Munafò et al. 2017 (A manifesto for reproducible science, Nature Human Behaviour).

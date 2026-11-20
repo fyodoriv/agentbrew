@@ -1,0 +1,35 @@
+name: PR pre-registration
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preregistration-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preregistration:
+    name: PR and changed tasks have a prediction
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Check the pull request description
+        run: node skill-plugins/workflow/pre-register/scripts/check-preregistration.mjs "$GITHUB_EVENT_PATH" --pull-request-event
+      - name: Check new or changed tasks
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git rev-parse --verify HEAD^2 > /dev/null
+          git show HEAD^1:TASKS.md > "$RUNNER_TEMP/task-baseline.md"
+          node skill-plugins/workflow/pre-register/scripts/check-preregistration.mjs TASKS.md --baseline "$RUNNER_TEMP/task-baseline.md"

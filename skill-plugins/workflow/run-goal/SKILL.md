@@ -107,6 +107,8 @@ So:
    goes into the contract. If someone is at the keyboard, ask about it in the
    question round. If not, schedule it last. A ticket-gated PR check needs
    ticket fields (priority, estimate): ask for them in the first round.
+   Before the first push, read the ticket's current status. Follow the
+   [ticket gate steps](references/goal-intake.md#ticket-gates-before-first-push).
    Classify tasks by their Details (who must act), not only the Blocked flag.
    Probe the actual owner, writable source/config and valid submission route for each criterion before promising changes. Keep unknown ownership or route unverified; access alone is not change authority. Check each Git host: [host authentication intake](references/goal-intake.md#host-authentication-intake).
    Before a write to a live store (migration, sync, move), list the target

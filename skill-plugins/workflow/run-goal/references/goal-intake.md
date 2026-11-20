@@ -118,6 +118,16 @@ baseline before the first merge.
   only after the operator confirms it. Without admin rights, write a short
   BLOCKED report: who can grant access, and what the person can already do.
 
+## Ticket gates before first push
+
+Read the ticket from the tracker and check the repository's active PR gate.
+A Done or Closed ticket cannot satisfy a gate that requires work in progress.
+Reuse a matching open ticket when one is available. Create or change a ticket
+only with authorization. Read back the required status and assignee before
+the first push. Use the verified key in the commit header and pull request
+title when the gate requires it. If the tracker or required permission is
+unavailable, hold the push and state what remains unverified.
+
 ## Host authentication intake
 
 Before the contract, identify each Git host the goal must fetch from and check

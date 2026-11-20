@@ -8,13 +8,13 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: preregistration-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   preregistration:
     name: PR and changed tasks have a prediction
+    if: github.event.pull_request.state != 'closed' && (github.event.pull_request.state == 'open' || github.ref != 'refs/heads/main')
+    concurrency:
+      group: preregistration-${{ github.event.pull_request.number || format('run-{0}', github.run_id) }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

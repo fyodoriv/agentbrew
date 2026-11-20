@@ -78,6 +78,7 @@ const OWNER_WORKFLOW_HOOK_IDS = [
   "perf-task-review",
   "retry-failed-before-stop",
   "no-home-crawl",
+  "git-script-guard",
   "tasks-md-lint-on-edit",
 ];
 
@@ -499,6 +500,16 @@ describe("canonical hook manifest", () => {
     expect(
       filterHooksForTarget(managed, "codex").some((hook) => hook.command?.endsWith("/tasks-md-lint-on-edit.sh")),
     ).toBe(false);
+  });
+
+  it("wires the enabled Git script guard into Claude Code session startup only", () => {
+    const repoRoot = resolve(import.meta.dirname, "../..");
+    const overlayPath = join(tempRoot(), "overlay.yaml");
+    writeManifest(overlayPath, "version: 1\nenabled: [git-script-guard]\nhooks: []\n");
+    const { managed } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", { overlayPath });
+    const usesGuard = (hook: { command?: string }) => hook.command?.endsWith("/git-script-guard.sh");
+    expect(filterHooksForTarget(managed, "claude-code").find(usesGuard)).toMatchObject({ event: "SessionStart" });
+    expect(filterHooksForTarget(managed, "codex").find(usesGuard)).toBeUndefined();
   });
 
   it("ships the perf-record hooks on by default, async, for Claude Code only", () => {

@@ -4094,6 +4094,17 @@
       ]
     },
     {
+      "id": 358,
+      "prompt": "/goal deliver\n\n(Context: the last step, a site deploy, was held behind another session's PR. That PR has waited 2 hours for its local gate, and its Stop hook keeps re-firing. heavy-run --status shows one gate slot running for 7000 s; a normal gate takes 10 minutes. Its e2e log has not changed in 2 hours.)",
+      "expected_output": "Treats a gate far past its normal time with an unchanged log as hung, not as slow: it finds the stuck child process, stops only that tree, and reports it. It re-checks why its own step waits, and runs any part that does not need the blocker (a code-only deploy) right away.",
+      "expectations": [
+        "Compares the gate run time with its normal time and reads the log modification time before waiting longer",
+        "Stops only the hung child process tree, never the whole queue or another session's worktree",
+        "Asks whether the held step really depends on the blocker, and ships the parts that do not",
+        "Does not answer repeated Stop re-fires with the same status message"
+      ]
+    },
+    {
       "id": 362,
       "prompt": "/goal deliver (the PR changed one API route; its full gate failed with hundreds of UI tests not finding elements in views the PR never touched, while main is green)",
       "expected_output": "Before blaming or bisecting the diff, the agent loads one failing page and reads its page error, reinstalls dependencies from the lockfile and finds a missing package main added, reruns the full gate, and merges only after it passes.",

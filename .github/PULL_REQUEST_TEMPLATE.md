@@ -25,6 +25,16 @@ this file's structure — keep the section headers and bullet shapes intact. -->
 - **Pattern**: <the pattern this change follows, as named in VISION.md "Pattern conformance index", or "deviation: <why>", or `N/A — <reason>`>
 - **New flags**: <for each new CLI flag, why it is not the default (opt-out, debug, knob, or disruptive), plus its row in docs/cli-flags-audit.md, or "none">
 
+## Hypothesis
+
+<!-- For a change covered by an existing check, replace the five fields with
+     an Exempt line that names the check. -->
+- **Hypothesis**: <observable change>
+- **Measurement**: <runnable command>
+- **Success**: <numeric threshold>
+- **Pivot**: <numeric threshold for changing approach>
+- **Anchor**: <primary source>
+
 ## How to test manually
 
 ```bash

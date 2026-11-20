@@ -53,6 +53,10 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 
 - Default task file format is tasks.md: `# Tasks`, `## P0`..`## P3`, checkbox tasks, metadata labels (`ID`, `Tags`, `Details`, `Files`, `Acceptance`).
 - Completed tasks are removed, not checked off.
+- Across task queues, work on the highest-priority runnable item. Compare P0,
+  P1, P2, and P3 across repositories before taking the next task. Recheck the
+  current queue and keep each blocked higher-priority task visible with its
+  specific prerequisite.
 - Stability, regression-catching, observability, deployment-infra, auth-path, data-integrity, and CI-gate work is P0 unless a repo explicitly says otherwise.
 - User-facing friction is P0 or P1: a wrong or surprising default, or a workaround the user must remember, is P0; an inconsistency between entry points or missing `--help` is P1. P2 needs a written reason for the deferral.
 - Validate task files with `npx @tasks-md/lint TASKS.md` when edited.

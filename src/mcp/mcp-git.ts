@@ -1,7 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, lstatSync, readFileSync, rmSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
-import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { ExitPromptError } from "@inquirer/core";
 import { confirm, password } from "@inquirer/prompts";
@@ -11,9 +10,10 @@ import { sourceCheckoutTerminationUnknown, withSourceCheckoutLeaseSync } from ".
 import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
 import { redactUrlCredentials, stripUrlCredentials } from "../core/redact-url.js";
+import { MCP_GIT_REPOS_PATH } from "../paths.js";
 import type { McpServer } from "../types.js";
 import { ICON_SUCCESS } from "../ui/output.js";
-import { checkGitAvailable } from "../utils.js";
+import { checkGitAvailable, expandHome } from "../utils.js";
 import {
   acceptCandidate,
   acceptedCandidate,
@@ -44,7 +44,7 @@ import { appendToShellConfig, getShellConfigPath } from "./mcp-wizard.js";
 // ── Constants ────────────────────────────────────────────────────────────────
 
 /** Cache directory for git-installed MCP server repos. */
-export const GIT_CACHE_DIR = join(homedir(), ".config", "agentbrew", "mcp-repos");
+export const GIT_CACHE_DIR = expandHome(MCP_GIT_REPOS_PATH);
 
 /** Timeout for fast git operations: fetch, checkout, pull, rev-parse. */
 const GIT_FAST_TIMEOUT_MS = 30_000;

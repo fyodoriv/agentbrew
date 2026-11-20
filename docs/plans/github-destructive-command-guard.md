@@ -35,3 +35,26 @@ literal command words. The check reads command text and never executes it.
 | | Event for a different tool |
 | | Command after a shell separator |
 | | Comment containing administrator spelling |
+
+## Review follow-up
+
+The first candidate passed the registered fixture. Review found that GitHub
+CLI accepts groups of short options and inherited repository selection
+before the command name. A shell output path can also look like an option.
+Expand the fixture before revising the parser.
+
+- **Hypothesis:** The revised guard handles 7 additional controls for short option groups, inherited repository selection, and shell redirection.
+- **Measurement:** Run `bash hooks/checks/no-destructive-commands.test.sh github` with the added cases and run the full fixture again.
+- **Success:** 7 of 7 review cases pass and all 35 prior decisions stay exact, with zero executable calls.
+- **Pivot:** Reject on 1 false allow in the covered direct command forms, 1 false block, or 1 command execution.
+- **Anchor:** [GitHub CLI inherited options](https://cli.github.com/manual/gh_pr_merge) and [pflag short option syntax](https://github.com/spf13/pflag/blob/master/README.md#command-line-flag-syntax).
+
+| Refuse | Allow |
+| --- | --- |
+| Repository selection before `pr` | Short options with an administrator spelling used as a body value |
+| Repository selection between `pr` and `merge` | An unquoted shell output redirection with an option-like filename |
+| A quoted redirection character in a body and an actual administrator flag | Short options with an attached body value |
+| | An administrator flag turned off by a later literal false value |
+
+Keep actual shell redirections outside the GitHub CLI command coverage.
+A quoted or escaped redirection character stays part of the argument.

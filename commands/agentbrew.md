@@ -26,6 +26,8 @@ When the user asks to add Chrome's Modern Web Guidance, use `agentbrew install m
 
 When the user wants Claude Bash scripts to protect shared Git work, use the [Git script guard](https://github.com/fyodoriv/agentbrew/blob/main/docs/hook-protocol.md#guard-git-calls-from-scripts). Preview the opted-in hook with `agentbrew sync --dry-run`, then apply the approved setup with `agentbrew sync` and start a new session.
 
+When the user asks to send chat messages themselves, enable the optional rule with `agentbrew install chat-drafts-only`. Preview with `agentbrew sync --dry-run`, then run the approved sync.
+
 Every other action: run `agentbrew actions --json`. It lists every command (generated from the CLI), its arguments, and three notes:
 
 - `terminal_only`: only the user can run it. Give them the exact command for their own terminal.

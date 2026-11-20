@@ -308,6 +308,23 @@ transcript in batches, so a contract printed 6 to 8 seconds earlier was
 often not on disk yet, and real contracts were blocked. A hook cannot wait
 that long (the hook timeout is 5 s).
 
+## Guard Git calls from scripts
+
+Add `git-script-guard` to the machine overlay's `enabled:` list for
+Claude Code Bash sessions. Preview with `agentbrew sync --dry-run`, run
+`agentbrew sync`, then start a new session. The session adds the managed
+Git wrapper to PATH. On a machine with Dotfiles, use a version that
+keeps the [session guard first](https://github.com/fyodoriv/dotfiles/blob/feat/chezmoi/docs/agent-hooks.md).
+The session also exports the exact managed guard path so the Dotfiles
+Git wrapper can check the arguments when the Claude command hook rewrites
+PATH. Dotfiles runs the allowed Git command.
+
+The wrapper checks recognized destructive Git arguments, including calls
+from a script. A branch creation or whole-tree operation needs a verified
+linked checkout. Stashes are shared across linked checkouts. Ordinary
+commands keep their arguments and use the existing Git command on PATH.
+The commit hooks and remote protections also apply.
+
 ## Check task files after an edit
 
 To check a project's root `TASKS.md` after Claude Code writes or edits it,

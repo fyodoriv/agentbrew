@@ -1,0 +1,196 @@
+#!/bin/bash -p
+set -e
+
+real_git=
+check_only=false
+if [[ "${1:-}" == --agentbrew-check-only ]]; then
+  real_git="${2:-}"
+  [[ "$real_git" == /* && -f "$real_git" && -x "$real_git" && ! "$real_git" -ef "$0" ]] || exit 64
+  check_only=true
+  shift 2
+else
+  paths="${PATH:-}:"
+  while [[ -n "$paths" ]]; do
+    directory="${paths%%:*}"
+    paths="${paths#*:}"
+    candidate="${directory:-.}/git"
+    if [[ -f "$candidate" && -x "$candidate" && ! "$candidate" -ef "$0" ]]; then
+      real_git="$candidate"
+      break
+    fi
+  done
+fi
+
+if [[ -z "$real_git" ]]; then
+  printf '%s\n' 'agentbrew git guard: Git was not found after the session wrapper.' >&2
+  exit 127
+fi
+
+original=("$@")
+allow() {
+  if $check_only; then exit 0; fi
+  exec "$real_git" "${original[@]}"
+}
+
+options=()
+hooks_overridden=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -C|-c|--git-dir|--work-tree|--namespace)
+      [[ $# -gt 1 ]] || allow
+      if [[ "$1" == -c && "${2%%=*}" == [Cc][Oo][Rr][Ee].[Hh][Oo][Oo][Kk][Ss][Pp][Aa][Tt][Hh] ]]; then
+        hooks_overridden=true
+      fi
+      options+=("$1" "$2")
+      shift 2
+      ;;
+    --config-env=*)
+      setting="${1#*=}"
+      [[ "${setting%%=*}" != [Cc][Oo][Rr][Ee].[Hh][Oo][Oo][Kk][Ss][Pp][Aa][Tt][Hh] ]] || hooks_overridden=true
+      options+=("$1")
+      shift
+      ;;
+    --git-dir=*|--work-tree=*|--namespace=*|--bare)
+      options+=("$1")
+      shift
+      ;;
+    -p|-P|--paginate|--no-pager|--no-optional-locks|--no-replace-objects|--literal-pathspecs|--glob-pathspecs|--noglob-pathspecs|--icase-pathspecs)
+      shift
+      ;;
+    *) break ;;
+  esac
+done
+
+block() {
+  printf 'agentbrew git guard: %s\n' "$1" >&2
+  exit 2
+}
+
+guard_shared_checkout() {
+  local paths git_dir common_dir
+  paths=$("$real_git" "${options[@]}" rev-parse --path-format=absolute --git-dir --git-common-dir 2>/dev/null) ||
+    block 'Git could not verify this checkout. Use a confirmed linked worktree.'
+  git_dir="${paths%%$'\n'*}"
+  common_dir="${paths#*$'\n'}"
+  if [[ "$git_dir" != /* || "$common_dir" != /* || "$paths" != *$'\n'* || "$common_dir" == *$'\n'* ]]; then
+    block 'Git could not verify this checkout. Use a confirmed linked worktree.'
+  fi
+  if [[ "$git_dir" == "$common_dir" ]]; then
+    block 'This can replace or remove work in a shared checkout. Use a linked worktree or name the specific files.'
+  fi
+}
+
+command="${1:-}"
+[[ $# -eq 0 ]] || shift
+case "$command" in
+  stash)
+    case "${1:-}" in
+      drop|clear) block 'Shared stashes can hold work from another checkout. Inspect the stash before removing it.' ;;
+    esac
+    ;;
+  commit)
+    $hooks_overridden && block 'Keep the checkout commit hooks enabled.'
+    skips_hooks=false
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        -m|-F|-C|-c|--message|--file|--reuse-message|--reedit-message|--author|--cleanup|--date|--fixup|--squash|--template|--trailer|--pathspec-from-file)
+          shift
+          ;;
+        --no-verify) skips_hooks=true ;;
+        --verify) skips_hooks=false ;;
+        --) break ;;
+        --*) ;;
+        -?*)
+          flags="${1#-}"
+          while [[ -n "$flags" ]]; do
+            case "$flags" in
+              n*) skips_hooks=true ;;
+              [cCFmt]*)
+                [[ "${#flags}" != 1 || $# -eq 1 ]] || shift
+                break
+                ;;
+              [aeiopqsv]*) ;;
+              *) break ;;
+            esac
+            flags="${flags#?}"
+          done
+          ;;
+      esac
+      [[ $# -eq 0 ]] || shift
+    done
+    $skips_hooks && block 'Keep the checkout commit hooks enabled.'
+    ;;
+  clean)
+    force=false
+    dry_run=false
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        -e|--exclude) [[ $# -eq 1 ]] || shift ;;
+        --force) force=true ;;
+        --dry-run) dry_run=true ;;
+        --) break ;;
+        -?*)
+          flags="${1#-}"
+          if [[ "$flags" != *[!fndxXqi]* ]]; then
+            [[ "$flags" != *f* ]] || force=true
+            [[ "$flags" != *n* ]] || dry_run=true
+          fi
+          ;;
+      esac
+      shift
+    done
+    if $force && ! $dry_run; then guard_shared_checkout; fi
+    ;;
+  reset|restore|checkout|switch)
+    paths_only=false
+    for item in "$@"; do
+      case "$command:$item" in
+        *:--) paths_only=true ;;
+        restore:.|restore::/|checkout:.|checkout::/)
+          guard_shared_checkout
+          break
+          ;;
+        reset:--hard|checkout:-b|checkout:-B|switch:-c|switch:-C)
+          $paths_only && continue
+          guard_shared_checkout
+          break
+          ;;
+      esac
+    done
+    ;;
+  push)
+    force=false
+    target=false
+    remote_seen=false
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --repo=*) remote_seen=true ;;
+        --repo|--receive-pack|--exec|-o|--push-option)
+          [[ "$1" != --repo ]] || remote_seen=true
+          [[ $# -eq 1 ]] || shift
+          ;;
+        -f|--force|--force-with-lease|--force-with-lease=*) force=true ;;
+        -*) ;;
+        *)
+          if $remote_seen; then
+            ref="${1##*:}"
+            case "${ref#+}" in
+              main|master|develop|refs/heads/main|refs/heads/master|refs/heads/develop)
+                [[ "$1" != +* ]] || block 'Use an ordinary branch and pull request for changes to a protected branch.'
+                target=true
+                ;;
+            esac
+          else
+            remote_seen=true
+          fi
+          ;;
+      esac
+      shift
+    done
+    if $force && $target; then
+      block 'Use an ordinary branch and pull request for changes to a protected branch.'
+    fi
+    ;;
+esac
+
+allow

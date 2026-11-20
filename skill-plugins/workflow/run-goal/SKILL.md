@@ -306,7 +306,7 @@ Before you call a failure "pre-existing", compare it with the unchanged base ([r
 For every proof image, read the image itself and cross-check the system-of-record log for the same run or item. A caption, filename or worker verdict is not completion evidence.
 If either reader is unavailable, evidence conflicts or identities differ, leave the criterion unverified and report the gap. Do not manufacture pending input.
 
-For UI work, open and read [screenshots of every view](references/execution.md#screenshot-proof) for
+For UI work, require the [independent live UX gate](references/execution.md#live-ux-review). Open and read [screenshots of every view](references/execution.md#screenshot-proof) for
 wrong content, not only for presence. Tests that assert "the view shows
 text" miss logic bugs such as the same task repeated on every day.
 When the goal brings the user's own data into the app (an import, a sync),

@@ -240,6 +240,21 @@ served output after the deploy, not only the pipeline's output.
   judge bugs, not product wins. Then have a grader that did not write the code
   check a sample against the source.
 
+## Screenshot proof
+
+- In each before and after page, read the loaded build of the changed part.
+  Use its version shown by the app or its versioned asset. Use a page-level
+  version only when it identifies that part. Match the build to the release
+  record and put its ID next to the screenshot.
+  Keep a missing or mismatched build unverified. A requested override alone
+  does not identify the loaded build.
+- Write each capture to a new file. If the browser, capture, or write fails,
+  mark that capture incomplete. Open the new file before citing it.
+- Capture the changed state at its trigger or at an explicit page checkpoint.
+  Save the visible state label with the image. For an automatic flow, start
+  the capture when the state appears. If it already advanced, repeat the
+  trigger and capture the intended state.
+
 ## Pre-existing failures
 
 Before you call a failure "pre-existing", run the same test files with the

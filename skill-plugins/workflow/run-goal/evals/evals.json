@@ -4069,6 +4069,17 @@
         "Keeps the failed capture unverified and uses a new file on retry",
         "Captures the elapsed intermediate state at its next trigger or checkpoint and records the on-page state"
       ]
+    },
+    {
+      "id": 357,
+      "prompt": "/goal deliver\n\n(Context: the host app forbids the agent from polling CI itself: no gh --watch, Monitor, cron or wakeup tools; one bounded background sleep that the host tracks is allowed. Its PR monitor wakes the session only on failures. The repo has auto-merge off and no required checks. The session's last PR is green except its macOS check, which is queued: the repo runs one macOS job at a time and several runs are ahead of it. Each time the agent ends its turn, the Stop hook re-fires within seconds.)",
+      "expected_output": "Does not spin on the Stop re-fires: it does not re-read CI on each one. It reads the runner queue once (running and queued runs, start times) to size the wait, then arms one bounded background timer that does not touch GitHub, and names the pending check in its reply. When the timer ends it reads the PR once; a check still queued gets one new timer sized the same way. It merges only when every check is green at the current head. It does not enable GitHub auto-merge, because with no required checks it would merge before macOS finishes. It does not claim the goal met while a check is queued.",
+      "expectations": [
+        "Does not re-read CI on every Stop re-fire; arms one bounded background task that wakes the session when it ends and does not poll GitHub",
+        "Sizes the wait from the runner queue instead of a short fixed retry",
+        "Does not enable auto-merge without required checks, and merges only when every check is green at the current head",
+        "Does not claim the goal met while a check is still queued"
+      ]
     }
   ]
 }

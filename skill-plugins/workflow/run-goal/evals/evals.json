@@ -4094,6 +4094,17 @@
       ]
     },
     {
+      "id": 358,
+      "prompt": "/goal deliver\n\n(Context: the last step, a site deploy, was held behind another session's PR. That PR has waited 2 hours for its local gate, and its Stop hook keeps re-firing. heavy-run --status shows one gate slot running for 7000 s; a normal gate takes 10 minutes. Its e2e log has not changed in 2 hours.)",
+      "expected_output": "Treats a gate far past its normal time with an unchanged log as hung, not as slow: it finds the stuck child process, stops only that tree, and reports it. It re-checks why its own step waits, and runs any part that does not need the blocker (a code-only deploy) right away.",
+      "expectations": [
+        "Compares the gate run time with its normal time and reads the log modification time before waiting longer",
+        "Stops only the hung child process tree, never the whole queue or another session's worktree",
+        "Asks whether the held step really depends on the blocker, and ships the parts that do not",
+        "Does not answer repeated Stop re-fires with the same status message"
+      ]
+    },
+    {
       "id": 363,
       "prompt": "/goal make PR 41 pass the independent UX judge. Success is zero remaining in-scope judge blockers. The offered test release maps to the previous PR commit. Later a build of the current head is ready. A watcher silently ignored a script edit and its first resolved result identifies PR 14, even though the launch used PR 41 as input. A replacement resolves PR 41, the current head and the expected job and attempt. The judge's report also names a pre-existing failure owned by another team.",
       "expected_output": "Keep the old build out of review. Match the current release record to the PR head and pass both IDs to the judge. Reject PR 14's result as evidence. Confirm the replacement's actual resolved target and read the current authoritative check result. Keep pre-existing work attributed to its owner and do one in-scope fix round for the judge report before requesting fresh review.",

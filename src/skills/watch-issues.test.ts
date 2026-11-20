@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, renameSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -52,6 +52,7 @@ interface Pr {
   mergeable?: string;
   statusCheckRollup?: object[];
   updatedAt?: string;
+  labels?: { name: string }[];
 }
 const pr = (p: Pr) => ({
   headRefOid: "abcdef1234",
@@ -94,17 +95,21 @@ function git(cwd: string, ...args: string[]): void {
 }
 
 /** A clone whose origin/main has TASKS.md. Its origin is a GitHub URL rewritten to the local bare repo, so nothing touches the network. */
-function fixtureRepo(root: string, url = "git@github.com:acme/demo.git"): string {
+function fixtureRepo(
+  root: string,
+  url = "git@github.com:acme/demo.git",
+  options: { name?: string; tasks?: string } = {},
+): string {
   const seed = join(root, "seed");
-  mkdirSync(seed);
+  mkdirSync(seed, { recursive: true });
   git(seed, "init", "-q", "-b", "main");
-  writeFileSync(join(seed, "TASKS.md"), TASKS);
+  writeFileSync(join(seed, "TASKS.md"), options.tasks ?? TASKS);
   git(seed, "add", "TASKS.md");
   git(seed, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", "seed");
   git(seed, "branch", "busy-branch");
   const bare = join(root, "origin.git");
   git(root, "clone", "-q", "--bare", seed, bare);
-  const repo = join(root, "demo");
+  const repo = join(root, options.name ?? "demo");
   git(root, "clone", "-q", bare, repo);
   git(repo, "worktree", "add", "-q", join(root, "busy"), "origin/busy-branch", "-b", "busy-branch");
   git(repo, "remote", "set-url", "origin", url);
@@ -157,6 +162,71 @@ const line = (key: string, text: string) => `new\t${key}\t${text}`;
 const lastLine = (out: string) => out.trim().split("\n").at(-1);
 
 describe("watch-issues pass", () => {
+  it("shows the highest ready priority across both repo orders before applying the limit", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-priority-"));
+    const first = fixtureRepo(join(root, "first"), "git@github.com:acme/first.git", {
+      name: "first",
+      tasks: [
+        "# Tasks",
+        "## P2",
+        "- [ ] Lower priority",
+        "  - **ID**: lower",
+        "## P0",
+        "- [ ] Wait for the owner",
+        "  - **ID**: blocked-top",
+        "  - **Blocked**: owner permission",
+        "- [ ] Already claimed (@worker)",
+        "  - **ID**: claimed-top",
+        "## P1",
+        "- [ ] Ready second",
+        "  - **ID**: ready-second",
+        "",
+      ].join("\n"),
+    });
+    const second = fixtureRepo(join(root, "second"), "git@github.com:acme/second.git", {
+      name: "second",
+      tasks: "# Tasks\n## P0\n- [ ] Ready first\n  - **ID**: ready-first\n",
+    });
+    const bin = fakeGh(root, [], []);
+    for (const repos of [
+      [first, second],
+      [second, first],
+    ]) {
+      const out = pass(root, bin, ["--limit", "2", ...repos]);
+      const keys = out
+        .split("\n")
+        .filter((row) => row.startsWith("new\t"))
+        .map((row) => row.split("\t")[1]);
+      expect(keys).toEqual(["task second/ready-first", "task first/ready-second"]);
+      expect(lastLine(out)).toBe("watch: 3 new (showing 2), 0 handled");
+    }
+  });
+
+  it("ranks explicit GitHub priorities ahead of unranked work", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-priority-"));
+    const repo = fixtureRepo(root, undefined, { tasks: "# Tasks\n## P3\n- [ ] Optional later task\n" });
+    const issues = [
+      ...ISSUES,
+      { number: 18, title: "Immediate", author: { login: "someone" }, labels: [{ name: "priority: p0" }] },
+    ];
+    const rankedPr = pr({ ...PRS[0], labels: [{ name: "P1" }] });
+    const out = pass(root, fakeGh(root, issues, [rankedPr]), ["--limit", "2", repo]);
+    const keys = out
+      .split("\n")
+      .filter((row) => row.startsWith("new\t"))
+      .map((row) => row.split("\t")[1]);
+    expect(keys).toEqual(["issue acme/demo#18", "pr acme/demo#7 red abcdef1"]);
+  });
+
+  it("skips cached task entries when the live task file cannot be fetched", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-priority-"));
+    const repo = fixtureRepo(root);
+    renameSync(join(root, "origin.git"), join(root, "offline.git"));
+    const out = pass(root, fakeGh(root, [], []), ["--limit", "10", repo]);
+    expect(out).toContain("skip  demo: git fetch failed (tasks not checked)");
+    expect(out).not.toContain("task demo/fix-sync-crash");
+  });
+
   it("lists ready tasks, tagged issues, and broken PRs nobody is on, each with its exact --done key", () => {
     const root = mkdtempSync(join(tmpdir(), "watch-pass-"));
     const out = pass(root, fakeGh(root, ISSUES), ["--limit", "50", fixtureRepo(root)]);

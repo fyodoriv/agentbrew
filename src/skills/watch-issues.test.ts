@@ -133,8 +133,15 @@ case "$1 $2" in
   *) exit 1 ;;
 esac
 filter=""
-while [ "$#" -gt 0 ]; do [ "$1" = "--jq" ] && filter="$2"; shift; done
-jq -r "$filter" "$data"
+limit=30
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --jq) filter="$2"; shift ;;
+    --limit) limit="$2"; shift ;;
+  esac
+  shift
+done
+jq -c --argjson limit "$limit" '.[0:$limit]' "$data" | jq -r "$filter"
 `,
   );
   chmodSync(join(bin, "gh"), 0o755);
@@ -206,7 +213,7 @@ describe("watch-issues pass", () => {
     const root = mkdtempSync(join(tmpdir(), "watch-priority-"));
     const repo = fixtureRepo(root, undefined, { tasks: "# Tasks\n## P3\n- [ ] Optional later task\n" });
     const issues = [
-      ...ISSUES,
+      ...Array.from({ length: 60 }, (_, index) => ({ ...ISSUES[0], number: 100 + index })),
       { number: 18, title: "Immediate", author: { login: "someone" }, labels: [{ name: "priority: p0" }] },
     ];
     const rankedPr = pr({ ...PRS[0], labels: [{ name: "P1" }] });
@@ -218,13 +225,43 @@ describe("watch-issues pass", () => {
     expect(keys).toEqual(["issue acme/demo#18", "pr acme/demo#7 red abcdef1"]);
   });
 
+  it("uses the remote default when the cached default still points at an older open branch", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-priority-"));
+    const repo = fixtureRepo(root);
+    const seed = join(root, "seed");
+    const origin = join(root, "origin.git");
+    git(seed, "checkout", "-qb", "current");
+    writeFileSync(join(seed, "TASKS.md"), "# Tasks\n## P2\n- [ ] Current task\n  - **ID**: current\n");
+    git(seed, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qam", "current task");
+    git(seed, "push", origin, "current");
+    git(origin, "symbolic-ref", "HEAD", "refs/heads/current");
+    const out = pass(root, fakeGh(root, [], []), ["--limit", "1", repo]);
+    expect(out).toContain(line("task demo/current", "Current task"));
+    expect(out).not.toContain("task demo/fix-sync-crash");
+  });
+
+  it("does not recommend lower-priority work when a GitHub source reaches its scan limit", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-priority-"));
+    const repo = fixtureRepo(root);
+    const issues = Array.from({ length: 1000 }, (_, index) => ({
+      ...ISSUES[0],
+      number: 100 + index,
+      labels: [{ name: "blocked: upstream" }],
+    }));
+    const result = run(root, fakeGh(root, issues, []), ["--limit", "1", repo]);
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("priority read incomplete");
+    expect(result.stdout).not.toContain("new\t");
+  });
+
   it("skips cached task entries when the live task file cannot be fetched", () => {
     const root = mkdtempSync(join(tmpdir(), "watch-priority-"));
     const repo = fixtureRepo(root);
     renameSync(join(root, "origin.git"), join(root, "offline.git"));
-    const out = pass(root, fakeGh(root, [], []), ["--limit", "10", repo]);
-    expect(out).toContain("skip  demo: git fetch failed (tasks not checked)");
-    expect(out).not.toContain("task demo/fix-sync-crash");
+    const result = run(root, fakeGh(root, ISSUES, []), ["--limit", "10", repo]);
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("priority read incomplete");
+    expect(result.stdout).not.toContain("new\t");
   });
 
   it("lists ready tasks, tagged issues, and broken PRs nobody is on, each with its exact --done key", () => {

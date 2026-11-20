@@ -113,6 +113,12 @@ baseline before the first merge.
   only after the operator confirms it. Without admin rights, write a short
   BLOCKED report: who can grant access, and what the person can already do.
 
+- **The goal changes the user's own access**: read current permissions and the
+  approved access policy. Keep the confirmation step before any form
+  submission. If the user replaces a temporary request with a permanent one,
+  cancel the temporary path without submitting. Cite any policy that blocks
+  permanent access and report the verified current role.
+
 ## Host authentication intake
 
 Before the contract, identify each Git host the goal must fetch from and check

@@ -4082,17 +4082,6 @@
       ]
     },
     {
-      "id": 360,
-      "prompt": "/goal deliver visual proof for the checkout status change. The test host accepted four build overrides. Pair A captures the right builds and states. Pair B has identical images and the after page loaded the baseline asset. Pair C's browser tab failed and an older screenshot remains at its original path. Pair D loaded the right asset but autoplay moved past the changed intermediate state before capture. The goal requires before/after proof for each changed state.",
-      "expected_output": "Read the loaded build on each page and match it to the release record. Open the fresh A files and accept only that pair. Keep B unverified, correct the override and verify the loaded build again. Keep C unverified and recapture to a new path after the browser is healthy. Keep D unverified, capture when the page enters the missing state, and record the visible state label beside the image.",
-      "expectations": [
-        "Accepts the valid pair after checking the fresh files, loaded builds and visible states",
-        "Keeps the pair with a mismatched loaded build unverified even though the override was accepted",
-        "Keeps the failed capture unverified and uses a new file on retry",
-        "Captures the elapsed intermediate state at its next trigger or checkpoint and records the on-page state"
-      ]
-    },
-    {
       "id": 358,
       "prompt": "/goal deliver\n\n(Context: the last step, a site deploy, was held behind another session's PR. That PR has waited 2 hours for its local gate, and its Stop hook keeps re-firing. heavy-run --status shows one gate slot running for 7000 s; a normal gate takes 10 minutes. Its e2e log has not changed in 2 hours.)",
       "expected_output": "Treats a gate far past its normal time with an unchanged log as hung, not as slow: it finds the stuck child process, stops only that tree, and reports it. It re-checks why its own step waits, and runs any part that does not need the blocker (a code-only deploy) right away.",

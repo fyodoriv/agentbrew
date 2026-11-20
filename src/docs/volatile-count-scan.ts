@@ -19,9 +19,10 @@ const INVENTORY_QUALIFIER = "(?:(?:[A-Za-z][\\w/-]*\\s+){0,3})";
 /** Spelled counts for aggregate inventory (exclude one/two — transactional English, not inventory). */
 const SPELLED_INVENTORY_NUMBERS = "three|four|five|six|seven|eight|nine|ten|eleven|twelve";
 
-// Keep the unit case-sensitive. Use time context for the ambiguous word "second".
+// A singular unit needs time context so "day shift" still qualifies inventory.
+const TIME_UNIT = "second|minute|hour|day|week";
 const DURATION_PREFIX = new RegExp(
-  String.raw`^${VOLATILE_COUNT}\s+(?:(?:ms|seconds|minutes?|hours?|days?|weeks?)\s|second\s+(?:after|before|for|from|later|the|then|until)\s)`,
+  String.raw`^${VOLATILE_COUNT}\s+(?:(?:ms|(?:${TIME_UNIT})s)\s|(?:${TIME_UNIT})\s+(?:after|before|for|from|later|the|then|until)\s)`,
   "u",
 );
 

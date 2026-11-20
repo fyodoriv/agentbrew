@@ -123,9 +123,10 @@ describe("sync preview and rollback options", () => {
     health.mockReturnValue([]);
     vi.spyOn(console, "log").mockImplementation(() => {});
     const messages: string[] = [];
-    const program = buildProgram()
-      .exitOverride()
-      .configureOutput({ writeErr: (line) => messages.push(line) });
+    const program = buildProgram();
+    const sync = program.commands.find((command) => command.name() === "sync");
+    if (!sync) throw new Error("Sync command is not registered");
+    sync.exitOverride().configureOutput({ writeErr: (line) => messages.push(line) });
     let exitStatus: number | undefined;
     try {
       await program.parseAsync(["node", "test", "sync", ...flags]);

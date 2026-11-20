@@ -22,3 +22,8 @@ The first correction used a constructed rollback option. The flag audit
 reported its row as stale because the scanner checks literal registrations.
 The preview option owns the conflict. Both flags retain their existing
 audit rows, and the command still refuses either order.
+
+The next Ubuntu run reached the option conflict and selected exit 1 in
+both cases. Commander uses the registered subcommand's exit handler.
+The root handler in the first fixture let the conflict call process.exit.
+The fixture now captures the exact exit and message on the sync subcommand.

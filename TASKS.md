@@ -373,18 +373,6 @@
 
 ## P2
 
-- [ ] `agentbrew status` warns when the running CLI build has no build record or is behind main
-  - **ID**: cli-build-snapshot-drift
-  - **Tags**: cli, health, sync
-  - **Details**: `checkCliBuildDrift` in `src/cli-build-health.ts` reports nothing when the CLI root has no `.git`. On the owner's Mac on 2026-11-19, the global `agentbrew` ran from a copy built on 2026-11-14, outside any git checkout, with `"commit": null` in `dist/build-info.json`. `agentbrew status` stayed silent, yet that build lacked #1067 (explain a recorded skill-to-plugin conversion), so `sync --pull` printed a bare `insecure-defaults not found in trailofbits/skills` with no reason. A root with `.git` and a null commit already warns ("has no build record"); the gap is the root without `.git`. Warn there when the commit is null. Also warn when the recorded commit is behind `origin/main` (from its last fetch; no network call in `status`) of the agentbrew source checkout that agentbrew's own state already knows; when it knows none, warn only on the null commit. Name the build commit, or say none is recorded, and the reinstall command. `dist/build-info.json` stores only `commit`, so do not promise a build date. Lead on the copy's origin: it holds a `.agentbrew-build.lock` dated 2026-11-14, a file that `rust/checkup-run/src/bin/publish-dist.rs` (run by `scripts/build-source.sh`) creates in the tree it builds. So `npm run build` ran inside that tree with no `.git`. No code or script in this repo or in dotfiles names `agentbrew-runtimes` (`rg -l` on 2026-11-19). Find what copies the source there and name it in the warning's fix hint.
-  - **Files**: `src/cli-build-health.ts`, `src/cli-build-health.test.ts`, the README section on drift detection.
-  - **Acceptance**: a fixture CLI with no `.git` and a null commit gives one drift item; a no-`.git` build whose commit is behind the checkout's `origin/main` gives one drift item that names both commits; a current build gives none.
-  - **Hypothesis**: of the two stale no-`.git` fixture cases (null commit, behind main), `agentbrew status` flags 0 today and 2 after, while a current build stays at 0 warnings.
-  - **Measurement**: `npx vitest run src/cli-build-health.test.ts`, then, right after `npm run build`: `d=$(mktemp -d "${TMPDIR:-/tmp}/cli-copy.XXXXXX") && cp -R dist package.json "$d/" && ln -s "$PWD/node_modules" "$d/node_modules" && jq '.commit=null' dist/build-info.json > "$d/dist/build-info.json" && node "$d/dist/cli.js" status | grep -c 'CLI build'` once, and `node dist/cli.js status | grep -c 'CLI build'` from the checkout itself 5 times. `grep -c` prints 0 when nothing matches. Baseline on 2026-11-19: the copy printed 0.
-  - **Success**: every fixture passes, the copy prints 1, and the freshly built checkout prints 0 in each of its 5 runs.
-  - **Pivot**: the freshly built checkout prints 1 or more in any of its 5 runs; then keep only the null-commit warning.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (Goal Question Metric).
-
 - [ ] A goal retro knows which rule wins when a repo rule limits where skill updates go
   - **ID**: run-goal-retro-repo-rule-precedence
   - **Tags**: skills, run-goal, retro

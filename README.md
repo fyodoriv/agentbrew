@@ -462,6 +462,10 @@ Use `agentbrew sync --dry-run` to validate and preview Agentfile changes, includ
 
 One command translates the source of truth into every agent's native format.
 
+A sync preview shows its own result and preserves the manifest and error
+history from the last real sync. If a selected module fails, the preview
+shows the error and exits with status 1.
+
 When a source refresh finds a recorded skill-to-plugin conversion, it names
 the plugin and links to the upstream setup. Existing copies stay in place.
 For example, Trail of Bits moved `insecure-defaults` to its plugin marketplace.

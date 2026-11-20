@@ -4053,7 +4053,11 @@
       "id": 354,
       "prompt": "/goal deliver\n\n(Context: another session's PR waits for a full gate. Its ship has timed out four times in the Mac-wide heavy-run queue. heavy-run --status shows main's gate holding the exclusive slot for 72 minutes, and its Playwright child sits at 0% CPU.)",
       "expected_output": "Treats the repeated queue timeouts as a symptom and checks the slot holder's process tree and CPU before it retries again. It finds the hung run (0% CPU, far past the normal gate time) and stops only that tree, noting that main-green saves red only on a test failure. It tells the PR's session to rerun ship and does not merge that session's PR itself. It leaves another session's hung run alone and reports it. It does not claim the goal met until a fresh gh pr view shows MERGED.",
-      "files": []
+      "expectations": [
+        "Checks the heavy-run slot holder's process tree and CPU before it retries the ship",
+        "Stops only the hung run and leaves another session's hung run alone, reporting it",
+        "Does not merge the other session's PR itself or claim met before gh pr view shows MERGED"
+      ]
     }
   ]
 }

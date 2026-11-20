@@ -1,10 +1,21 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { BUILD_INFO_FILE, BUILD_INPUTS, builtCliRoot, checkCliBuildDrift } from "./cli-build-health.js";
+import { BUILD_INFO_FILE, BUILD_INPUTS, builtCliRoot, checkCliBuildDrift, rebuildCli } from "./cli-build-health.js";
 
 let root: string;
 
@@ -20,9 +31,9 @@ function commitFile(path: string, content: string): string {
   return git("rev-parse", "HEAD");
 }
 
-function recordBuild(commit: string): void {
-  mkdirSync(join(root, "dist"), { recursive: true });
-  writeFileSync(join(root, "dist", BUILD_INFO_FILE), JSON.stringify({ commit }));
+function recordBuild(commit: string | null, destination = root): void {
+  mkdirSync(join(destination, "dist"), { recursive: true });
+  writeFileSync(join(destination, "dist", BUILD_INFO_FILE), JSON.stringify({ commit }));
 }
 
 beforeEach(() => {
@@ -32,6 +43,7 @@ beforeEach(() => {
   git("config", "user.name", "Test");
   git("config", "commit.gpgsign", "false");
   git("config", "core.hooksPath", "/dev/null");
+  git("remote", "add", "origin", "https://github.com/fyodoriv/agentbrew");
 });
 
 afterEach(() => {
@@ -48,6 +60,50 @@ describe("builtCliRoot", () => {
   });
 });
 
+it.runIf(process.env.AGENTBREW_TEST_BUILT_STATUS === "1")(
+  "reports one stale copied bundle and no fresh checkout warnings",
+  () => {
+    const checkout = fileURLToPath(new URL("..", import.meta.url));
+    const build = JSON.parse(readFileSync(join(checkout, "dist", BUILD_INFO_FILE), "utf-8"));
+    const head = execFileSync("git", ["-C", checkout, "rev-parse", "HEAD"], { encoding: "utf-8" }).trim();
+    expect(build.commit).toBe(head);
+
+    const home = join(root, "home");
+    const config = join(home, ".config", "agentbrew");
+    mkdirSync(config, { recursive: true });
+    writeFileSync(join(config, "state.yaml"), "schemaVersion: 1\nagents: []\ncatalogVersion: 0.1.0\n");
+
+    const copy = join(root, "snapshot");
+    mkdirSync(copy);
+    copyFileSync(join(checkout, "package.json"), join(copy, "package.json"));
+    cpSync(join(checkout, "dist"), join(copy, "dist"), { recursive: true });
+    symlinkSync(join(checkout, "node_modules"), join(copy, "node_modules"), "dir");
+    recordBuild(null, copy);
+    const checkStatus = (packageRoot: string) => {
+      const output = execFileSync(process.execPath, [join(packageRoot, "dist", "cli.js"), "status"], {
+        cwd: home,
+        encoding: "utf-8",
+        env: {
+          HOME: home,
+          PATH: process.env.PATH,
+          AGENTBREW_NO_AUTO_INIT: "1",
+          AGENTBREW_EVENTS: "0",
+          DO_NOT_TRACK: "1",
+          NO_COLOR: "1",
+        },
+        timeout: 2000,
+      });
+      expect(output).toContain("agentbrew status");
+      return output.split("\n").filter((line) => line.trimStart().startsWith("CLI build:"));
+    };
+
+    const copiedWarnings = checkStatus(copy);
+    expect(copiedWarnings).toHaveLength(1);
+    expect(copiedWarnings[0]).toContain("no build commit");
+    expect(Array.from({ length: 5 }, () => checkStatus(checkout))).toEqual([[], [], [], [], []]);
+  },
+);
+
 describe("checkCliBuildDrift", () => {
   it("is clean when no root is given", () => {
     expect(checkCliBuildDrift(null)).toEqual([]);
@@ -60,6 +116,71 @@ describe("checkCliBuildDrift", () => {
     } finally {
       rmSync(plain, { recursive: true, force: true });
     }
+  });
+
+  it("flags a standalone CLI copy with a null build commit", () => {
+    const copy = join(root, "snapshot");
+    recordBuild(null, copy);
+    const drift = checkCliBuildDrift(copy, []);
+    expect(drift).toHaveLength(1);
+    expect(drift[0]?.type).toBe("cli-build");
+    expect(drift[0]?.detail).toContain("no build commit");
+    expect(drift[0]?.detail).toContain("reinstall");
+  });
+
+  it("reports the exact source and origin revisions for a behind standalone copy", () => {
+    git("remote", "set-url", "origin", "git@github.com:fyodoriv/agentbrew.git");
+    const built = commitFile("src/cli.ts", "v1");
+    const remote = commitFile("src/cli.ts", "v2");
+    git("update-ref", "refs/remotes/origin/main", remote);
+    const copy = join(root, "snapshot");
+    recordBuild(built, copy);
+    const drift = checkCliBuildDrift(copy, [root]);
+    expect(drift).toHaveLength(1);
+    expect(drift[0]?.detail).toContain(built.slice(0, 8));
+    expect(drift[0]?.detail).toContain(remote.slice(0, 8));
+    expect(drift[0]?.detail).toContain("origin/main");
+  });
+
+  it("ignores a fork with a shared build commit", () => {
+    git("remote", "set-url", "origin", "https://github.com/example-org/agentbrew.git");
+    const built = commitFile("src/cli.ts", "v1");
+    git("update-ref", "refs/remotes/origin/main", commitFile("src/cli.ts", "fork change"));
+    const copy = join(root, "snapshot");
+    recordBuild(built, copy);
+    expect(checkCliBuildDrift(copy, [root])).toEqual([]);
+  });
+
+  it("counts bundled command changes as build inputs", () => {
+    const built = commitFile("commands/agentbrew.md", "v1");
+    git("update-ref", "refs/remotes/origin/main", commitFile("commands/agentbrew.md", "v2"));
+    const copy = join(root, "snapshot");
+    recordBuild(built, copy);
+    expect(checkCliBuildDrift(copy, [root])).toHaveLength(1);
+  });
+
+  it("keeps standalone copies clear when current, docs-only behind, or unqualified", () => {
+    const built = commitFile("src/cli.ts", "v1");
+    const remote = commitFile("docs/notes.md", "doc only");
+    git("update-ref", "refs/remotes/origin/main", remote);
+    const copy = join(root, "snapshot");
+    recordBuild(built, copy);
+    expect(checkCliBuildDrift(copy, [root])).toEqual([]);
+    recordBuild(remote, copy);
+    expect(checkCliBuildDrift(copy, [root])).toEqual([]);
+    recordBuild("0123456789abcdef0123456789abcdef01234567", copy);
+    expect(checkCliBuildDrift(copy, [root])).toEqual([]);
+  });
+
+  it("does not rebuild a standalone CLI copy", () => {
+    const copy = join(root, "snapshot");
+    recordBuild(null, copy);
+    writeFileSync(
+      join(copy, "package.json"),
+      JSON.stringify({ scripts: { build: "node -e \"require('node:fs').writeFileSync('rebuilt', 'yes')\"" } }),
+    );
+    expect(rebuildCli(copy)).toBe(false);
+    expect(existsSync(join(copy, "rebuilt"))).toBe(false);
   });
 
   it("is clean when dist/ was built from HEAD", () => {

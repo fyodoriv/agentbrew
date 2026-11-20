@@ -14,6 +14,9 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 | Build check on a `v*` tag push (`publish.yml`, read-only) | Every tag push | Not needed |
 | npm publish | Never | By hand, with 2FA |
 
+The full gate runs `agentbrew status` from the compiled checkout and from
+a disposable copy with no build commit. Both runs use a test home.
+
 ## What the hosted gate does not cover
 
 - **Leaks.** The private-pattern file is not on the runner. Run the local leak check before every push.

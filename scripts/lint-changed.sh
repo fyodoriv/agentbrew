@@ -2,7 +2,7 @@
 # Inner-loop lint: Biome on the files this branch changed, not the whole tree.
 #
 # It checks committed, staged, unstaged, and new (untracked) files under
-# src/, scripts/, and real-e2e/ against the merge base with origin/main.
+# src/, scripts/, real-e2e/, and skill script directories against the merge base.
 # Biome's own `--changed` sees only committed files, so it misses work in
 # progress. It calls the local node_modules/.bin/biome: without a local
 # install, `npx biome` fetches and runs an unrelated npm package named
@@ -26,13 +26,15 @@ base="$(git merge-base HEAD "${LINT_CHANGED_BASE:-origin/main}")"
 files=()
 has_source_changes=false
 while IFS= read -r f; do
-  has_source_changes=true
+  case "$f" in
+    src/*|scripts/*|real-e2e/*) has_source_changes=true ;;
+  esac
   [[ -f "$f" ]] && files+=("$f")
 done < <(
   {
     git diff --name-only "$base"
     git ls-files --others --exclude-standard
-  } | grep -E '^(src|scripts|real-e2e)/.*\.(ts|tsx|js|jsx|mjs|cjs)$' | LC_ALL=C sort -u
+  } | grep -E '^(src|scripts|real-e2e|skill-plugins/[^/]+/[^/]+/scripts)/.*\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$' | LC_ALL=C sort -u
 )
 if "$has_source_changes"; then
   node "$script_dir/check-orphan-tests.mjs"

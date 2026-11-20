@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join } from "node:path";
 import chalk from "chalk";
 import { AgentBrewError } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
+import { AGENTBREW_SOURCE_CHECKOUTS } from "../paths.js";
 import { readStateForScheduler } from "../state.js";
 import { expandHome } from "../utils.js";
 import { SCHEDULED_REPAIR_GUARD } from "./scheduled-repair-command.js";
@@ -237,10 +238,8 @@ export function launchAgentPathHasRequiredPrefixes(
   return dotfilesBin ? pathStartsWithSegments(pathValue, [dotfilesBin, ...required.slice(0, -1)]) : false;
 }
 
-const STABLE_CLI_CANDIDATES = (): string[] => [
-  join(expandHome("~"), "apps/tooling/agentbrew/dist/cli.js"),
-  join(expandHome("~"), "apps/agentbrew/dist/cli.js"),
-];
+const STABLE_CLI_CANDIDATES = (): string[] =>
+  AGENTBREW_SOURCE_CHECKOUTS.map((root) => join(expandHome(root), "dist", "cli.js"));
 
 /** True when `root` is a linked git worktree: its `.git` is a `gitdir: .../worktrees/<name>` file, not a folder.
  *  A pinned worktree path breaks the job once the worktree is removed after its PR merges (2026-10-25). */

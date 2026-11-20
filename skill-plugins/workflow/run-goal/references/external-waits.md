@@ -50,13 +50,29 @@ Do not invent a goal-update tool, edit host storage, or spoof user origin.
    `gh pr checks <PR> --repo <OWNER/REPO> --required --watch --interval 60`.
    Record the accepted task handle, exact target, bounded deadline and next
    check event. Use the repo's existing timeout/wait facility; the command
-   example alone does not establish a deadline.
+   example alone does not establish a deadline. For a watch script, print the
+   target it actually resolved on the first output line. Compare that receipt,
+   or equivalent native handle metadata, with the planned repository, PR, head,
+   check or run ID, and attempt. Require the observed identity. An echoed launch
+   value leaves the target unverified. If the target is wrong or unknown, treat
+   its event only as a wake-up. Read the intended target from the authority
+   before trusting a result. Replace the owned watch only if it is wrong or dead.
 4. Continue independent work. If only waiting remains, use the host route
    below. Unchanged observations produce no new user message or duplicate
    status reply, watcher, evaluator-facing completion claim or final-turn loop.
 5. On completion, read authoritative results again before merging. Require
    the same current head and run attempt; a replaced head makes the old
    result stale. Keep original review, merge and installed-state requirements.
+
+### Host forbids polling
+
+When the host bans CI polling (no `gh --watch`, Monitor, cron or wakeup tool), do not
+watch GitHub. Read the runner queue once (running and queued runs, their start times)
+to size the wait. Then start one bounded background `sleep` with `run_in_background: true`
+that never calls GitHub; its end wakes the session. Name the pending check in one reply.
+On wake, read the PR once. A check still queued gets one new timer sized the same way.
+`--required` waits on nothing when the base requires no checks. Then never enable
+auto-merge: it would merge before the queued check ends.
 
 ### Local gates that end in a push
 

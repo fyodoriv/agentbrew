@@ -31,7 +31,8 @@ export function merge(panels) {
   for (const p of panels) {
     for (const v of p.views) {
       const page = pages.get(v.view) ?? { view: v.view, panels: {}, verdicts: [], elements: [] };
-      (page.panels[p.panel] ??= []).push(Number(v.score));
+      page.panels[p.panel] ??= [];
+      page.panels[p.panel].push(Number(v.score));
       if (v.verdict) page.verdicts.push(`${p.panel}: ${v.verdict}`);
       for (const e of v.elements ?? []) page.elements.push({ ...e, score: Number(e.score), panel: p.panel });
       pages.set(v.view, page);

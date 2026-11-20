@@ -187,6 +187,34 @@
 
 ## P1
 
+- [ ] Fix ten development dependency alerts within existing ranges
+  - **ID**: development-dependency-advisories-176-188
+  - **Tags**: security, dependencies, stability
+  - **Mode**: AFK
+  - **Details**: Follow the [fixed cohort](docs/plans/development-dependency-advisories.md) for Hono, Fast XML Parser and Mongoose. Keep Alert 181 and older cohorts in their separate tasks. The baseline resolved Hono 4.13.13, Fast XML Parser 5.8.0 and Mongoose 9.11.2. Check GitHub's alert states after the candidate lands.
+  - **Files**: `package-lock.json`, the cohort plan and this task.
+  - **Output**: code
+  - **Acceptance**: Every locked copy of each named package is at or above its advisory floor. Direct declarations, Node floor and unrelated lock paths match the base. Required checks pass. GitHub marks all 10 frozen alerts fixed after ingesting the default branch.
+  - **Hypothesis**: Updating the three packages within their current parents reduces affected rows from 10 to 0, with zero unrelated lock changes.
+  - **Measurement**: Run `heavy-run timeout 180 npx --yes --prefer-offline --package=npm@10 -- npm update --package-lock-only --ignore-scripts --include=optional hono fast-xml-parser mongoose`. Compare every matching lock entry against the fixed floors and run the integrity check from the plan.
+  - **Success**: Zero affected copies and zero unrelated lock changes. The standard install and checks pass, and GitHub closes all 10 alerts.
+  - **Pivot**: Any remaining affected copy, missing target package, unrelated lock change or failed check rejects the update.
+  - **Anchor**: Primary advisories linked in the [cohort plan](docs/plans/development-dependency-advisories.md) and Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+- [ ] Remove the remaining node-server range for Alert 181
+  - **ID**: development-node-server-advisory-181
+  - **Blocked**: needs-compatible-upstream-parent — Promptfoo 0.124.1 pins node-server 2.1.1. The published 0.126.0 manifest pins 2.1.6 but requires incompatible jks-js and Nunjucks watcher peers. The local resolver still advertises 0.125.1 with node-server 2.1.5. Require a compatible published parent and a normal resolution before changing the lock graph.
+  - **Tags**: security, dependencies, stability
+  - **Details**: The first fixed node-server release is 2.1.6. Keep this alert separate from the earlier 172 and 175 comparison. A parent update must preserve existing peer choices, optional dependencies and the Node floor.
+  - **Files**: `package.json`, `package-lock.json` and a registered dependency update plan.
+  - **Output**: code
+  - **Acceptance**: Every affected resolved copy is fixed, normal installation and required checks pass, and GitHub marks Alert 181 fixed.
+  - **Hypothesis**: A compatible published parent moves one affected advisory row to zero with zero changed protected peer choices.
+  - **Measurement**: Compare `npm ls @hono/node-server --package-lock-only --all` with the 2.1.6 floor, then read `gh api repos/fyodoriv/agentbrew/dependabot/alerts/181 --jq .state` after ingestion.
+  - **Success**: Zero affected copies and zero changed protected peer choices. The alert state becomes fixed.
+  - **Pivot**: Any incompatible peer, an affected copy, an optional dependency lost from the graph or a failed install rejects the candidate.
+  - **Anchor**: [Node-server advisory](https://github.com/advisories/GHSA-jpvv-r467-5p4w) and Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
 - [ ] Validate every sync selection before preparation can publish outputs
   - **ID**: sync-selection-preflight
   - **Tags**: security, stability, sync, cli
@@ -332,29 +360,18 @@
 
 - [ ] PR bodies and new task blocks pass the pre-register checker in CI
   - **ID**: preregistration-ci-gate
+  - **Blocked**: needs-time — measure the first 10 merged descriptions and the first 20 pull requests after the check lands.
   - **Tags**: quality, ci, pre-registration, from-minsky
-  - **Details**: The new `pre-register` skill ships `scripts/check-preregistration.mjs`, but nothing runs it. On 2026-11-19 it reported all five fields missing in the bodies of the last five merged agentbrew PRs, although AGENTS.md Delivery asks for a hypothesis block, and it reported 58 findings across existing TASKS.md blocks (mostly a Measurement with no backticked command). Run it in CI on the PR body (an `Exempt: <gate>` line passes) and on TASKS.md blocks that the PR adds or changes, as a ratchet that leaves untouched blocks alone.
+  - **Details**: Check the pull request description and each new or changed task block with `check-preregistration.mjs`. An unchanged task stays outside this check. Continue with the field observation after the gate lands.
   - **Files**: the PR-body check workflow or `scripts/check-pr-vision-trace.mjs`, `scripts/verify-changed.sh`, a ratchet helper and its test, AGENTS.md Delivery.
   - **Acceptance**: a PR body with no hypothesis block and no `Exempt:` line fails the check; a PR that adds a task block with a manual measurement fails; an untouched old block never fails.
   - **Hypothesis**: merged PRs with no pre-registration go from 5 of the last 5 to 0 of the next 10.
-  - **Measurement**: `for n in $(gh pr list --state merged --limit 10 --json number --jq '.[].number'); do gh pr view $n --json body --jq .body | node skill-plugins/workflow/pre-register/scripts/check-preregistration.mjs - >/dev/null || echo "fail $n"; done`
+  - **Measurement**: `for n in $(gh pr list --state merged --limit 10 --json number --jq '.[].number'); do gh pr view $n --json body | jq '{pull_request: .}' | node skill-plugins/workflow/pre-register/scripts/check-preregistration.mjs - --pull-request-event >/dev/null || echo "fail $n"; done`
   - **Success**: 0 failing bodies among the next 10 merged PRs.
   - **Pivot**: more than 2 false blocks in the next 20 PRs.
   - **Anchor**: Munafò et al. 2017 (A manifesto for reproducible science, Nature Human Behaviour).
 
 ## P2
-
-- [ ] `agentbrew status` warns when the running CLI build has no build record or is behind main
-  - **ID**: cli-build-snapshot-drift
-  - **Tags**: cli, health, sync
-  - **Details**: `checkCliBuildDrift` in `src/cli-build-health.ts` reports nothing when the CLI root has no `.git`. On the owner's Mac on 2026-11-19, the global `agentbrew` ran from a copy built on 2026-11-14, outside any git checkout, with `"commit": null` in `dist/build-info.json`. `agentbrew status` stayed silent, yet that build lacked #1067 (explain a recorded skill-to-plugin conversion), so `sync --pull` printed a bare `insecure-defaults not found in trailofbits/skills` with no reason. A root with `.git` and a null commit already warns ("has no build record"); the gap is the root without `.git`. Warn there when the commit is null. Also warn when the recorded commit is behind `origin/main` (from its last fetch; no network call in `status`) of the agentbrew source checkout that agentbrew's own state already knows; when it knows none, warn only on the null commit. Name the build commit, or say none is recorded, and the reinstall command. `dist/build-info.json` stores only `commit`, so do not promise a build date. Lead on the copy's origin: it holds a `.agentbrew-build.lock` dated 2026-11-14, a file that `rust/checkup-run/src/bin/publish-dist.rs` (run by `scripts/build-source.sh`) creates in the tree it builds. So `npm run build` ran inside that tree with no `.git`. No code or script in this repo or in dotfiles names `agentbrew-runtimes` (`rg -l` on 2026-11-19). Find what copies the source there and name it in the warning's fix hint.
-  - **Files**: `src/cli-build-health.ts`, `src/cli-build-health.test.ts`, the README section on drift detection.
-  - **Acceptance**: a fixture CLI with no `.git` and a null commit gives one drift item; a no-`.git` build whose commit is behind the checkout's `origin/main` gives one drift item that names both commits; a current build gives none.
-  - **Hypothesis**: of the two stale no-`.git` fixture cases (null commit, behind main), `agentbrew status` flags 0 today and 2 after, while a current build stays at 0 warnings.
-  - **Measurement**: `npx vitest run src/cli-build-health.test.ts`, then, right after `npm run build`: `d=$(mktemp -d "${TMPDIR:-/tmp}/cli-copy.XXXXXX") && cp -R dist package.json "$d/" && ln -s "$PWD/node_modules" "$d/node_modules" && jq '.commit=null' dist/build-info.json > "$d/dist/build-info.json" && node "$d/dist/cli.js" status | grep -c 'CLI build'` once, and `node dist/cli.js status | grep -c 'CLI build'` from the checkout itself 5 times. `grep -c` prints 0 when nothing matches. Baseline on 2026-11-19: the copy printed 0.
-  - **Success**: every fixture passes, the copy prints 1, and the freshly built checkout prints 0 in each of its 5 runs.
-  - **Pivot**: the freshly built checkout prints 1 or more in any of its 5 runs; then keep only the null-commit warning.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (Goal Question Metric).
 
 - [ ] A goal retro knows which rule wins when a repo rule limits where skill updates go
   - **ID**: run-goal-retro-repo-rule-precedence
@@ -407,13 +424,13 @@
 - [ ] Agent hooks block the destructive commands minsky blocked and we still allow
   - **ID**: block-remaining-dangerous-commands
   - **Tags**: hooks, safety, from-minsky
-  - **Progress**: The opt-in hook covers leading direct Git stash discard commands. Extend it to the other listed operations and to any additional shell forms after verifying their command boundaries.
-  - **Details**: minsky `.claude/hooks/block-dangerous-bash.sh` blocked commands our hooks still allow: `git stash drop` and `git stash clear` (stashes are shared by every worktree, so one agent can delete another's work), `gh pr merge --admin` (skips branch protection), `gh repo delete`, `git -c core.hooksPath=<x> commit` (a quiet hook bypass), and `rm -rf` outside the temp and scratch folders. Also block: creating or switching branches in a shared main checkout (`git checkout -b/-B`, `git switch -c/-C`, `git checkout <type>/...`) when the git dir equals the common git dir, unless the command uses `git -C`, `cd` into a worktree, or `git worktree` (a sibling agent once switched branches and wiped another session's edits); wholesale reverts `git checkout <ref> -- .` and `git restore :/`; and direct `npm publish` (releases go through the tag workflow with its SBOM and provenance gates). Add them to `hooks/checks/` (or extend `no-commit-no-verify.sh` for the hooksPath case), each with a fixture test, and register them in the hook manifest.
+  - **Progress**: The opt-in Bash hook covers leading direct stash discard, GitHub repository deletion and administrator merges without shell redirection. The separate opt-in Git wrapper covers the registered Git operations at the executable boundary. The Bash hook also blocks leading direct npm publishing. Recursive deletion and remaining shell forms still need verified coverage.
+  - **Details**: minsky `.claude/hooks/block-dangerous-bash.sh` blocked commands our hooks still allow: `git stash drop` and `git stash clear` (stashes are shared by every worktree, so one agent can delete another's work), `gh pr merge --admin` (skips branch protection), `gh repo delete`, `git -c core.hooksPath=<x> commit` (a quiet hook bypass), and `rm -rf` outside the temp and scratch folders. Also block: creating or switching branches in a shared main checkout (`git checkout -b/-B`, `git switch -c/-C`, `git checkout <type>/...`) when the git dir equals the common git dir, unless the command uses `git -C`, `cd` into a worktree, or `git worktree` (a sibling agent once switched branches and wiped another session's edits); wholesale reverts `git checkout <ref> -- .` and `git restore :/`; and direct `npm publish` (the owner follows the release procedure in `docs/ci.md`). Add them to `hooks/checks/` (or extend `no-commit-no-verify.sh` for the hooksPath case), each with a fixture test, and register them in the hook manifest.
   - **Files**: `hooks/checks/no-destructive-commands.sh`, its `.test.sh`, `hooks/checks/no-commit-no-verify.sh`, hook manifest, `docs/` hook list.
   - **Acceptance**: every command shape listed in Details is blocked in a fixture; `git stash list`, `gh pr merge --squash`, and `rm -rf $TMPDIR/x` still pass.
   - **Hypothesis**: agent runs that destroy shared stashes or bypass branch protection go from possible to 0.
   - **Measurement**: `bash hooks/checks/no-destructive-commands.test.sh; echo exit=$?`.
-  - **Success**: every blocked case and every allowed case passes, plus a branch switch inside a linked worktree is allowed.
+  - **Success**: 100% of registered blocked and allowed cases pass, including 1 allowed branch switch inside a linked worktree.
   - **Pivot**: more than 1 false block per week in hook observation logs.
   - **Anchor**: Reason 1990 (Human Error, defenses in depth).
 
@@ -796,20 +813,19 @@
   - **Pivot**: grading a single skill run costs more than 1 US dollar; then keep the proxy convention and drop the runner.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
 
-## P3
+- [ ] Classify the hosted MCP checkout lag test failure
+  - **ID**: observe-mcp-checkout-lag-probe-failure
+  - **Tags**: tests, ci, mcp
+  - **Details**: A macOS run expected one behind checkout and reported none. A local isolated rerun passed. Keep the production probe and its limits until a real failure identifies the outcome. The test receipt is registered in [the plan](docs/plans/mcp-checkout-lag-probe-receipts.md).
+  - **Output**: measurement
+  - **Hypothesis**: A test-only probe receipt identifies a child exit, timeout or spawn failure without exposing private inputs.
+  - **Measurement**: Run `heavy-run npx vitest run src/mcp/git-checkout-lag.test.ts` for the receipt controls. Read the next natural hosted failure for the original checkout-lag assertion.
+  - **Success**: At least 1 real failing hosted run has an exact classified outcome and 0 private strings. Keep the root-cause work open until then.
+  - **Pivot**: If 1 receipt is missing or misleading, repair measurement before choosing a code fix. Ten passing runs without a failure leave the cause unknown.
+  - **Anchor**: [Nov 20, 2026 macOS failure](https://github.com/fyodoriv/agentbrew/actions/runs/44706661566/job/136187967909).
+  - **Blocked**: Needs a natural hosted recurrence after the diagnostic lands. Do not increase load to recreate it.
 
-- [ ] Skill scripts get the same Biome lint as src and scripts
-  - **ID**: lint-skill-plugin-scripts
-  - **Tags**: lint, skills, ci
-  - **Details**: `npm run lint` and `scripts/lint-changed.sh` run Biome only on `src`, `scripts`, and `real-e2e`. Checker scripts under `skill-plugins/*/*/scripts/` (for example `failure-modes/scripts/check-failure-modes.mjs`) ship to users through `agentbrew sync`, but no lint reads them. On 2026-11-19 a format error in that checker passed both commands and showed up only in a manual `node_modules/.bin/biome check` run. A first `biome check skill-plugins` run that day found 5 errors. Add the skill script folders to both commands, then fix what the first run finds.
-  - **Files**: `package.json` (`lint`, `lint:fix`), `scripts/lint-changed.sh`, `scripts/verify.sh`
-  - **Output**: code
-  - **Acceptance**: `npm run lint` and `npm run lint:changed` both report a Biome error planted in a `skill-plugins/workflow/*/scripts/*.mjs` file.
-  - **Hypothesis**: linting skill scripts moves the Biome errors found in them from unknown to 0, and keeps them at 0 on later PRs.
-  - **Measurement**: `node_modules/.bin/biome check skill-plugins --error-on-warnings` (error count), then the same planted-error check in both commands.
-  - **Success**: 0 errors on main after the fix, and both commands catch the planted error.
-  - **Pivot**: if the first run finds more than 50 errors, land the folder list with a baseline ignore file and fix the rest in a separate task.
-  - **Anchor**: Biome docs, `files.includes`; Forsgren, Humble and Kim (2018), shift-left checks.
+## P3
 
 - [ ] Propose the guard start-budget note to the built-in workflow-authoring skill
   - **ID**: workflow-authoring-guard-budget-upstream

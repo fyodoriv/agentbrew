@@ -108,8 +108,10 @@ Skills and agents depend on the port (the contract), not the adapters. Adding a 
 
 For a task that measures skill behavior, run each case from the skill's
 `evals/evals.json` in fresh sessions with and without the skill. Use the same
-model and case inputs in both sessions. Follow the installed `skill-creator`
-skill's evaluation steps to grade both outputs against the same expectations.
+model and case inputs in both sessions. Use the full `skill-creator` evaluation kit to grade both outputs against
+the same expectations. Select an installed copy that contains
+`scripts/aggregate_benchmark.py`. Some skill-creator copies include only
+the authoring workflow.
 Keep the reports in a private scratch directory.
 
 After grading, set `skill_creator_dir` to the installed skill directory,

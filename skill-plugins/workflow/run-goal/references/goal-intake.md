@@ -117,6 +117,11 @@ baseline before the first merge.
   GitHub repo, `permissions.admin`). Find the person's account, but invite
   only after the operator confirms it. Without admin rights, write a short
   BLOCKED report: who can grant access, and what the person can already do.
+- When the goal changes the user's own access, read current permissions and the
+  approved access policy. Keep the confirmation step before any form
+  submission. If the user replaces a temporary request with a permanent one,
+  cancel the temporary path without submitting. Cite any policy that blocks
+  permanent access and report the verified current role.
 
 ## Ticket gates before first push
 

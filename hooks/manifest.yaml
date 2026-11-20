@@ -216,7 +216,7 @@ hooks:
     defaultEnabled: false
 
   - id: no-destructive-commands
-    description: Block direct stash discard, GitHub repository deletion, and administrator merges
+    description: Block direct stash discard, GitHub repository deletion, administrator merges, and npm publishing
     event: PreToolUse
     matcher: Bash
     script: checks/no-destructive-commands.sh

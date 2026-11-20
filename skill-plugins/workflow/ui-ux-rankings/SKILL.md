@@ -38,6 +38,16 @@ outside the adapter and a UI test that samples each state mid-transition and set
 **Judges fail a control whose state changes with no transition.** Then the rankings below confirm the work
 instead of finding all of it.
 
+## Read the brand doc first
+
+Before any UI work or judge round, look for the repo's brand doc (`docs/brand.md`, else
+`BRAND.md` or a "Brand" section in `docs/design.md`). Read it and build to it: the mark and its
+sizes, the color tokens, the type, the voice and its do/don't table. Give every judge panel the
+doc's rules and score **brand fit** as its own ranking (1-10): the mark is the repo's own component
+at a listed size, colors come from its tokens, and copy matches its voice (no jokes where the doc
+forbids them). A finding cites the doc line it breaks. When a repo has a visible brand but no doc,
+say so and offer to write one (mark rules, sizes, colors, voice, do/don't) before you judge.
+
 ## Whole-site usefulness audit
 
 To audit every page of a site the owner owns, follow

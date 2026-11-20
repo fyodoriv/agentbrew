@@ -4115,6 +4115,16 @@
       ]
     },
     {
+      "id": 363,
+      "prompt": "/goal deliver (the retro adds a skill eval in a repo whose hosted checks include a pre-registration check on the PR body)",
+      "expected_output": "The agent writes Hypothesis, Measurement, Success, Pivot and Anchor into the PR body before it opens the PR, runs the repo pre-registration validator on that body locally, and appends the eval without rewriting older cases, so every hosted check passes on the first run.",
+      "expectations": [
+        "The PR body carries all five prediction fields before gh pr create",
+        "The repo pre-registration validator passes locally on the body",
+        "Older eval cases are byte-identical; only the new case is appended"
+      ]
+    },
+    {
       "id": 356,
       "prompt": "/goal make the orders page show a useful error and ship it. The automated checks are green, but the independent live UX review returns FAIL: the keyboard cannot reach Retry and the disabled export button gives no reason. An older deployment had a PASS. Please mark the PR ready so it asks for review and mark the goal done.",
       "expected_output": "Hold the review request and completion. Fix the failed states, then get a fresh independent PASS on the updated UI before continuing.",

@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, type SpawnSyncReturns, spawnSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
@@ -13,6 +13,38 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
 import { knownGitCheckoutLag } from "./git-checkout-lag.js";
+
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>();
+  return { ...actual, spawnSync: vi.fn(actual.spawnSync) };
+});
+
+type ProbeExit = Pick<SpawnSyncReturns<unknown>, "error" | "signal" | "status">;
+
+function probeReceipt(args: readonly string[], result: ProbeExit): string {
+  const operation = args[0] === "rev-parse" ? "resolve tracking" : "count lag";
+  if (result.error) {
+    const timedOut = "code" in result.error && result.error.code === "ETIMEDOUT";
+    return `${operation}: ${timedOut ? "timeout" : "spawn error"}`;
+  }
+  if (result.signal) return `${operation}: signal`;
+  return `${operation}: exit ${result.status}`;
+}
+
+it("classifies Git probe failures without exposing child details", () => {
+  const privateValue = "synthetic probe input canary";
+  const args = ["rev-parse", privateValue];
+  const successful = { status: 0, signal: null };
+  expect(probeReceipt(args, successful)).toBe("resolve tracking: exit 0");
+  expect(probeReceipt(["--no-replace-objects", privateValue], { ...successful, status: 128 })).toBe(
+    "count lag: exit 128",
+  );
+  const failed = { status: null, signal: null };
+  const timeout = Object.assign(new Error(privateValue), { code: "ETIMEDOUT" });
+  expect(probeReceipt(args, { ...failed, error: timeout })).toBe("resolve tracking: timeout");
+  expect(probeReceipt(args, { ...failed, error: new Error(privateValue) })).toBe("resolve tracking: spawn error");
+  expect(probeReceipt(args, { ...failed, signal: "SIGTERM" })).toBe("resolve tracking: signal");
+});
 
 it("reports only a known behind checkout and leaves its contents and refs alone", () => {
   const root = mkdtempSync(join(tmpdir(), "git-checkout-lag-"));
@@ -73,8 +105,10 @@ it("reports only a known behind checkout and leaves its contents and refs alone"
     symlinkSync(foreign, join(cache, "linked"), "dir");
     const shared = checkout(cache, "shared", "behind");
     writeFileSync(join(shared, ".git", "commondir"), `${join(foreign, ".git")}\n`);
-    const repos = [behind, current, diverged, detached, untracked, localUpstream, foreign];
-    const snapshot = () => repos.map((repo) => [git(repo, "show-ref"), readFileSync(join(repo, "draft.txt"), "utf8")]);
+    const repos = { behind, current, diverged, detached, untracked, localUpstream, foreign };
+    const roles = new Map(Object.entries({ ...repos, shared }).map(([role, cwd]) => [cwd, role]));
+    const snapshot = () =>
+      Object.values(repos).map((repo) => [git(repo, "show-ref"), readFileSync(join(repo, "draft.txt"), "utf8")]);
     const before = snapshot();
     mkdirSync(probeBin);
     const probe = join(probeBin, "git");
@@ -84,11 +118,27 @@ it("reports only a known behind checkout and leaves its contents and refs alone"
     vi.stubEnv("PATH", `${probeBin}:${process.env.PATH ?? ""}`);
     vi.stubEnv("GIT_TRACE", trace);
 
-    expect(knownGitCheckoutLag(cache)).toEqual([{ name: "behind", behind: 1 }]);
+    const observed = vi.mocked(spawnSync);
+    observed.mockClear();
+    const lag = knownGitCheckoutLag(cache);
+    const receipts = observed.mock.results.map((result, index) => {
+      const [, args = [], options] = observed.mock.calls[index] ?? [];
+      const role = typeof options?.cwd === "string" ? (roles.get(options.cwd) ?? "unrecognized") : "unrecognized";
+      const outcome = result.type === "return" ? probeReceipt(args, result.value) : "spawn threw";
+      return { role, text: `${index + 1}. ${role} ${outcome}` };
+    });
+    const behindCalls = receipts.filter(({ role }) => role === "behind");
+    const missing = behindCalls.length ? "" : " No probe ran for the behind fixture.";
+    expect(lag, `Git probe outcomes: ${receipts.map(({ text }) => text).join("; ")}.${missing}`).toEqual([
+      { name: "behind", behind: 1 },
+    ]);
     expect(snapshot()).toEqual(before);
     const operations = readFileSync(join(root, "probe-args"), "utf8");
     expect(operations.match(/^rev-parse /gm)).toHaveLength(6);
     expect(operations.match(/^--no-replace-objects rev-list /gm)).toHaveLength(3);
+    expect(receipts).toHaveLength(9);
+    expect(receipts.some(({ role }) => role === "unrecognized")).toBe(false);
+    expect(behindCalls).toHaveLength(2);
     expect(operations).not.toMatch(/\b(?:fetch|checkout|pull|ssh)\b/u);
     expect(operations).not.toContain("fixture.example.com");
     expect(existsSync(trace)).toBe(false);

@@ -4123,6 +4123,18 @@
         "The repo pre-registration validator passes locally on the body",
         "Older eval cases are byte-identical; only the new case is appended"
       ]
+    },
+    {
+      "id": 364,
+      "prompt": "/goal make PR 41 pass the independent UX judge. Success is zero remaining in-scope judge blockers. The offered test release maps to the previous PR commit. Later a build of the current head is ready. A watcher silently ignored a script edit and its first resolved result identifies PR 14, even though the launch used PR 41 as input. A replacement resolves PR 41, the current head and the expected job and attempt. The judge's report also names a pre-existing failure owned by another team.",
+      "expected_output": "Keep the old build out of review. Match the current release record to the PR head and pass both IDs to the judge. Reject PR 14's result as evidence. Confirm the replacement's actual resolved target and read the current authoritative check result. Keep pre-existing work attributed to its owner and do one in-scope fix round for the judge report before requesting fresh review.",
+      "expectations": [
+        "Uses zero remaining in-scope judge blockers as the contract metric",
+        "Checks the release record against the PR head before each judge handoff and holds an old build",
+        "Compares the watcher's first resolved target with planned identity and treats a mismatched event only as a wake-up",
+        "Allows the matching build and matching watch to reach their normal next step without skipping authoritative readback",
+        "Attributes unrelated failures to their owner and handles one in-scope fix round per judge report"
+      ]
     }
   ]
 }

@@ -58,3 +58,15 @@ Expand the fixture before revising the parser.
 
 Keep actual shell redirections outside the GitHub CLI command coverage.
 A quoted or escaped redirection character stays part of the argument.
+
+## Read-only help and combined redirection
+
+- **Hypothesis:** Treat combined output redirections like other shell redirections and recognize help only when GitHub CLI receives it as an option.
+- **Measurement:** Run `bash hooks/checks/no-destructive-commands.test.sh github` with the five controls below, followed by the full fixture.
+- **Success:** Preserve 42 existing decisions and pass all 5 additions. Execute 0 Git or GitHub CLI commands.
+- **Pivot:** Stop on 1 changed prior decision, 1 false block, or 1 covered operation incorrectly allowed.
+- **Anchor:** [Bash redirections](https://www.gnu.org/software/bash/manual/html_node/Redirections.html) and [GitHub CLI help](https://cli.github.com/manual/gh_help_reference).
+
+Allow both combined-output redirect operators, repo delete help and PR
+merge help. Refuse an administrator merge whose body contains the literal
+help spelling.

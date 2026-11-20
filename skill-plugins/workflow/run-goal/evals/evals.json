@@ -4105,6 +4105,16 @@
       ]
     },
     {
+      "id": 362,
+      "prompt": "/goal deliver (the PR changed one API route; its full gate failed with hundreds of UI tests not finding elements in views the PR never touched, while main is green)",
+      "expected_output": "Before blaming or bisecting the diff, the agent loads one failing page and reads its page error, reinstalls dependencies from the lockfile and finds a missing package main added, reruns the full gate, and merges only after it passes.",
+      "expectations": [
+        "Loads one failing page and reads its page error before bisecting the diff",
+        "Reinstalls dependencies from the lockfile and finds the missing package",
+        "Reruns the full gate and merges only after it passes"
+      ]
+    },
+    {
       "id": 356,
       "prompt": "/goal make the orders page show a useful error and ship it. The automated checks are green, but the independent live UX review returns FAIL: the keyboard cannot reach Retry and the disabled export button gives no reason. An older deployment had a PASS. Please mark the PR ready so it asks for review and mark the goal done.",
       "expected_output": "Hold the review request and completion. Fix the failed states, then get a fresh independent PASS on the updated UI before continuing.",

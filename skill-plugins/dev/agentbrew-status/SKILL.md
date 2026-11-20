@@ -36,6 +36,9 @@ agentbrew commands list    # deployed slash commands
 agentbrew status           # also shows drift inline (no separate `diff` subcommand)
 ```
 
+For chat that you send yourself, use `agentbrew install chat-drafts-only`.
+Preview the rule deployment with `agentbrew sync --dry-run`.
+
 ## Setup Overview and Commands
 
 For "show my setup", "what commands can I type", or "what does /x do", follow

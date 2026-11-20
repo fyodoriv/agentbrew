@@ -24,6 +24,8 @@ To change a setting the user asks for, run `agentbrew config` (each setting, its
 
 When the user asks to add Chrome's Modern Web Guidance, use `agentbrew install modern-web-guidance` for browser features and Chrome extensions.
 
+When the user asks to send chat messages themselves, enable the optional rule with `agentbrew install chat-drafts-only`. Preview with `agentbrew sync --dry-run`, then run the approved sync.
+
 Every other action: run `agentbrew actions --json`. It lists every command (generated from the CLI), its arguments, and three notes:
 
 - `terminal_only`: only the user can run it. Give them the exact command for their own terminal.

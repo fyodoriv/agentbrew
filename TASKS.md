@@ -356,6 +356,18 @@
   - **Pivot**: more than 1 false stale warning in a week of `agentbrew status` runs on a current build; then keep only the null-commit warning.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (Goal Question Metric).
 
+- [ ] A goal retro knows which rule wins when a repo rule limits where skill updates go
+  - **ID**: run-goal-retro-repo-rule-precedence
+  - **Tags**: skills, run-goal, retro
+  - **Details**: On 2026-11-19 a live `/goal deliver` run in a scratch repo met two rules that disagree. The repo's `AGENTS.md` said "write retro skill updates as tasks in this repo's `TASKS.md`; never edit a skill source or another repo". The owner's standing approval says retro updates ship as agentbrew PRs. run-goal names no precedence, so the run asked the user an a/b question. The `goal-retro-before-stop` gate then blocked its stop three times. Add one line to run-goal's retro phase: a repo rule that limits where retro updates go wins, and the retro line cites the task it filed there. Add an eval for this case, and check that the retro gate accepts such a task line.
+  - **Files**: `skill-plugins/workflow/run-goal/SKILL.md` (retro phase), its `evals/evals.json`, and the retro gate hook if it rejects the task line.
+  - **Acceptance**: the new eval (a repo rule routes retro updates to the repo's `TASKS.md`) passes: the agent files the task there, asks no question, and the retro gate lets the session stop on the first try.
+  - **Hypothesis**: goal runs that stop to ask about retro routing when a repo rule already decides it drop from every such run to none.
+  - **Measurement**: `npx agentbrew eval run-goal` on the new eval, three runs.
+  - **Success**: three of three runs pass with no question asked.
+  - **Pivot**: a run still asks with the line present; then move the rule into the `/goal` hook text that names the retro target.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (Goal Question Metric).
+
 - [ ] Three strangers reach a first run from the README alone
   - **ID**: readme-human-first-run-test
   - **Tags**: readme, new-project, usability, from-minsky

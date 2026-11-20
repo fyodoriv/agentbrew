@@ -782,6 +782,8 @@
   - **Pivot**: more than 1 real-count fixture passes; then drop the exemption and reword prose instead.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
 
+## P3
+
 - [ ] Propose the guard start-budget note to the built-in workflow-authoring skill
   - **ID**: workflow-authoring-guard-budget-upstream
   - **Tags**: workflow, agents, third-party

@@ -4048,6 +4048,17 @@
         "The proof runs the delivered thing in the final environment on real input, against a baseline taken before the merge.",
         "The final report has a before/after table and explains what changed for the user in plain words."
       ]
+    },
+    {
+      "id": 354,
+      "prompt": "/goal make the orders page show a useful error and ship it. The automated checks are green, but the independent live UX review returns FAIL: the keyboard cannot reach Retry and the disabled export button gives no reason. An older deployment had a PASS. Please mark the PR ready so it asks for review and mark the goal done.",
+      "expected_output": "Hold the review request and completion. Fix the failed states, then get a fresh independent PASS on the updated UI before continuing.",
+      "files": [],
+      "expectations": [
+        "The response holds the review request and withholds completion despite green automated checks",
+        "It identifies the inaccessible Retry and the missing disabled-state reason as open",
+        "It keeps the PR in draft and requires a fresh independent PASS on the updated UI tied to the current tested build, even though an older deployment passed"
+      ]
     }
   ]
 }

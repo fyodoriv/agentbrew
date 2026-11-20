@@ -462,6 +462,20 @@ start it again after the edits; never report its result for the new code.
   a shell heredoc. A command-guard hook reads the heredoc text as the
   command and blocks it.
 
+## Live UX review
+
+When the goal changes the user interface, add a fresh UX reviewer to the
+goal's judges. Apply **Independent live UX review** under **Browser and web
+UI work** in the shared rules. Record the verdict, the deployment revision
+or immutable build ID, the changed states, and their screenshots. Confirm
+that the tested build contains the current change. If the build identity is
+missing or mismatched, record UNVERIFIED.
+
+Hold the review request and completion on FAIL, UNVERIFIED, or no verdict.
+Keep the PR in draft when making it ready would ask for review. Fix the
+failing states and get a fresh PASS on the latest change. Goals without a UI
+change use their existing review steps.
+
 ## Required reviewer approvals
 
 Keep a merge criterion open while a required approval is missing. Check the

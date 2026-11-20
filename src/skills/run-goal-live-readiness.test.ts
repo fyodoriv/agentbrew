@@ -24,6 +24,7 @@ describe("run-goal live readiness (#1145)", () => {
     const raw = /Live readiness receipt:\n```json\n([\s\S]+?)\n```/.exec(scenario.prompt);
     expect(raw).not.toBeNull();
     const receipt = JSON.parse(raw?.[1] ?? "{}") as {
+      read_at: string;
       observed_tier: number;
       requested_tier: number;
       target_checks: Record<string, boolean>;
@@ -33,8 +34,11 @@ describe("run-goal live readiness (#1145)", () => {
       .filter(([, passed]) => !passed)
       .map(([check]) => check);
     expect(gaps).toEqual(["recovery drill", "alert routing"]);
+    expect(receipt.read_at).toBe("2026-11-20T16:00:00Z");
+    expect(scenario.expected_output).toContain(receipt.read_at);
     expect(scenario.expected_output).toMatch(/Tier 1 observed and Tier 2 requested/);
     expect(scenario.expected_output).toContain("recovery drill and alert routing");
     expect(scenario.expected_output).toMatch(/read time[\s\S]*independent reviewer[\s\S]*same read-only receipt/i);
+    expect(scenario.expected_output).toContain("Make no source changes");
   });
 });

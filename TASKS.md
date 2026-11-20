@@ -410,8 +410,8 @@
 - [ ] Agent hooks block the destructive commands minsky blocked and we still allow
   - **ID**: block-remaining-dangerous-commands
   - **Tags**: hooks, safety, from-minsky
-  - **Progress**: The opt-in Bash hook covers leading direct stash discard, GitHub repository deletion and administrator merges without shell redirection. The separate opt-in Git wrapper covers the registered Git operations at the executable boundary. Direct npm publishing, recursive deletion and remaining shell forms still need verified coverage.
-  - **Details**: minsky `.claude/hooks/block-dangerous-bash.sh` blocked commands our hooks still allow: `git stash drop` and `git stash clear` (stashes are shared by every worktree, so one agent can delete another's work), `gh pr merge --admin` (skips branch protection), `gh repo delete`, `git -c core.hooksPath=<x> commit` (a quiet hook bypass), and `rm -rf` outside the temp and scratch folders. Also block: creating or switching branches in a shared main checkout (`git checkout -b/-B`, `git switch -c/-C`, `git checkout <type>/...`) when the git dir equals the common git dir, unless the command uses `git -C`, `cd` into a worktree, or `git worktree` (a sibling agent once switched branches and wiped another session's edits); wholesale reverts `git checkout <ref> -- .` and `git restore :/`; and direct `npm publish` (releases go through the tag workflow with its SBOM and provenance gates). Add them to `hooks/checks/` (or extend `no-commit-no-verify.sh` for the hooksPath case), each with a fixture test, and register them in the hook manifest.
+  - **Progress**: The opt-in Bash hook covers leading direct stash discard, GitHub repository deletion and administrator merges without shell redirection. The separate opt-in Git wrapper covers the registered Git operations at the executable boundary. The Bash hook also blocks leading direct npm publishing. Recursive deletion and remaining shell forms still need verified coverage.
+  - **Details**: minsky `.claude/hooks/block-dangerous-bash.sh` blocked commands our hooks still allow: `git stash drop` and `git stash clear` (stashes are shared by every worktree, so one agent can delete another's work), `gh pr merge --admin` (skips branch protection), `gh repo delete`, `git -c core.hooksPath=<x> commit` (a quiet hook bypass), and `rm -rf` outside the temp and scratch folders. Also block: creating or switching branches in a shared main checkout (`git checkout -b/-B`, `git switch -c/-C`, `git checkout <type>/...`) when the git dir equals the common git dir, unless the command uses `git -C`, `cd` into a worktree, or `git worktree` (a sibling agent once switched branches and wiped another session's edits); wholesale reverts `git checkout <ref> -- .` and `git restore :/`; and direct `npm publish` (the owner follows the release procedure in `docs/ci.md`). Add them to `hooks/checks/` (or extend `no-commit-no-verify.sh` for the hooksPath case), each with a fixture test, and register them in the hook manifest.
   - **Files**: `hooks/checks/no-destructive-commands.sh`, its `.test.sh`, `hooks/checks/no-commit-no-verify.sh`, hook manifest, `docs/` hook list.
   - **Acceptance**: every command shape listed in Details is blocked in a fixture; `git stash list`, `gh pr merge --squash`, and `rm -rf $TMPDIR/x` still pass.
   - **Hypothesis**: agent runs that destroy shared stashes or bypass branch protection go from possible to 0.
@@ -758,20 +758,6 @@
   - **Files**: `.github/workflows/auto-publish.yml`, `scripts/publish-latest.sh`, `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
-
-- [ ] Optional FAKE marker rule: stubs must say they are fake
-  - **ID**: fake-marker-rule
-  - **Tags**: lint, testing, absorbed-from-minsky
-  - **Mode**: AFK
-  - **Details**: Add an optional lint rule to the `new-project` templates: a stub or fake in non-test code carries a `// FAKE:` comment naming what it stands in for, so a stub is never mistaken for a real implementation. Keep it opt-in. Source: https://github.com/fyodoriv/minsky/blob/main/user-stories/011-fake-data-marked-explicitly.md. The story defines the marker format (`// FAKE: <reason> - tracked at <task-id>`) but has no lint script yet, so design the check from it.
-  - **Files**: `skill-plugins/workflow/new-project/templates/`, a new test
-  - **Output**: code
-  - **Acceptance**: A seeded stub without the marker fails the lint; the same stub with the marker passes.
-  - **Hypothesis**: unmarked stubs in a scaffolded repo go from unchecked to 0 findings.
-  - **Measurement**: `npx vitest run` on the new lint test with one marked and one unmarked fixture.
-  - **Success**: 1 of 1 unmarked stub fails; 1 of 1 marked stub passes; 0 findings on a clean scaffold.
-  - **Pivot**: If the lint cannot tell a stub from a real small function without more than 2 false positives on the template, drop it.
-  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Meszaros (2007), xUnit Test Patterns (test doubles).
 
 - [ ] Count guard stops reading a time span as an agent count
   - **ID**: volatile-count-time-units

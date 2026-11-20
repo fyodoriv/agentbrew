@@ -101,3 +101,54 @@ instrumentation qualification so no capped probe is replayed.
 Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric;
 Munafò et al. (2017), preregistration; the existing in-process lifecycle test
 and its retained terminal failure.
+
+## Test supervisor ownership control
+
+The separate draft runner can send a group signal from a saved child
+PID. Its final wait also depends on the child pipes closing. A failed
+signal can leave those pipes open. Keep that runner out of this
+experiment. Test a separate supervisor that gets its own process
+group and accepts only a fixed shutdown request on its own IPC
+channel. The supervisor checks its current group before it can send
+a signal to that group. The parent never signals a saved PID.
+
+Use synthetic child programs with their own expiration timers. Both
+the supervisor and the worker have a bounded lifetime. Neither uses
+the real lifecycle command, a network request or the user's settings.
+Treat an absent acknowledgment, a failed signal and missing terminal
+evidence as separate fixed outcomes. Output may contain only fixed
+receipt labels. Keep the original 30,000 ms lifecycle test and its
+assertions unchanged.
+
+- **Hypothesis**: A separate supervisor can stop its owned synthetic
+  process group before the fixture deadline, report a failed signal
+  without retrying against a PID, and refuse unqualified requests.
+- **Measurement**: Run `heavy-run npm exec -- vitest run src/plugins/lifecycle-observation-supervisor.test.ts --maxWorkers=1` on Mac and hosted Linux. Use the five registered cases below and inspect the fixed receipts. The production lifecycle and the earlier process-group runner are outside this suite.
+- **Success**: All 5 cases match their expected outcomes. Both owned
+  processes end in the admitted stop case. The outside sentinel
+  finishes normally. Every failed or refused control ends within 10
+  seconds and makes zero unqualified signal calls.
+- **Pivot**: An unexpected signal, missing acknowledgment, process or
+  pipe left open after the limit, or unqualified success rejects the
+  approach. Keep the original timeout cause unknown. Do not retry
+  with a wider process selector.
+- **Anchor**: [Node.js detached child semantics](https://nodejs.org/api/child_process.html#optionsdetached),
+  [Apple signal scope](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/kill.2.html),
+  and the original lifecycle observation plan.
+
+| Case | Required result |
+| --- | --- |
+| S01 | An ordinary synthetic worker and its supervisor complete with no signal request |
+| S02 | The qualified supervisor stops its own worker and itself. A separate sentinel finishes normally |
+| S03 | A planted signal failure reports a fixed failure result. Both owned fixtures self-expire and the parent sends no fallback signal |
+| S04 | A supervisor in the wrong group refuses the request before reaching the signal function. Its test signal function cannot send a real signal |
+| S05 | No ready acknowledgment leaves the result unqualified. No signal request is sent |
+
+On macOS, all five cases passed under the shared queue. The admitted stop
+recorded the worker's terminal signal and the supervisor's normal exit.
+The sentinel answered after both returned. The failed signal and the
+two refusal controls all ended within 4.1 seconds. Type checking passed.
+
+These controls qualify only the synthetic ownership and failed-signal
+boundary. The real test and the external recorder channel still need
+separate evidence before an observed timeout can be classified.

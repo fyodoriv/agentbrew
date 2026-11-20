@@ -76,6 +76,7 @@ const OWNER_WORKFLOW_HOOK_IDS = [
   "gdoc-comment-preservation",
   "gdoc-surgical-edit-only",
   "perf-task-review",
+  "always-on-watch-stop",
   "retry-failed-before-stop",
   "no-home-crawl",
   "git-script-guard",

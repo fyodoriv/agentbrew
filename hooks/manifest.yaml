@@ -604,6 +604,17 @@ hooks:
     agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
+  - id: always-on-watch-stop
+    description: Remind an enrolled watcher session once if it has no live watch before stop
+    event: Stop
+    script: checks/always-on-watch-stop.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: ALWAYS_ON_STOP_GUARD
+    sourceRule: 'docs/hook-protocol.md "Check for a live watch before stop"'
+    agents: ["claude-code"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
+
   - id: retry-failed-before-stop
     description: Remind the agent once to check unresolved tool failures and repeat only authorized actions that are safe to repeat
     event: Stop

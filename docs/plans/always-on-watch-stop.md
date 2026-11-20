@@ -37,7 +37,7 @@ and age settings apply per hook invocation.
 | C06 | A cron stamp is dated in the future | Block |
 | C07 | A regular wrap-up stamp is present | Allow |
 | C08 | Latest user text includes a wrap-up request | Allow |
-| C09 | Latest user text is a direct stop request | Allow |
+| C09 | Latest user text starts with a complete stop request | Allow |
 | C10 | The hook already handled this stop | Allow |
 | C11 | The owner disabled this hook through the environment | Allow |
 | C12 | The project is outside the configured list | Allow |
@@ -56,11 +56,11 @@ real session remains a separate operator action.
 - **Hypothesis**: A bounded transcript read and the final stamp recheck
   preserve owner intent even if records are ambiguous or replaced
   during the check.
-- **Measurement**: Extend the same fixture command with C19–C24.
+- **Measurement**: Extend the same fixture command with C19–C26.
   Inject the owner update at the boundary after transcript read. Test
   atomic replacement between an open file and its identity check.
-- **Success**: All 24 controls pass. Exactly 6 request reminders and
-  18 permit stop or refuse unstable evidence. Zero fixture input leaks.
+- **Success**: All 26 controls pass. Exactly 6 request reminders and
+  20 permit stop or refuse unstable evidence. Zero fixture input leaks.
 - **Pivot**: One reminder after the injected owner update, one ambiguous
   request used for a block, one unstable stamp accepted as current or
   one leak rejects the hook.
@@ -75,6 +75,8 @@ real session remains a separate operator action.
 | C22 | Latest transcript row is incomplete | Allow |
 | C23 | The owner publishes wrap-up after the transcript read | Allow |
 | C24 | A stamp file is atomically replaced during a read | Refuse that record |
+| C25 | Latest transcript row is valid JSON with the wrong shape | Allow |
+| C26 | Latest text row contains a text block with a malformed value | Allow |
 
 These controls judge the observed snapshot. Stamp writers replace
 records atomically. The hook rechecks live watch and wrap-up before

@@ -19,8 +19,10 @@ const INVENTORY_QUALIFIER = "(?:(?:[A-Za-z][\\w/-]*\\s+){0,3})";
 /** Spelled counts for aggregate inventory (exclude one/two — transactional English, not inventory). */
 const SPELLED_INVENTORY_NUMBERS = "three|four|five|six|seven|eight|nine|ten|eleven|twelve";
 
+const DURATION_UNIT = String.raw`(?:ms|seconds?|minutes?|hours?|days?|weeks?)\s`;
+
 const VOLATILE_COUNT_CLAIM = new RegExp(
-  String.raw`(?<![.\w-])${VOLATILE_COUNT}\s+${INVENTORY_QUALIFIER}${INVENTORY_NOUN}\b`,
+  String.raw`(?<![.\w-])${VOLATILE_COUNT}\s+(?!${DURATION_UNIT})${INVENTORY_QUALIFIER}${INVENTORY_NOUN}\b`,
   "giu",
 );
 

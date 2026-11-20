@@ -240,6 +240,12 @@ served output after the deploy, not only the pipeline's output.
   Have an independent judge trace mismatches to source records. If source access
   or required fields are missing, keep the criterion unverified and name the gap.
   Do not invent requester names or change source data to make the totals agree.
+  If a green PR lists an unchecked live query, keep that check open and hold
+  the review request. Verify which environment contains the target data. Run the
+  current query read-only there, with approved access, and compare its rows
+  with the source for the same scope. Treat dropped eligible rows as a
+  defect. Record the environment and result. A passing test-environment
+  query cannot cover an unchecked target environment.
 - A self-built judge needs calibration first. Fix its false failures and call them
   judge bugs, not product wins. Then have a grader that did not write the code
   check a sample against the source.

@@ -191,7 +191,7 @@
   - **ID**: development-dependency-advisories-176-188
   - **Tags**: security, dependencies, stability
   - **Mode**: AFK
-  - **Details**: Follow the [fixed cohort](docs/plans/development-dependency-advisories.md) for Hono, Fast XML Parser and Mongoose. Keep Alert 181 and older cohorts in their original tasks. The checkout currently resolves Hono 4.13.13, Fast XML Parser 5.8.0 and Mongoose 9.11.2.
+  - **Details**: Follow the [fixed cohort](docs/plans/development-dependency-advisories.md) for Hono, Fast XML Parser and Mongoose. Keep Alert 181 and older cohorts in their separate tasks. The checkout currently resolves Hono 4.13.13, Fast XML Parser 5.8.0 and Mongoose 9.11.2.
   - **Files**: `package-lock.json`, the cohort plan and this task.
   - **Output**: code
   - **Acceptance**: Every locked copy of each named package is at or above its advisory floor. Direct declarations, Node floor and unrelated lock paths match the base. Required checks pass. GitHub marks all 10 frozen alerts fixed after ingesting the default branch.
@@ -203,7 +203,7 @@
 
 - [ ] Remove the remaining node-server range for Alert 181
   - **ID**: development-node-server-advisory-181
-  - **Blocked**: needs-compatible-upstream-parent — Promptfoo 0.124.1 pins node-server 2.1.1. The package resolver offered 0.125.1 with a 2.1.5 pin and a peer outside the protected local stub. Recheck published parent metadata before changing the lock graph.
+  - **Blocked**: needs-compatible-upstream-parent — Promptfoo 0.124.1 pins node-server 2.1.1. The published 0.126.0 manifest pins 2.1.6 but requires incompatible jks-js and Nunjucks watcher peers. The local resolver still advertises 0.125.1 with node-server 2.1.5. Require a compatible published parent and a normal resolution before changing the lock graph.
   - **Tags**: security, dependencies, stability
   - **Details**: The first fixed node-server release is 2.1.6. Keep this alert separate from the earlier 172 and 175 comparison. A parent update must preserve existing peer choices, optional dependencies and the Node floor.
   - **Files**: `package.json`, `package-lock.json` and a registered dependency update plan.

@@ -22,3 +22,12 @@ copy remains in its affected range. Use the fixed version from each advisory
 as the floor for current copies. Compare the root lock record and
 `package.json` byte for byte with the base. Review any new resolved imports
 against the published manifests for those three updated packages.
+
+## Published parent check
+
+The exact Promptfoo 0.126.0 registry manifest lists node-server 2.1.6,
+Chokidar 6.0.0 and a jks-js peer of ^1.1.5. Nunjucks 3.2.4 lists an
+optional Chokidar ^3.3.0 peer. The development lock uses the local jks-js
+stub. The package resolver still advertises Promptfoo 0.125.1, which pins
+node-server 2.1.5. Alert 181 remains in its separate task while a compatible
+normal resolution is unavailable. [Promptfoo registry manifest](https://registry.npmjs.org/promptfoo/0.126.0) · [Nunjucks registry manifest](https://registry.npmjs.org/nunjucks/3.2.4)

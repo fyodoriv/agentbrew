@@ -15,6 +15,7 @@ import { checkMcpEnvVarsDrift } from "./drift.js";
 import { readDesktopMcpFailures } from "./drift-checks/claude-desktop-mcp.js";
 import { silentLintCounts } from "./lint.js";
 import { formatUnmanagedPinLines, outdatedPinsInUnmanagedAgents } from "./mcp/catalog-pin-sweep.js";
+import { knownGitCheckoutLag } from "./mcp/git-checkout-lag.js";
 import {
   healDeferredMcpEntries,
   loadMcpHealthSnapshot,
@@ -803,6 +804,9 @@ async function statusVerbose(state: NonNullable<ReturnType<typeof requireState>>
   printAgentRuntime(state, true);
   printVerboseModelSection(state);
   printVerboseServersSection(state);
+  for (const { name, behind } of knownGitCheckoutLag()) {
+    console.log(`  Cached MCP checkout ${JSON.stringify(name)} — ${behind} behind its saved upstream`);
+  }
   printMcpHealthSummary("  ");
   printMcpHealChurnLines("  ");
   printCliBuildSummary("  ");

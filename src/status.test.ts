@@ -10,6 +10,8 @@ vi.mock("./mcp/catalog-pin-sweep.js", async (importOriginal) => ({
   outdatedPinsInUnmanagedAgents: vi.fn(() => []),
 }));
 
+vi.mock("./mcp/git-checkout-lag.js", () => ({ knownGitCheckoutLag: vi.fn(() => []) }));
+
 vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
   return { ...actual, existsSync: vi.fn(() => false), readFileSync: vi.fn(() => ""), readdirSync: vi.fn(() => []) };
@@ -86,6 +88,7 @@ import { catalogRuleDrift } from "./catalog/install-other.js";
 import { loadSyncErrors } from "./core/errors.js";
 import { readDesktopMcpFailures } from "./drift-checks/claude-desktop-mcp.js";
 import { outdatedPinsInUnmanagedAgents } from "./mcp/catalog-pin-sweep.js";
+import { knownGitCheckoutLag } from "./mcp/git-checkout-lag.js";
 import {
   healDeferredMcpEntries,
   loadMcpHealthSnapshot,
@@ -116,6 +119,13 @@ beforeEach(() => {
 });
 
 describe("status", () => {
+  it("shows known MCP checkout lag in verbose status", async () => {
+    mockLoadState.mockReturnValue({ agents: [], sources: [], mcpServers: [], catalogVersion: "0.1.0" });
+    vi.mocked(knownGitCheckoutLag).mockReturnValueOnce([{ name: "fixture", behind: 2 }]);
+    await status({ verbose: true });
+    expect(console.log).toHaveBeenCalledWith('  Cached MCP checkout "fixture" — 2 behind its saved upstream');
+  });
+
   it("returns early when not initialized", async () => {
     mockLoadState.mockReturnValue(undefined);
     await status({ verbose: true });

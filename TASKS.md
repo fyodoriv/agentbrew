@@ -187,6 +187,34 @@
 
 ## P1
 
+- [ ] Fix ten development dependency alerts within existing ranges
+  - **ID**: development-dependency-advisories-176-188
+  - **Tags**: security, dependencies, stability
+  - **Mode**: AFK
+  - **Details**: Follow the [fixed cohort](docs/plans/development-dependency-advisories.md) for Hono, Fast XML Parser and Mongoose. Keep Alert 181 and older cohorts in their separate tasks. The baseline resolved Hono 4.13.13, Fast XML Parser 5.8.0 and Mongoose 9.11.2. Check GitHub's alert states after the candidate lands.
+  - **Files**: `package-lock.json`, the cohort plan and this task.
+  - **Output**: code
+  - **Acceptance**: Every locked copy of each named package is at or above its advisory floor. Direct declarations, Node floor and unrelated lock paths match the base. Required checks pass. GitHub marks all 10 frozen alerts fixed after ingesting the default branch.
+  - **Hypothesis**: Updating the three packages within their current parents reduces affected rows from 10 to 0, with zero unrelated lock changes.
+  - **Measurement**: Run `heavy-run timeout 180 npx --yes --prefer-offline --package=npm@10 -- npm update --package-lock-only --ignore-scripts --include=optional hono fast-xml-parser mongoose`. Compare every matching lock entry against the fixed floors and run the integrity check from the plan.
+  - **Success**: Zero affected copies and zero unrelated lock changes. The standard install and checks pass, and GitHub closes all 10 alerts.
+  - **Pivot**: Any remaining affected copy, missing target package, unrelated lock change or failed check rejects the update.
+  - **Anchor**: Primary advisories linked in the [cohort plan](docs/plans/development-dependency-advisories.md) and Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+- [ ] Remove the remaining node-server range for Alert 181
+  - **ID**: development-node-server-advisory-181
+  - **Blocked**: needs-compatible-upstream-parent — Promptfoo 0.124.1 pins node-server 2.1.1. The published 0.126.0 manifest pins 2.1.6 but requires incompatible jks-js and Nunjucks watcher peers. The local resolver still advertises 0.125.1 with node-server 2.1.5. Require a compatible published parent and a normal resolution before changing the lock graph.
+  - **Tags**: security, dependencies, stability
+  - **Details**: The first fixed node-server release is 2.1.6. Keep this alert separate from the earlier 172 and 175 comparison. A parent update must preserve existing peer choices, optional dependencies and the Node floor.
+  - **Files**: `package.json`, `package-lock.json` and a registered dependency update plan.
+  - **Output**: code
+  - **Acceptance**: Every affected resolved copy is fixed, normal installation and required checks pass, and GitHub marks Alert 181 fixed.
+  - **Hypothesis**: A compatible published parent moves one affected advisory row to zero with zero changed protected peer choices.
+  - **Measurement**: Compare `npm ls @hono/node-server --package-lock-only --all` with the 2.1.6 floor, then read `gh api repos/fyodoriv/agentbrew/dependabot/alerts/181 --jq .state` after ingestion.
+  - **Success**: Zero affected copies and zero changed protected peer choices. The alert state becomes fixed.
+  - **Pivot**: Any incompatible peer, an affected copy, an optional dependency lost from the graph or a failed install rejects the candidate.
+  - **Anchor**: [Node-server advisory](https://github.com/advisories/GHSA-jpvv-r467-5p4w) and Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
 - [ ] Validate every sync selection before preparation can publish outputs
   - **ID**: sync-selection-preflight
   - **Tags**: security, stability, sync, cli

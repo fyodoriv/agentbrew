@@ -32,10 +32,14 @@ describe("run-goal finished worker handoff (#1155)", () => {
     expect(fixture.prompt).toContain("Worker A is finished");
     expect(fixture.prompt).toContain("Worker B is still running");
     expect(fixture.prompt).toContain("Worker C finished");
+    expect(fixture.prompt).toContain("one pending merge condition");
+    expect(fixture.prompt).toContain("judge already used an initial pass and a recheck");
     const assessed = [fixture.expected_output, ...fixture.expectations].join(" ");
     expect(assessed).toMatch(/full report[\s\S]*verify the draft PR, revision, and gate/);
     expect(assessed).toMatch(/worker B[\s\S]*quiet watch/i);
     expect(assessed).toMatch(/worker C[\s\S]*unverified/i);
     expect(assessed).toMatch(/two rounds[\s\S]*authorized sources[\s\S]*inline evidence/i);
+    expect(assessed).toContain("pending merge condition");
+    expect(assessed).toContain("Do not request a third pass");
   });
 });

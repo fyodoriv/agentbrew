@@ -2056,6 +2056,23 @@ rules:
       merge the new content, or delete it and post one merged message. This is
       the chat twin of one comment per place on a PR.
 
+  - name: chat-drafts-only
+    description: "Keep chat sends with the user and save approved drafts for them."
+    category: workflow
+    recommended: false
+    content: |
+      Keep new chat messages and replies as drafts. The user sends the draft.
+      Run the independent draft judge before saving in the target chat service.
+      Read back the saved draft and show the exact text to the user. If the
+      service cannot save drafts, show the judged text and say it is unsaved.
+      A request from the user covers that exact message. It gives no approval
+      for follow-ups, replies, pings, or goal-loop retries.
+      For a correction to a sent message, draft the text and say whether it
+      fits as an edit or a new message.
+      This rule takes precedence over chat-merge-recent-message. Without the
+      user's explicit request for that exact edit, suggest a merged draft and
+      leave the sent message in place.
+
   - name: functional-judge
     description: "Run every feature with an independent judge before asking for review."
     category: workflow

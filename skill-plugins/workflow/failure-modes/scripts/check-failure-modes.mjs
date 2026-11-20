@@ -6,6 +6,20 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 
 const LABELS = ["Steady state", "Blast radius", "Escape hatch"];
+// Wording variants per label, including the format minsky used ("Steady-state hypothesis").
+const LABEL_PATTERNS = {
+  "Steady state": "steady[\\s-]+state(?:\\s+hypothesis)?",
+  "Blast radius": "blast\\s+radius",
+  "Escape hatch": "(?:operator\\s+)?escape\\s+hatch",
+};
+// Header cells per column: "Mode" or "Failure mode", "Trigger / fault axis",
+// "Expected behavior", "Test" or "Chaos test".
+const COLUMNS = {
+  mode: /^(?:failure\s+)?mode$/,
+  trigger: /^trigger\b/,
+  expected: /^expected\b/,
+  test: /\btests?$/,
+};
 const ALLOWED = new Map([
   ["crash loudly", "crash loudly"],
   ["loud crash", "crash loudly"],
@@ -13,8 +27,21 @@ const ALLOWED = new Map([
   ["degrade gracefully", "degrade gracefully"],
   ["gracefully degrade", "degrade gracefully"],
   ["graceful degrade", "degrade gracefully"],
+  ["loud crash supervisor restart", "crash loudly"],
 ]);
-const FORBIDDEN = /retry silently|silent(ly)? retr|\bignore|log and continue/;
+// Retry forms only: "retrieved silently" is not a retry.
+const RETRY = "retr(?:y|ies|ied|ying)";
+const SILENT_RETRY = `${RETRY}\\s+silently|silent(?:ly)?\\s+${RETRY}`;
+const LOG_AND_CONTINUE = "\\blogs?\\s+and\\s+continues?\\b";
+// A behavior name or a whole cell fails on any of these.
+const FORBIDDEN = new RegExp(`${SILENT_RETRY}|${LOG_AND_CONTINUE}|\\bignore`);
+// Code (`ignore_errors`, `--ignore-scripts`) can name "ignore" without ignoring a failure.
+const FORBIDDEN_CODE = new RegExp(`${SILENT_RETRY}|${LOG_AND_CONTINUE}`);
+// Prose beside an allowed behavior fails on a silent retry or the step-4 phrase "log and
+// continue". "logs and continues" and "ignores them" describe a visible degrade in real stories.
+const FORBIDDEN_PROSE = new RegExp(`${SILENT_RETRY}|\\blog\\s+and\\s+continue\\b`, "gi");
+// Only spaces or emphasis between the negation and the phrase: "if not, retry silently" counts.
+const NEGATED = /(?:^|[^a-z])(?:never|not|no|without|instead of|rather than)[\s*]*$/i;
 const TEST_FILE = /\.(test|spec)\.|_test\.|(^|\/)test_|\.bats$/;
 // Dependency, build, and sibling-worktree folders: a match there is not this repo's test.
 const SKIP_DIRS = new Set([
@@ -102,7 +129,7 @@ const stripTest = (text) => text.replace(/[*`]/g, "").trim();
 const isStructural = (line) => /^\s*(#{1,6}\s|\|)/.test(line) || LABELS.some((l) => labelMatch(line, l));
 
 function labelMatch(line, label) {
-  const name = label.replace(" ", "\\s+");
+  const name = LABEL_PATTERNS[label];
   const inline = new RegExp(`^\\s*(?:[-*]\\s+)?\\**\\s*${name}\\s*:?\\s*\\**\\s*:?\\s*(.*)$`, "i");
   const heading = new RegExp(`^\\s*#{2,6}\\s+${name}\\s*:?\\s*$`, "i");
   if (heading.test(line)) return { text: "" };
@@ -130,24 +157,29 @@ function checkLabels(section, errors) {
   }
 }
 
+// GitHub tables treat "\\|" as a literal pipe inside a cell (often inside a code span).
 const cells = (line) =>
   line
     .trim()
     .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((cell) => cell.trim());
+    .replace(/(?<!\\)\|$/, "")
+    .split(/(?<!\\)\|/)
+    .map((cell) => cell.replace(/\\\|/g, "|").trim());
 
 function findTable(section) {
   for (let i = 0; i + 1 < section.length; i += 1) {
     if (!section[i].includes("|") || !/^\s*\|?\s*:?-{3,}\s*:?\s*\|/.test(section[i + 1])) continue;
     const header = cells(section[i]).map((cell) => strip(cell).toLowerCase());
-    const column = (name) => header.indexOf(name);
+    const column = (name) => header.findIndex((cell) => COLUMNS[name].test(cell));
+    const expected = column("expected");
+    const named = (pattern) => header.findIndex((cell, index) => index !== expected && pattern.test(cell));
+    const exactTest = named(/^tests?$/);
     const cols = {
       mode: column("mode"),
       trigger: column("trigger"),
-      expected: column("expected"),
-      test: column("test"),
+      expected,
+      // A plain "Test" header wins; else the first "...test" header that is not the Expected one.
+      test: exactTest === -1 ? named(COLUMNS.test) : exactTest,
     };
     if (Object.values(cols).some((index) => index === -1)) continue;
     const rows = [];
@@ -200,8 +232,39 @@ function testExists(token, root) {
   return listTestFiles(root).some((file) => readOrEmpty(file).includes(token));
 }
 
+const normalize = (text) => strip(text).toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ");
+
+const words = (text) =>
+  text
+    .toLowerCase()
+    .replace(/[^a-z]+/g, " ")
+    .trim();
+// A behavior name is plain words (`retry-silently`); `ignore_errors` or `--ignore-scripts` is code.
+const isBehaviorName = (text) => /^\s*[A-Za-z]+(?:(?:-| +)[A-Za-z]+)*\s*$/.test(text) && !/[a-z][A-Z]/.test(text);
+
+// A cell may name the behavior in backticks among other code and prose:
+// `graceful-degrade` — `parseEvents` drops the bad line. Use the span that names a behavior,
+// but a forbidden span or silent-retry prose fails the cell, unless negated ("never ...").
+function behaviorOf(cell) {
+  // A short window before the phrase keeps this linear in the cell length.
+  const negated = (index) => NEGATED.test(cell.slice(Math.max(0, index - 64), index));
+  const spans = [...cell.matchAll(/`([^`]+)`/g)];
+  for (const span of spans) {
+    if (negated(span.index)) continue;
+    const name = isBehaviorName(span[1]);
+    const text = name ? normalize(span[1]) : words(span[1]);
+    if ((name ? FORBIDDEN : FORBIDDEN_CODE).test(text)) return text;
+  }
+  const allowed = spans.map((span) => normalize(span[1])).find((span) => ALLOWED.has(span));
+  if (!allowed) return normalize(cell);
+  // Blank the code spans with same-length padding, so match indexes still point into the cell.
+  const prose = cell.replace(/`[^`]+`/g, (code) => " ".repeat(code.length)).replace(/[*_-]/g, " ");
+  for (const match of prose.matchAll(FORBIDDEN_PROSE)) if (!negated(match.index)) return match[0].toLowerCase();
+  return allowed;
+}
+
 function checkExpected(name, cell, errors) {
-  const expected = strip(cell).toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ");
+  const expected = behaviorOf(cell);
   if (FORBIDDEN.test(expected)) {
     errors.push(`${name}: Expected "${expected}" is forbidden; it hides the failure`);
   } else if (!ALLOWED.has(expected)) {

@@ -295,6 +295,27 @@
         "Names a gate check for raw buttons and a UI test for hover, press and focus",
         "Requires no motion under Reduce motion"
       ]
+    },
+    {
+      "id": 27,
+      "prompt": "Add a settings page to our app and judge it before I ship. The repo has docs/brand.md.",
+      "expected_output": "Reads docs/brand.md before building, uses the repo's mark component and color tokens, and reports a brand-fit score with findings that cite the brand doc.",
+      "expectations": [
+        "Reads docs/brand.md before writing or judging UI",
+        "Uses the brand's mark component and tokens, not new colors or an inline logo",
+        "Reports brand fit as its own numeric ranking",
+        "Each brand finding cites the brand-doc rule it breaks"
+      ]
+    },
+    {
+      "id": 28,
+      "prompt": "Rate the UI of http://127.0.0.1:3000/ — the app has a logo and an orange accent but no brand doc.",
+      "expected_output": "Notes that no brand doc exists and offers to write docs/brand.md (mark, sizes, colors, voice, do/don't) before scoring brand fit.",
+      "expectations": [
+        "Looks for docs/brand.md, BRAND.md or a Brand section and reports none",
+        "Offers to write a brand doc before judging brand fit",
+        "Does not invent brand rules: scores brand fit only against a doc that exists or one the user approved"
+      ]
     }
   ]
 }

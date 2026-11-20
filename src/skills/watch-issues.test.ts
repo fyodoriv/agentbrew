@@ -246,7 +246,7 @@ describe("watch-issues pass", () => {
     expect(lastLine(out)).toBe("watch: 9 new (showing 9), 0 handled");
   });
 
-  it("shows at most --limit items: broken PRs, then own issues, then tasks, then outside issues", () => {
+  it("uses ranked work first and gives a remaining slot to a broken unranked PR", () => {
     const root = mkdtempSync(join(tmpdir(), "watch-pass-"));
     const out = pass(root, fakeGh(root, ISSUES, [PRS[0]]), ["--limit", "4", fixtureRepo(root)]);
     const keys = out
@@ -255,10 +255,10 @@ describe("watch-issues pass", () => {
       .filter((l) => l.startsWith("new\t"))
       .map((l) => l.split("\t")[1]);
     expect(keys).toEqual([
-      "pr acme/demo#7 red abcdef1",
-      "issue acme/demo#13",
       "task demo/fix-sync-crash",
-      "issue acme/demo#12",
+      "task demo/add-flag",
+      "task demo/title:Task without an id",
+      "pr acme/demo#7 red abcdef1",
     ]);
     expect(lastLine(out)).toBe("watch: 6 new (showing 4), 0 handled");
   });
@@ -306,15 +306,21 @@ describe("watch-issues pass", () => {
     expect(result.stdout).not.toContain("recorded");
   });
 
-  it("keeps one slot for an outside issue even behind a long queue", () => {
+  it("reserves an outside issue slot among the remaining unranked slots", () => {
     const root = mkdtempSync(join(tmpdir(), "watch-pass-"));
-    const out = pass(root, fakeGh(root, ISSUES, [PRS[0]]), ["--limit", "3", fixtureRepo(root)]);
+    const out = pass(root, fakeGh(root, ISSUES, [PRS[0]]), ["--limit", "5", fixtureRepo(root)]);
     const keys = out
       .trim()
       .split("\n")
       .filter((l) => l.startsWith("new\t"))
       .map((l) => l.split("\t")[1]);
-    expect(keys).toEqual(["pr acme/demo#7 red abcdef1", "issue acme/demo#13", "issue acme/demo#12"]);
+    expect(keys).toEqual([
+      "task demo/fix-sync-crash",
+      "task demo/add-flag",
+      "task demo/title:Task without an id",
+      "pr acme/demo#7 red abcdef1",
+      "issue acme/demo#12",
+    ]);
   });
 
   it("--include-p3 adds P3 tasks", () => {

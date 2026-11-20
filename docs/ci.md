@@ -18,6 +18,9 @@ The full and changed-file lint commands include shipped skill scripts in
 | Build check on a `v*` tag push (`publish.yml`, read-only) | Every tag push | Not needed |
 | npm publish | Never | By hand, with 2FA |
 
+The full gate runs `agentbrew status` from the compiled checkout and from
+a disposable copy with no build commit. Both runs use a test home.
+
 ## Pre-registration
 
 The pull request description includes Hypothesis, Measurement, Success, Pivot,

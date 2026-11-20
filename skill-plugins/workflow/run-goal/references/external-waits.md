@@ -58,6 +58,16 @@ Do not invent a goal-update tool, edit host storage, or spoof user origin.
    the same current head and run attempt; a replaced head makes the old
    result stale. Keep original review, merge and installed-state requirements.
 
+### Host forbids polling
+
+When the host bans CI polling (no `gh --watch`, Monitor, cron or wakeup tool), do not
+watch GitHub. Read the runner queue once (running and queued runs, their start times)
+to size the wait. Then start one bounded background `sleep` with `run_in_background: true`
+that never calls GitHub; its end wakes the session. Name the pending check in one reply.
+On wake, read the PR once. A check still queued gets one new timer sized the same way.
+`--required` waits on nothing when the base requires no checks. Then never enable
+auto-merge: it would merge before the queued check ends.
+
 ### Local gates that end in a push
 
 A local full gate can pause for minutes or hours (a load or memory guard

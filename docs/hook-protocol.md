@@ -106,13 +106,21 @@ deleted.
 
 ## Runtime contract
 
-The `no-destructive-commands` check inspects the leading command on the
-first line. It refuses a direct `git stash drop` or `git stash clear`.
-Git shares stashes across linked worktrees. The check reads the command
-text without running it. Listing, inspecting, or saving a stash stays
-available. Add `no-destructive-commands` to `enabled:` in the hooks
-overlay and run `agentbrew sync` to turn on the check. It uses Python 3
-to read Git arguments.
+The `no-destructive-commands` check reads the first direct Bash command
+on the first line. It refuses `git stash drop`, `git stash clear`,
+`gh repo delete`, and `gh pr merge` with the administrator option enabled.
+Git shares stashes across linked worktrees. The check uses Python 3 to
+read literal command words and arguments without executing them. Ordinary
+merges and read-only GitHub operations stay available. Shell wrappers, expansions, and later commands are
+outside this check. The GitHub CLI check also leaves shell redirections alone.
+
+Use `npm pack --dry-run` to inspect the package. The hook refuses a
+direct leading `npm publish`, including when it has a dry-run option.
+The owner publishes through the [documented release process](ci.md).
+The npm check applies when `publish` immediately follows the executable.
+
+Add `no-destructive-commands` to `enabled:` in the hooks overlay and run
+`agentbrew sync` to turn on the check.
 
 Hook scripts read the agent's hook payload from stdin as JSON. The common Claude
 Code shape is:

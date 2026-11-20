@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Checks the pre-registration fields of a PR body, task block, or commit body.
-// Usage: check-preregistration.mjs <file|-> [--self-grade]
+// Usage: check-preregistration.mjs <file|-> [--self-grade] [--baseline file | --pull-request-event]
 // Exit 0: pass. Exit 1: a field is missing or weak. Exit 2: usage error.
 import { readFileSync } from "node:fs";
 
@@ -14,7 +14,7 @@ const INLINE = new RegExp(
 );
 const HEADING = new RegExp(`^#{1,6}\\s+(${NAMES})\\s*:?\\s*$`, "i");
 const ANY_HEADING = /^#{1,6}\s/;
-const TASK_LINE = /^- \[[ xX]\] /;
+const TASK_LINE = /^-[ \t]+\[[ xX]\][ \t]+/;
 // A task field is an indented "**ID**:" or pre-registration field, with or without a list dash.
 const TASK_FIELD = new RegExp(`^\\s+(?:[-*+]\\s+)?\\*\\*(?:ID|${FIELDS.join("|")})\\*\\*:`, "i");
 const EXEMPT = /^\s*(?:[-*+]\s+)?(?:\*\*)?Exempt(?:\*\*)?\s*:(?:\*\*)?\s*(\S.*)$/im;
@@ -42,18 +42,33 @@ const VANITY =
 
 function usage(message) {
   console.error(`check-preregistration: ${message}`);
-  console.error("usage: check-preregistration.mjs <file|-> [--self-grade]");
+  console.error("usage: check-preregistration.mjs <file|-> [--self-grade] [--baseline file | --pull-request-event]");
   process.exit(2);
 }
 
 function parseArgs(argv) {
-  const opts = { file: undefined, selfGrade: false };
-  for (const arg of argv) {
-    if (arg === "--self-grade") opts.selfGrade = true;
-    else if (arg === "-" || !arg.startsWith("-")) opts.file = arg;
-    else usage(`unknown option ${arg}`);
+  const opts = { file: undefined, selfGrade: false, baseline: undefined, pullRequestEvent: false };
+  for (let index = 0; index < argv.length; index++) {
+    const arg = argv[index];
+    switch (arg) {
+      case "--self-grade":
+        opts.selfGrade = true;
+        break;
+      case "--pull-request-event":
+        opts.pullRequestEvent = true;
+        break;
+      case "--baseline":
+        index += 1;
+        opts.baseline = argv[index];
+        if (!opts.baseline || opts.baseline.startsWith("-")) usage("--baseline needs a file path");
+        break;
+      default:
+        if (arg !== "-" && arg.startsWith("-")) usage(`unknown option ${arg}`);
+        opts.file = arg;
+    }
   }
   if (!opts.file) usage("missing input file");
+  if (opts.baseline && opts.pullRequestEvent) usage("--baseline requires a task file");
   return opts;
 }
 
@@ -77,23 +92,78 @@ function isTaskStyle(lines) {
   return false;
 }
 
-function splitBlocks(text) {
+function splitBlocks(text, tasksOnly = false) {
   const lines = text.split(/\r?\n/);
-  if (!isTaskStyle(lines)) return [{ label: "document", lines }];
+  if (!tasksOnly && !isTaskStyle(lines)) return [{ label: "document", lines }];
   const blocks = [];
   const preamble = [];
+  let block;
   for (const line of lines) {
-    if (TASK_LINE.test(line)) blocks.push({ label: line.replace(TASK_LINE, "").slice(0, 60), lines: [line] });
-    else if (blocks.length > 0) blocks[blocks.length - 1].lines.push(line);
+    if (TASK_LINE.test(line)) {
+      block = { label: line.replace(TASK_LINE, "").slice(0, 60), lines: [line] };
+      blocks.push(block);
+      continue;
+    }
+    if (tasksOnly && /^\S/.test(line)) block = undefined;
+    if (block) block.lines.push(line);
     else preamble.push(line);
   }
   // Keep fields written before the first task (a PR body's Hypothesis section).
-  if (Object.keys(extractFields(preamble)).length > 0) blocks.unshift({ label: "document", lines: preamble });
+  if (!tasksOnly && Object.keys(extractFields(preamble)).length > 0) {
+    blocks.unshift({ label: "document", lines: preamble });
+  }
   for (const block of blocks) {
     const id = block.lines.map((line) => line.match(/\*\*ID\*\*:\s*(\S+)/)).find(Boolean);
-    if (id) block.label = id[1];
+    block.label = id?.[1] ?? block.label;
   }
   return blocks;
+}
+
+function changedTaskBlocks(text, baseline) {
+  const body = ({ lines }) => lines.join("\n").trimEnd();
+  const remaining = new Map();
+  for (const block of splitBlocks(baseline, true)) {
+    const signature = body(block);
+    remaining.set(signature, (remaining.get(signature) ?? 0) + 1);
+  }
+  return splitBlocks(text, true).filter((block) => {
+    const signature = body(block);
+    const count = remaining.get(signature);
+    if (!count) return true;
+    remaining.set(signature, count - 1);
+    return false;
+  });
+}
+
+function pullRequestBody(text) {
+  let event;
+  try {
+    event = JSON.parse(text);
+  } catch {
+    return usage("invalid pull request event JSON");
+  }
+  const pr = event?.pull_request;
+  if (!pr || (pr.body !== null && typeof pr.body !== "string")) {
+    return usage("pull request event is missing the body field");
+  }
+  return pr.body ?? "";
+}
+
+function descriptionLines(text) {
+  const visible = text.replace(/<!--[\s\S]*?(?:-->|$)/g, "");
+  let fence = "";
+  return visible.split(/\r?\n/).filter((line) => {
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (fence) {
+      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) {
+        fence = "";
+      }
+      return false;
+    }
+    if (!marker) return true;
+    fence = marker[1];
+    return false;
+  });
 }
 
 function canonical(name) {
@@ -199,9 +269,18 @@ function fieldProblems(fields, selfGrade) {
   return [...problems, ...thresholdProblems(fields, has), ...contentProblems(fields, has, selfGrade)];
 }
 
+function inputBlocks(opts) {
+  const input = readInput(opts.file);
+  if (opts.pullRequestEvent) {
+    return [{ label: "document", lines: descriptionLines(pullRequestBody(input)) }];
+  }
+  if (opts.baseline) return changedTaskBlocks(input, readInput(opts.baseline));
+  return splitBlocks(input);
+}
+
 function main() {
   const opts = parseArgs(process.argv.slice(2));
-  const blocks = splitBlocks(readInput(opts.file));
+  const blocks = inputBlocks(opts);
   let failed = false;
   for (const block of blocks) {
     const text = block.lines.join("\n");

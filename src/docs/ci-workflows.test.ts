@@ -61,6 +61,7 @@ describe("hosted workflows", () => {
       "ci.yml": ["pull_request", "push", "workflow_dispatch"],
       "oss-readiness.yml": ["pull_request", "push", "workflow_dispatch"],
       "pr-vision-trace.yml": ["workflow_dispatch"],
+      "preregistration.yml": ["pull_request"],
       "publish.yml": ["push"],
       "rust-inventory-core.yml": ["pull_request"],
     };
@@ -73,6 +74,23 @@ describe("hosted workflows", () => {
         .map((line) => line.trim().replace(/:.*$/, ""));
       expect(keys, name).toEqual(allowed[name] ?? []);
     }
+  });
+
+  it("runs prediction checks unless the pull request event identifies a closed PR", () => {
+    const text = workflows.find((workflow) => workflow.name === "preregistration.yml")?.text ?? "";
+    expect(text).toContain(
+      "if: github.event.pull_request.state != 'closed' && (github.event.pull_request.state == 'open' || github.ref != 'refs/heads/main')",
+    );
+    expect(text).toContain("types: [opened, reopened, synchronize, edited]");
+    expect(text).toContain("git rev-parse --verify HEAD^2");
+  });
+
+  it("groups only admitted prediction jobs and keeps unknown PR events separate", () => {
+    const text = workflows.find((workflow) => workflow.name === "preregistration.yml")?.text ?? "";
+    expect(text).not.toMatch(/^concurrency:/m);
+    expect(text).toContain("    concurrency:\n      group: preregistration-");
+    expect(text).toContain("github.event.pull_request.number || format('run-{0}', github.run_id)");
+    expect(text).toContain("      cancel-in-progress: true");
   });
 
   it("the release workflow bumps the version on main only", () => {

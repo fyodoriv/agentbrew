@@ -4,15 +4,34 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 
 ## What runs where
 
+The full and changed-file lint commands include shipped skill scripts in
+`skill-plugins/*/*/scripts/`. Skill pages and eval data use their own checks.
+
 | Check | Hosted runner | Your machine |
 |---|---|---|
 | Full gate, `npm run verify` | Every pull request to `main`, every push to `main`, and by hand (`gh workflow run ci.yml`) | Only when Actions is off, or to reproduce a hosted failure. Iterate with `npm run verify:changed` |
 | Rust inventory core | Pull requests changing the shared core or its workflow | Runs focused offline Rust controls |
+| PR pre-registration | Pull request source or description changes | The changed-task check also runs in `npm run verify:changed` |
 | `oss-readiness` (no-internal-refs test, private-email check) | Every pull request and push to `main` | Part of `npm run verify` |
 | Private-pattern leak gates (pre-commit, pre-push, `gh` guard) | Never | Always |
 | Version bump (`auto-publish.yml`) | Only by hand, only on `main` | `npm run release` |
 | Build check on a `v*` tag push (`publish.yml`, read-only) | Every tag push | Not needed |
 | npm publish | Never | By hand, with 2FA |
+
+The full gate runs `agentbrew status` from the compiled checkout and from
+a disposable copy with no build commit. Both runs use a test home.
+
+## Pre-registration
+
+The pull request description includes Hypothesis, Measurement, Success, Pivot,
+and Anchor. For a change covered by an existing check, write `Exempt:` and name
+that check. Editing an open pull request description reruns this check on
+its own. An edit to a closed pull request skips the job. A queued check
+from when the pull request was open still runs against its original event.
+
+New and edited task blocks use the same fields. The check compares task text
+with the target revision and accepts an unchanged block after a section move.
+Run `npm run verify:changed` to check task changes before pushing.
 
 ## What the hosted gate does not cover
 

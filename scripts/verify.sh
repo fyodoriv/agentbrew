@@ -203,7 +203,7 @@ lockfile-sync bash scripts/check-lockfile-sync.sh
 build-pipeline bash scripts/build-pipeline-guard.sh --full
 perf-gate node scripts/perf-gate.mjs
 typecheck npx tsc --noEmit
-biome npx biome check src scripts real-e2e --error-on-warnings
+biome bash scripts/lint-biome.sh --error-on-warnings
 lint-security bash scripts/lint-security.sh
 lint-vitest-timeouts node scripts/check-vitest-timeouts.mjs
 leak-audit npx tsx src/cli.ts plugin leak-audit
@@ -220,7 +220,7 @@ skills-coverage npm run --silent skills:coverage
 playwright-install npm run --silent playwright:install
 chat-rule-controls bash scripts/run-chat-rule-controls.sh
 chat-rule-schema-controls bash scripts/run-chat-rule-schema-controls.sh
-test-all npx vitest run
+test-all env VERIFY_BUILT_CLI_STATUS=1 npx vitest run
 install-e2e bash scripts/install-e2e-if-needed.sh
 PLAN
 }

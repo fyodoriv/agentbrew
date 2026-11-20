@@ -10,7 +10,7 @@ export const DRIFT_FIXES: Readonly<Record<DriftItem["type"], string>> = {
   "claude-desktop-mcp": "follow the fix named in the item, then restart Claude Desktop",
   "retired-mod": "run the user-scope uninstall command named in the item",
   "claude-plugin": "run `agentbrew install <name>` to restore the pinned checkout and enable the plugin",
-  "cli-build": "npm run build in the agentbrew checkout",
+  "cli-build": "rebuild the checkout or reinstall the standalone copy",
   "env-hygiene": "eval $(agentbrew env sanitize)",
   "organization-overlay": "agentbrew team set <overlay-url>, or agentbrew team unset",
   mcp: "agentbrew sync --only mcp",

@@ -11,6 +11,7 @@ import type { AgentBrewState } from "../types.js";
 const worker = fileURLToPath(new URL("./targeted-refresh-state-fixture.ts", import.meta.url));
 const workerArgs = ["--import", import.meta.resolve("tsx")];
 const workerLimit = 8_000;
+const STATE_CASE_TIMEOUT_MS = 45_000;
 
 async function observeDiskWrites(overlap: boolean) {
   const home = realpathSync(mkdtempSync(join(tmpdir(), "ab-state-writers-")));
@@ -74,19 +75,27 @@ function sharedStore() {
 }
 
 describe("targeted skill refresh state baseline", () => {
-  it("loses one server edit when state-file writes overlap", async () => {
-    expect(await observeDiskWrites(true)).toEqual({
-      current: { catalog: "first-edit", servers: [] },
-      backup: { catalog: "before", servers: ["fixture"] },
-    });
-  }, 45_000);
+  it(
+    "loses one server edit when state-file writes overlap",
+    async () => {
+      expect(await observeDiskWrites(true)).toEqual({
+        current: { catalog: "first-edit", servers: [] },
+        backup: { catalog: "before", servers: ["fixture"] },
+      });
+    },
+    STATE_CASE_TIMEOUT_MS,
+  );
 
-  it("retains both edits when state-file writes run in sequence", async () => {
-    expect(await observeDiskWrites(false)).toEqual({
-      current: { catalog: "first-edit", servers: ["fixture"] },
-      backup: { catalog: "first-edit", servers: [] },
-    });
-  }, 45_000);
+  it(
+    "retains both edits when state-file writes run in sequence",
+    async () => {
+      expect(await observeDiskWrites(false)).toEqual({
+        current: { catalog: "first-edit", servers: ["fixture"] },
+        backup: { catalog: "first-edit", servers: [] },
+      });
+    },
+    STATE_CASE_TIMEOUT_MS,
+  );
 
   it("shows overlapping reloads still lose an unrelated edit", () => {
     const overlapping = sharedStore();

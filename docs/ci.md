@@ -22,7 +22,9 @@ The full and changed-file lint commands include shipped skill scripts in
 
 The pull request description includes Hypothesis, Measurement, Success, Pivot,
 and Anchor. For a change covered by an existing check, write `Exempt:` and name
-that check. Editing the description reruns this check on its own.
+that check. Editing an open pull request description reruns this check on
+its own. An edit to a closed pull request skips the job. A queued check
+from when the pull request was open still runs against its original event.
 
 New and edited task blocks use the same fields. The check compares task text
 with the target revision and accepts an unchanged block after a section move.

@@ -797,18 +797,6 @@
   - **Pivot**: grading a single skill run costs more than 1 US dollar; then keep the proxy convention and drop the runner.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
 
-- [ ] Classify the hosted MCP checkout lag test failure
-  - **ID**: observe-mcp-checkout-lag-probe-failure
-  - **Tags**: tests, ci, mcp
-  - **Details**: A macOS run expected one behind checkout and reported none. A local isolated rerun passed. Keep the production probe and its limits until a real failure identifies the outcome. The test receipt is registered in [the plan](docs/plans/mcp-checkout-lag-probe-receipts.md).
-  - **Output**: measurement
-  - **Hypothesis**: A test-only probe receipt identifies a child exit, timeout or spawn failure without exposing private inputs.
-  - **Measurement**: Run `heavy-run npx vitest run src/mcp/git-checkout-lag.test.ts` for the receipt controls. Read the next natural hosted failure for the original checkout-lag assertion.
-  - **Success**: At least 1 real failing hosted run has an exact classified outcome and 0 private strings. Keep the root-cause work open until then.
-  - **Pivot**: If 1 receipt is missing or misleading, repair measurement before choosing a code fix. Ten passing runs without a failure leave the cause unknown.
-  - **Anchor**: [Nov 20, 2026 macOS failure](https://github.com/fyodoriv/agentbrew/actions/runs/44706661566/job/136187967909).
-  - **Blocked**: Needs a natural hosted recurrence after the diagnostic lands. Do not increase load to recreate it.
-
 ## P3
 
 - [ ] Propose the guard start-budget note to the built-in workflow-authoring skill

@@ -15,3 +15,11 @@ The five classes are successful exit, nonzero exit, timeout, another
 spawn error, and signal. The test reports the call position, operation
 category and outcome. It does not emit the child error text, command
 arguments, environment, or output. Keep the original assertion.
+
+## Identify the expected checkout across enumeration order
+
+- **Hypothesis:** Every observed call identifies its known fixture role. A failure can distinguish the expected behind checkout from intentional negative controls.
+- **Measurement:** Run `heavy-run npx vitest run src/mcp/git-checkout-lag.test.ts` and the registered fixture with an isolated synthetic tracking timeout for the behind checkout.
+- **Success:** All 9 natural probe receipts have known roles, the expected behind fixture has 2 real calls, the injected failure names the behind tracking timeout, and 0 fixture paths appear in the receipt. A missing behind call yields an explicit note.
+- **Pivot:** Stop on 1 wrong role, ambiguous missing call, leaked path or changed production behavior.
+- **Anchor:** The [hosted assertion](https://github.com/fyodoriv/agentbrew/actions/runs/44706661566/job/136187967909) and the fixture's independently reviewed enumeration boundary.

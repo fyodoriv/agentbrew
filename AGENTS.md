@@ -90,7 +90,6 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - [Hosts](docs/support-matrix.md), [owners](docs/skill-directories.md), [headless](docs/shared-memory-research.md#headless-session-save).
 
 - [CI](docs/ci.md); [perf limits](docs/agent-perf.md).
-- The volatile inventory checker allows numeric durations before inventory nouns. It still flags separate counts on the same line.
 - Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it).
   A symlinked `node_modules` breaks `src/cli.test.ts`.
 - `src/cli.test.ts` can time out under load; re-run it.

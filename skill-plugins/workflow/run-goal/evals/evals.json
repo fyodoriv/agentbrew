@@ -4113,6 +4113,16 @@
         "Reinstalls dependencies from the lockfile and finds the missing package",
         "Reruns the full gate and merges only after it passes"
       ]
+    },
+    {
+      "id": 363,
+      "prompt": "/goal deliver (the retro adds a skill eval in a repo whose hosted checks include a pre-registration check on the PR body)",
+      "expected_output": "The agent writes Hypothesis, Measurement, Success, Pivot and Anchor into the PR body before it opens the PR, runs the repo pre-registration validator on that body locally, and appends the eval without rewriting older cases, so every hosted check passes on the first run.",
+      "expectations": [
+        "The PR body carries all five prediction fields before gh pr create",
+        "The repo pre-registration validator passes locally on the body",
+        "Older eval cases are byte-identical; only the new case is appended"
+      ]
     }
   ]
 }

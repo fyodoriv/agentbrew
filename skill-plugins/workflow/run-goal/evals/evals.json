@@ -4036,6 +4036,18 @@
         "The reviewer is told to list each field an agent can read and classify it as an id, a count, or owner text.",
         "The review fixes and the first CI fixes go in one push, so the hosted cycle runs once for both."
       ]
+    },
+    {
+      "id": 353,
+      "prompt": "/goal deliver\n\n(Context: this session added four workflow skills to agentbrew. PR A files the tasks and PR B implements them; both are open and their hosted checks are still running. Nothing is installed on this Mac yet.)",
+      "expected_output": "Contract first, expanding 'deliver' without asking what it means: lists PR A and PR B by URL, takes a before number (the skills are absent on this Mac and recent PR bodies the new checker would flag), waits for green hosted checks at each current head, has a fresh reviewer read each diff, merges per the repo's delivery rules under a cited approval, runs agentbrew sync, reads the installed files back byte-equal to the merged source, proves the skills work where users meet them (the installed checker on real input, a fresh agent session that lists the skills), and publishes a before/after report with a plain-words explanation.",
+      "expectations": [
+        "The contract lists every related PR by URL and does not ask the user what 'deliver' means.",
+        "Each PR merges only after its hosted checks pass at the current head, under an approval the contract cites.",
+        "After the merge the agent runs the repo's install or sync step and compares the installed files with the merged source.",
+        "The proof runs the delivered thing in the final environment on real input, against a baseline taken before the merge.",
+        "The final report has a before/after table and explains what changed for the user in plain words."
+      ]
     }
   ]
 }

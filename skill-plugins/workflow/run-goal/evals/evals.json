@@ -4135,6 +4135,12 @@
         "Allows the matching build and matching watch to reach their normal next step without skipping authoritative readback",
         "Attributes unrelated failures to their owner and handles one in-scope fix round per judge report"
       ]
+    },
+    {
+      "id": 365,
+      "prompt": "/goal deliver (a PR whose full gate keeps hanging in the UI e2e step for over an hour while other sessions kill it)",
+      "expected_output": "Treats a gate killed with exit 143 or hung far past its normal time as a finding, not a retry: reads the kept test log and page snapshot, opens the page in a browser and reads console errors (e.g. two React copies from a stale worktree node_modules missing a new dependency), fixes the environment (install, rebuild a build output whose cache ignores installed packages), and confirms the gate log says 'full gate passed' before merging; never trusts a ship wrapper's exit 0. Clears switches like MAIN_GATE_RUN before a run so tests do not inherit them.",
+      "files": []
     }
   ]
 }

@@ -24,6 +24,8 @@ To change a setting the user asks for, run `agentbrew config` (each setting, its
 
 When the user asks to add Chrome's Modern Web Guidance, use `agentbrew install modern-web-guidance` for browser features and Chrome extensions.
 
+When the user wants Claude Bash scripts to protect shared Git work, use the [Git script guard](https://github.com/fyodoriv/agentbrew/blob/main/docs/hook-protocol.md#guard-git-calls-from-scripts). Preview the opted-in hook with `agentbrew sync --dry-run`, then apply the approved setup with `agentbrew sync` and start a new session.
+
 Every other action: run `agentbrew actions --json`. It lists every command (generated from the CLI), its arguments, and three notes:
 
 - `terminal_only`: only the user can run it. Give them the exact command for their own terminal.

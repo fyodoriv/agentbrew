@@ -344,6 +344,18 @@
 
 ## P2
 
+- [ ] `agentbrew status` warns when the running CLI build cannot be dated or is behind main
+  - **ID**: cli-build-snapshot-drift
+  - **Tags**: cli, health, sync
+  - **Details**: `checkCliBuildDrift` in `src/cli-build-health.ts` reports nothing when the CLI root has no `.git`. On the owner's Mac on 2026-11-19, the global `agentbrew` ran from a copy built on 2026-11-14, outside any git checkout, with `"commit": null` in `dist/build-info.json`. `agentbrew status` stayed silent, yet that build lacked #1067 (explain a recorded skill-to-plugin conversion), so `sync --pull` printed a bare `insecure-defaults not found in trailofbits/skills` with no reason. Warn when the build commit is null, and when it is behind the catalog source's `origin/main` on build inputs. Name the build commit, its date and the reinstall command.
+  - **Files**: `src/cli-build-health.ts`, `src/cli-build-health.test.ts`, the README section on drift detection.
+  - **Acceptance**: a fixture CLI with no `.git` and a null commit gives one drift item; a build commit behind the source `origin/main` on build inputs gives one drift item that names both commits; a current build gives none.
+  - **Hypothesis**: CLI builds that run behind main go from unflagged to flagged by `agentbrew status`, so a sync never runs on old code without a warning.
+  - **Measurement**: `npx vitest run src/cli-build-health.test.ts`, then `agentbrew status | rg 'CLI build'` on a machine whose CLI runs from such a copy.
+  - **Success**: every fixture passes, and the live copy case prints one `CLI build: stale` line.
+  - **Pivot**: more than 1 false stale warning in a week of `agentbrew status` runs on a current build; then keep only the null-commit warning.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (Goal Question Metric).
+
 - [ ] Three strangers reach a first run from the README alone
   - **ID**: readme-human-first-run-test
   - **Tags**: readme, new-project, usability, from-minsky

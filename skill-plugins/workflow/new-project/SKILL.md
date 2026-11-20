@@ -73,6 +73,8 @@ The check reads filenames on every run. See
 JavaScript and TypeScript scaffolds can opt in to the
 [unit test import and placement checks](references/requirements-map.md#6-optional-unit-test-rules).
 
+Use the optional [fake marker check](references/requirements-map.md#7-optional-fake-marker-check) to track explicit stubs in source code.
+
 ## Steps
 
 1. **Interview (one round, three questions at most).** Ask only what changes the

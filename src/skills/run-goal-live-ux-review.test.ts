@@ -40,7 +40,7 @@ describe("run-goal live UX review", () => {
   });
 
   it("has a pressure case with green automation and a failed live verdict", () => {
-    const scenario = evals.find(({ id }) => id === 354);
+    const scenario = evals.find(({ id }) => id === 356);
     expect(scenario?.prompt).toMatch(/automated checks are green.*UX review returns FAIL/s);
     expect(scenario?.expectations.join(" ")).toMatch(/holds the review request/);
     expect(scenario?.expectations.join(" ")).toMatch(/withholds completion/);
@@ -48,6 +48,6 @@ describe("run-goal live UX review", () => {
     expect(scenario?.expectations.join(" ")).toMatch(
       /fresh independent PASS on the updated UI tied to the current tested build/,
     );
-    expect(evals.filter(({ id }) => id === 354)).toHaveLength(1);
+    expect(evals.filter(({ id }) => id === 356)).toHaveLength(1);
   });
 });

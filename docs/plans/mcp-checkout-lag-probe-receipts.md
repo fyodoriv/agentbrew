@@ -23,3 +23,16 @@ arguments, environment, or output. Keep the original assertion.
 - **Success:** All 9 natural probe receipts have known roles, the expected behind fixture has 2 real calls, the injected failure names the behind tracking timeout, and 0 fixture paths appear in the receipt. A missing behind call yields an explicit note.
 - **Pivot:** Stop on 1 wrong role, ambiguous missing call, leaked path or changed production behavior.
 - **Anchor:** The [hosted assertion](https://github.com/fyodoriv/agentbrew/actions/runs/44706661566/job/136187967909) and the fixture's independently reviewed enumeration boundary.
+
+## Hosted finding and fixture repair
+
+[macOS job 136262123680](https://github.com/fyodoriv/agentbrew/actions/runs/44728517625/job/136262123680)
+reported a timeout resolving the behind checkout's tracking refs. The
+positive result was absent. The other observed Git calls completed.
+The production check gave the intended unknown result at its deadline.
+
+- **Hypothesis:** Give only the real Git fixture a bounded 5-second subprocess budget. One deliberate 1.2-second fixture delay still yields the expected behind result. The production deadline remains 1 second.
+- **Measurement:** Run `heavy-run npx vitest run src/mcp/git-checkout-lag.test.ts` plus a disposable copy with a 1.2-second tracking delay on the behind fixture. Verify the same input before and after. Exercise a synthetic production timeout separately.
+- **Success:** The prior fixture loses 1 expected result. The repaired fixture keeps that result, the 9 expected calls and all offline checks. The production control requests 1000 ms, returns no confirmed lag and makes 0 retry calls. Both hosted platform gates pass.
+- **Pivot:** Reject on 1 altered production option, 1 retry, 1 offline or preservation regression, or 1 expected result missing on the controlled delay.
+- **Anchor:** The [classified hosted failure](https://github.com/fyodoriv/agentbrew/actions/runs/44728517625/job/136262123680) and the isolated Git probe fixture.

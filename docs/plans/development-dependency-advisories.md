@@ -5,11 +5,11 @@ covers the 10 new alerts in the table. Existing tasks retain their original
 alert sets. Alert 181 also needs the exact node-server pin in the Promptfoo
 dependency tree to move to a compatible release.
 
-| Package | Alerts | First fixed release |
-| --- | --- | --- |
-| `hono` | 184, 185, 186, 187, 188 | 4.13.16 |
-| `fast-xml-parser` | 180 | 5.12.0 |
-| `mongoose` | 176, 177, 178, 179 | 9.11.4 |
+| Package | Alerts | First fixed release | Candidate lock |
+| --- | --- | --- | --- |
+| `hono` | 184, 185, 186, 187, 188 | 4.13.16 | 4.13.19 |
+| `fast-xml-parser` | 180 | 5.12.0 | 5.12.1 |
+| `mongoose` | 176, 177, 178, 179 | 9.11.4 | 9.12.2 |
 
 - **Hypothesis**: The three supported updates reduce affected rows from 10 to 0. Existing root declarations, optional dependencies, overrides and the Node floor stay intact.
 - **Measurement**: Run `heavy-run timeout 180 npx --yes --prefer-offline --package=npm@10 -- npm update --package-lock-only --ignore-scripts --include=optional hono fast-xml-parser mongoose`. Compare all matching lock entries with the version floors, run the lockfile integrity check and verify a fresh hosted installation.
@@ -22,6 +22,11 @@ copy remains in its affected range. Use the fixed version from each advisory
 as the floor for current copies. Compare the root lock record and
 `package.json` byte for byte with the base. Review any new resolved imports
 against the published manifests for those three updated packages.
+
+The resolver changed 22 lock records within those dependency trees. The
+root lock record, Node floor, and package declarations match the base.
+The lockfile integrity check passed. The hosted gate runs a fresh `npm ci`
+and the default-branch alert refresh measures the final alert count.
 
 ## Published parent check
 

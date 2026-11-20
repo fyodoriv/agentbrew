@@ -191,7 +191,7 @@
   - **ID**: development-dependency-advisories-176-188
   - **Tags**: security, dependencies, stability
   - **Mode**: AFK
-  - **Details**: Follow the [fixed cohort](docs/plans/development-dependency-advisories.md) for Hono, Fast XML Parser and Mongoose. Keep Alert 181 and older cohorts in their separate tasks. The checkout currently resolves Hono 4.13.13, Fast XML Parser 5.8.0 and Mongoose 9.11.2.
+  - **Details**: Follow the [fixed cohort](docs/plans/development-dependency-advisories.md) for Hono, Fast XML Parser and Mongoose. Keep Alert 181 and older cohorts in their separate tasks. The baseline resolved Hono 4.13.13, Fast XML Parser 5.8.0 and Mongoose 9.11.2. Check GitHub's alert states after the candidate lands.
   - **Files**: `package-lock.json`, the cohort plan and this task.
   - **Output**: code
   - **Acceptance**: Every locked copy of each named package is at or above its advisory floor. Direct declarations, Node floor and unrelated lock paths match the base. Required checks pass. GitHub marks all 10 frozen alerts fixed after ingesting the default branch.

@@ -60,7 +60,7 @@ describe("builtCliRoot", () => {
   });
 });
 
-it.runIf(process.env.AGENTBREW_TEST_BUILT_STATUS === "1")(
+it.runIf(process.env.VERIFY_BUILT_CLI_STATUS === "1")(
   "reports one stale copied bundle and no fresh checkout warnings",
   () => {
     const checkout = fileURLToPath(new URL("..", import.meta.url));

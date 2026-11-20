@@ -32,6 +32,7 @@ vi.mock("./core/errors.js", () => ({
 vi.mock("./agentfile.js", () => ({ applyAgentfile: vi.fn() }));
 vi.mock("./drift.js", () => ({ collectDrift: vi.fn(() => []), formatDriftSummary: vi.fn(() => "") }));
 vi.mock("./manifest.js", () => ({ loadManifest: vi.fn(() => ({})), saveManifest: vi.fn() }));
+vi.mock("./measure/context-budget.js", () => ({ maybeMeasureContextBudgetAfterSync: vi.fn() }));
 vi.mock("./ops.js", () => ({ snapshotAgentConfigs: vi.fn() }));
 vi.mock("./catalog/install.js", () => ({
   install: vi.fn(),
@@ -95,6 +96,7 @@ import { applyAgentfile } from "./agentfile.js";
 import { flushInstallSummary, install, installSkills } from "./catalog/install.js";
 import { clearSyncErrors, saveSyncErrors } from "./core/errors.js";
 import { collectDrift, formatDriftSummary } from "./drift.js";
+import { maybeMeasureContextBudgetAfterSync } from "./measure/context-budget.js";
 import { snapshotAgentConfigs } from "./ops.js";
 import { loadState, withStateOverride } from "./state.js";
 import { syncAgentDefs } from "./sync/agents-sync.js";
@@ -463,6 +465,17 @@ describe("reportPostSyncDrift", () => {
     consoleLogSpy.mockRestore();
     expect(logOutput).toContain("1 drift issue(s) remain after sync");
     // Filter only excluded the user-added entry; the real mcp drift survived.
+  });
+});
+
+describe.each([runSyncWithErrorCollection, runSyncParallel])("%s post-deploy reports", (run) => {
+  it.each([true, false])("only reports post-deploy drift and metrics after real sync (dryRun=%s)", async (dryRun) => {
+    const module = { name: "instructions", fn: vi.fn().mockResolvedValue(undefined) };
+    await run([module], { dryRun, skipGlobalAgentfile: true, syncModules: ["instructions"] });
+
+    expect(module.fn).toHaveBeenCalledOnce();
+    expect(collectDrift).toHaveBeenCalledTimes(dryRun ? 0 : 1);
+    expect(maybeMeasureContextBudgetAfterSync).toHaveBeenCalledTimes(dryRun ? 0 : 1);
   });
 });
 

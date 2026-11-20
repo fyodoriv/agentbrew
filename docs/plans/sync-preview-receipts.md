@@ -11,3 +11,10 @@ Registration date: 2026-11-20. Initial target: `3acb18e6`.
 The cases exercise the shared runners with a synthetic module. Other sync
 entry options and writes inside individual deployment modules are outside
 this measurement.
+
+Before the runner changes, check two extra boundaries. Each real control must
+show the exact seeded update: the parallel manifest adds only the fixture
+marker, the error log shows only the current synthetic error or an empty list,
+and a failure appends exactly one error event. Add four isolated runner cases
+to check drift and context-budget calls. The two successful previews must
+make 0 such calls. The two successful real runs must call each once.

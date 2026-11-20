@@ -7,6 +7,13 @@ import { describe, expect, it } from "vitest";
 
 const fixture = fileURLToPath(new URL("./sync-preview-receipts-fixture.ts", import.meta.url));
 const tsx = import.meta.resolve("tsx");
+const FIXTURE_TIMEOUT_MS = 15_000;
+const TEST_TIMEOUT_MS = 20_000;
+
+function receiptState(content: string, seed: string, matchesUpdate: () => boolean): string {
+  if (content === seed) return "original";
+  return matchesUpdate() ? "expected update" : "unexpected";
+}
 
 function runCase(mode: string, action: string, outcome: string) {
   const home = realpathSync(mkdtempSync(join(tmpdir(), "agentbrew-sync-preview-")));
@@ -38,19 +45,47 @@ function runCase(mode: string, action: string, outcome: string) {
         TSX_DISABLE_CACHE: "1",
       },
       encoding: "utf-8",
-      timeout: 15_000,
+      timeout: FIXTURE_TIMEOUT_MS,
     });
     if (result.error) throw result.error;
     const output = result.stdout + result.stderr;
+    const savedManifest = readFileSync(manifest, "utf-8");
+    const savedErrors = readFileSync(errors, "utf-8");
+    const savedEvents = readFileSync(events, "utf-8");
     return {
       exit: result.status,
       ran: output.includes("synthetic module ran"),
       synced: output.includes("✓ Synced"),
       previewComplete: output.includes("Sync preview complete"),
       showsError: output.includes("synthetic module failed"),
-      manifest: readFileSync(manifest, "utf-8") === before.manifest,
-      errors: readFileSync(errors, "utf-8") === before.errors,
-      events: readFileSync(events, "utf-8") === before.events,
+      manifest: receiptState(
+        savedManifest,
+        before.manifest,
+        () => savedManifest === JSON.stringify({ hashes: {}, managedMcpServers: ["fixture"] }, null, 2) + "\n",
+      ),
+      errors: receiptState(savedErrors, before.errors, () => {
+        const log = JSON.parse(savedErrors);
+        if (typeof log.lastSyncAt !== "string") return false;
+        if (outcome === "success") return Array.isArray(log.errors) && log.errors.length === 0;
+        return (
+          log.errors?.length === 1 &&
+          log.errors[0].code === "SYNC_ERROR" &&
+          log.errors[0].module === "instructions" &&
+          log.errors[0].message === "[instructions] synthetic module failed"
+        );
+      }),
+      events: receiptState(savedEvents, before.events, () => {
+        if (!savedEvents.startsWith(before.events)) return false;
+        const lines = savedEvents.slice(before.events.length).trimEnd().split("\n");
+        if (lines.length !== 1) return false;
+        const event = JSON.parse(lines[0]);
+        return (
+          event.event === "error" &&
+          event.ok === false &&
+          event.code === "SYNC_ERROR" &&
+          event.module === "instructions"
+        );
+      }),
     };
   } finally {
     rmSync(home, { recursive: true, force: true });
@@ -58,31 +93,39 @@ function runCase(mode: string, action: string, outcome: string) {
 }
 
 describe.each(["sequential", "parallel"])("%s sync receipts", (mode) => {
-  it.each(["success", "failure"])("keeps real receipts after a %s preview", (outcome) => {
-    const success = outcome === "success";
-    expect(runCase(mode, "preview", outcome)).toEqual({
-      exit: success ? 0 : 1,
-      ran: true,
-      synced: false,
-      previewComplete: success,
-      showsError: !success,
-      manifest: true,
-      errors: true,
-      events: true,
-    });
-  }, 20_000);
+  it.each(["success", "failure"])(
+    "keeps real receipts after a %s preview",
+    (outcome) => {
+      const success = outcome === "success";
+      expect(runCase(mode, "preview", outcome)).toEqual({
+        exit: success ? 0 : 1,
+        ran: true,
+        synced: false,
+        previewComplete: success,
+        showsError: !success,
+        manifest: "original",
+        errors: "original",
+        events: "original",
+      });
+    },
+    TEST_TIMEOUT_MS,
+  );
 
-  it.each(["success", "failure"])("updates real receipts after a %s sync", (outcome) => {
-    const success = outcome === "success";
-    expect(runCase(mode, "real", outcome)).toEqual({
-      exit: success ? 0 : 1,
-      ran: true,
-      synced: success,
-      previewComplete: false,
-      showsError: !success && mode === "parallel",
-      manifest: mode === "sequential",
-      errors: false,
-      events: success,
-    });
-  }, 20_000);
+  it.each(["success", "failure"])(
+    "updates real receipts after a %s sync",
+    (outcome) => {
+      const success = outcome === "success";
+      expect(runCase(mode, "real", outcome)).toEqual({
+        exit: success ? 0 : 1,
+        ran: true,
+        synced: success,
+        previewComplete: false,
+        showsError: !success && mode === "parallel",
+        manifest: mode === "sequential" ? "original" : "expected update",
+        errors: "expected update",
+        events: success ? "original" : "expected update",
+      });
+    },
+    TEST_TIMEOUT_MS,
+  );
 });

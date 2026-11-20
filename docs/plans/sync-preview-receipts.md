@@ -18,3 +18,12 @@ marker, the error log shows only the current synthetic error or an empty list,
 and a failure appends exactly one error event. Add four isolated runner cases
 to check drift and context-budget calls. The two successful previews must
 make 0 such calls. The two successful real runs must call each once.
+
+## Baseline
+
+The [unchanged Ubuntu runners](https://github.com/fyodoriv/agentbrew/actions/runs/44778154945/job/136433408089)
+passed the four real receipt controls and both real post-deploy controls.
+All four previews rewrote the sync error log. Both failed previews also
+appended an error event. Parallel previews rewrote the manifest. Both
+successful previews printed the real sync footer and reached the
+post-deploy drift boundary.

@@ -468,7 +468,10 @@ describe("reportPostSyncDrift", () => {
   });
 });
 
-describe.each([runSyncWithErrorCollection, runSyncParallel])("%s post-deploy reports", (run) => {
+describe.each([
+  { mode: "sequential", run: runSyncWithErrorCollection },
+  { mode: "parallel", run: runSyncParallel },
+])("$mode post-deploy reports", ({ run }) => {
   it.each([true, false])("only reports post-deploy drift and metrics after real sync (dryRun=%s)", async (dryRun) => {
     const module = { name: "instructions", fn: vi.fn().mockResolvedValue(undefined) };
     await run([module], { dryRun, skipGlobalAgentfile: true, syncModules: ["instructions"] });

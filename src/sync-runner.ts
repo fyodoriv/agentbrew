@@ -310,9 +310,19 @@ function reportPostSyncCompactSummary(elapsedMs: number): void {
   }
 }
 
+function reportSyncPreview(collector: SyncErrorCollector): void {
+  if (collector.hasErrors) {
+    console.error(chalk.yellow(`  ⚠ Sync preview found ${collector.count} error(s):`));
+    console.error(collector.summary());
+    process.exitCode = 1;
+    return;
+  }
+  console.log(chalk.green("  ✓ Sync preview complete"));
+}
+
 /**
  * Runs a list of sync modules sequentially, collecting errors so one failure
- * does not abort the rest. Persists errors so `agentbrew status` can report them.
+ * does not abort the rest. Real sync saves errors for `agentbrew status`.
  */
 export async function runSyncWithErrorCollection(modules: SyncModule[], options?: SyncRunnerOptions): Promise<void> {
   const startedAt = Date.now();
@@ -324,6 +334,10 @@ export async function runSyncWithErrorCollection(modules: SyncModule[], options?
       } catch (error) {
         collector.add(new SyncError(name, errorMessage(error), { cause: error }));
       }
+    }
+    if (options?.dryRun) {
+      reportSyncPreview(collector);
+      return;
     }
     saveSyncErrors(collector);
     if (collector.hasErrors) {
@@ -371,6 +385,11 @@ export async function runSyncParallel(modules: SyncModule[], options?: SyncRunne
     // Run rules before instructions so instructions-sync's `deduplicateByHeading`
     // can fire against the managed section rules-sync just wrote.
     await runSequentialFileShareModules(modules, sharedManifest, collector);
+
+    if (options?.dryRun) {
+      reportSyncPreview(collector);
+      return;
+    }
 
     // Save manifest once after all modules complete
     saveManifest(sharedManifest);

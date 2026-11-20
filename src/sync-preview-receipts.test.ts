@@ -61,7 +61,7 @@ function runCase(mode: string, action: string, outcome: string) {
       manifest: receiptState(
         savedManifest,
         before.manifest,
-        () => savedManifest === JSON.stringify({ hashes: {}, managedMcpServers: ["fixture"] }, null, 2) + "\n",
+        () => savedManifest === `${JSON.stringify({ hashes: {}, managedMcpServers: ["fixture"] }, null, 2)}\n`,
       ),
       errors: receiptState(savedErrors, before.errors, () => {
         const log = JSON.parse(savedErrors);

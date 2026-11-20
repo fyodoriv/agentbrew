@@ -191,7 +191,7 @@ step bash scripts/lint-repo-artifacts.sh
 if has '^(src|scripts|real-e2e)/.*\.(ts|tsx|mts|cts)$'; then
   step npx tsc --noEmit
 fi
-if [[ "${#code_files[@]}" -gt 0 ]]; then
+if [[ "${#code_files[@]}" -gt 0 ]] || has '^skill-plugins/[^/]+/[^/]+/scripts/.*\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$'; then
   step env LINT_CHANGED_BASE="$base_ref" bash scripts/lint-changed.sh
 fi
 if has '^(hooks|scripts|src)/'; then

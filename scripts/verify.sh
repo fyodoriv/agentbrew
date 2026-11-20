@@ -203,7 +203,7 @@ lockfile-sync bash scripts/check-lockfile-sync.sh
 build-pipeline bash scripts/build-pipeline-guard.sh --full
 perf-gate node scripts/perf-gate.mjs
 typecheck npx tsc --noEmit
-biome npx biome check src scripts real-e2e --error-on-warnings
+biome bash scripts/lint-biome.sh --error-on-warnings
 lint-security bash scripts/lint-security.sh
 lint-vitest-timeouts node scripts/check-vitest-timeouts.mjs
 leak-audit npx tsx src/cli.ts plugin leak-audit

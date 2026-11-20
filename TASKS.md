@@ -437,7 +437,9 @@
 - [ ] Closing a superseded PR proves nothing is lost
   - **ID**: lossless-pr-close
   - **Tags**: ship-it, watch-issues, git, from-minsky
-  - **Details**: Port minsky `scripts/verify-pr-closure-is-lossless.mjs`: before closing a PR as superseded or duplicate, apply its patch onto the surviving branch with `git apply --3way --check` and refuse the close if any hunk is left over. Call it from ship-it and watch-issues; this is the mechanical proof the "Merge means merge" rule asks for.
+  - **Details**: Compare the proposal patch against the replacement with a three-way apply in a disposable Git index. The replacement tree must remain byte-for-byte identical. Ship-it and watch-issues use this proof alongside the existing merge rule.
+  - **Progress**: The [fixture and live controls](docs/plans/verify-pr-preservation.md) accepted two duplicate trees and refused unique text, unique binary content, a conflict and the live #1040/#1041 negative pair. The ten latest closed, unmerged PRs did not name an explicit replacement.
+  - **Blocked**: needs-identified-duplicate-history — obtain verified replacement pairs before measuring the real false-refusal rate.
   - **Files**: `scripts/verify-pr-closure-is-lossless.mjs`, its test, ship-it and watch-issues docs.
   - **Acceptance**: a fixture PR with one unique hunk is refused and the hunk named; a true duplicate passes.
   - **Hypothesis**: PR closes that drop unique work go from unchecked to zero.

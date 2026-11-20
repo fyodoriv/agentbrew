@@ -91,6 +91,12 @@ or the user's words in this session).
    save one failed full run. For more than one item, use subagents with one
    shared brief, at most three gate runs at a time, and `nice -n 15` for
    heavy runs.
+
+   If a PR appears to replace another, run Agentbrew's
+   `scripts/verify-pr-closure-is-lossless.mjs --closed <proposal> --survivor <replacement>`
+   with Node from the affected checkout. Use the absolute script path in a
+   different repository. Keep the proposal open if any work is missing or
+   the exact revisions cannot be verified.
 5. **Park what needs a person** (a secret, 2FA, sudo, a public write the rules
    do not approve): add a `**Blocked**:` line to the task with the exact human
    step, and collect the question for the end of the pass. For an issue or PR

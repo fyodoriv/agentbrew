@@ -3,6 +3,9 @@
  * All paths use `~` as prefix — call `expandHome()` before file I/O.
  */
 
+/** Conventional local source checkouts used by CLI diagnostics and scheduled jobs. */
+export const AGENTBREW_SOURCE_CHECKOUTS = ["~/apps/tooling/agentbrew", "~/apps/agentbrew"] as const;
+
 /** Canonical deployed instructions file (agents.md cross-tool standard). */
 export const CANONICAL_INSTRUCTIONS_PATH = "~/.config/agentbrew/AGENTS.md";
 

@@ -46,7 +46,39 @@ it("classifies Git probe failures without exposing child details", () => {
   expect(probeReceipt(args, { ...failed, signal: "SIGTERM" })).toBe("resolve tracking: signal");
 });
 
-it("reports only a known behind checkout and leaves its contents and refs alone", () => {
+it("leaves lag unknown when the production Git probe times out", () => {
+  const root = mkdtempSync(join(tmpdir(), "git-checkout-lag-timeout-"));
+  const checkout = join(root, "checkout");
+  const observed = vi.mocked(spawnSync);
+  try {
+    mkdirSync(join(checkout, ".git"), { recursive: true });
+    observed.mockClear();
+    observed.mockReturnValueOnce({
+      pid: 0,
+      status: null,
+      signal: null,
+      output: [],
+      stdout: "",
+      stderr: "",
+      error: Object.assign(new Error("synthetic tracking timeout"), { code: "ETIMEDOUT" }),
+    });
+
+    expect(knownGitCheckoutLag(root)).toEqual([]);
+    expect(observed).toHaveBeenCalledTimes(1);
+    expect(observed).toHaveBeenCalledWith(
+      "git",
+      ["rev-parse", "--symbolic-full-name", "HEAD", "@{upstream}"],
+      expect.objectContaining({ cwd: checkout, timeout: 1_000 }),
+    );
+  } finally {
+    observed.mockReset();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+it("reports only a known behind checkout and leaves its contents and refs alone", async () => {
+  const { spawnSync: realSpawn } = await vi.importActual<typeof import("node:child_process")>("node:child_process");
+  const observed = vi.mocked(spawnSync);
   const root = mkdtempSync(join(tmpdir(), "git-checkout-lag-"));
   const cache = join(root, "cache");
   const trace = join(root, "git-trace");
@@ -118,8 +150,9 @@ it("reports only a known behind checkout and leaves its contents and refs alone"
     vi.stubEnv("PATH", `${probeBin}:${process.env.PATH ?? ""}`);
     vi.stubEnv("GIT_TRACE", trace);
 
-    const observed = vi.mocked(spawnSync);
     observed.mockClear();
+    // The real Git fixture uses a separate deadline. Check the caller's production budget below.
+    observed.mockImplementation((command, args, options) => realSpawn(command, args, { ...options, timeout: 5_000 }));
     const lag = knownGitCheckoutLag(cache);
     const receipts = observed.mock.results.map((result, index) => {
       const [, args = [], options] = observed.mock.calls[index] ?? [];
@@ -137,12 +170,14 @@ it("reports only a known behind checkout and leaves its contents and refs alone"
     expect(operations.match(/^rev-parse /gm)).toHaveLength(6);
     expect(operations.match(/^--no-replace-objects rev-list /gm)).toHaveLength(3);
     expect(receipts).toHaveLength(9);
+    expect(observed.mock.calls.every(([, , options]) => options?.timeout === 1_000)).toBe(true);
     expect(receipts.some(({ role }) => role === "unrecognized")).toBe(false);
     expect(behindCalls).toHaveLength(2);
     expect(operations).not.toMatch(/\b(?:fetch|checkout|pull|ssh)\b/u);
     expect(operations).not.toContain("fixture.example.com");
     expect(existsSync(trace)).toBe(false);
   } finally {
+    observed.mockReset();
     vi.unstubAllEnvs();
     rmSync(root, { recursive: true, force: true });
   }

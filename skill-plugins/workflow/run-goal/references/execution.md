@@ -43,9 +43,15 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
 - Right before each commit, re-check the current branch and stage exact file
   paths, never a folder. Another session can switch a shared checkout
   mid-run, and a folder add sweeps in its untracked files.
-- After a scripted edit, check that `git diff --stat` shows only the lines
-  you meant to change. A script that wrote a different indent turned a
-  one-panel change into a diff of thousands of lines.
+- For a scripted multi-line edit, require one exact whole-line anchor.
+  Before running tests, read the full `git diff` for each changed file and
+  compare it with the intended edit. Use `git diff --stat` to spot scope
+  changes. Restore unintended changes before testing.
+- For a writer under the home directory, ask the reviewer to check links at
+  the target and in its parent path, a directory or named pipe at the target,
+  and unset `HOME`. A new-file writer must publish without replacing a
+  destination that appears after validation. Check that status reads only a
+  verified regular file and returns promptly for a named pipe.
 - Never end a turn only to wait for a background agent. Do independent work,
   or read the code yourself, while it runs.
 - Verify every subagent claim you put in a deliverable. Check high-severity

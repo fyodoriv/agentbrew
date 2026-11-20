@@ -4060,6 +4060,17 @@
       ]
     },
     {
+      "id": 360,
+      "prompt": "/goal deliver visual proof for the checkout status change. The test host accepted four build overrides. Pair A captures the right builds and states. Pair B has identical images and the after page loaded the baseline asset. Pair C's browser tab failed and an older screenshot remains at its original path. Pair D loaded the right asset but autoplay moved past the changed intermediate state before capture. The goal requires before/after proof for each changed state.",
+      "expected_output": "Read the loaded build on each page and match it to the release record. Open the fresh A files and accept only that pair. Keep B unverified, correct the override and verify the loaded build again. Keep C unverified and recapture to a new path after the browser is healthy. Keep D unverified, capture when the page enters the missing state, and record the visible state label beside the image.",
+      "expectations": [
+        "Accepts the valid pair after checking the fresh files, loaded builds and visible states",
+        "Keeps the pair with a mismatched loaded build unverified even though the override was accepted",
+        "Keeps the failed capture unverified and uses a new file on retry",
+        "Captures the elapsed intermediate state at its next trigger or checkpoint and records the on-page state"
+      ]
+    },
+    {
       "id": 361,
       "prompt": "/goal make PR 41 pass the independent UX judge. Success is zero remaining in-scope judge blockers. The offered test release maps to the previous PR commit. Later a build of the current head is ready. A watcher silently ignored a script edit and its first resolved result identifies PR 14, even though the launch used PR 41 as input. A replacement resolves PR 41, the current head and the expected job and attempt. The judge's report also names a pre-existing failure owned by another team.",
       "expected_output": "Keep the old build out of review. Match the current release record to the PR head and pass both IDs to the judge. Reject PR 14's result as evidence. Confirm the replacement's actual resolved target and read the current authoritative check result. Keep pre-existing work attributed to its owner and do one in-scope fix round for the judge report before requesting fresh review.",

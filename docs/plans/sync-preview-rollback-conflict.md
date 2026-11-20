@@ -17,3 +17,8 @@ The [unchanged Ubuntu parser](https://github.com/fyodoriv/agentbrew/actions/runs
 dispatched the mock restore once in each flag order. Both cases reached the
 build check, repair-log clear and last-seen writer. They returned no argument
 error. All other tests in the same file passed.
+
+The first correction used a constructed rollback option. The flag audit
+reported its row as stale because the scanner checks literal registrations.
+The preview option owns the conflict. Both flags retain their existing
+audit rows, and the command still refuses either order.

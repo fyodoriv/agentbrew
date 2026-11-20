@@ -463,7 +463,7 @@ function registerSyncCommand(program: Command): void {
     .description(
       "Detect agents (first run) + install recommended catalog items + deploy MCP, rules, commands, skills to every agent (repairs drift)",
     )
-    .option("--dry-run", "Preview changes without applying")
+    .addOption(new Option("--dry-run", "Preview changes without applying").conflicts("rollback"))
     .option("--no-prune", "Keep stale items in agent configs (default: prune)")
     .option(
       "--no-recommended",
@@ -471,9 +471,7 @@ function registerSyncCommand(program: Command): void {
     )
     .option("--sequential", "Run sync categories sequentially (default is parallel)")
     .option("--pull", "Fetch latest from all sources before syncing")
-    .addOption(
-      new Option("--rollback", "Restore agent config files from the last pre-sync snapshot").conflicts("dryRun"),
-    )
+    .option("--rollback", "Restore agent config files from the last pre-sync snapshot")
     .option(
       "--only <modules>",
       "Run only specific modules (comma-separated: mcp,rules,commands,agents,skills,hooks,models,instructions)",

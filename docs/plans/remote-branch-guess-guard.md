@@ -34,3 +34,17 @@ guess a branch. It uses Git's effective worktree and prefix for the
 existing-file shorthand. This observes the filesystem at check time.
 Git can still prefer a tag over an identically named file. Use the
 explicit file syntax when the intended operation is a file checkout.
+
+## Test a working directory below the checkout root
+
+- **Hypothesis**: A `-C` target below the root preserves file use within
+  that directory and still refuses a remote-only branch request.
+- **Measurement**: Run the hosted fixture from the scratch repository
+  and pass an additional `-C` argument for the nested directory. Check
+  one tracked file, one remote-tracking name and the original HEAD.
+- **Success**: One nested file restore keeps its expected bytes. One
+  nested branch request refuses, with 0 changed HEAD or local refs.
+- **Pivot**: At least 1 wrong decision or previous fixture regression
+  rejects the working-directory check.
+- **Anchor**: [Git working directory and prefix](https://git-scm.com/docs/git-rev-parse)
+  and the shared-root comparison above.

@@ -92,3 +92,21 @@ records. Type checking also passed.
 The exit 17 receipt belongs to the test fixture. Before a real lifecycle
 run, register how a missing or broken channel affects the diagnostic
 verdict. The earlier lifecycle timeout and its cause stay open.
+
+## Validate the diagnostic receipt before the one-time run
+
+The observer can emit stage records. Its outer reader must bind them to a
+single run of the exact marketplace-copy test. A runner that does not confirm
+that test's outcome supplies an unqualified receipt.
+
+- **Hypothesis**: A validator can accept a complete run, a confirmed test timeout with one open stage, and a confirmed action failure with one failed stage. Missing or ambiguous evidence stays unqualified.
+- **Measurement**: Run `npx vitest run src/plugins/lifecycle-observation-output.test.ts` on hosted Linux and macOS. Pass the validator fixed recorder streams and controlled test verdicts. Check a complete nine-stage run, a timeout during update, a failure during rollback, and the invalid cases below.
+- **Success**: All 3 valid receipts return their exact classification. All 8 negative receipts return unqualified. Output contains only a fixed status and, when available, one known stage ID.
+- **Pivot**: Reject the reader after 1 wrong classification, 1 unexpected field in its result, or 1 change to the original test, its timeout or its assertions.
+- **Anchor**: The existing recorder and the qualified output failure controls above.
+
+The invalid cases are no records, a recorder-failure marker, incomplete
+framing, a duplicate begin, a skipped stage, mismatched timing, a verdict
+that conflicts with the stage records, and an unconfirmed test outcome.
+Only the later authorized driver may supply the actual runner verdict.
+This check does not run the diagnostic or attribute the earlier timeout.

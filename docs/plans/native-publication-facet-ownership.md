@@ -1422,3 +1422,33 @@ recorded three pathname reads. The same-length change still
 refused. The writer now reads at offset zero from its held
 file. The bounded read also checks for a trailing byte. The
 pathname still has to identify that same private file.
+
+## Recheck the publication owner before each selected write
+
+A selected writer checks ownership before it admits planned changes
+and again during cleanup. If ownership changes between two planned
+writes, that last check can detect the change after output has advanced.
+
+- **Hypothesis**: A selected writer detects an owner-record change
+  before the next planned write and preserves the changed record.
+- **Measurement**: Run hosted `npm exec -- vitest run src/plugins/claude-native.test.ts src/plugins/native-publication-lock.test.ts --maxWorkers=1`.
+  Use the signed hooks fixture. Change the held record to different
+  bytes of the same length immediately after the first actual write.
+  Separately change it after the selected receipt and before the index.
+  Compare recorded writes, the absent remaining outputs and owner bytes.
+- **Success**: Exactly 1 payload write in the early case. Exactly 4
+  ordered writes in the late case. Both changes are refused, with
+  0 further writes and 0 owner removals. The ordinary writer and the
+  original signed scratch controls keep their results.
+- **Pivot**: At least 1 extra write, changed owner removal or ordinary
+  publication regression rejects the change.
+- **Anchor**: The [held owner check](#verify-owner-bytes-through-the-held-file)
+  and the signed selected interruption controls.
+
+This qualifies the selected prototype at its ordered write boundaries.
+It does not decide whether a retained owner is abandoned.
+
+The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44897370592/job/136825799016)
+made all five writes in both cases. Cleanup detected the new record
+and left it in place. The selected publisher now verifies ownership
+at each payload, receipt and index write before it changes output.

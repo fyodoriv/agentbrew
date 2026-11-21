@@ -26,7 +26,7 @@ export interface NativeWriteIntent {
   after: FileState;
 }
 
-type BeginNativeMutation = (intent?: readonly NativeWriteIntent[]) => void;
+type BeginNativeMutation = (intent?: readonly NativeWriteIntent[]) => () => void;
 
 const NATIVE_PUBLICATION_LOCK_NAME = ".agentbrew-native-publication.lock";
 
@@ -123,6 +123,7 @@ export function withNativePublicationLock<T>(publish: (beginMutation: BeginNativ
           assertOwner();
         }
         mutationStarted = true;
+        return assertOwner;
       });
       finished = true;
       return result;

@@ -1327,6 +1327,60 @@ describe("emitClaudeNative", () => {
   });
 });
 
+describe("empty-lock publication", () => {
+  const lockPath = join(home, ".config", "agentbrew", "agentbrew.lock");
+
+  function publishForSelection() {
+    Reflect.apply(emitClaudeNative, undefined, [{ skipEmptyPublication: true }]);
+  }
+
+  function expectNativeCleanup() {
+    expect(existsSync(marketplaceDir())).toBe(false);
+    expect(existsSync(nativeFacetPaths().launcher)).toBe(false);
+    const current = settings();
+    expect(current.enabledPlugins?.[`fixture-native@${MARKETPLACE_NAME}`]).toBeUndefined();
+    expect(current.extraKnownMarketplaces?.[MARKETPLACE_NAME]).toBeUndefined();
+  }
+
+  it("preserves all native output with a valid empty lock until ordinary publication", () => {
+    installFacetFixture();
+    emitClaudeNative();
+    removePlugin("fixture-native");
+    expect(readLock().plugins ?? []).toEqual([]);
+    const paths = nativeFacetPaths();
+    const before = observeNativeFiles([paths.index, paths.launcher, paths.settings]);
+
+    publishForSelection();
+
+    expect(observeNativeFiles([paths.index, paths.launcher, paths.settings])).toEqual(before);
+    emitClaudeNative();
+    expectNativeCleanup();
+  });
+
+  it.each(["missing", "malformed", "revoked"] as const)("retains ordinary cleanup with a %s lock or signer", (kind) => {
+    installFacetFixture();
+    emitClaudeNative();
+    if (kind === "missing") rmSync(lockPath);
+    else if (kind === "malformed") writeFileSync(lockPath, "locked: []\nplugins: invalid\n[");
+    else revokeSigner("fixture-native", KEY.pub);
+
+    publishForSelection();
+
+    expectNativeCleanup();
+  });
+
+  it("still publishes for an active signed plugin", () => {
+    installFacetFixture();
+
+    publishForSelection();
+
+    const paths = nativeFacetPaths();
+    expect(existsSync(paths.index)).toBe(true);
+    expect(existsSync(paths.launcher)).toBe(true);
+    expect(settings().enabledPlugins?.[`fixture-native@${MARKETPLACE_NAME}`]).toBe(true);
+  });
+});
+
 describe("policyFragment", () => {
   it("allowlists the marketplace and enables the plugin; strict mode adds plugin-only customization", () => {
     install();

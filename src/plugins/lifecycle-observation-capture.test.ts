@@ -82,7 +82,7 @@ function capture(sample: Sample) {
       "run",
       testFile,
       "--testNamePattern",
-      `^src/plugins/cli-plugin\\.test\\.ts plugin commands re-emit the Claude Code plugin copy \\(#447\\) ${title}$`,
+      `^plugin commands re-emit the Claude Code plugin copy \\(#447\\) ${title}$`,
       "--maxWorkers=1",
       "--retry=0",
       "--no-cache",
@@ -101,7 +101,7 @@ function capture(sample: Sample) {
 
     const status = sample.error ? "failed" : "passed";
     const titled = sample.title ?? title;
-    const ancestry = sample.nested ? [relativeTestFile, "nested", suite] : [relativeTestFile, suite];
+    const ancestry = sample.nested ? ["nested", suite] : [suite];
     const assertion = {
       title: titled,
       fullName: [...ancestry, titled].join(" "),
@@ -223,27 +223,41 @@ describe("nested", () => {
 });`,
           { mode: 0o600 },
         );
-        let verified = false;
+        let observations: Record<string, unknown> | undefined;
         const verdict = captureMarketplaceDiagnostic(sandbox, (executable, args, options) => {
-          expect(args[2]).toBe(fixture);
           const result = spawnSync(executable, args, { ...options, timeout: 16_000 });
-          expect(result.error === undefined).toBe(true);
-          expect(result.status).toBe(1);
-          expect(result.stdout.includes(`${OUTCOME_PREFIX}timed-out ${FIXTURE_CASE_TIMEOUT_MS}\n`)).toBe(true);
-          const worker = result.stderr.indexOf(`${WORKER_STDERR_COMPLETE}\n`);
-          expect(worker).toBeGreaterThanOrEqual(0);
-          expect(result.stderr.indexOf(`${STDERR_COMPLETE}\n`)).toBeGreaterThan(worker);
+          const stdout = result.stdout ?? "";
+          const stderr = result.stderr ?? "";
+          const stage = stderr.indexOf(STAGE_PREFIX);
+          const worker = stderr.indexOf(`${WORKER_STDERR_COMPLETE}\n`);
+          const coordinator = stderr.indexOf(`${STDERR_COMPLETE}\n`);
           const outputPath = args[10].replace(/^--outputFile=/, "");
-          expect(result.stdout.includes(`JSON report written to ${outputPath}\n`)).toBe(true);
-          const captured = JSON.parse(readFileSync(outputPath, "utf8"));
-          const results = captured.testResults[0].assertionResults;
-          expect(results.map(({ status }: { status: string }) => status)).toEqual(["failed", "skipped"]);
-          expect(results[0].ancestorTitles).toEqual([relativeTestFile, suite]);
-          expect(existsSync(join(sandbox, "node_modules", ".vite"))).toBe(false);
-          verified = true;
+          const report = existsSync(outputPath) ? JSON.parse(readFileSync(outputPath, "utf8")) : undefined;
+          const results = report?.testResults?.[0]?.assertionResults;
+          observations = {
+            correctFile: args[2] === fixture && report?.testResults?.[0]?.name === fixture,
+            launchError: result.error !== undefined,
+            exit: result.status,
+            timeoutReceipt: stdout.includes(`${OUTCOME_PREFIX}timed-out ${FIXTURE_CASE_TIMEOUT_MS}\n`),
+            reportReceipt: stdout.includes(`JSON report written to ${outputPath}\n`),
+            orderedReceipts: stage >= 0 && stage < worker && worker < coordinator,
+            selectedOnly: results?.length === 2 && results[0]?.status === "failed" && results[1]?.status === "skipped",
+            ancestry: JSON.stringify(results?.[0]?.ancestorTitles) === JSON.stringify([suite]),
+            escapedCache: existsSync(join(sandbox, "node_modules", ".vite")),
+          };
           return result;
         });
-        expect(verified).toBe(true);
+        expect(observations).toEqual({
+          correctFile: true,
+          launchError: false,
+          exit: 1,
+          timeoutReceipt: true,
+          reportReceipt: true,
+          orderedReceipts: true,
+          selectedOnly: true,
+          ancestry: true,
+          escapedCache: false,
+        });
         expect(verdict).toEqual({ status: "unqualified" });
       } finally {
         rmSync(sandbox, { recursive: true, force: true });

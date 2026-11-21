@@ -41,10 +41,8 @@ function readExactResult(text: string, expectedFile: string) {
   if (file?.name !== expectedFile || file.message !== "" || !Array.isArray(file.assertionResults)) return;
   const executed = file.assertionResults.filter((record) => record?.status !== "skipped" && record?.status !== "todo");
   const [entry] = executed;
-  if (executed.length !== 1 || entry?.title !== test || entry.fullName !== `${relativeTestFile} ${suite} ${test}`)
-    return;
-  if (entry.ancestorTitles?.length !== 2 || entry.ancestorTitles[0] !== relativeTestFile) return;
-  if (entry.ancestorTitles[1] !== suite) return;
+  if (executed.length !== 1 || entry?.title !== test || entry.fullName !== `${suite} ${test}`) return;
+  if (entry.ancestorTitles?.length !== 1 || entry.ancestorTitles[0] !== suite) return;
   if (!Array.isArray(entry.failureMessages) || entry.status !== file.status) return;
   return { entry, success: report.success };
 }
@@ -106,7 +104,7 @@ function captureInScratch(repoRoot: string, launch: Launch) {
         "run",
         testFile,
         "--testNamePattern",
-        `^${relativeTestFile.replaceAll(".", "\\.")} ${suite.replace(/[()]/g, "\\$&")} ${test}$`,
+        `^${suite.replace(/[()]/g, "\\$&")} ${test}$`,
         "--maxWorkers=1",
         "--retry=0",
         "--no-cache",

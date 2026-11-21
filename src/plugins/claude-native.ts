@@ -14,6 +14,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
+import { hasRecordedEmptyPluginInventory, readStoredLock } from "../lock.js";
 import {
   certifyFullNativeOutput,
   type NativeFacet,
@@ -118,7 +119,11 @@ function updateSettings(names: string[], preserveDisabled = false): void {
 }
 
 /** Regenerate the local marketplace and settings from the active plugins. */
-export function emitClaudeNative(options?: { modules?: readonly NativeFacet[]; certifyFullOutput?: boolean }): void {
+export function emitClaudeNative(options?: {
+  modules?: readonly NativeFacet[];
+  certifyFullOutput?: boolean;
+  skipEmptyPublication?: boolean;
+}): void {
   const modules = options?.modules;
   if (modules) {
     withNativePublicationLock((beginMutation) => {
@@ -136,6 +141,12 @@ export function emitClaudeNative(options?: { modules?: readonly NativeFacet[]; c
       const plugins = activePlugins();
       withNativeFullSignerFence(plugins, (assertLock) => publishNative(plugins, { beginMutation, assertLock }));
     });
+    return;
+  }
+  if (options?.skipEmptyPublication) {
+    const lock = readStoredLock();
+    if (hasRecordedEmptyPluginInventory(lock)) return;
+    publishNative(activePlugins(lock?.plugins ?? []));
     return;
   }
   publishNative(activePlugins());

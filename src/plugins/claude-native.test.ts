@@ -53,7 +53,7 @@ vi.mock("write-file-atomic", async (original) => {
   return { ...atomic, sync: vi.fn(atomic.sync) };
 });
 
-import { readLock } from "../lock.js";
+import { readLock, writeLock } from "../lock.js";
 import { fixtureGit, fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { emitClaudeNative, MARKETPLACE_NAME, marketplaceDir, policyFragment } from "./claude-native.js";
 import { launcherPath } from "./mcp-launcher.js";
@@ -1331,7 +1331,7 @@ describe("empty-lock publication", () => {
   const lockPath = join(home, ".config", "agentbrew", "agentbrew.lock");
 
   function publishForSelection() {
-    Reflect.apply(emitClaudeNative, undefined, [{ skipEmptyPublication: true }]);
+    emitClaudeNative({ skipEmptyPublication: true });
   }
 
   function expectNativeCleanup() {
@@ -1342,10 +1342,24 @@ describe("empty-lock publication", () => {
     expect(current.extraKnownMarketplaces?.[MARKETPLACE_NAME]).toBeUndefined();
   }
 
-  it("preserves all native output with a valid empty lock until ordinary publication", () => {
+  it.each(["omitted", "explicit"] as const)("preserves native output with an %s empty plugin inventory", (form) => {
     installFacetFixture();
     emitClaudeNative();
     removePlugin("fixture-native");
+    if (form === "explicit") {
+      writeLock({
+        locked: [
+          {
+            source: "fixture.example/source",
+            type: "github",
+            sha: "a".repeat(40),
+            skills: ["fixture-skill"],
+            lockedAt: "2026-11-20T00:00:00.000Z",
+          },
+        ],
+        plugins: [],
+      });
+    }
     expect(readLock().plugins ?? []).toEqual([]);
     const paths = nativeFacetPaths();
     const before = observeNativeFiles([paths.index, paths.launcher, paths.settings]);
@@ -1357,11 +1371,17 @@ describe("empty-lock publication", () => {
     expectNativeCleanup();
   });
 
-  it.each(["missing", "malformed", "revoked"] as const)("retains ordinary cleanup with a %s lock or signer", (kind) => {
+  it.each([
+    "missing",
+    "unparseable",
+    "malformed",
+    "revoked",
+  ] as const)("retains ordinary cleanup with a %s lock or signer", (kind) => {
     installFacetFixture();
     emitClaudeNative();
     if (kind === "missing") rmSync(lockPath);
-    else if (kind === "malformed") writeFileSync(lockPath, "locked: []\nplugins: invalid\n[");
+    else if (kind === "unparseable") writeFileSync(lockPath, "locked: []\nplugins: invalid\n[");
+    else if (kind === "malformed") writeFileSync(lockPath, "locked: [{}]\n");
     else revokeSigner("fixture-native", KEY.pub);
 
     publishForSelection();

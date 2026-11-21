@@ -21,6 +21,10 @@ if [[ " $* " == *" rev-parse "* ]]; then
   fi
   exit 0
 fi
+if [[ " $* " == *" show-ref --verify --quiet -- "* ]]; then
+  [[ "${!#}" == refs/heads/feat/fixture-branch ]]
+  exit
+fi
 printf '%s\0' "$@" >"$GIT_FIXTURE_RECORD"
 printf '%s\n' 'git received the call'
 RECORDER
@@ -124,3 +128,19 @@ scratch_git "$fixture/deployed/lib:/usr/bin:/bin" status --porcelain >"$fixture/
 /usr/bin/cmp "$fixture/direct" "$fixture/guarded"
 printf '%s\n' 'Ten blocked and ten allowed cases matched, plus script, linked-checkout and compatibility controls.'
 printf '%s\n' 'Real Git status output stayed byte-identical.'
+
+allowed -C linked checkout feat/fixture-branch
+allowed -C linked switch feat/fixture-branch
+allowed checkout -- feat/fixture-branch
+allowed checkout docs/fixture-file
+
+named_branch_failure=0
+for subcommand in checkout switch; do
+  if (blocked git "$subcommand" feat/fixture-branch); then
+    printf 'Shared named branch %s: refused before Git\n' "$subcommand"
+  else
+    printf 'Shared named branch %s: refusal missing\n' "$subcommand" >&2
+    named_branch_failure=1
+  fi
+done
+[[ "$named_branch_failure" == 0 ]]

@@ -338,6 +338,36 @@ it("refuses an unbounded publication intent before leaving recovery state", () =
 });
 
 describe("selected native publication interruption", () => {
+  it.each([1, 4])("stops selected publication after its owner changes at write %i", async (writeCount) => {
+    installFacetFixture();
+    const files = nativeFacetPaths();
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    const planned = [files.hooks, files.script, files.envelope, nativeProofPath(), files.index];
+    const atomic = await vi.importActual<typeof import("write-file-atomic")>("write-file-atomic");
+    const writes: string[] = [];
+    let changedRecord = Buffer.alloc(0);
+    vi.mocked(atomicWrite).mockImplementation((...args) => {
+      atomic.sync(...args);
+      writes.push(String(args[0]));
+      if (writes.length === writeCount) {
+        changedRecord = Buffer.alloc(readFileSync(owner).length, 0x78);
+        writeFileSync(owner, changedRecord);
+      }
+    });
+    try {
+      const publish = () => emitClaudeNative({ modules: ["hooks"] });
+      expect(publish).toThrow(/native publication ownership changed/u);
+      expect(changedRecord.length).toBeGreaterThan(0);
+      expect(readFileSync(owner)).toEqual(changedRecord);
+      expect(writes).toEqual(planned.slice(0, writeCount));
+      expect(planned.slice(writeCount).filter((path) => existsSync(path))).toEqual([]);
+      expect(existsSync(files.settings)).toBe(false);
+    } finally {
+      vi.mocked(atomicWrite).mockImplementation(atomic.sync);
+      rmSync(owner, { force: true });
+    }
+  });
+
   it("preserves the owner record when an error follows a real write", async () => {
     installFacetFixture();
     const files = nativeFacetPaths();

@@ -340,7 +340,8 @@ that you set yourself is never changed, and `agentbrew status` lists it under
 
 The managed status line decodes log rows for the selected session. It saves
 its position in complete file bytes so the next refresh can read appended
-rows, including after an invalid line.
+rows, including after an invalid line. The first run after upgrading
+rebuilds an older status line cache from the log.
 
 ## Tokens, cost, and hours
 

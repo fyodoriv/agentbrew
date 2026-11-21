@@ -567,6 +567,8 @@ export function buildTurn(sid, { dir = perfDir(), nowMs = Date.now() } = {}) {
 
 // ── statusline: per-session cache so each refresh reads only new bytes ──
 
+const STATUSLINE_CACHE_VERSION = 1;
+
 function readFrom(file, offset) {
   const fd = openSync(file, "r");
   try {
@@ -587,9 +589,10 @@ export function sessionStats(sid, { dir = perfDir(), nowMs = Date.now() } = {}) 
   if (!safeSid || !existsSync(dir)) return empty;
   const cacheDir = join(dir, ".cache");
   const cacheFile = join(cacheDir, `statusline-${safeSid}.json`);
-  let cache = { files: {}, toolMs: 0, slowKey: null, slowMs: 0 };
+  let cache = { version: STATUSLINE_CACHE_VERSION, files: {}, toolMs: 0, slowKey: null, slowMs: 0 };
   try {
-    cache = { ...cache, ...JSON.parse(readFileSync(cacheFile, "utf8")) };
+    const saved = JSON.parse(readFileSync(cacheFile, "utf8"));
+    if (saved?.version === STATUSLINE_CACHE_VERSION) cache = { ...cache, ...saved };
   } catch {
     // First refresh for this session.
   }

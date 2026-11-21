@@ -45,3 +45,7 @@ the first bytes of the next row.
   timing regression rejects the new cache shape.
 - **Anchor**: The former decoded-text offset and the exact byte-offset
   controls above.
+
+The disposable baseline counted 10,000 ms before append in the first
+case and only 5,000 ms after append in the second. The version check
+rebuilds both saved values together.

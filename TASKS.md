@@ -346,7 +346,7 @@
 
 - [ ] PR bodies and new task blocks pass the pre-register checker in CI
   - **ID**: preregistration-ci-gate
-  - **Blocked**: needs-time — measure the first 10 merged descriptions and the first 20 pull requests after the check lands.
+  - **Blocked**: needs-default-merge-requirement — [first field sample](docs/plans/preregistration-changed-task-gate.md#first-field-sample). One of the first ten merges lacked a prediction. The first twenty newly opened pull requests all passed on their sampled heads, with zero false refusals in four earlier failed runs. The default branch has no required prediction check. The next cohort needs merge enforcement and a separate registration.
   - **Tags**: quality, ci, pre-registration, from-minsky
   - **Details**: Check the pull request description and each new or changed task block with `check-preregistration.mjs`. An unchanged task stays outside this check. Continue with the field observation after the gate lands.
   - **Files**: the PR-body check workflow or `scripts/check-pr-vision-trace.mjs`, `scripts/verify-changed.sh`, a ratchet helper and its test, AGENTS.md Delivery.

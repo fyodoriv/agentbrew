@@ -1274,3 +1274,14 @@ A single mistaken preservation or cleanup rejects the candidate.
 
 These controls apply only to the opt-in full publisher. They do not
 establish recovery after a write has already started.
+
+The [Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44864963822/job/136726482731)
+failed all five early validation cases. The malformed JSON arm made six
+atomic write calls before refusal. Each of the other four arms made seven.
+
+Independent review identified two encoding controls before qualification.
+An invalid UTF-8 byte inside a quoted setting must refuse without a
+replacement character. A UTF-8 byte-order mark must retain the existing
+JSON reader's refusal. Add both to the same scratch test. Require seven
+early refusals, with zero atomic writes and the exact seven inputs
+retained. Any accepted encoding variant rejects the candidate.

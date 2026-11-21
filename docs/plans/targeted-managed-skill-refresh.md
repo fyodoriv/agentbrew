@@ -189,3 +189,7 @@ only. Publication, rollback and deployed skill links need separate proof.
 This step covers later reads from the same manager. Existing references
 held by callers, shared writer admission and installed links need their
 own coordination.
+
+The [Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44865451884/job/136727978942)
+failed both cases. A rejected save remained visible through the cache.
+A later successful update persisted the earlier rejected nested edit.

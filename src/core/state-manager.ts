@@ -194,6 +194,21 @@ export function createStateManager(io: StateIO): StateManager {
     return cached;
   }
 
+  function invalidate(): void {
+    cached = undefined;
+    loaded = false;
+  }
+
+  function save(state: AgentBrewState): false | undefined {
+    state.schemaVersion = CURRENT_SCHEMA_VERSION;
+    if (io.write(state) === false) {
+      invalidate();
+      return false;
+    }
+    cached = state;
+    loaded = true;
+  }
+
   return {
     load() {
       return ensureLoaded();
@@ -207,26 +222,16 @@ export function createStateManager(io: StateIO): StateManager {
       return state;
     },
 
-    save(state: AgentBrewState) {
-      state.schemaVersion = CURRENT_SCHEMA_VERSION;
-      if (io.write(state) === false) return false;
-      cached = state;
-      loaded = true;
-    },
+    save,
 
     update(fn: (state: AgentBrewState) => void) {
       const state = ensureLoaded();
       if (!state) return;
       fn(state);
-      state.schemaVersion = CURRENT_SCHEMA_VERSION;
-      io.write(state);
-      cached = state;
+      save(state);
     },
 
-    invalidate() {
-      cached = undefined;
-      loaded = false;
-    },
+    invalidate,
 
     agents() {
       return ensureLoaded()?.agents ?? [];

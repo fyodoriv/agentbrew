@@ -21,7 +21,7 @@ if [[ " $* " == *" rev-parse "* ]]; then
     exit 0
   fi
   [[ "${GIT_FIXTURE_PROBE_ERROR:-}" != 1 ]] || exit 128
-  if [[ " $* " == *" linked "* ]]; then
+  if [[ " $* " == *" linked "* || "${PWD##*/}" == linked ]]; then
     printf '%s\n' '/scratch/shared/.git/worktrees/linked' '/scratch/shared/.git'
   else
     printf '%s\n' '/scratch/shared/.git' '/scratch/shared/.git'
@@ -131,6 +131,16 @@ allowed push -f main topic
 allowed commit --no-verify --verify -m sample
 GIT_FIXTURE_PROBE_ERROR=1 blocked git reset --hard
 
+blocked git -c core.hooksPath=/fixture-hooks commit -m sample
+blocked git checkout -b feat/fixture-new
+blocked git checkout -B feat/fixture-new
+blocked git switch -C feat/fixture-new
+allowed -C linked checkout -b feat/fixture-new
+allowed -C linked checkout -B feat/fixture-new
+(cd "$fixture/linked" && allowed switch -C feat/fixture-new)
+allowed worktree add linked feat/fixture-branch
+printf '%s\n' 'Commit hook override and shared branch option checks passed.'
+
 blocked "$AGENTBREW_SESSION_GIT_GUARD" --agentbrew-check-only "$fixture/bin/git" reset --hard
 rm -f "$GIT_FIXTURE_RECORD"
 "$AGENTBREW_SESSION_GIT_GUARD" --agentbrew-check-only "$fixture/bin/git" status --short
@@ -146,7 +156,7 @@ scratch_git /usr/bin:/bin status --porcelain >"$fixture/direct"
 [[ -s "$fixture/direct" ]]
 scratch_git "$fixture/deployed/lib:/usr/bin:/bin" status --porcelain >"$fixture/guarded"
 /usr/bin/cmp "$fixture/direct" "$fixture/guarded"
-printf '%s\n' 'Ten blocked and ten allowed cases matched, plus script, linked-checkout and compatibility controls.'
+printf '%s\n' 'Blocked and allowed cases matched across script, linked-checkout and compatibility controls.'
 printf '%s\n' 'Real Git status output stayed byte-identical.'
 
 allowed -C linked checkout feat/fixture-branch

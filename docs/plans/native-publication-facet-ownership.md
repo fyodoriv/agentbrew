@@ -1392,3 +1392,33 @@ accepted the special mode in both cases. The writer checked only
 the read, write and execute bits, while status checked the complete
 mode. Both now use the same private-file check. The writer still
 checks its exact file identity and record bytes before each action.
+
+## Verify owner bytes through the held file
+
+- **Hypothesis**: The publisher verifies its exact owner bytes
+  through the file it opened at admission. It does not reopen
+  the record by path during mutation or cleanup.
+- **Measurement**: Run hosted
+  `npm exec -- vitest run src/plugins/native-publication-lock.test.ts src/plugins/claude-native.test.ts --maxWorkers=1`.
+  Record pathname reads in a disposable publication. Separately
+  change the held record to different bytes of the same length
+  and verify that ownership fails and cleanup preserves it.
+- **Success**: A successful publication makes 0 pathname reads
+  of its owner record and keeps its existing cleanup result.
+  A changed record produces 1 refusal and 0 removals. Status
+  and the ordinary native publisher keep their results.
+- **Pivot**: At least 1 pathname read, lost refusal, deleted
+  changed record or existing publisher regression rejects the change.
+- **Anchor**: The current publisher's pathname identity check,
+  the acquisition file descriptor and
+  [Node positional reads](https://nodejs.org/api/fs.html#fsreadsyncfd-buffer-offset-length-position).
+
+The scope is one invocation's open file and its ownership
+checkpoints. Identifying and recovering an abandoned record
+remains a separate operation.
+
+The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44894218566/job/136816296061)
+recorded three pathname reads. The same-length change still
+refused. The writer now reads at offset zero from its held
+file. The bounded read also checks for a trailing byte. The
+pathname still has to identify that same private file.

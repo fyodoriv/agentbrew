@@ -5,7 +5,7 @@ import {
   fsyncSync,
   lstatSync,
   openSync,
-  readFileSync,
+  readSync,
   realpathSync,
   type Stats,
   unlinkSync,
@@ -59,7 +59,7 @@ export function inspectNativePublicationStatus(): NativePublicationStatus | unde
 
 function acquire(path: string): number {
   try {
-    return openSync(path, "wx", 0o600);
+    return openSync(path, "wx+", 0o600);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
     throw new Error("Claude native publication is busy or has an earlier owner that needs verification.");
@@ -83,6 +83,8 @@ export function withNativePublicationLock<T>(publish: (beginMutation: BeginNativ
     writeFileSync(fd, record);
     fsyncSync(fd);
     const assertOwner = () => {
+      const bytes = Buffer.alloc(record.length + 1);
+      const count = readSync(fd, bytes, 0, bytes.length, 0);
       const current = lstatSync(path, { throwIfNoEntry: false });
       if (
         !current ||
@@ -90,7 +92,8 @@ export function withNativePublicationLock<T>(publish: (beginMutation: BeginNativ
         current.dev !== identity.dev ||
         current.ino !== identity.ino ||
         current.size !== record.length ||
-        !readFileSync(path).equals(record)
+        count !== record.length ||
+        !bytes.subarray(0, count).equals(record)
       ) {
         throw new Error("Claude native publication ownership changed. The current record was preserved.");
       }

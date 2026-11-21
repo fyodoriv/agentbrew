@@ -142,6 +142,10 @@ case "$command" in
     if $force && ! $dry_run; then guard_shared_checkout; fi
     ;;
   reset|restore|checkout|switch)
+    if [[ "$#" == 1 && ( "$command" == checkout || "$command" == switch ) && "$1" == */* && "$1" != -* ]] &&
+      "$real_git" "${options[@]}" show-ref --verify --quiet -- "refs/heads/$1" >/dev/null 2>&1; then
+      guard_shared_checkout
+    fi
     paths_only=false
     for item in "$@"; do
       case "$command:$item" in

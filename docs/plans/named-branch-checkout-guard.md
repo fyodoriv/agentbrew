@@ -22,3 +22,10 @@ branch whose name contains a slash.
 
 This phase checks the direct local-branch form. It leaves ordinary Git
 path parsing and remote branch guessing with Git.
+
+The [hosted baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44910206871)
+forwarded both shared branch commands and returned exit 0. The linked
+checkout, file and previous controls passed. The wrapper checked branch
+creation flags but did not look up an existing branch. It now uses a
+read-only lookup for the exact local reference and applies the existing
+checkout location check.

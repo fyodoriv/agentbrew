@@ -347,8 +347,11 @@ PATH. Dotfiles runs the allowed Git command.
 
 The wrapper checks recognized destructive Git arguments, including calls
 from a script. A branch creation or whole-tree operation needs a verified
-linked checkout. Stashes are shared across linked checkouts. Ordinary
-commands keep their arguments and use the existing Git command on PATH.
+linked checkout. The same check applies to a direct `git checkout` or
+`git switch` with an existing local branch name that contains a slash.
+Use `git checkout -- path` to select a file explicitly. Stashes are shared
+across linked checkouts. Ordinary commands keep their arguments and use
+the existing Git command on PATH.
 The commit hooks and remote protections also apply.
 
 ## Check task files after an edit

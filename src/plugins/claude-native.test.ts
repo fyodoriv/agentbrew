@@ -626,6 +626,42 @@ describe("native publication process loss at output checkpoints", () => {
   });
 });
 
+describe("certified full native settings preflight", () => {
+  it.each([
+    ["malformed JSON", '{"broken"'],
+    ["a null root", "null"],
+    ["an array root", "[]"],
+    ["a non-object marketplace map", '{"extraKnownMarketplaces":[]}'],
+    ["a non-object enabled-plugin map", '{"enabledPlugins":"invalid"}'],
+  ])("refuses %s before writing any native output", (_label, body) => {
+    installFacetFixture();
+    chmodSync(join(pluginDir("fixture-native"), "hooks", "guard.sh"), 0o644);
+    const paths = nativeFacetPaths();
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    mkdirSync(dirname(paths.settings), { recursive: true });
+    writeFileSync(paths.settings, body, { mode: 0o600 });
+    const before = observeNativeFiles([paths.settings]);
+    vi.mocked(atomicWrite).mockClear();
+
+    try {
+      let failure: unknown;
+      try {
+        emitClaudeNative({ certifyFullOutput: true });
+      } catch (error) {
+        failure = error;
+      }
+      expect(atomicWrite).not.toHaveBeenCalled();
+      expect(existsSync(marketplaceDir())).toBe(false);
+      expect(existsSync(paths.launcher)).toBe(false);
+      expect(existsSync(owner)).toBe(false);
+      expect(observeNativeFiles([paths.settings])).toEqual(before);
+      expect(failure).toMatchObject({ message: expect.stringMatching(/invalid native settings/u) });
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+});
+
 describe("certified full native publication interruption", () => {
   it("preserves the owner and envelope after the first full write fails", async () => {
     installFacetFixture();

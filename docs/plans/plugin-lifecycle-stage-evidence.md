@@ -139,6 +139,7 @@ runner can replace the stack with its call-site marker. Read the test error's
 message from Vitest's reporter interface and emit only a fixed verdict.
 Require the exact file ancestry, no other pending test, the JSON completion
 receipt on stdout, and a terminal marker on stderr.
+The reporter is a Knip entry because Vitest loads it by path at runtime.
 
 - **Hypothesis**: A companion reporter can emit the configured timeout from
   a harmless Vitest test while preserving the separate capture receipts.

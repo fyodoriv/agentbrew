@@ -1343,3 +1343,19 @@ verbose status assertion. Status skipped the publication record.
 The probe now uses file metadata at the same path as the writer.
 It reports presence only when the file is regular, has one link,
 and has mode `0600` and the verified home directory owner.
+
+### Verify the complete permission mode
+
+- **Hypothesis**: A record with mode `04600` is unavailable even
+  when its read and write bits otherwise match mode `0600`.
+- **Measurement**: Add the special-mode file to the hosted
+  `npm exec -- vitest run src/status.test.ts --maxWorkers=1` matrix.
+- **Success**: The special-mode case returns `unavailable` and
+  preserves the file. All 4 earlier cases still pass.
+- **Pivot**: One accepted special mode, changed file or original
+  result rejects the check.
+- **Anchor**: [Node file mode](https://nodejs.org/api/fs.html#statsmode)
+  and the read-only status case above.
+
+The check runs in the normal status flow after Agentbrew has
+loaded its state.

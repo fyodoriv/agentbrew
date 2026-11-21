@@ -5,6 +5,8 @@ hooks_dir="$(CDPATH='' cd -- "${BASH_SOURCE[0]%/*}/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
 mkdir -p "$fixture/bin" "$fixture/shared" "$fixture/linked" "$fixture/home" "$fixture/deployed/lib"
+mkdir -p "$fixture/shared/docs"
+touch "$fixture/shared/docs/fixture-file"
 export GIT_FIXTURE_RECORD="$fixture/calls"
 export GIT_FIXTURE_OBJECT_LOOKUP="$fixture/object-lookups"
 fixture_path="$fixture/bin:/usr/bin:/bin"
@@ -14,6 +16,10 @@ cat >"$fixture/bin/git" <<'RECORDER'
 #!/bin/bash
 set -euo pipefail
 if [[ " $* " == *" rev-parse "* ]]; then
+  if [[ " $* " == *" --show-toplevel --show-prefix "* ]]; then
+    printf '%s\n\n' "$PWD"
+    exit 0
+  fi
   [[ "${GIT_FIXTURE_PROBE_ERROR:-}" != 1 ]] || exit 128
   if [[ " $* " == *" linked "* ]]; then
     printf '%s\n' '/scratch/shared/.git/worktrees/linked' '/scratch/shared/.git'

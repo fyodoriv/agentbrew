@@ -53,7 +53,7 @@ vi.mock("write-file-atomic", async (original) => {
   return { ...atomic, sync: vi.fn(atomic.sync) };
 });
 
-import { readLock } from "../lock.js";
+import { readLock, writeLock } from "../lock.js";
 import { fixtureGit, fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { emitClaudeNative, MARKETPLACE_NAME, marketplaceDir, policyFragment } from "./claude-native.js";
 import { launcherPath } from "./mcp-launcher.js";
@@ -1324,6 +1324,80 @@ describe("emitClaudeNative", () => {
   it("does nothing (and creates no settings file) when no plugin is installed", () => {
     emitClaudeNative();
     expect(existsSync(SETTINGS())).toBe(false);
+  });
+});
+
+describe("empty-lock publication", () => {
+  const lockPath = join(home, ".config", "agentbrew", "agentbrew.lock");
+
+  function publishForSelection() {
+    emitClaudeNative({ skipEmptyPublication: true });
+  }
+
+  function expectNativeCleanup() {
+    expect(existsSync(marketplaceDir())).toBe(false);
+    expect(existsSync(nativeFacetPaths().launcher)).toBe(false);
+    const current = settings();
+    expect(current.enabledPlugins?.[`fixture-native@${MARKETPLACE_NAME}`]).toBeUndefined();
+    expect(current.extraKnownMarketplaces?.[MARKETPLACE_NAME]).toBeUndefined();
+  }
+
+  it.each(["omitted", "explicit"] as const)("preserves native output with an %s empty plugin inventory", (form) => {
+    installFacetFixture();
+    emitClaudeNative();
+    removePlugin("fixture-native");
+    if (form === "explicit") {
+      writeLock({
+        locked: [
+          {
+            source: "fixture.example/source",
+            type: "github",
+            sha: "a".repeat(40),
+            skills: ["fixture-skill"],
+            lockedAt: "2026-11-20T00:00:00.000Z",
+          },
+        ],
+        plugins: [],
+      });
+    }
+    expect(readLock().plugins ?? []).toEqual([]);
+    const paths = nativeFacetPaths();
+    const before = observeNativeFiles([paths.index, paths.launcher, paths.settings]);
+
+    publishForSelection();
+
+    expect(observeNativeFiles([paths.index, paths.launcher, paths.settings])).toEqual(before);
+    emitClaudeNative();
+    expectNativeCleanup();
+  });
+
+  it.each([
+    "missing",
+    "unparseable",
+    "malformed",
+    "revoked",
+  ] as const)("retains ordinary cleanup with a %s lock or signer", (kind) => {
+    installFacetFixture();
+    emitClaudeNative();
+    if (kind === "missing") rmSync(lockPath);
+    else if (kind === "unparseable") writeFileSync(lockPath, "locked: []\nplugins: invalid\n[");
+    else if (kind === "malformed") writeFileSync(lockPath, "locked: [{}]\n");
+    else revokeSigner("fixture-native", KEY.pub);
+
+    publishForSelection();
+
+    expectNativeCleanup();
+  });
+
+  it("still publishes for an active signed plugin", () => {
+    installFacetFixture();
+
+    publishForSelection();
+
+    const paths = nativeFacetPaths();
+    expect(existsSync(paths.index)).toBe(true);
+    expect(existsSync(paths.launcher)).toBe(true);
+    expect(settings().enabledPlugins?.[`fixture-native@${MARKETPLACE_NAME}`]).toBe(true);
   });
 });
 

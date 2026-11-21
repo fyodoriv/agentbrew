@@ -22,9 +22,9 @@ export interface ActivePlugin {
 }
 
 /** Locked plugins whose checkout still matches the lock. */
-export function activePlugins(): ActivePlugin[] {
+export function activePlugins(entries: readonly PluginLockEntry[] = readLock().plugins ?? []): ActivePlugin[] {
   const active: ActivePlugin[] = [];
-  for (const entry of readLock().plugins ?? []) {
+  for (const entry of entries) {
     if (pluginDrift(entry)) continue;
     const dir = pluginDir(entry.name);
     active.push({ entry, dir, manifest: readManifest(dir) });

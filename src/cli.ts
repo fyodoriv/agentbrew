@@ -412,7 +412,8 @@ async function emitNativePluginOutput(syncModules?: readonly string[]): Promise<
   try {
     if (!syncModules || syncModules.some((name) => name === "hooks" || name === "mcp" || name === "rules")) {
       const { emitClaudeNative } = await import("./plugins/claude-native.js");
-      emitClaudeNative();
+      if (syncModules) emitClaudeNative({ skipEmptyPublication: true });
+      else emitClaudeNative();
     }
     const { writeRedactPatterns } = await import("./plugins/leak-audit.js");
     writeRedactPatterns();

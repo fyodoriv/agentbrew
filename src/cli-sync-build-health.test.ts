@@ -109,6 +109,9 @@ describe("native selection publication gate", () => {
     expect(vi.mocked(runSyncParallel).mock.calls[0]?.[0].map(({ name }) => name)).toEqual(modules);
     expect(writeRedactPatterns).toHaveBeenCalledTimes(dryRun ? 0 : 1);
     expect(emitClaudeNative).toHaveBeenCalledTimes(publish ? 1 : 0);
+    if (publish) {
+      expect(emitClaudeNative).toHaveBeenCalledWith(...(only ? [{ skipEmptyPublication: true }] : []));
+    }
   });
 });
 

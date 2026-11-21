@@ -565,24 +565,57 @@ describe("native publication process loss at output checkpoints", () => {
   });
 
   it.each([
-    ["payload", "hooks", false],
-    ["marketplace index", "index", false],
-    ["activation settings", "settings", true],
-  ] as const)("preserves the partial output before %s across a process restart", (_name, key, full) => {
+    ["payload", "hooks", false, 0],
+    ["output receipt", "receipt", false, 3],
+    ["marketplace index", "index", false, 4],
+    ["activation settings", "settings", true, null],
+  ] as const)("preserves the partial output before %s across a process restart", (_name, key, full, written) => {
     installFacetFixture();
     // The signed fixture uses 0644 even when the local queue applies umask 077.
     chmodSync(join(pluginDir("fixture-native"), "hooks", "guard.sh"), 0o644);
     const paths = nativeFacetPaths();
-    const target = paths[key];
+    const receipt = nativeProofPath();
+    const target = key === "receipt" ? receipt : paths[key];
     try {
       expect(publishFromChild(full, target)).toMatchObject({ status: 77, stdout: "", stderr: "" });
       expect(existsSync(target)).toBe(false);
       expect(existsSync(paths.hooks)).toBe(key !== "hooks");
       expect(existsSync(paths.script)).toBe(key !== "hooks");
-      expect(existsSync(nativeProofPath())).toBe(key !== "hooks");
+      expect(existsSync(receipt)).toBe(key === "index" || full);
       expect(existsSync(paths.index)).toBe(full);
       expect(existsSync(paths.settings)).toBe(false);
-      expect(statSync(owner).mode & 0o777).toBe(0o600);
+      const ownerInfo = lstatSync(owner);
+      expect(ownerInfo.isFile()).toBe(true);
+      expect(ownerInfo.mode & 0o777).toBe(0o600);
+      const record = JSON.parse(readFileSync(owner, "utf8"));
+      expect(record).toMatchObject({ pid: expect.any(Number), token: expect.any(String) });
+      if (written === null) {
+        expect(record).not.toHaveProperty("intent");
+      } else {
+        const plannedPaths = [paths.hooks, paths.script, paths.envelope, receipt, paths.index];
+        expect(record.intent).toEqual(
+          plannedPaths.map((path, position) => {
+            const observed = lstatSync(path, { throwIfNoEntry: false });
+            if (position >= written) {
+              expect(observed).toBeUndefined();
+              return {
+                path: relative(home, path),
+                before: null,
+                after: { digest: expect.stringMatching(/^[0-9a-f]{64}$/u), mode: path === receipt ? 0o600 : 0o644 },
+              };
+            }
+            expect(observed?.isFile()).toBe(true);
+            return {
+              path: relative(home, path),
+              before: null,
+              after: {
+                digest: createHash("sha256").update(readFileSync(path)).digest("hex"),
+                mode: statSync(path).mode & 0o777,
+              },
+            };
+          }),
+        );
+      }
       const roots = [marketplaceDir(), dirname(paths.launcher), dirname(paths.settings), owner];
       const before = roots.map(snapshot);
       expect(publishFromChild(full)).toMatchObject({ status: 75, stdout: "", stderr: "" });

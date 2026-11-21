@@ -119,6 +119,15 @@ direct leading `npm publish`, including when it has a dry-run option.
 The owner publishes through the [documented release process](ci.md).
 The npm check applies when `publish` immediately follows the executable.
 
+The same opt-in check covers direct recursive forced deletion. It
+checks each destination at observation time and allows verified
+descendants of system temporary folders or the owned session scratch
+folder. Roots, relative paths, links and other unverified operands refuse.
+This checks the named operand path. The recursive traversal itself
+still depends on the filesystem at execution time. The plain
+temporary-variable form assumes the hook and Bash tool share the
+same verified `TMPDIR`. An absolute path does not depend on that variable.
+
 Add `no-destructive-commands` to `enabled:` in the hooks overlay and run
 `agentbrew sync` to turn on the check.
 

@@ -3,10 +3,11 @@ set -euo pipefail
 
 hook_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 scratch="$(mktemp -d)"
-trap 'rm -r -- "$scratch"' EXIT
+trap '/bin/rm -r -- "$scratch"' EXIT
 mkdir -p "$scratch/bin" "$scratch/deployed"
 export PATH="$scratch/bin:$PATH"
 export HOOK_DECISIONS_LOG="$scratch/decisions.jsonl" GIT_CALL_RECEIPT="$scratch/git-called" GH_CALL_RECEIPT="$scratch/gh-called" NPM_CALL_RECEIPT="$scratch/npm-called"
+export RM_CALL_RECEIPT="$scratch/rm-called"
 
 cat > "$scratch/bin/git" <<'STUB'
 #!/bin/bash
@@ -23,7 +24,12 @@ cat > "$scratch/bin/npm" <<'STUB'
 touch "$NPM_CALL_RECEIPT"
 exit 1
 STUB
-chmod +x "$scratch/bin/git" "$scratch/bin/gh" "$scratch/bin/npm"
+cat > "$scratch/bin/rm" <<'STUB'
+#!/bin/bash
+: > "$RM_CALL_RECEIPT"
+exit 1
+STUB
+chmod +x "$scratch/bin/git" "$scratch/bin/gh" "$scratch/bin/npm" "$scratch/bin/rm"
 cp "$hook_dir/no-destructive-commands.sh" "$scratch/deployed/"
 cp -R "$hook_dir/../lib" "$scratch/deployed/lib"
 cd "$scratch"
@@ -105,9 +111,37 @@ check_npm() {
   return "$failed"
 }
 
+check_recursive_delete() {
+  local failed=0
+  mkdir -p "$scratch/nested"
+  ln -s "$scratch/nested" "$scratch/linked"
+  TMPDIR="$scratch" check 'temporary variable descendant' 0 Bash 'rm -rf $TMPDIR/nested' || failed=1
+  TMPDIR="$scratch" check 'absolute nested destination' 0 Bash "rm -f -R -- '$scratch/nested'" || failed=1
+  TMPDIR="$scratch" check 'two temporary descendants' 0 Bash "rm --recursive --force '$scratch/nested' '$scratch/second'" || failed=1
+  check 'recursive flag without force' 0 Bash 'rm -r /fixture-example/data' || failed=1
+  check 'force without recursion' 0 Bash 'rm -f /fixture-example/data' || failed=1
+  check 'outside the temporary bases' 2 Bash 'rm -rf /fixture-example/data' || failed=1
+  check 'combined verbose recursion and force flags' 2 Bash 'rm -vRf /fixture-example/data' || failed=1
+  check 'temporary base itself' 2 Bash 'rm -rf /tmp' || failed=1
+  TMPDIR="$scratch" check 'configured temporary root itself' 2 Bash 'rm -rf $TMPDIR' || failed=1
+  check 'relative target' 2 Bash 'rm -rf fixture-data' || failed=1
+  TMPDIR="$scratch" check 'parent traversal' 2 Bash "rm -rf '$scratch/nested/../second'" || failed=1
+  TMPDIR="$scratch" check 'mixed temporary and outside paths' 2 Bash "rm -rf '$scratch/nested' /fixture-example/data" || failed=1
+  TMPDIR="$scratch" check 'linked path' 2 Bash "rm -rf '$scratch/linked/subdir'" || failed=1
+  TMPDIR=/fixture-example check 'unverified temporary variable' 2 Bash 'rm -rf $TMPDIR/nested' || failed=1
+  TMPDIR="$scratch" check 'quoted variable spelling is literal' 2 Bash "rm -rf '\$TMPDIR/nested'" || failed=1
+  if [ -e "$RM_CALL_RECEIPT" ]; then
+    printf '%s\n' 'Unexpected deletion command execution' >&2
+    return 1
+  fi
+  printf '%s\n' 'Deletion commands executed: 0'
+  return "$failed"
+}
+
 case "${1:-}" in
   github) check_github; exit 0 ;;
   npm) check_npm; exit 0 ;;
+  recursive-delete) check_recursive_delete; exit 0 ;;
 esac
 
 check 'drop' 2 Bash 'git stash drop'
@@ -141,3 +175,4 @@ HOOK_PYTHON="$scratch/bin/interpreter-override" check 'shared interpreter route'
 printf '%s\n' 'Git commands executed: 0'
 check_github
 check_npm
+check_recursive_delete

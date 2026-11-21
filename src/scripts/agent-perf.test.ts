@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildBrief,
   buildReport,
@@ -483,6 +483,37 @@ describe("statusline", () => {
 
     appendFileSync(join(dir, "2026-10.jsonl"), `${half.slice(20)}\n`);
     expect(sessionStats("s1", { dir, nowMs: NOW }).toolMs).toBe(15_000);
+  });
+
+  it("decodes only the selected session row from a mixed log segment", () => {
+    const selected = JSON.stringify(tool("résumé", 5000));
+    const other = JSON.stringify(tool("rg <arg>", 6000, { sid: "other" }));
+    const log = `${other}\n${selected}\n${other}\n`;
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "2026-10.jsonl"), log);
+
+    const decoder = vi.spyOn(Buffer.prototype, "toString");
+    try {
+      expect(sessionStats("s1", { dir, nowMs: NOW }).toolMs).toBe(5000);
+      const decodedSpans = decoder.mock.calls.flatMap(([, start = 0, end], index) => {
+        const buffer = decoder.mock.contexts[index];
+        if (!Buffer.isBuffer(buffer) || buffer.byteLength !== Buffer.byteLength(log)) return [];
+        return [(end ?? buffer.byteLength) - start];
+      });
+      expect(decodedSpans).toEqual([Buffer.byteLength(selected)]);
+    } finally {
+      decoder.mockRestore();
+    }
+  });
+
+  it("keeps the byte offset after a malformed row and reads the next append once", () => {
+    writeRows([tool("résumé", 5000)]);
+    appendFileSync(join(dir, "2026-10.jsonl"), Buffer.from([0x80, 0x0a]));
+    expect(sessionStats("s1", { dir, nowMs: NOW }).toolMs).toBe(5000);
+
+    writeRows([tool("rg <arg>", 1000)]);
+    expect(sessionStats("s1", { dir, nowMs: NOW }).toolMs).toBe(6000);
+    expect(sessionStats("s1", { dir, nowMs: NOW }).toolMs).toBe(6000);
   });
 
   it("stays fast with 200k rows on disk", () => {

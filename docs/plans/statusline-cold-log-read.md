@@ -23,3 +23,9 @@ before filtering it, then derives the cache offset from that string.
 
 Keep the current file-size scan and existing append format. The timing
 test still measures the full cold and warm calls.
+
+A small disposable probe decoded 201 bytes for one matching 66-byte row.
+After a malformed byte, the reader reported 5,000 ms when an appended row
+should have brought the total to 6,000 ms. Decoding the complete buffer
+caused the extra work. Recounting the decoded text advanced the cache past
+the first bytes of the next row.

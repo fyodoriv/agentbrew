@@ -633,6 +633,11 @@ describe("certified full native settings preflight", () => {
     ["an array root", "[]"],
     ["a non-object marketplace map", '{"extraKnownMarketplaces":[]}'],
     ["a non-object enabled-plugin map", '{"enabledPlugins":"invalid"}'],
+    [
+      "invalid UTF-8 in a quoted setting",
+      Buffer.concat([Buffer.from('{"theme":"'), Buffer.from([0xff]), Buffer.from('"}')]),
+    ],
+    ["a byte-order mark", Buffer.from([0xef, 0xbb, 0xbf, 0x7b, 0x7d])],
   ])("refuses %s before writing any native output", (_label, body) => {
     installFacetFixture();
     chmodSync(join(pluginDir("fixture-native"), "hooks", "guard.sh"), 0o644);

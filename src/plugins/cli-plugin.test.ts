@@ -38,7 +38,7 @@ import { defaultState, saveState } from "../state.js";
 import { fixtureGit, fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { marketplaceDir } from "./claude-native.js";
 import { registerPluginCommands } from "./cli-plugin.js";
-import { marketplaceObservation } from "./lifecycle-observation-output.js";
+import { completeMarketplaceWorkerOutput, marketplaceObservation } from "./lifecycle-observation-output.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, applyAdd, planAdd, pluginDir, pluginsRoot } from "./store.js";
 
@@ -201,6 +201,8 @@ it("plugin lifecycle observation output", async () => {
 });
 
 describe("plugin commands re-emit the Claude Code plugin copy (#447)", () => {
+  afterEach(completeMarketplaceWorkerOutput);
+
   const run = async (...args: string[]) => {
     const program = new Command().exitOverride();
     registerPluginCommands(program);

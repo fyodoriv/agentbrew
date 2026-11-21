@@ -110,3 +110,70 @@ framing, a duplicate begin, a skipped stage, mismatched timing, a verdict
 that conflicts with the stage records, and an unconfirmed test outcome.
 Only the later authorized driver may supply the actual runner verdict.
 This check does not run the diagnostic or attribute the earlier timeout.
+
+## Bind the captured records to the exact test
+
+Use a bounded hosted process, one named Vitest test and a private result
+file. Confirm both captured streams and the reported test result before
+calling the stage checker. The known in-test timeout is 30,000 ms. A process
+deadline or a different test timeout cannot establish an open stage.
+
+- **Hypothesis**: The launcher can bind a framed stage stream to one passing or failed result from the exact marketplace-copy test without exposing the runner's raw output.
+- **Measurement**: Run `npx vitest run src/plugins/lifecycle-observation-capture.test.ts` on hosted Linux and macOS. Substitute disposable Node children for the actual test launch. Inspect the exact argv, private result file, stdout, stderr and child exit status.
+- **Success**: All 3 supported cases report the expected complete, open-stage or failed-stage result. All 8 invalid captures stay unqualified. The original case runs 0 times during qualification.
+- **Pivot**: Reject after 1 unintended original invocation, 1 false classification, 1 raw error or path printed, or 1 child whose output was not bounded.
+- **Anchor**: The earlier stage receipt outcomes and the locked Vitest JSON reporter.
+
+The invalid captures are a different file, a different test, multiple
+executed tests, a signaled or timed-out process, a recorder failure marker,
+a stage record on stdout, incomplete JSON output, and a different test
+timeout. The temporary folder belongs to one driver invocation and is
+released after capture. The job that eventually runs the original case must
+use a clean hosted checkout and an external job deadline. The one-run
+admission stays separate.
+
+### Qualify the typed timeout result and both capture channels
+
+The locked JSON reporter prefers the stack over the error message. The timeout
+runner can replace the stack with its call-site marker. Read the test error's
+message from Vitest's reporter interface and emit only a fixed verdict.
+Require the exact file ancestry, no other pending test, the JSON completion
+receipt on stdout, and a terminal marker on stderr.
+The reporter is a Knip entry because Vitest loads it by path at runtime.
+
+- **Hypothesis**: A companion reporter can emit the configured timeout from
+  a harmless Vitest test while preserving the separate capture receipts.
+- **Measurement**: Run a nested disposable Vitest fixture with a 125 ms
+  deadline. Use the same reporters and separate buffered output streams.
+  Test a nested lookalike, a pending test, and a missing completion marker on
+  each stream.
+- **Success**: The real short fixture reports 125 ms and both completion
+  receipts. All 4 extra invalid cases stay unqualified. The original
+  marketplace-copy test runs 0 times with observation during qualification.
+- **Pivot**: Reject after 1 incorrect reported timeout, 1 qualified result
+  with an incomplete channel, or 1 original diagnostic invocation.
+- **Anchor**: The locked Vitest `Reporter.onTestRunEnd` and `TestResult.errors`
+  interfaces and the earlier stage output check.
+
+### Verify the worker stream and exclusive test selection
+
+The coordinator can finish while a test worker's stderr closes early. Add
+one opt-in completion line from the same worker, after the selected test's
+stage writes. The ordinary suite keeps the hook quiet and preserves the
+original test body. Disable the result cache and keep the disposable test's
+dependency cache inside its own folder.
+
+- **Hypothesis**: Anchoring the launch to the exact file, suite and test
+  skips a nested lookalike. A worker marker followed by the coordinator
+  marker supplies evidence from both legs of stderr capture.
+- **Measurement**: Add the same quiet worker hook and a nested lookalike to
+  the disposable 125 ms Vitest fixture. Verify the result statuses, marker
+  order, cache scope, and independent missing and out-of-order marker cases.
+- **Success**: Exactly 1 disposable case executes, 1 nested lookalike is
+  skipped, both worker and coordinator markers appear in order, and 0 cache
+  writes leave the disposable folder. Both new invalid captures stay
+  unqualified. The original diagnostic still runs 0 times.
+- **Pivot**: Stop after 1 extra case executes, 1 unknown worker result is
+  accepted, or 1 observed write escapes the disposable folder.
+- **Anchor**: The locked Vitest test-name filter, worker transport and
+  recorder output contracts.

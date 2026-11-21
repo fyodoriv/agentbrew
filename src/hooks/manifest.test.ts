@@ -513,6 +513,21 @@ describe("canonical hook manifest", () => {
     expect(filterHooksForTarget(managed, "codex").find(usesGuard)).toBeUndefined();
   });
 
+  it("wires the opt-in PR readiness check before Claude runs a Bash merge", () => {
+    const repoRoot = resolve(import.meta.dirname, "../..");
+    const overlayPath = join(tempRoot(), "overlay.yaml");
+    const usesGuard = (hook: { command?: string }) => hook.command?.endsWith("/pr-merge-preflight.sh");
+    const byDefault = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", { overlayPath });
+    expect(byDefault.managed.find(usesGuard)).toBeUndefined();
+
+    writeManifest(overlayPath, "version: 1\nenabled: [pr-merge-preflight]\nhooks: []\n");
+    const { managed } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", { overlayPath });
+    expect(filterHooksForTarget(managed, "claude-code").filter(usesGuard)).toMatchObject([
+      { event: "PreToolUse", matcher: "Bash" },
+    ]);
+    expect(filterHooksForTarget(managed, "codex").find(usesGuard)).toBeUndefined();
+  });
+
   it("ships the perf-record hooks on by default, async, for Claude Code only", () => {
     const repoRoot = resolve(import.meta.dirname, "../..");
     const { managed, resolved: resolvedManifest } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", {

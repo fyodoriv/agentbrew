@@ -6,6 +6,7 @@ fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
 mkdir -p "$fixture/bin" "$fixture/shared" "$fixture/linked" "$fixture/home" "$fixture/deployed/lib"
 export GIT_FIXTURE_RECORD="$fixture/calls"
+export GIT_FIXTURE_OBJECT_LOOKUP="$fixture/object-lookups"
 fixture_path="$fixture/bin:/usr/bin:/bin"
 unset BASH_ENV ENV
 
@@ -20,6 +21,23 @@ if [[ " $* " == *" rev-parse "* ]]; then
     printf '%s\n' '/scratch/shared/.git' '/scratch/shared/.git'
   fi
   exit 0
+fi
+if [[ "$#" == 2 && "$1" == check-ref-format ]]; then
+  exec /usr/bin/git "$@"
+fi
+if [[ " $* " == *" show-ref --verify --quiet -- "* ]]; then
+  printf '%s\n' 'object lookup' >>"$GIT_FIXTURE_OBJECT_LOOKUP"
+  [[ "${GIT_FIXTURE_REF_ERROR:-}" != 1 ]] || exit 1
+  [[ "${!#}" == refs/heads/feat/fixture-branch ]]
+  exit
+fi
+if [[ " $* " == *" show-ref --exists -- "* ]]; then
+  if [[ "${GIT_FIXTURE_REF_ERROR:-}" == 1 ]]; then
+    printf '%s\n' 'synthetic-private-marker' >&2
+    exit 1
+  fi
+  [[ "${!#}" != refs/heads/feat/fixture-branch ]] || exit 0
+  exit 2
 fi
 printf '%s\0' "$@" >"$GIT_FIXTURE_RECORD"
 printf '%s\n' 'git received the call'
@@ -124,3 +142,33 @@ scratch_git "$fixture/deployed/lib:/usr/bin:/bin" status --porcelain >"$fixture/
 /usr/bin/cmp "$fixture/direct" "$fixture/guarded"
 printf '%s\n' 'Ten blocked and ten allowed cases matched, plus script, linked-checkout and compatibility controls.'
 printf '%s\n' 'Real Git status output stayed byte-identical.'
+
+allowed -C linked checkout feat/fixture-branch
+allowed -C linked switch feat/fixture-branch
+allowed checkout -- feat/fixture-branch
+allowed checkout docs/fixture-file
+allowed checkout 'docs/fixture file'
+
+named_branch_failure=0
+for subcommand in checkout switch; do
+  if (blocked git "$subcommand" feat/fixture-branch); then
+    printf 'Shared named branch %s: refused before Git\n' "$subcommand"
+  else
+    printf 'Shared named branch %s: refusal missing\n' "$subcommand" >&2
+    named_branch_failure=1
+  fi
+done
+GIT_FIXTURE_REF_ERROR=1 allowed checkout -- feat/fixture-branch
+if (GIT_FIXTURE_REF_ERROR=1 blocked git checkout feat/fixture-branch); then
+  printf '%s\n' 'Branch lookup error: refused before Git'
+else
+  printf '%s\n' 'Branch lookup error: refusal missing' >&2
+  named_branch_failure=1
+fi
+if [[ -e "$GIT_FIXTURE_OBJECT_LOOKUP" ]]; then
+  printf 'Object-resolving queries: %s (expected 0)\n' "$(wc -l <"$GIT_FIXTURE_OBJECT_LOOKUP")" >&2
+  named_branch_failure=1
+else
+  printf '%s\n' 'Object-resolving queries: 0'
+fi
+[[ "$named_branch_failure" == 0 ]]

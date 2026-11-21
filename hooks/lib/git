@@ -142,6 +142,16 @@ case "$command" in
     if $force && ! $dry_run; then guard_shared_checkout; fi
     ;;
   reset|restore|checkout|switch)
+    if [[ "$#" == 1 && ( "$command" == checkout || "$command" == switch ) && "$1" == */* && "$1" != -* ]] &&
+      "$real_git" check-ref-format "refs/heads/$1" >/dev/null 2>&1; then
+      reference_status=0
+      "$real_git" "${options[@]}" show-ref --exists -- "refs/heads/$1" >/dev/null 2>&1 || reference_status=$?
+      case "$reference_status" in
+        0) guard_shared_checkout ;;
+        2) ;;
+        *) block 'Git could not verify the local branch. Use Git 2.43 or later, or use git checkout -- path for a file.' ;;
+      esac
+    fi
     paths_only=false
     for item in "$@"; do
       case "$command:$item" in

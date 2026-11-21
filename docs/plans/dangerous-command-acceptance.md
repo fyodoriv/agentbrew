@@ -25,3 +25,8 @@ does not give each listed form its own decision record.
 
 The recorder covers opted-in direct forms. It does not enable the
 hooks on this machine or execute a Git mutation.
+
+The named local branch check covers a branch that already exists.
+When no local branch exists, Git can guess a branch from a remote-tracking
+reference. Review of the registered task identified that separate direct
+case. Keep the task open until the remote-tracking case passes as well.

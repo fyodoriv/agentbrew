@@ -31,3 +31,7 @@ head SHA as the host-side merge precondition. Classify empty or
 invalid check lists as unavailable. Keep the status query bounded
 and read-only. Treat unsupported merge shapes conservatively.
 Do not activate a new hook on the live machine in this phase.
+
+The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44903297727/job/136843541800)
+found no configured pre-tool match when the overlay explicitly
+enabled it. The existing Stop, manifest and reviewer controls passed.

@@ -266,6 +266,16 @@ hooks:
     sourceRule: shared-rules.md:645 "A PR Is Not Ready Until It's Rebased and Green (IRON LAW)"
     agents: ["claude-code"]
 
+  - id: pr-merge-preflight
+    description: Check the exact pull request head before an explicit Bash merge
+    event: PreToolUse
+    matcher: Bash
+    script: checks/pr-merge-preflight.sh
+    tier: deterministic
+    verdict: block
+    agents: ["claude-code"]
+    defaultEnabled: false
+
   - id: manual-test-steps-start-at-app-url
     description: Block gh pr create when body has test-plan section but no app URL
     event: PreToolUse

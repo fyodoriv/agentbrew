@@ -122,6 +122,15 @@ The npm check applies when `publish` immediately follows the executable.
 Add `no-destructive-commands` to `enabled:` in the hooks overlay and run
 `agentbrew sync` to turn on the check.
 
+`pr-merge-preflight` is an opt-in Claude Code check for a direct Bash
+merge. Put the PR number first and name its repository with `--repo`,
+or put its HTTPS PR URL first. Use github.com or the host set in
+`GH_HOST`. Supply the full head commit with
+`--match-head-commit`. The check reads GitHub once and stops the merge
+when the head changed, the PR is unready, or the checks are incomplete.
+Add `pr-merge-preflight` to `enabled:` in the hooks overlay to include
+it at the next sync. GitHub still enforces the repository's branch rules.
+
 Hook scripts read the agent's hook payload from stdin as JSON. The common Claude
 Code shape is:
 

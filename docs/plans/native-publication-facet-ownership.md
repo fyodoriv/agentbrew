@@ -1195,3 +1195,26 @@ survived with a mode-0600 intent and no receipt or index. A retry refused
 before making a write. The two focused cases and all 85 native tests
 passed on Mac, and TypeScript passed. Independent review verified the
 guard and the fixture.
+
+## Check the retained intent against interrupted output
+
+- **Hypothesis**: The selected publisher retains an ordered description of
+  all five planned files when its process stops. The files already written
+  form an exact prefix of that description. The certified full publisher's
+  record identifies an owner only and cannot describe which files to recover.
+- **Measurement**: Use the existing signed scratch child in
+  `src/plugins/claude-native.test.ts` with its fixed umask 022. Stop the
+  selected writer before the first payload file, before the output receipt,
+  and before the marketplace index. Compare the private record to the fixed
+  five-path order and the regular file checksums and modes. Keep the fourth
+  control that stops certified full publication before its settings write.
+  Run both native publisher files in required hosted CI.
+- **Success**: Three selected prefixes contain exactly 0, 3 and 4 planned
+  files with matching digests and modes. The remaining 5, 2 and 1 paths are
+  absent. The full record has zero per-file intent entries. Each of the four
+  retries refuses and makes zero file or owner changes.
+- **Pivot**: One wrong path, unexpected file, wrong digest or mode, missing
+  owner record, or changed retry output leaves the evidence unqualified.
+  Keep activation and recovery on hold.
+- **Anchor**: The existing process-loss cases and the intent layout in
+  `src/plugins/claude-native-selected.ts`.

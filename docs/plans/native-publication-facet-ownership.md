@@ -1359,3 +1359,9 @@ and has mode `0600` and the verified home directory owner.
 
 The check runs in the normal status flow after Agentbrew has
 loaded its state.
+
+The [first Linux candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44887780153/job/136796798894)
+passed all 64 status tests. The skill size check found one error
+because the status skill reached 1,015 estimated tokens against its
+954-token limit. The skill now states the status rule once and keeps
+the existing diagnosis instructions.

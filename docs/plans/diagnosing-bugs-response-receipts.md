@@ -53,3 +53,25 @@ stop reason. It returned 40 words when the plan required the single
 word READY. The driver exited 1 at the setup check. No comparison
 response was requested and there is no behavior score. The catalog
 decision remains open.
+
+## Check structured setup, then compare the untouched cases
+
+The earlier setup checked literal prose even though the transport
+and model identity were correct. Resume the comparison from setup.
+The two original cases and both skill bodies stay pinned.
+
+- **Hypothesis**: A fixed JSON schema gives one exact setup receipt.
+  The original four scored requests can then run once each.
+- **Measurement**: Run the previous local driver under `heavy-run`.
+  For setup only, use the Ollama chat `format` schema with one field
+  and allowed value `{"status":"READY"}`. Check that exact object
+  and the existing provider/model receipt. Keep the original two
+  cases, model digest, seed, prompt, options and blind rubric.
+- **Success**: 1 structured setup object and 4 complete case receipts.
+  The original rubric still requires 2 of 2 candidate passes, at most
+  1 of 2 comparison passes, and 0 unsupported execution claims.
+- **Pivot**: Stop on 1 failed setup result or incomplete case receipt.
+  Once both groups run, a tie or any wrong candidate decision keeps
+  the catalog task open.
+- **Anchor**: [Ollama structured outputs](https://docs.ollama.com/capabilities/structured-outputs)
+  and the preserved setup receipt above.

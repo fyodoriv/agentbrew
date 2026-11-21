@@ -229,6 +229,35 @@ describe("native publisher admission", () => {
     }
   });
 
+  it.each(["mutation", "cleanup"] as const)("preserves an owner with special mode bits before %s", (stage) => {
+    const output = join(home, "fixture-publisher-output");
+    const content = "Inert fixture output";
+    const recordDigest = () => createHash("sha256").update(readFileSync(owner)).digest("hex");
+    let originalDigest: string | undefined;
+    try {
+      expect(() => {
+        withNativePublicationLock((beginMutation) => {
+          const publish = () => {
+            beginMutation();
+            writeFileSync(output, content, { mode: 0o600 });
+          };
+          if (stage === "cleanup") publish();
+          originalDigest = recordDigest();
+          chmodSync(owner, 0o4600);
+          expect(lstatSync(owner).mode & 0o7777).toBe(0o4600);
+          if (stage === "mutation") publish();
+        });
+      }).toThrow(/native publication ownership changed/u);
+      expect(lstatSync(owner).mode & 0o7777).toBe(0o4600);
+      expect(recordDigest()).toBe(originalDigest);
+      if (stage === "cleanup") expect(readFileSync(output, "utf8")).toBe(content);
+      else expect(existsSync(output)).toBe(false);
+    } finally {
+      rmSync(owner, { force: true });
+      rmSync(output, { force: true });
+    }
+  });
+
   it("releases the acquired record after success and a plan refusal", () => {
     installFacetFixture();
     emitClaudeNative();

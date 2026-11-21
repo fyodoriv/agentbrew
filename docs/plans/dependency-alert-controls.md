@@ -288,13 +288,15 @@ requirement. Original registration and baseline receipts remain unchanged.
 ### Exact constraint and source limit
 
 - Published Nunjucks latest is 3.2.4, with optional peer Chokidar `^3.3.0`.
-- Both current Promptfoo 0.124.1 and latest 0.125.1 declare Chokidar `5.0.0`
-  and Nunjucks `^3.2.4`. The app root also declares Chokidar `5.0.0`.
+- Promptfoo 0.124.1 and 0.125.1 declare Chokidar `5.0.0` and Nunjucks
+  `^3.2.4`. The app root also declares Chokidar `5.0.0`. Published
+  [Promptfoo 0.126.0](dependency-alerts-172-175.md#published-metadata-on-nov-21-2026)
+  declares Chokidar `6.0.0`.
 - npm 10 optional-peer semantics allow absence, not an installed incompatible
   peer. Arborist marks that present edge `INVALID`.
 - npm's peer placement rejects a peer inside its dependent. Placing Chokidar 3
   under Nunjucks is not a supported peer fix. Placing 3 at the root or Promptfoo
-  level contradicts the required version 5 at that level.
+  level conflicts with the declared version at that level.
 - No supported published latest-version resolution was found under the
   protected root declarations. This is a bounded current metadata conclusion,
   not proof that no future release or separately reviewed upstream change can

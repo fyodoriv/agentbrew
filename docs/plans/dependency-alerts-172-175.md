@@ -21,7 +21,7 @@ range covers 7.x through 10.x; do not narrow it to the version displayed in
 the issuer's older prose. Count each row unsafe if any matching locked copy
 is affected. These two rows do not replace the original nine-row denominator.
 
-## Current parent constraints
+## Parent constraints at registration
 
 - Hono: the lock has safe root 2.1.4 and vulnerable 2.1.1 nested under
   Promptfoo. [Promptfoo 0.124.1](https://registry.npmjs.org/promptfoo/0.124.1)
@@ -33,12 +33,12 @@ is affected. These two rows do not replace the original nine-row denominator.
 - Minimatch: locked 10.2.5 is required through Promptfoo `^10.2.4`,
   [Glob 13.0.6](https://registry.npmjs.org/glob/13.0.6) `^10.2.2` and
   [filesystem 2026.8.31](https://registry.npmjs.org/@modelcontextprotocol%2Fserver-filesystem/2026.8.31)
-  `^10.0.1`. Latest Promptfoo retains these major ranges and its exact
+  `^10.0.1`. Promptfoo 0.125.1 retains these major ranges and its exact
   filesystem pin. [Glob 14.0.3](https://registry.npmjs.org/glob/14.0.3)
   supports `^11.0.2`, but is outside the parents' Glob 13 range.
   [Filesystem 2.2.0](https://registry.npmjs.org/@modelcontextprotocol%2Fserver-filesystem/2.2.0)
   supports `^11.0.4`, but is outside the pin and requires Node >=24.
-- Current and latest Promptfoo retain Chokidar 5.0.0 and Nunjucks `^3.2.4`.
+- Promptfoo 0.124.1 and 0.125.1 declare Chokidar 5.0.0 and Nunjucks `^3.2.4`.
   [Nunjucks 3.2.4](https://registry.npmjs.org/nunjucks/3.2.4) requires optional
   peer Chokidar `^3.3.0`. The existing
   [peer compatibility task](dependency-alert-controls.md#exact-constraint-and-source-limit)
@@ -53,6 +53,25 @@ Preserve the local `file:scripts/stubs/jks-js` declaration and stub bytes,
 paths, the root Node floor and `.node-version`. Do not introduce node-forge,
 downgrade root Chokidar, dismiss alerts or hide invalid edges. A proposed
 broader policy change needs separate approval and a new prediction.
+
+## Published metadata on Nov 21, 2026
+
+The [public npm registry](https://registry.npmjs.org/promptfoo/latest)
+reports Promptfoo 0.126.0. This machine's normal npm resolver still
+reports 0.125.1. The public version pins node-server 2.1.6 and moves its
+direct minimatch range to `^11.0.8`. It also uses Glob `^14.0.3` and
+pins the optional filesystem server to 2.3.0. That
+[filesystem version](https://registry.npmjs.org/@modelcontextprotocol%2Fserver-filesystem/2.3.0)
+declares minimatch `^11.0.4` and Node 24 or later.
+
+The new Promptfoo version needs Chokidar 6.0.0.
+[Nunjucks 3.2.4](https://registry.npmjs.org/nunjucks/3.2.4) still needs an
+optional Chokidar peer in the 3.x range. Promptfoo's optional jks-js peer
+still requires `^1.1.5`. The protected local stub is
+`0.0.0-agentbrew-stub`. These contracts leave the normal full graph
+unqualified. GitHub still reports alerts 172, 175 and 181 open.
+This comparison uses registry metadata. It does not measure a resolved
+lock graph, an installation or an advisory fix.
 
 ## Next experiment: proposed commands, not a passing harness
 

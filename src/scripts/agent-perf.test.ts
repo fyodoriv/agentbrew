@@ -495,10 +495,12 @@ describe("statusline", () => {
     const decoder = vi.spyOn(Buffer.prototype, "toString");
     try {
       expect(sessionStats("s1", { dir, nowMs: NOW }).toolMs).toBe(5000);
-      const decodedSpans = decoder.mock.calls.flatMap(([, start = 0, end], index) => {
+      const decodedSpans = decoder.mock.calls.flatMap(([, start, end], index) => {
         const buffer = decoder.mock.contexts[index];
         if (!Buffer.isBuffer(buffer) || buffer.byteLength !== Buffer.byteLength(log)) return [];
-        return [(end ?? buffer.byteLength) - start];
+        const first = typeof start === "number" ? start : 0;
+        const last = typeof end === "number" ? end : buffer.byteLength;
+        return [last - first];
       });
       expect(decodedSpans).toEqual([Buffer.byteLength(selected)]);
     } finally {

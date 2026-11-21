@@ -26,7 +26,8 @@ routes and the server-side branch protection.
   and the existing Dotfiles exact-head delivery gate.
 
 Support a standalone merge named by an explicit PR number and
-repository or a canonical HTTPS PR URL. Require the full expected
+host-qualified github.com repository or a canonical github.com HTTPS
+PR URL. Resolve the host before the probe. Require the full expected
 head SHA as the host-side merge precondition. Classify empty or
 invalid check lists as unavailable. Keep the status query bounded
 and read-only. Treat unsupported merge shapes conservatively.
@@ -35,3 +36,9 @@ Do not activate a new hook on the live machine in this phase.
 The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44903297727/job/136843541800)
 found no configured pre-tool match when the overlay explicitly
 enabled it. The existing Stop, manifest and reviewer controls passed.
+
+GitHub CLI can send enterprise credentials to a non-public host.
+Reject unqualified repositories, other hosts and implicit host
+selection before making a query. Use the explicit public host
+in the query so an ambient setting cannot redirect the read.
+[GitHub CLI environment](https://cli.github.com/manual/gh_help_environment).

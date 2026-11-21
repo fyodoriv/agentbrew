@@ -32,8 +32,8 @@ ready="$(jq -nc --arg head "$head_sha" '{
     {__typename: "StatusContext", state: "SUCCESS"}
   ]
 }')"
-explicit="gh pr merge 42 -R fixture/repo --squash --match-head-commit $head_sha"
-url="gh pr merge https://github.com/fixture/repo/pull/42 --squash --match-head-commit=$head_sha"
+explicit="gh pr merge 42 -R github.com/fixture/repo --squash --match-head-commit $head_sha"
+url="gh pr merge https://github.com/fixture/alternate/pull/73 --squash --match-head-commit=$head_sha"
 
 check() {
   local name="$1" expected="$2" reads="$3" command="$4" response="$5" mode="${6:-status}"
@@ -63,13 +63,17 @@ check() {
 
 check 'verified numbered request' 0 1 "$explicit" "$ready"
 grep -Fxq 42 "$GH_FIXTURE_RECEIPT"
-grep -Fxq fixture/repo "$GH_FIXTURE_RECEIPT"
-check 'verified URL request' 0 1 "$url" "$ready"
-grep -Fxq 'https://github.com/fixture/repo/pull/42' "$GH_FIXTURE_RECEIPT"
+grep -Fxq github.com/fixture/repo "$GH_FIXTURE_RECEIPT"
+check 'verified URL request' 0 1 "$url" "$(jq -c '.number = 73 | .url = "https://github.com/fixture/alternate/pull/73"' <<< "$ready")"
+grep -Fxq 73 "$GH_FIXTURE_RECEIPT"
+grep -Fxq github.com/fixture/alternate "$GH_FIXTURE_RECEIPT"
 check 'unrelated text' 0 0 "printf '%s' '$explicit'" "$ready"
-check 'missing head precondition' 2 0 'gh pr merge 42 -R fixture/repo --squash' "$ready"
+check 'missing head precondition' 2 0 'gh pr merge 42 -R github.com/fixture/repo --squash' "$ready"
 check 'missing explicit repository' 2 0 "gh pr merge 42 --match-head-commit $head_sha" "$ready"
 check 'unconfigured status host' 2 0 "gh pr merge https://github.example.com/fixture/repo/pull/42 --match-head-commit $head_sha" "$ready"
+check 'unadmitted repository host' 2 0 "gh pr merge 42 -R github.example.com/fixture/repo --match-head-commit $head_sha" "$ready"
+GH_HOST=github.example.com check 'ambient host cannot route unqualified repository' 2 0 \
+  "gh pr merge 42 -R fixture/repo --match-head-commit $head_sha" "$ready"
 check 'non-ready head' 2 1 "$explicit" "$(jq -c '.headRefOid |= ("f"*40)' <<< "$ready")"
 check 'wrong response repository' 2 1 "$explicit" "$(jq -c '.url = "https://github.com/fixture/other/pull/42"' <<< "$ready")"
 check 'pending check' 2 1 "$explicit" "$(jq -c '.statusCheckRollup[0] |= (.status = "IN_PROGRESS" | .conclusion = "")' <<< "$ready")"

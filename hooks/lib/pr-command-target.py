@@ -30,7 +30,7 @@ QUOTED_HEREDOC = re.compile(
 )
 REPO = r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9_.-]+"
 HOST = r"[A-Za-z0-9][A-Za-z0-9.:-]*"
-PR_URL = re.compile(rf"https://({HOST})/({REPO})/pull/([0-9]+)")
+PUBLIC_PR_URL = re.compile(rf"https://github\.com/({REPO})/pull/([0-9]+)", re.IGNORECASE | re.ASCII)
 
 
 def is_literal_note(command):
@@ -188,23 +188,19 @@ def merge_preflight(command):
     repo, head = options
     if not head:
         return "unsupported"
-    configured_host = os.environ.get("GH_HOST") or "github.com"
-    url = PR_URL.fullmatch(words[3])
+    url = PUBLIC_PR_URL.fullmatch(words[3])
     if url is not None and not repo:
-        host, slug, number = url.groups()
-        argv = [words[3]]
-    elif re.fullmatch(r"[0-9]+", words[3]) and repo:
-        host, _, slug = repo.partition("/")
-        if "/" not in slug:
-            host, slug = configured_host, repo
+        slug, number = url.groups()
+    elif re.fullmatch(r"[0-9]+", words[3]) and re.fullmatch(rf"github\.com/{REPO}", repo, re.IGNORECASE | re.ASCII):
+        _, _, slug = repo.partition("/")
         number = words[3]
-        argv = [number, "--repo", repo]
     else:
         return "unsupported"
     number = number.lstrip("0")
-    if not number or not re.fullmatch(HOST, host) or host.lower() not in ("github.com", configured_host.lower()):
+    if not number:
         return "unsupported"
-    return read_merge_readiness(argv, f"https://{host}/{slug}/pull/{number}", number, head)
+    argv = [number, "--repo", f"github.com/{slug}"]
+    return read_merge_readiness(argv, f"https://github.com/{slug}/pull/{number}", number, head)
 
 
 def reviewer_request(command):

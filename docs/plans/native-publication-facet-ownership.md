@@ -1218,3 +1218,26 @@ guard and the fixture.
   Keep activation and recovery on hold.
 - **Anchor**: The existing process-loss cases and the intent layout in
   `src/plugins/claude-native-selected.ts`.
+
+## Preserve native output during a selection with an empty lock
+
+- **Hypothesis**: A live selection with hooks, MCP or rules and a valid
+  lock listing zero installed plugins has no native payload to publish.
+  Leaving its existing native output alone avoids an unrelated cleanup.
+- **Measurement**: Run hosted `npx vitest run src/cli-sync-build-health.test.ts src/plugins/claude-native.test.ts src/plugins/claude-native-ordinary.test.ts`.
+  Exercise the three selected CLI gates and the mixed selection. In the signed
+  scratch fixture, leave a marketplace, launcher and settings in place after
+  removing the last installed pin. Compare the three output surfaces in
+  selected mode, then run the ordinary publisher. Compare a missing
+  lock, a malformed lock, a revoked signer and an active signed plugin
+  with the existing ordinary behavior.
+- **Success**: All four selected CLI cases request empty-lock preservation.
+  The three native surfaces have zero changes in the valid empty case.
+  Ordinary full publication still cleans the same three surfaces. All
+  four missing, malformed, revoked and active controls keep their prior
+  behavior. No selected call enters the experimental facet publisher.
+- **Pivot**: Reject after 1 changed surface with a valid empty lock,
+  1 skipped cleanup for a missing, malformed or revoked lock, or 1 changed
+  ordinary publication outcome.
+- **Anchor**: The ordinary publisher's empty marketplace, launcher and
+  settings branches, and the existing selected CLI gate.

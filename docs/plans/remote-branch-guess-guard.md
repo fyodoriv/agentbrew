@@ -48,3 +48,10 @@ explicit file syntax when the intended operation is a file checkout.
   rejects the working-directory check.
 - **Anchor**: [Git working directory and prefix](https://git-scm.com/docs/git-rev-parse)
   and the shared-root comparison above.
+
+The full task combines the [recursive deletion cases](recursive-delete-guard.md),
+the [local branch cases](named-branch-checkout-guard.md), the
+[commit and branch flag cases](dangerous-command-acceptance.md), and the
+remote-tracking cases above. The opt-in Bash fixture also covers the
+GitHub, stash and package commands. The Git session fixture compares
+safe file operations and linked checkout behavior with the recorded refusals.

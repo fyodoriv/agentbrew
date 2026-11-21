@@ -358,8 +358,7 @@ Use `git checkout -- path` to select a file explicitly. Stashes are shared
 across linked checkouts. Ordinary commands keep their arguments and use
 the existing Git command on PATH.
 The wrapper refuses a command-line replacement of the commit hook path.
-The commit hooks and remote protections also apply. Git can still guess
-a new branch from a remote-tracking reference when the local name is absent.
+The commit hooks and remote protections also apply.
 
 ## Check task files after an edit
 

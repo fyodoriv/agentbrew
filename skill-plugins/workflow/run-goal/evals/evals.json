@@ -3582,6 +3582,17 @@
         "Check the test file actually contains the new test",
         "Require a red run that executes the named test before green"
       ]
+    },
+    {
+      "id": 313,
+      "prompt": "/goal research 5 alternative products for each of my picked gifts and save them as options under each gift",
+      "expected_output": "Subagents research in parallel; before saving, the agent drops any option whose link equals the source gift (saving it would mark the source as an option of itself), checks each list still has 5, and backfills from shops that do not block bots instead of bypassing an anti-bot page.",
+      "expectations": [
+        "Checks every research result for the source item itself (same URL) and removes it before saving",
+        "Counts each list after the removal and fills it back to the promised number",
+        "Treats an anti-bot or captcha page as a blocked source and switches to another shop, never bypasses it",
+        "Quotes per-list counts as goal-check evidence"
+      ]
     }
   ]
 }

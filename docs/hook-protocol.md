@@ -351,12 +351,14 @@ linked checkout. The same check applies to a direct `git checkout` or
 `git switch` with an existing local branch name that contains a slash.
 This shorthand uses Git 2.43 or later to check whether the local
 reference exists. It refuses a lookup error before forwarding the command.
+When the local branch is absent, the wrapper requires a linked checkout
+before Git can guess a branch from a remote-tracking reference. The file
+shorthand stays available for a path that exists in the effective checkout.
 Use `git checkout -- path` to select a file explicitly. Stashes are shared
 across linked checkouts. Ordinary commands keep their arguments and use
 the existing Git command on PATH.
 The wrapper refuses a command-line replacement of the commit hook path.
-The commit hooks and remote protections also apply. Git can still guess
-a new branch from a remote-tracking reference when the local name is absent.
+The commit hooks and remote protections also apply.
 
 ## Check task files after an edit
 

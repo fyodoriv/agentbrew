@@ -338,6 +338,11 @@ absent or still equals the value that agentbrew wrote last time (kept in
 that you set yourself is never changed, and `agentbrew status` lists it under
 "User additions". To opt out, set your own `statusLine`.
 
+The managed status line decodes log rows for the selected session. It saves
+its position in complete file bytes so the next refresh can read appended
+rows, including after an invalid line. The first run after upgrading
+rebuilds an older status line cache from the log.
+
 ## Tokens, cost, and hours
 
 The perf log has no token data. For tokens, cache hits, cost, and active

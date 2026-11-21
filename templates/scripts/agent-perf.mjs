@@ -90,21 +90,25 @@ export function loadRows(dir, sinceMs, nowMs = Date.now()) {
   return rows;
 }
 
-/** Rows of one session, found by substring before JSON.parse (fast on big files). */
-export function sessionRowsFromText(text, sid) {
-  const needle = `"sid":"${sid}"`;
+/** Find one session's rows in a string or log bytes before parsing JSON. */
+export function sessionRowsFromText(content, sid) {
+  const binary = Buffer.isBuffer(content);
+  const marker = `"sid":"${sid}"`;
+  const needle = binary ? Buffer.from(marker) : marker;
+  const newline = binary ? 0x0a : "\n";
   const rows = [];
-  let at = text.indexOf(needle);
+  let at = content.indexOf(needle);
   while (at !== -1) {
-    const start = text.lastIndexOf("\n", at) + 1;
-    let end = text.indexOf("\n", at);
-    if (end === -1) end = text.length;
+    const start = content.lastIndexOf(newline, at) + 1;
+    let end = content.indexOf(newline, at);
+    if (end === -1) end = content.length;
     try {
-      rows.push(JSON.parse(text.slice(start, end)));
+      const line = binary ? content.toString("utf8", start, end) : content.slice(start, end);
+      rows.push(JSON.parse(line));
     } catch {
       // Skip a torn line.
     }
-    at = text.indexOf(needle, end);
+    at = content.indexOf(needle, end);
   }
   return rows;
 }
@@ -563,14 +567,16 @@ export function buildTurn(sid, { dir = perfDir(), nowMs = Date.now() } = {}) {
 
 // ── statusline: per-session cache so each refresh reads only new bytes ──
 
+const STATUSLINE_CACHE_VERSION = 1;
+
 function readFrom(file, offset) {
   const fd = openSync(file, "r");
   try {
     const size = fstatSync(fd).size;
-    if (size <= offset) return { text: "" };
+    if (size <= offset) return Buffer.alloc(0);
     const buffer = Buffer.alloc(size - offset);
-    readSync(fd, buffer, 0, buffer.length, offset);
-    return { text: buffer.toString("utf8") };
+    const bytesRead = readSync(fd, buffer, 0, buffer.length, offset);
+    return buffer.subarray(0, bytesRead);
   } finally {
     closeSync(fd);
   }
@@ -583,9 +589,10 @@ export function sessionStats(sid, { dir = perfDir(), nowMs = Date.now() } = {}) 
   if (!safeSid || !existsSync(dir)) return empty;
   const cacheDir = join(dir, ".cache");
   const cacheFile = join(cacheDir, `statusline-${safeSid}.json`);
-  let cache = { files: {}, toolMs: 0, slowKey: null, slowMs: 0 };
+  let cache = { version: STATUSLINE_CACHE_VERSION, files: {}, toolMs: 0, slowKey: null, slowMs: 0 };
   try {
-    cache = { ...cache, ...JSON.parse(readFileSync(cacheFile, "utf8")) };
+    const saved = JSON.parse(readFileSync(cacheFile, "utf8"));
+    if (saved?.version === STATUSLINE_CACHE_VERSION) cache = { ...cache, ...saved };
   } catch {
     // First refresh for this session.
   }
@@ -593,10 +600,10 @@ export function sessionStats(sid, { dir = perfDir(), nowMs = Date.now() } = {}) 
     const name = basename(file);
     let from = cache.files[name] ?? 0;
     if (statSync(file).size < from) from = 0;
-    const { text } = readFrom(file, from);
+    const bytes = readFrom(file, from);
     // Only consume whole lines; a half-written row waits for the next refresh.
-    const cut = text.lastIndexOf("\n") + 1;
-    for (const row of sessionRowsFromText(text.slice(0, cut), safeSid)) {
+    const cut = bytes.lastIndexOf(0x0a) + 1;
+    for (const row of sessionRowsFromText(bytes.subarray(0, cut), safeSid)) {
       if (!isToolRow(row) || isLongCall(row) || isBackground(row)) continue;
       if (isMainThread(row)) cache.toolMs += row.ms;
       if (row.ms > cache.slowMs) {
@@ -604,7 +611,7 @@ export function sessionStats(sid, { dir = perfDir(), nowMs = Date.now() } = {}) 
         cache.slowKey = row.key;
       }
     }
-    cache.files[name] = from + Buffer.byteLength(text.slice(0, cut));
+    cache.files[name] = from + cut;
   }
   try {
     mkdirSync(cacheDir, { recursive: true, mode: 0o700 });

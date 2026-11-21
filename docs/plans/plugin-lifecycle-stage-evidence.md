@@ -110,3 +110,24 @@ framing, a duplicate begin, a skipped stage, mismatched timing, a verdict
 that conflicts with the stage records, and an unconfirmed test outcome.
 Only the later authorized driver may supply the actual runner verdict.
 This check does not run the diagnostic or attribute the earlier timeout.
+
+## Bind the captured records to the exact test
+
+Use a bounded hosted process, one named Vitest test and a private result
+file. Confirm both captured streams and the reported test result before
+calling the stage checker. The known in-test timeout is 30,000 ms. A process
+deadline or a different test timeout cannot establish an open stage.
+
+- **Hypothesis**: The launcher can bind a framed stage stream to one passing or failed result from the exact marketplace-copy test without exposing the runner's raw output.
+- **Measurement**: Run `npx vitest run src/plugins/lifecycle-observation-capture.test.ts` on hosted Linux and macOS. Substitute disposable Node children for the actual test launch. Inspect the exact argv, private result file, stdout, stderr and child exit status.
+- **Success**: All 3 supported cases report the expected complete, open-stage or failed-stage result. All 8 invalid captures stay unqualified. The original case runs 0 times during qualification.
+- **Pivot**: Reject after 1 unintended original invocation, 1 false classification, 1 raw error or path printed, or 1 child whose output was not bounded.
+- **Anchor**: The earlier stage receipt outcomes and the locked Vitest JSON reporter.
+
+The invalid captures are a different file, a different test, multiple
+executed tests, a signaled or timed-out process, a recorder failure marker,
+a stage record on stdout, incomplete JSON output, and a different test
+timeout. The temporary folder belongs to one driver invocation and is
+released after capture. The job that eventually runs the original case must
+use a clean hosted checkout and an external job deadline. The one-run
+admission stays separate.

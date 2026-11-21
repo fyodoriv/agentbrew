@@ -1314,3 +1314,54 @@ the entire scratch output snapshot before testing the interruption.
 Require both interruption records to match all three known after states,
 including the writes that have yet to happen. Reject one wrong digest or
 mode, or any change outside the three planned paths.
+
+## Report a native publication record that needs review
+
+- **Hypothesis**: Agentbrew status can report the presence of an
+  owned publication record without reading its contents or changing it.
+  An unexpected file type, ownership or mode reports unavailable.
+- **Measurement**: Run hosted `npm exec -- vitest run src/status.test.ts
+  src/plugins/claude-native.test.ts --maxWorkers=1`. Use disposable
+  homes for a missing record, owned regular file, unsafe mode and
+  symlink. Check verbose and JSON status, the exact record and
+  target bytes, and the compact output control.
+- **Success**: One fixed status value for each present case, zero
+  status rows for the missing case, zero modified files and zero
+  paths, owner IDs, process IDs or record values in the new output.
+- **Pivot**: A missing warning, a claim that an owner is active,
+  a changed record, a followed symlink or a raw value rejects the probe.
+- **Anchor**: The native publisher's retained owner after interruption,
+  Basili, Caldiera and Rombach (1994), and
+  [Node file metadata](https://nodejs.org/api/fs.html#fslstatsyncpath-options).
+
+The signal covers the observed file at status time. Runtime
+coordination and verified recovery remain separate work.
+
+The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44886715102/job/136793463218)
+passed the missing case and failed the three present cases at the
+verbose status assertion. Status skipped the publication record.
+The probe now uses file metadata at the same path as the writer.
+It reports presence only when the file is regular, has one link,
+and has mode `0600` and the verified home directory owner.
+
+### Verify the complete permission mode
+
+- **Hypothesis**: A record with mode `04600` is unavailable even
+  when its read and write bits otherwise match mode `0600`.
+- **Measurement**: Add the special-mode file to the hosted
+  `npm exec -- vitest run src/status.test.ts --maxWorkers=1` matrix.
+- **Success**: The special-mode case returns `unavailable` and
+  preserves the file. All 4 earlier cases still pass.
+- **Pivot**: One accepted special mode, changed file or original
+  result rejects the check.
+- **Anchor**: [Node file mode](https://nodejs.org/api/fs.html#statsmode)
+  and the read-only status case above.
+
+The check runs in the normal status flow after Agentbrew has
+loaded its state.
+
+The [first Linux candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44887780153/job/136796798894)
+passed all 64 status tests. The skill size check found one error
+because the status skill reached 1,015 estimated tokens against its
+954-token limit. The skill now states the status rule once and keeps
+the existing diagnosis instructions.

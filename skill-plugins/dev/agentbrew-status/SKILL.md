@@ -22,8 +22,6 @@ agentbrew status --fix     # detect drift and AUTO-REPAIR it
 `status` shows what's configured. `status --fix` detects drift and fixes it in place.
 Use plain `status` to check without repairing, or `status --ci` for CI gates (exit 1 on drift, no color).
 
-See Setup Overview below for runtime checks.
-
 ## Drill Into Subsystems
 
 ```bash
@@ -35,6 +33,10 @@ agentbrew status --verbose # skills per agent + per-source counts (was `skills s
 agentbrew commands list    # deployed slash commands
 agentbrew status           # also shows drift inline (no separate `diff` subcommand)
 ```
+
+For native Claude publication, run `agentbrew status --verbose` and leave
+the record in place. Writer activity is unknown. If state cannot load,
+record status is unknown.
 
 ## Setup Overview and Commands
 
@@ -72,7 +74,6 @@ Agentbrew includes automatic drift prevention:
 
 - Drift repair is automatic — don't tell users to manually fix drift; run `status --fix`
 - When reporting status, give context: summarize skills, agents, and drift from the command output — not raw JSON
-- If auto-repair can't resolve drift, investigate the root cause (see Diagnose above)
 - Use `agentbrew status` to show what's out of sync before deciding whether to repair
 
 ## Constraints (Do NOT)

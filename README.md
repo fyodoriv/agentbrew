@@ -261,6 +261,15 @@ sync. Agents save judged drafts for you and suggest edits to sent messages.
 
 **Claude Code plugins from the catalog.** A `claude_plugins:` catalog entry names a repo, a full 40-character commit, and its `plugin@marketplace`. `agentbrew install <name>` clones the repo at that commit into `~/.local/share/agentbrew/claude-plugins/<name>`, registers the checkout as a directory marketplace, and enables the plugin, all through the `claude` CLI. (Claude Code itself can pin a marketplace only to a branch or tag, and both can move.) `agentbrew remove <name>` uninstalls the plugin, removes the marketplace and the checkout. `agentbrew status` reports drift: a checkout that moved, a plugin that is off, a marketplace that points elsewhere, or a catalog pin that changed. agentbrew records what it installed in `~/.config/agentbrew/claude-plugins.json` and touches only those plugins. `agentbrew catalog` (and `--search`, `--format json`) lists them with their repo and pinned commit, and `agentbrew install <name> --dry-run` previews one. A catalog Claude Code plugin is never recommended, so `install --recommended` never installs one.
 
+**Native Claude publication status.** Run `agentbrew status --verbose`
+to see whether a publication owner record needs review. With `--json`,
+`nativePublication` is `owner-record-present` when its file metadata
+matches, or `unavailable` when Agentbrew cannot verify the metadata.
+This signal requires readable Agentbrew state. The probe uses file
+metadata only and leaves the record in place.
+The [publication plan](docs/plans/native-publication-facet-ownership.md#report-a-native-publication-record-that-needs-review)
+explains what the signal can establish.
+
 **Pin a git install.** `agentbrew install --git <url> --ref <ref>` (also `mcp add --git`) checks out one exact commit:
 
 - A short name is looked up as a tag first, then as a branch. A tag wins over a branch with the same name. To pin that branch, pass `--ref refs/heads/<name>`.

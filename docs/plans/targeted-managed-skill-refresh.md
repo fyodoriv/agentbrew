@@ -166,3 +166,26 @@ Child process state lasts for one fixture invocation. The parent owns the two
 temporary folders, admits only the two defined write orders, and releases
 each folder after the child exits. The probe measures shared state persistence
 only. Publication, rollback and deployed skill links need separate proof.
+
+## Reload state after a rejected write
+
+- **Hypothesis**: When the state writer returns false, the manager can
+  discard its cached view of the failed mutation. The next read then
+  returns persisted data, and a later save omits the rejected edit.
+- **Measurement**: Run hosted `npx vitest run src/core/state-manager.test.ts`.
+  Clone each read and successful write in the test store. Reject one
+  save after a caller edits a nested value on the loaded object. In
+  a separate control, reject an update and then accept an unrelated
+  update. Compare the next reads and the stored records.
+- **Success**: Two refusals produce one fresh read each, zero persisted
+  changes from the failed writes, and zero rejected edits in the later
+  successful write. Retain the existing return and cache behavior on
+  successful writes.
+- **Pivot**: Reject after 1 failed edit reappears, 1 changed success case,
+  or 1 missing reload following an explicit false result.
+- **Anchor**: The manager's runtime cache in `src/core/state-manager.ts`
+  and the disk writer's failed-save result in `src/state.ts`.
+
+This step covers later reads from the same manager. Existing references
+held by callers, shared writer admission and installed links need their
+own coordination.

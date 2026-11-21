@@ -131,3 +131,25 @@ timeout. The temporary folder belongs to one driver invocation and is
 released after capture. The job that eventually runs the original case must
 use a clean hosted checkout and an external job deadline. The one-run
 admission stays separate.
+
+### Qualify the typed timeout result and both capture channels
+
+The locked JSON reporter prefers the stack over the error message. The timeout
+runner can replace the stack with its call-site marker. Read the test error's
+message from Vitest's reporter interface and emit only a fixed verdict.
+Require the exact file ancestry, no other pending test, the JSON completion
+receipt on stdout, and a terminal marker on stderr.
+
+- **Hypothesis**: A companion reporter can emit the configured timeout from
+  a harmless Vitest test while preserving the separate capture receipts.
+- **Measurement**: Run a nested disposable Vitest fixture with a 125 ms
+  deadline. Use the same reporters and separate buffered output streams.
+  Test the three extra failures for a nested lookalike, a pending test, and a
+  missing completion marker on either stream.
+- **Success**: The real short fixture reports 125 ms and both completion
+  receipts. All 4 extra invalid cases stay unqualified. The original
+  marketplace-copy test runs 0 times with observation during qualification.
+- **Pivot**: Reject after 1 incorrect reported timeout, 1 qualified result
+  with an incomplete channel, or 1 original diagnostic invocation.
+- **Anchor**: The locked Vitest `Reporter.onTestRunEnd` and `TestResult.errors`
+  interfaces and the earlier stage output check.

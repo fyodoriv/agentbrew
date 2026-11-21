@@ -29,3 +29,19 @@ checkout, file and previous controls passed. The wrapper checked branch
 creation flags but did not look up an existing branch. It now uses a
 read-only lookup for the exact local reference and applies the existing
 checkout location check.
+
+## Verify the lookup result without resolving an object
+
+- **Hypothesis**: A reference existence check can use local Git metadata
+  without resolving an object. A lookup error never forwards the branch
+  or file operation.
+- **Measurement**: Run the same hosted fixture with a recorder for any
+  object-resolving query, 1 injected lookup error and an explicit file
+  control under the same error condition.
+- **Success**: Each platform records 0 object-resolving queries, 1 refusal
+  for the error and 0 forwarded operations for that refusal. The explicit
+  file operation and all earlier controls pass.
+- **Pivot**: One object query, incomplete lookup that forwards the request
+  or changed prior outcome rejects the candidate.
+- **Anchor**: [Git reference existence lookup](https://git-scm.com/docs/git-show-ref)
+  and the [Git implementation](https://github.com/git/git/blob/v2.43.0/builtin/show-ref.c).

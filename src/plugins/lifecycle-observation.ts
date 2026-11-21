@@ -1,13 +1,15 @@
-type Stage =
-  | "add"
-  | "initial-copy"
-  | "release"
-  | "update"
-  | "updated-copy"
-  | "rollback"
-  | "rolled-back-copy"
-  | "remove"
-  | "final-copy";
+export const MARKETPLACE_STAGES = [
+  "add",
+  "initial-copy",
+  "release",
+  "update",
+  "updated-copy",
+  "rollback",
+  "rolled-back-copy",
+  "remove",
+  "final-copy",
+] as const;
+type Stage = (typeof MARKETPLACE_STAGES)[number];
 
 /** Recorder state belongs to one lifecycle-test invocation. */
 export function lifecycleObservation(

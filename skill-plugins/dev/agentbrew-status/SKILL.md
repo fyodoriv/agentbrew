@@ -36,6 +36,10 @@ agentbrew commands list    # deployed slash commands
 agentbrew status           # also shows drift inline (no separate `diff` subcommand)
 ```
 
+When the user asks whether native Claude publication needs review, run
+`agentbrew status --verbose`. Relay the publication line as a metadata
+check. Leave the record in place and treat any writer activity as unknown.
+
 ## Setup Overview and Commands
 
 For "show my setup", "what commands can I type", or "what does /x do", see

@@ -24,6 +24,7 @@ import {
   unhealthyMcpEntries,
 } from "./mcp/health-snapshot.js";
 import { COMMANDS_DIR } from "./paths.js";
+import { inspectNativePublicationStatus, type NativePublicationStatus } from "./plugins/native-publication-lock.js";
 import { getStatePath, requireState } from "./state.js";
 import { type AutoRepairDescription, describeAutoRepair, probeAutoRepairHealth } from "./sync/auto-repair-health.js";
 import {
@@ -77,6 +78,7 @@ interface StatusData {
   commandNameClashes: NameClash[];
   agentNameClashes: NameClash[];
   statePath: string;
+  nativePublication?: NativePublicationStatus;
 }
 
 // ── Shared helpers (private) ─────────────────────────────────────────────────
@@ -650,6 +652,7 @@ export function collectStatusData(): StatusData | undefined {
     commandNameClashes: commandNameClashes(state),
     agentNameClashes: agentNameClashes(state),
     statePath: getStatePath(),
+    nativePublication: inspectNativePublicationStatus(),
   };
 }
 
@@ -822,6 +825,13 @@ async function statusVerbose(state: NonNullable<ReturnType<typeof requireState>>
   printVerboseCatalogRulesSection();
   printVerboseHelperScriptsSection();
   printVerboseSyncSection();
+
+  const nativePublication = inspectNativePublicationStatus();
+  if (nativePublication === "owner-record-present") {
+    console.log("  Native publication: owner record present. Review before recovery.");
+  } else if (nativePublication === "unavailable") {
+    console.log("  Native publication: owner record could not be verified.");
+  }
 
   const autoRepair = describeAutoRepair(probeAutoRepairHealth());
   const mark = autoRepair.tone === "ok" ? "✓" : "✗";

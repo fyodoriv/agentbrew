@@ -27,6 +27,34 @@ export interface NativeWriteIntent {
 
 type BeginNativeMutation = (intent?: readonly NativeWriteIntent[]) => void;
 
+const NATIVE_PUBLICATION_LOCK_NAME = ".agentbrew-native-publication.lock";
+
+export type NativePublicationStatus = "owner-record-present" | "unavailable";
+
+/** Inspect file metadata without opening the owner record or deciding whether its writer is active. */
+export function inspectNativePublicationStatus(): NativePublicationStatus | undefined {
+  try {
+    const home = realpathSync.native(homedir());
+    const record = lstatSync(join(home, NATIVE_PUBLICATION_LOCK_NAME), { throwIfNoEntry: false });
+    if (!record) return undefined;
+
+    const directory = lstatSync(home);
+    if (
+      !directory.isDirectory() ||
+      directory.uid !== process.getuid?.() ||
+      !record.isFile() ||
+      record.uid !== directory.uid ||
+      record.nlink !== 1 ||
+      (record.mode & 0o777) !== 0o600
+    ) {
+      return "unavailable";
+    }
+    return "owner-record-present";
+  } catch {
+    return "unavailable";
+  }
+}
+
 function acquire(path: string): number {
   try {
     return openSync(path, "wx", 0o600);
@@ -44,7 +72,7 @@ export function withNativePublicationLock<T>(publish: (beginMutation: BeginNativ
     throw new Error("Claude native publication cannot verify the home directory owner.");
   }
 
-  const path = join(home, ".agentbrew-native-publication.lock");
+  const path = join(home, NATIVE_PUBLICATION_LOCK_NAME);
   const fd = acquire(path);
   try {
     const identity = fstatSync(fd);

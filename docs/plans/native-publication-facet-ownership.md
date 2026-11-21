@@ -1336,3 +1336,10 @@ mode, or any change outside the three planned paths.
 
 The signal covers the observed file at status time. Runtime
 coordination and verified recovery remain separate work.
+
+The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44886715102/job/136793463218)
+passed the missing case and failed the three present cases at the
+verbose status assertion. Status skipped the publication record.
+The probe now uses file metadata at the same path as the writer.
+It reports presence only when the file is regular, has one link,
+and has mode `0600` and the verified home directory owner.

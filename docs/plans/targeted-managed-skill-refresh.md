@@ -148,3 +148,21 @@ Both focused tests passed. The new synthetic control showed the unrelated
 server edit lost after two overlapping fresh loads; the serialized control
 retained both edits. Independent review checked the order, cloned objects and
 assertions. This does not establish a live race or a transaction fix.
+
+## Cross-process state-file baseline
+
+The installed watcher still uses its previous source after the priority
+change. A targeted refresh must preserve other writers' changes to the shared
+state file. Verify the remaining manager-level result through the real disk
+boundary before changing refresh behavior.
+
+- **Hypothesis**: When two processes load the same state, a later stale save drops one unrelated server edit. Running the load and save steps serially preserves both edits. Atomic file replacement can still leave a readable state file in both cases.
+- **Measurement**: Run `npx vitest run src/skills/targeted-refresh.test.ts` on hosted Linux and macOS. Use separate processes that import the real state module only after verifying their disposable HOME and working folder. Pause the first writer after its load. In the overlapping case, let the other writer save and read back its synthetic server before the first saves a catalog edit. In the serial case, finish the first save before the other writer loads. Read the two final files in fresh processes.
+- **Success**: The overlap loses exactly 1 server edit and retains the catalog change. The serial case retains both edits. The current and backup files are readable with mode 0600. No child uses live state, external services or persistent agent settings.
+- **Pivot**: A different write outcome, unexpected schema migration, unknown state path, incorrect permissions or unbounded child invalidates the diagnosis. Do not ship a refresh command based on this check alone.
+- **Anchor**: The existing in-memory controls above and `src/state.ts`, which reads, copies a backup and replaces the state file.
+
+Child process state lasts for one fixture invocation. The parent owns the two
+temporary folders, admits only the two defined write orders, and releases
+each folder after the child exits. The probe measures shared state persistence
+only. Publication, rollback and deployed skill links need separate proof.

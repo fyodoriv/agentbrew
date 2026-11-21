@@ -255,6 +255,7 @@
   - **ID**: plugin-lifecycle-timeout-observation
   - **Tags**: reliability, tests, measurement
   - **Mode**: AFK
+  - **Blocked**: needs-one-run-approval — the prepared recording path still needs the explicit approval for the original case in the diagnostic plan.
   - **Details**: Published evidence is retained in [draft PR #805](https://github.com/fyodoriv/agentbrew/pull/805); keep it unmerged while qualification is false. The unchanged add/update/rollback/remove marketplace-copy case timed out at its existing 30,000 ms limit. The terminal report identifies the whole case, not the stalled action or cause. Follow [the diagnostic preparation](docs/plans/plugin-lifecycle-timeout-observation.md). Commit that prediction before adding safe test-owned stage records. Preserve original assertions, failure propagation and the time bound; land qualified observation before selecting a product fix. Use a separate clean checkout without the capped physical research probes for any normal full qualification. The [pure recorder pivot](docs/plans/lifecycle-recorder-no-writer-pivot.md) keeps nine synthetic health controls; the runner, external observation and real diagnostic remain unqualified.
   - **PR**: https://github.com/fyodoriv/agentbrew/pull/805
   - **Files**: `src/plugins/cli-plugin.test.ts`, `docs/plans/plugin-lifecycle-timeout-observation.md`
@@ -286,6 +287,8 @@
   - **ID**: dependency-alert-remediation
   - **Tags**: security, stability, dependencies
   - **Mode**: AFK
+  - **Blocked by**: dependency-peer-compatibility
+  - **Progress**: GitHub marks all nine original alerts fixed. The supported full dependency tree remains a separate acceptance requirement.
   - **Details**: Repair Dependabot alerts 162/161/160/156/155/154/153/150/149 through supported upstream parents. Update the Vitest/coverage pair and the named lock targets; upgrade the Azure identity parent so its nested MSAL copy is fixed too. Preserve optional graph resolution, the jks stub, all unrelated overrides and the current Node floor. Commit [the frozen experiment](docs/plans/dependency-alert-controls.md) before any audit, installation or package change; read-only advisory triage is not a passing baseline. Partial task `dependency-runtime-fast-uri` does not complete this task. Final strict full-graph acceptance still needs `dependency-peer-compatibility`; all original metrics and receipts remain authoritative.
   - **Files**: `package.json`, `package-lock.json`, README dependency/security guidance, `docs/plans/dependency-alert-controls.md`
   - **Output**: code

@@ -397,6 +397,7 @@
 
 - [ ] Debugging starts from a reliable failing signal and ranked hypotheses
   - **ID**: diagnose-loop-ladder-and-ranked-hypotheses
+  - **Blocked**: needs-complete-local-comparison — structured Qwen setup passed, then the first case stopped at its token limit. The independent Llama setup hit its provider deadline. Require four complete replies on one qualified local model before grading. See [the receipts](docs/plans/diagnosing-bugs-response-receipts.md).
   - **Tags**: skills, debugging, from-minsky
   - **Details**: minsky's `diagnose` skill had two techniques the catalog `systematic-debugging` skill lacks. (1) A feedback-loop ladder: try a failing test, a curl fixture, a CLI fixture, a trace replay, a minimal harness, a property or fuzz test, `git bisect run`, then a human-run script, in that order, and do not go on until the signal fails the same way every time. (2) Before testing, write 3 to 5 ranked, falsifiable hypotheses ("if X is the cause, changing Y removes the bug") and test the cheapest to disprove first. Add both as a small agentbrew skill (`skill-plugins/workflow/diagnose/`) or a catalog entry for the upstream mattpocock `diagnose` skill, with evals.
   - **Files**: `skill-plugins/workflow/diagnose/SKILL.md` and `evals/evals.json`, or `src/catalog.yaml`.

@@ -107,3 +107,16 @@ or grading threshold.
 
 The local model digest for this control is
 `46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e`.
+
+## Plain-answer control result
+
+The local service's version and installed model list responded.
+The Llama setup request hit its 65-second provider deadline before
+it returned a receipt. No comparison response was requested. A
+later process query did not list the requested model as loaded.
+This leaves the cause of the deadline unknown.
+
+The source still covers the requested workflow. The behavioral
+measurement has zero graded runs in both groups. A qualified local
+model must first return the exact setup object and finish both
+bounded cases per skill. Leave the catalog and task acceptance open.

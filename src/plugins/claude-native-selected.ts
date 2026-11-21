@@ -108,10 +108,31 @@ function assertNativeTargetsUnchanged(writes: readonly NativeTargetObservation[]
   }
 }
 
+function isNativeSettingsMap(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 /** Verify the settings file before a certified publication and again before its write. */
 export function planNativeSettingsCheck(path: string): () => void {
-  const targets = [{ path, before: observeNativeTarget(path) }];
-  return () => assertNativeTargetsUnchanged(targets);
+  const before = observeNativeTarget(path);
+  if (before) {
+    let settings: unknown;
+    try {
+      const content = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(before.body);
+      settings = JSON.parse(content);
+    } catch {
+      refuse("invalid native settings");
+    }
+    if (
+      !isNativeSettingsMap(settings) ||
+      [settings.extraKnownMarketplaces, settings.enabledPlugins].some(
+        (value) => value !== undefined && !isNativeSettingsMap(value),
+      )
+    ) {
+      refuse("invalid native settings");
+    }
+  }
+  return () => assertNativeTargetsUnchanged([{ path, before }]);
 }
 
 function planMissingFile(writes: PlannedWrite[], path: string, body: Buffer, mode?: number): void {

@@ -1252,3 +1252,36 @@ control. Before measuring them, require the same three surfaces to survive
 both omitted and explicit empty plugin arrays. A parseable lock with
 `locked: [{}]` must trigger ordinary cleanup of all three surfaces.
 A single mistaken preservation or cleanup rejects the candidate.
+
+## Validate Claude settings before certified full output
+
+- **Hypothesis**: The opt-in full publisher can detect unknown settings
+  before the first write. Earlier refusal leaves no partial native output
+  or pending publication owner.
+- **Measurement**: Run hosted `npx vitest run src/plugins/claude-native.test.ts src/plugins/claude-native-ordinary.test.ts`.
+  With the existing signed scratch plugin, seed malformed JSON, a null
+  root, an array root, a non-object marketplace map, and a non-object
+  enabled-plugin map. Keep the signed scratch launcher's destination
+  and the current settings bytes and mode in the observation.
+- **Success**: All 5 malformed cases refuse before any native output or
+  settings write, leave zero publisher owners, and preserve the exact
+  settings bytes and mode. The existing valid, missing-settings and
+  ordinary publication controls still pass.
+- **Pivot**: Reject after 1 partial output, 1 changed setting, 1 retained
+  owner before mutation, or 1 ordinary publication change.
+- **Anchor**: The existing settings ownership fence and the certified
+  publisher's separate settings commit.
+
+These controls apply only to the opt-in full publisher. They do not
+establish recovery after a write has already started.
+
+The [Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44864963822/job/136726482731)
+failed all five early validation cases. The malformed JSON arm made six
+atomic write calls before refusal. Each of the other four arms made seven.
+
+Independent review identified two encoding controls before qualification.
+An invalid UTF-8 byte inside a quoted setting must refuse without a
+replacement character. A UTF-8 byte-order mark must retain the existing
+JSON reader's refusal. Add both to the same scratch test. Require seven
+early refusals, with zero atomic writes and the exact seven inputs
+retained. Any accepted encoding variant rejects the candidate.

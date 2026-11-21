@@ -1314,3 +1314,25 @@ the entire scratch output snapshot before testing the interruption.
 Require both interruption records to match all three known after states,
 including the writes that have yet to happen. Reject one wrong digest or
 mode, or any change outside the three planned paths.
+
+## Report a native publication record that needs review
+
+- **Hypothesis**: Agentbrew status can report the presence of an
+  owned publication record without reading its contents or changing it.
+  An unexpected file type, ownership or mode reports unavailable.
+- **Measurement**: Run hosted `npm exec -- vitest run src/status.test.ts
+  src/plugins/claude-native.test.ts --maxWorkers=1`. Use disposable
+  homes for a missing record, owned regular file, unsafe mode and
+  symlink. Check verbose and JSON status, the exact record and
+  target bytes, and the compact output control.
+- **Success**: One fixed status value for each present case, zero
+  status rows for the missing case, zero modified files and zero
+  paths, owner IDs, process IDs or record values in the new output.
+- **Pivot**: A missing warning, a claim that an owner is active,
+  a changed record, a followed symlink or a raw value rejects the probe.
+- **Anchor**: The native publisher's retained owner after interruption,
+  Basili, Caldiera and Rombach (1994), and
+  [Node file metadata](https://nodejs.org/api/fs.html#fslstatsyncpath-options).
+
+The signal covers the observed file at status time. Runtime
+coordination and verified recovery remain separate work.

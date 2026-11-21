@@ -1447,3 +1447,8 @@ writes, that last check can detect the change after output has advanced.
 
 This qualifies the selected prototype at its ordered write boundaries.
 It does not decide whether a retained owner is abandoned.
+
+The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44897370592/job/136825799016)
+made all five writes in both cases. Cleanup detected the new record
+and left it in place. The selected publisher now verifies ownership
+at each payload, receipt and index write before it changes output.

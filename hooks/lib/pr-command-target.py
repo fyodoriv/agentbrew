@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shlex
+import subprocess
 import sys
 
 
@@ -27,6 +28,9 @@ QUOTED_HEREDOC = re.compile(
     rf"""[ \t]*cat(?P<prior>{TEXT_REDIRECT})?[ \t]+<<[ \t]*(?P<quote>['"])"""
     rf"(?P<delimiter>[A-Za-z_][A-Za-z0-9_]*)(?P=quote)(?P<later>{TEXT_REDIRECT})?[ \t]*"
 )
+REPO = r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9_.-]+"
+HOST = r"[A-Za-z0-9][A-Za-z0-9.:-]*"
+PUBLIC_PR_URL = re.compile(rf"https://github\.com/({REPO})/pull/([0-9]+)", re.IGNORECASE | re.ASCII)
 
 
 def is_literal_note(command):
@@ -58,17 +62,7 @@ def command_words(command):
         return None
 
 
-def target(command, words=None):
-    if any(character in command for character in "$`*?[]{}"):
-        return None
-    words = command_words(command) if words is None else words
-    if words is None or any(word.startswith("#") or (word and set(word) <= set(PUNCTUATION)) for word in words):
-        return None
-    if len(words) < 4 or os.path.basename(words[0]) != "gh" or words[1] != "pr":
-        return None
-    action, number = words[2:4]
-    if action not in ("view", "ready", "merge", "edit") or not number.isascii() or not number.isdigit():
-        return None
+def pr_options(action, words, strict=False):
     values = {
         "merge": {"-A", "--author-email", "-b", "--body", "-F", "--body-file", "--match-head-commit", "-t", "--subject"},
         "view": {"-q", "--jq", "--json", "-t", "--template"},
@@ -81,7 +75,7 @@ def target(command, words=None):
         "ready": {"--undo"},
         "edit": {"--remove-milestone"},
     }[action]
-    repo, i = "", 4
+    repo, head, i = "", "", 0
     while i < len(words):
         word = words[i]
         flag, equals, value = word.partition("=")
@@ -94,13 +88,119 @@ def target(command, words=None):
                     return None
                 value = words[i]
             if flag in ("--repo", "-R"):
-                if not re.fullmatch(r"(?:[A-Za-z0-9][A-Za-z0-9.:-]*/)?[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9_.-]+", value):
+                if (strict and repo) or not re.fullmatch(rf"(?:{HOST}/)?{REPO}", value):
                     return None
                 repo = value
+            elif flag == "--match-head-commit":
+                if strict and (head or not re.fullmatch(r"[0-9a-fA-F]{40}", value)):
+                    return None
+                head = value
         elif word not in switches:
             return None
+        elif strict and word in ("--admin", "--disable-auto"):
+            return None
         i += 1
-    return {"number": number, "repo": repo}
+    return repo, head
+
+
+def has_unsupported_words(command, words):
+    return any(character in command for character in "$`*?[]{}") or any(
+        word.startswith("#") or (word and set(word) <= set(PUNCTUATION)) for word in words
+    )
+
+
+def target(command, words=None):
+    words = command_words(command) if words is None else words
+    if words is None or len(words) < 4 or has_unsupported_words(command, words):
+        return None
+    if os.path.basename(words[0]) != "gh" or words[1] != "pr":
+        return None
+    action, number = words[2:4]
+    if action not in ("view", "ready", "merge", "edit") or not number.isascii() or not number.isdigit():
+        return None
+    options = pr_options(action, words[4:])
+    return {"number": number, "repo": options[0]} if options is not None else None
+
+
+def check_ready(check):
+    if not isinstance(check, dict):
+        return False
+    if check.get("__typename") == "CheckRun":
+        return check.get("status") == "COMPLETED" and check.get("conclusion") in ("SUCCESS", "SKIPPED", "NEUTRAL")
+    return check.get("__typename") == "StatusContext" and check.get("state") == "SUCCESS"
+
+
+def read_merge_readiness(argv, expected_url, number, head):
+    try:
+        probe = subprocess.run(
+            ["gh", "pr", "view", *argv, "--json",
+             "number,url,state,isDraft,mergeStateStatus,headRefOid,statusCheckRollup"],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            check=True, timeout=5,
+        )
+        if len(probe.stdout) > 1024 * 1024:
+            return "unavailable"
+        info = json.loads(probe.stdout)
+    except (OSError, UnicodeError, ValueError, subprocess.SubprocessError):
+        return "unavailable"
+    if not isinstance(info, dict):
+        return "unavailable"
+    returned_url = info.get("url")
+    returned_number = info.get("number")
+    if (not isinstance(returned_url, str) or returned_url.lower() != expected_url.lower()
+            or type(returned_number) is not int or str(returned_number) != number):
+        return "unavailable"
+    if info.get("headRefOid") != head.lower():
+        return "changed-head"
+    if info.get("state") != "OPEN" or info.get("isDraft") is not False or info.get("mergeStateStatus") != "CLEAN":
+        return "not-ready"
+    checks = info.get("statusCheckRollup")
+    if not isinstance(checks, list) or not checks or not all(check_ready(check) for check in checks):
+        return "checks-not-ready"
+    return "ready"
+
+
+def merge_preflight(command):
+    if len(command) > 65536 or "\0" in command:
+        return "unsupported"
+    if is_literal_note(command):
+        return "irrelevant"
+    words = command_words(command)
+    if words is None:
+        return "unsupported"
+    merge_positions = [
+        index for index in range(len(words) - 2)
+        if os.path.basename(words[index]) == "gh" and words[index + 1:index + 3] == ["pr", "merge"]
+    ]
+    if not merge_positions:
+        if words and os.path.basename(words[0]) == "gh" and any(
+            words[index:index + 2] == ["pr", "merge"] for index in range(1, len(words) - 1)
+        ):
+            return "unsupported"
+        return "irrelevant"
+    if merge_positions != [0] or len(words) < 4 or has_unsupported_words(command, words):
+        return "unsupported"
+    if words[3:] in (["--help"], ["--disable-auto"]):
+        return "irrelevant"
+    options = pr_options("merge", words[4:], strict=True)
+    if options is None:
+        return "unsupported"
+    repo, head = options
+    if not head:
+        return "unsupported"
+    url = PUBLIC_PR_URL.fullmatch(words[3])
+    if url is not None and not repo:
+        slug, number = url.groups()
+    elif re.fullmatch(r"[0-9]+", words[3]) and re.fullmatch(rf"github\.com/{REPO}", repo, re.IGNORECASE | re.ASCII):
+        _, _, slug = repo.partition("/")
+        number = words[3]
+    else:
+        return "unsupported"
+    number = number.lstrip("0")
+    if not number:
+        return "unsupported"
+    argv = [number, "--repo", f"github.com/{slug}"]
+    return read_merge_readiness(argv, f"https://github.com/{slug}/pull/{number}", number, head)
 
 
 def reviewer_request(command):
@@ -160,4 +260,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["--merge-preflight"]:
+        print(merge_preflight(sys.stdin.read(65537)))
+    else:
+        main()

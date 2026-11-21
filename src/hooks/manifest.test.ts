@@ -472,7 +472,7 @@ describe("canonical hook manifest", () => {
       .filter((hook) => hook.event === "PreToolUse" && hook.matcher === "Bash")
       .map((hook) => hook.id);
 
-    expect(bashHookIds).toHaveLength(22);
+    expect(bashHookIds).toHaveLength(23);
     expect(bashHookIds).toContain("no-destructive-commands");
     expect([...resolvedManifest.offByDefault].sort()).toEqual(
       [...bashHookIds, "context-budget-measure", ...OWNER_WORKFLOW_HOOK_IDS].sort(),
@@ -510,6 +510,21 @@ describe("canonical hook manifest", () => {
     const { managed } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", { overlayPath });
     const usesGuard = (hook: { command?: string }) => hook.command?.endsWith("/git-script-guard.sh");
     expect(filterHooksForTarget(managed, "claude-code").find(usesGuard)).toMatchObject({ event: "SessionStart" });
+    expect(filterHooksForTarget(managed, "codex").find(usesGuard)).toBeUndefined();
+  });
+
+  it("wires the opt-in PR readiness check before Claude runs a Bash merge", () => {
+    const repoRoot = resolve(import.meta.dirname, "../..");
+    const overlayPath = join(tempRoot(), "overlay.yaml");
+    const usesGuard = (hook: { command?: string }) => hook.command?.endsWith("/pr-merge-preflight.sh");
+    const byDefault = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", { overlayPath });
+    expect(byDefault.managed.find(usesGuard)).toBeUndefined();
+
+    writeManifest(overlayPath, "version: 1\nenabled: [pr-merge-preflight]\nhooks: []\n");
+    const { managed } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", { overlayPath });
+    expect(filterHooksForTarget(managed, "claude-code").filter(usesGuard)).toMatchObject([
+      { event: "PreToolUse", matcher: "Bash" },
+    ]);
     expect(filterHooksForTarget(managed, "codex").find(usesGuard)).toBeUndefined();
   });
 

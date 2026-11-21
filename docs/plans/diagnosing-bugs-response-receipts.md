@@ -104,3 +104,6 @@ or grading threshold.
   task unqualified. A tie at the end also leaves it unqualified.
 - **Anchor**: [Ollama chat response fields](https://docs.ollama.com/api/chat)
   and both preserved local Qwen receipts above.
+
+The local model digest for this control is
+`46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e`.

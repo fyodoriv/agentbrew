@@ -10,6 +10,14 @@ const CODEX_PATTERN = /\{env:([^}]+)\}/g;
  *  env-var interpolators (Devin's `${VAR:-default}` regex, etc.) would hard-fail on. */
 export const BARE_PLACEHOLDER_PATTERN = /\$\{([A-Z_][A-Z0-9_]*)\}/g;
 
+/** MCPM stdio inherits same-name variables from the parent runtime. */
+export function mcpmStdioEnv(env: Record<string, string> | undefined): Record<string, string> | undefined {
+  if (!env) return undefined;
+  const entries = Object.entries(env);
+  const explicit = entries.filter(([key, value]) => !/^[A-Z_][A-Z0-9_]*$/u.test(key) || value !== `\${${key}}`);
+  return entries.length === explicit.length ? env : Object.fromEntries(explicit);
+}
+
 /** Well-known env vars that can be resolved from external tools when not in process.env.
  *
  *  JIRA_EMAIL / JIRA_PERSONAL_TOKEN / JIRA_BASE_URL are one Jira MCP package's

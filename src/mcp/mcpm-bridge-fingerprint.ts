@@ -21,6 +21,7 @@ import { MCP_INTERSECTION_AGENTS } from "../core/mcp-agent-map.js";
 import { readMcpmServer } from "../sync/mcp-delegate.js";
 import type { AgentConfig, McpServer } from "../types.js";
 import { expandHome } from "../utils.js";
+import { mcpmStdioEnv } from "./env-vars.js";
 import { readMcpJson } from "./mcp.js";
 import { MCPM_PREFIX } from "./mcpm-hygiene.js";
 
@@ -49,6 +50,7 @@ export function computeMcpmBridgeFingerprint(
 ): string {
   const sorted = [...servers].sort((a, b) => a.name.localeCompare(b.name));
   const clients = [...new Set(detectedAgents.filter((name) => MCP_INTERSECTION_AGENTS.has(name)))].sort();
+  const inheritsStdioEnv = sorted.some((server) => !server.url && mcpmStdioEnv(server.env) !== server.env);
   const payload = {
     servers: sorted.map((server) => ({
       name: server.name,
@@ -63,6 +65,7 @@ export function computeMcpmBridgeFingerprint(
       const agent = agentDefinitions.find((definition) => definition.name === name);
       return [name, agent ? readClientEntries(agent, sorted) : null];
     }),
+    ...(inheritsStdioEnv ? { stdioEnvProjection: 1 } : {}),
   };
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
 }

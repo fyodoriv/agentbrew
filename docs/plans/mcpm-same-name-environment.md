@@ -1,0 +1,43 @@
+# Let managed MCPM stdio servers inherit same-name variables
+
+Issue [#1047](https://github.com/fyodoriv/agentbrew/issues/1047) reports
+that a literal placeholder in MCPM overrides the real parent variable.
+MCPM v2.15.0's stdio proxy always supplies an override map to FastMCP,
+which starts from the parent's environment. Omit a bare same-name
+placeholder from the managed MCPM projection.
+
+- **Hypothesis**: The Agentbrew MCPM write contains zero bare same-name
+  overrides and does not include their live values. Desired registry
+  readback accepts the projected definition and detects the old literal.
+  A catalog entry that needs this projection uses its managed transport
+  instead of the raw public install route.
+- **Measurement**: Run the focused delegated MCP and catalog tests. Use
+  fake subprocesses and scratch configs. Verify a same-name placeholder,
+  a pure-placeholder map, literal and different-name controls, remote
+  headers, expected readback, stale readback, and the catalog bridge.
+- **Success**: Every named case passes. Zero raw fixture secret values
+  in argv or files. Native formats and source declarations remain exact.
+- **Pivot**: A false readback pass, loss of an explicit value, changed
+  native config comparison, extra raw registry write, or unknown
+  inheritance semantics blocks rollout.
+- **Anchor**: MCPM v2.15.0
+  [stdio proxy](https://github.com/pathintegral-institute/mcpm.sh/blob/v2.15.0/src/mcpm/fastmcp_integration/proxy.py).
+
+## Upgrade a saved bridge check
+
+Source review found that the old fingerprint can skip the bridge
+before the new comparison sees a stale literal. Register one saved
+pre-change digest with one stale fixture entry. The existing bridge
+test runs two ordinary syncs with the same manifest. Predict one
+registration and one client update on the first sync, then zero
+additional calls on the second. Keep the digest unchanged for
+definitions without the projection. Any skipped repair or repeated
+registration rejects the change.
+
+Three baseline controls failed. The prior registry write contained the
+bare override, the readback rejected the intended projection, and the
+catalog route called raw install once. Reusing an old fingerprint
+then skipped the repair entirely. The candidate fixed all four cases.
+The upgrade fixture registered once, edited one client, and skipped
+both on the next sync. All 292 focused tests passed. Four tests that
+need the optional installed MCPM CLI were skipped. TypeScript passed.

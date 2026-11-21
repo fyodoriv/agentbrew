@@ -29,3 +29,19 @@ After a malformed byte, the reader reported 5,000 ms when an appended row
 should have brought the total to 6,000 ms. Decoding the complete buffer
 caused the extra work. Recounting the decoded text advanced the cache past
 the first bytes of the next row.
+
+## Refresh older status line caches once
+
+- **Hypothesis**: A cache written by the old reader can lose a new row
+  or count an earlier row twice. A versioned cache rebuilds the byte
+  positions and totals together once and reuses the rebuilt result.
+- **Measurement**: Seed the former cache shape with an offset 2 bytes
+  beyond the complete log. Exercise one upgrade before another append
+  and one upgrade with a new row already present.
+- **Success**: Both upgrade paths report the exact total. The first
+  reports 5,000 ms before append and 6,000 ms after append. The second
+  starts at 6,000 ms. A repeat adds 0 rows. The timing limits stay fixed.
+- **Pivot**: At least 1 lost or doubled row, repeated cold read, or
+  timing regression rejects the new cache shape.
+- **Anchor**: The former decoded-text offset and the exact byte-offset
+  controls above.

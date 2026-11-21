@@ -25,5 +25,12 @@ Reject the root, relative paths, traversal and link components below
 the root. Accept the precise unquoted temporary-variable example only
 after verifying the configured temporary base. Do not evaluate a shell
 expansion. The file observation qualifies this accidental-damage check
-for the registered shape. Broader shell and concurrent path changes
-remain outside this phase.
+for the registered shape and its named operand. It does not inspect
+the full descendant tree or establish a mount boundary through it.
+The temporary-variable fixture shares one inherited value with the
+hook. An absolute operand remains independent of later shell settings.
+Broader shell and concurrent path changes remain outside this phase.
+
+The [hosted baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44907152424/job/136855065739)
+allowed all nine unsafe controls. The five allowed controls and the
+prior guards passed. No deletion invocation left the fixture.

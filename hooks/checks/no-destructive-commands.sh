@@ -24,7 +24,7 @@ screen="${screen//\"/}"
 screen="${screen//\\/}"
 classify_scope=all
 case "$screen" in
-  *stash*drop*|*stash*clear*|*repo*delete*|*pr*merge*admin*) ;;
+  *stash*drop*|*stash*clear*|*repo*delete*|*pr*merge*admin*|*rm*-[fRr]*|*rm*-[A-Za-z]*[fRr]*|*rm*--recursive*|*rm*--force*) ;;
   *npm*publish*) classify_scope=npm ;;
   *) verdict_allow "$HOOK_ID" "no guarded command to check" ;;
 esac
@@ -37,6 +37,7 @@ case "$decision" in
   repo-delete) verdict_block "$HOOK_ID" "Repository deletion requires the owner." ;;
   admin-merge) verdict_block "$HOOK_ID" "Use an ordinary pull request merge after the required checks pass." ;;
   npm-publish) verdict_block "$HOOK_ID" "Use npm pack --dry-run to inspect the package. The owner publishes from a real terminal." ;;
+  recursive-delete) verdict_block "$HOOK_ID" "Use a verified temporary or session scratch descendant for recursive forced deletion. Check the destination first." ;;
   allow) verdict_allow "$HOOK_ID" "no guarded operation detected" ;;
   *) verdict_block "$HOOK_ID" "The command could not be checked. Use a read-only command to inspect the target." ;;
 esac

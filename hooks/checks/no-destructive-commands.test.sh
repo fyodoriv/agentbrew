@@ -121,6 +121,7 @@ check_recursive_delete() {
   check 'recursive flag without force' 0 Bash 'rm -r /fixture-example/data' || failed=1
   check 'force without recursion' 0 Bash 'rm -f /fixture-example/data' || failed=1
   check 'outside the temporary bases' 2 Bash 'rm -rf /fixture-example/data' || failed=1
+  check 'combined verbose recursion and force flags' 2 Bash 'rm -vRf /fixture-example/data' || failed=1
   check 'temporary base itself' 2 Bash 'rm -rf /tmp' || failed=1
   TMPDIR="$scratch" check 'configured temporary root itself' 2 Bash 'rm -rf $TMPDIR' || failed=1
   check 'relative target' 2 Bash 'rm -rf fixture-data' || failed=1

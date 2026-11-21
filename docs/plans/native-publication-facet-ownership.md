@@ -1416,3 +1416,9 @@ checks its exact file identity and record bytes before each action.
 The scope is one invocation's open file and its ownership
 checkpoints. Identifying and recovering an abandoned record
 remains a separate operation.
+
+The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44894218566/job/136816296061)
+recorded three pathname reads. The same-length change still
+refused. The writer now reads at offset zero from its held
+file. The bounded read also checks for a trailing byte. The
+pathname still has to identify that same private file.

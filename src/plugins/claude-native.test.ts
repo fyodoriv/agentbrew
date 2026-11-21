@@ -421,7 +421,7 @@ describe("native publication process loss at output checkpoints", () => {
     return [info.mode, createHash("sha256").update(readFileSync(path)).digest("hex")];
   }
 
-  function publishFromChild(full: boolean, checkpoint?: string, mask = 0o022) {
+  function publishFromChild(full: boolean, checkpoint?: string, mask = 0o022, facet: "hooks" | "rules" = "hooks") {
     const moduleUrl = new URL("./claude-native.ts", import.meta.url).href;
     const source = `
       import { createRequire } from "node:module";
@@ -435,7 +435,7 @@ describe("native publication process loss at output checkpoints", () => {
       };
       const { emitClaudeNative } = await import(${JSON.stringify(moduleUrl)});
       try {
-        emitClaudeNative(${JSON.stringify(full ? { certifyFullOutput: true } : { modules: ["hooks"] })});
+        emitClaudeNative(${JSON.stringify(full ? { certifyFullOutput: true } : { modules: [facet] })});
         process.stdout.write("published");
       } catch (error) {
         if (!(error instanceof Error) || !error.message.includes("publication is busy")) throw error;
@@ -620,6 +620,69 @@ describe("native publication process loss at output checkpoints", () => {
       const before = roots.map(snapshot);
       expect(publishFromChild(full)).toMatchObject({ status: 75, stdout: "", stderr: "" });
       expect(roots.map(snapshot)).toEqual(before);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+
+  it.each([
+    ["script", 1],
+    ["receipt", 2],
+  ] as const)("records warm before states when interrupted before the %s", (boundary, prefix) => {
+    installFacetFixture();
+    chmodSync(join(pluginDir("fixture-native"), "hooks", "guard.sh"), 0o644);
+    const paths = nativeFacetPaths();
+    const receipt = nativeProofPath();
+    const plannedPaths = [paths.hooks, paths.script, receipt];
+    const state = (path: string) => {
+      const info = lstatSync(path, { throwIfNoEntry: false });
+      if (!info) return null;
+      expect(info.isFile()).toBe(true);
+      return { digest: createHash("sha256").update(readFileSync(path)).digest("hex"), mode: info.mode & 0o777 };
+    };
+    try {
+      expect(publishFromChild(false, undefined, 0o022, "rules")).toMatchObject({
+        status: 0,
+        stdout: "published",
+        stderr: "",
+      });
+      const before = plannedPaths.map(state);
+      const unchangedPaths = [paths.index, paths.envelope, paths.settings, dirname(paths.launcher)];
+      const unchanged = unchangedPaths.map(snapshot);
+      expect(before.map((file) => file?.mode ?? null)).toEqual([0o644, null, 0o600]);
+      expect(readFileSync(paths.hooks, "utf8")).not.toContain("PreToolUse");
+      expect(publishFromChild(false, boundary === "script" ? paths.script : receipt)).toMatchObject({
+        status: 77,
+        stdout: "",
+        stderr: "",
+      });
+
+      const after = plannedPaths.map(state);
+      expect(after.slice(0, prefix)).not.toContain(null);
+      expect(after[0]).not.toEqual(before[0]);
+      expect(readFileSync(paths.hooks, "utf8")).toContain("PreToolUse");
+      expect(after.slice(prefix)).toEqual(before.slice(prefix));
+      expect(unchangedPaths.map(snapshot)).toEqual(unchanged);
+      expect(lstatSync(owner).mode & 0o777).toBe(0o600);
+      const record = JSON.parse(readFileSync(owner, "utf8"));
+      expect(record.intent).toEqual(
+        plannedPaths.map((path, index) => ({
+          path: relative(home, path),
+          before: before[index],
+          after:
+            index < prefix
+              ? after[index]
+              : {
+                  digest: expect.stringMatching(/^[0-9a-f]{64}$/u),
+                  mode: path === receipt ? 0o600 : 0o644,
+                },
+        })),
+      );
+      expect(record.intent.at(-1).after.digest).not.toBe(before.at(-1)?.digest);
+      const roots = [marketplaceDir(), dirname(paths.launcher), dirname(paths.settings), owner];
+      const interrupted = roots.map(snapshot);
+      expect(publishFromChild(false)).toMatchObject({ status: 75, stdout: "", stderr: "" });
+      expect(roots.map(snapshot)).toEqual(interrupted);
     } finally {
       rmSync(owner, { force: true });
     }

@@ -1241,3 +1241,14 @@ guard and the fixture.
   ordinary publication outcome.
 - **Anchor**: The ordinary publisher's empty marketplace, launcher and
   settings branches, and the existing selected CLI gate.
+
+The [Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44859673123/job/136709923106)
+failed the four selected CLI cases. In the signed scratch test, the first
+marketplace file was gone when it should have been preserved. The four
+missing, malformed, revoked and active compatibility cases passed.
+
+Independent review identified a second empty-lock case and a data-shape
+control. Before measuring them, require the same three surfaces to survive
+both omitted and explicit empty plugin arrays. A parseable lock with
+`locked: [{}]` must trigger ordinary cleanup of all three surfaces.
+A single mistaken preservation or cleanup rejects the candidate.

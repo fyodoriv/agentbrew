@@ -181,15 +181,16 @@ fi
 
 system_git_path=/usr/bin:/bin
 guarded_git_path="$fixture/deployed/lib:$system_git_path"
-mkdir -p "$fixture/real/docs"
+mkdir -p "$fixture/real/docs" "$fixture/real/nested/docs"
 printf '%s\n' fixture-file >"$fixture/real/docs/fixture-file"
-scratch_git "$system_git_path" add docs/fixture-file
+printf '%s\n' nested-file >"$fixture/real/nested/docs/fixture-file"
+scratch_git "$system_git_path" add docs/fixture-file nested/docs/fixture-file
 scratch_git "$system_git_path" -c user.name=Fixture -c user.email=fixture@example.com \
   -c commit.gpgSign=false commit -qm 'Seed shared branch fixture'
 scratch_git "$system_git_path" config remote.fixture.url "$fixture/absent-remote"
 scratch_git "$system_git_path" config remote.fixture.fetch '+refs/heads/*:refs/remotes/fixture/*'
 seed_commit="$(scratch_git "$system_git_path" rev-parse HEAD)"
-for shape in checkout terminated switch linked; do
+for shape in checkout terminated switch linked nested; do
   scratch_git "$system_git_path" update-ref "refs/remotes/fixture/feat/guess-$shape" "$seed_commit"
 done
 
@@ -213,6 +214,7 @@ remote_guess_failure=0
 shared_guess_refused checkout checkout feat/guess-checkout || remote_guess_failure=1
 shared_guess_refused terminated checkout feat/guess-terminated -- || remote_guess_failure=1
 shared_guess_refused switch switch feat/guess-switch || remote_guess_failure=1
+shared_guess_refused nested -C "$fixture/real/nested" checkout feat/guess-nested || remote_guess_failure=1
 
 scratch_git "$system_git_path" worktree add --quiet --detach "$fixture/real-linked"
 scratch_git "$guarded_git_path" -C "$fixture/real-linked" switch feat/guess-linked >"$fixture/stdout" 2>"$fixture/stderr"
@@ -225,4 +227,8 @@ scratch_git "$guarded_git_path" checkout docs/fixture-file >"$fixture/stdout" 2>
 scratch_git "$guarded_git_path" checkout -- docs/fixture-file >"$fixture/stdout" 2>"$fixture/stderr"
 [[ "$(<"$fixture/real/docs/fixture-file")" == fixture-file ]]
 printf '%s\n' 'Linked branch guessing and both file controls passed in the disposable Git checkout.'
+printf '%s\n' changed >"$fixture/real/nested/docs/fixture-file"
+scratch_git "$guarded_git_path" -C "$fixture/real/nested" checkout docs/fixture-file >"$fixture/stdout" 2>"$fixture/stderr"
+[[ "$(<"$fixture/real/nested/docs/fixture-file")" == nested-file ]]
+printf '%s\n' 'The nested checkout restored its file under the effective directory.'
 [[ "$remote_guess_failure" == 0 ]]

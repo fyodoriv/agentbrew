@@ -411,19 +411,6 @@
   - **Pivot**: 0 evals separate with-skill from without-skill runs.
   - **Anchor**: Zeller 2009 (Why Programs Fail, scientific debugging).
 
-- [ ] Agent hooks block the destructive commands minsky blocked and we still allow
-  - **ID**: block-remaining-dangerous-commands
-  - **Tags**: hooks, safety, from-minsky
-  - **Progress**: The opt-in Bash hook covers leading direct stash discard, GitHub repository deletion and administrator merges without shell redirection, direct npm publishing and direct recursive forced deletion of unverified named paths. The opt-in Git wrapper covers shared checkout changes, explicit commit hook replacement and direct switches to verified local branch names. The [Git fixture plan](docs/plans/dangerous-command-acceptance.md) covers the remaining listed flag forms. A direct checkout that guesses a branch from a remote-tracking reference still needs coverage.
-  - **Details**: minsky `.claude/hooks/block-dangerous-bash.sh` blocked commands our hooks still allow: `git stash drop` and `git stash clear` (stashes are shared by every worktree, so one agent can delete another's work), `gh pr merge --admin` (skips branch protection), `gh repo delete`, `git -c core.hooksPath=<x> commit` (a quiet hook bypass), and `rm -rf` outside the temp and scratch folders. Also block: creating or switching branches in a shared main checkout (`git checkout -b/-B`, `git switch -c/-C`, `git checkout <type>/...`) when the git dir equals the common git dir, unless the command uses `git -C`, `cd` into a worktree, or `git worktree` (a sibling agent once switched branches and wiped another session's edits); wholesale reverts `git checkout <ref> -- .` and `git restore :/`; and direct `npm publish` (the owner follows the release procedure in `docs/ci.md`). Add them to `hooks/checks/` (or extend `no-commit-no-verify.sh` for the hooksPath case), each with a fixture test, and register them in the hook manifest.
-  - **Files**: `hooks/checks/no-destructive-commands.sh`, its `.test.sh`, `hooks/checks/no-commit-no-verify.sh`, hook manifest, `docs/` hook list.
-  - **Acceptance**: every command shape listed in Details is blocked in a fixture; `git stash list`, `gh pr merge --squash`, and `rm -rf $TMPDIR/x` still pass.
-  - **Hypothesis**: agent runs that destroy shared stashes or bypass branch protection go from possible to 0.
-  - **Measurement**: `bash hooks/checks/no-destructive-commands.test.sh; echo exit=$?`.
-  - **Success**: 100% of registered blocked and allowed cases pass, including 1 allowed branch switch inside a linked worktree.
-  - **Pivot**: more than 1 false block per week in hook observation logs.
-  - **Anchor**: Reason 1990 (Human Error, defenses in depth).
-
 - [ ] Editing TASKS.md lints it right away
   - **ID**: tasks-md-lint-on-edit
   - **Tags**: hooks, tasks-md, from-minsky

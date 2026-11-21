@@ -80,6 +80,20 @@ guard_shared_checkout() {
   fi
 }
 
+checkout_path_exists() {
+  local location root prefix path
+  # Keep the empty prefix line for commands at the worktree root.
+  location=$("$real_git" "${options[@]}" rev-parse --show-toplevel --show-prefix 2>/dev/null && printf '.') || return 1
+  [[ "$location" == *$'\n.' ]] || return 1
+  location="${location%$'\n.'}"
+  [[ "$location" == *$'\n'* ]] || return 1
+  root="${location%%$'\n'*}"
+  prefix="${location#*$'\n'}"
+  [[ "$root" == /* && "$prefix" != /* && "$prefix" != *$'\n'* && ( -z "$prefix" || "$prefix" == */ ) ]] || return 1
+  path="$root/$prefix$1"
+  [[ -e "$path" || -L "$path" ]]
+}
+
 command="${1:-}"
 [[ $# -eq 0 ]] || shift
 case "$command" in
@@ -142,13 +156,18 @@ case "$command" in
     if $force && ! $dry_run; then guard_shared_checkout; fi
     ;;
   reset|restore|checkout|switch)
-    if [[ "$#" == 1 && ( "$command" == checkout || "$command" == switch ) && "$1" == */* && "$1" != -* ]] &&
+    if [[ ( "$command" == checkout || "$command" == switch ) && "$1" == */* && "$1" != -* &&
+      ( "$#" == 1 || ( "$command" == checkout && "$#" == 2 && "$2" == -- ) ) ]] &&
       "$real_git" check-ref-format "refs/heads/$1" >/dev/null 2>&1; then
       reference_status=0
       "$real_git" "${options[@]}" show-ref --exists -- "refs/heads/$1" >/dev/null 2>&1 || reference_status=$?
       case "$reference_status" in
         0) guard_shared_checkout ;;
-        2) ;;
+        2)
+          if [[ "$command" != checkout || "$#" != 1 ]] || ! checkout_path_exists "$1"; then
+            guard_shared_checkout
+          fi
+          ;;
         *) block 'Git could not verify the local branch. Use Git 2.43 or later, or use git checkout -- path for a file.' ;;
       esac
     fi

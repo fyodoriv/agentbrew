@@ -1365,3 +1365,24 @@ passed all 64 status tests. The skill size check found one error
 because the status skill reached 1,015 estimated tokens against its
 954-token limit. The skill now states the status rule once and keeps
 the existing diagnosis instructions.
+
+## Apply the same private mode check during publication
+
+- **Hypothesis**: The publisher refuses an owner record with special
+  permission bits before it can use the record for mutation or cleanup.
+- **Measurement**: Run hosted
+  `npm exec -- vitest run src/plugins/claude-native.test.ts src/status.test.ts --maxWorkers=1`.
+  Set mode `04600` on an acquired owner record in a disposable home.
+  Exercise one change before mutation and one before publisher cleanup.
+  Verify the exact mode and the record digest in both cases.
+- **Success**: Both cases refuse and preserve the record, with 0 fixture
+  payload writes after a failed mutation check and 0 cleanup removals
+  after a failed cleanup check. All existing controls pass.
+- **Pivot**: One accepted special mode, removed owner record, changed
+  unrelated payload or ordinary publication regression rejects the check.
+- **Anchor**: The [status mode check](#verify-the-complete-permission-mode),
+  the publisher's existing owner checks and
+  [Node file mode](https://nodejs.org/api/fs.html#statsmode).
+
+These controls check one writer's ownership evidence in its scratch
+home. Runtime recovery and writer rollout remain open.

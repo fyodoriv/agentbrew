@@ -75,3 +75,32 @@ The two original cases and both skill bodies stay pinned.
   the catalog task open.
 - **Anchor**: [Ollama structured outputs](https://docs.ollama.com/capabilities/structured-outputs)
   and the preserved setup receipt above.
+
+## Structured receipt result
+
+Setup returned the exact JSON object from the matching model and
+reported a normal stop. The first comparison request reached its
+1,200-token limit after returning 959 words despite the 250-word
+instruction. The driver stopped and produced no graded response in
+either group. Preserve the result as incomplete.
+
+## Check the same comparison on a plain-answer local model
+
+Use installed Llama 3.1 8B as an independent transport and runtime
+control for the incomplete Qwen responses. Do not change either case
+or grading threshold.
+
+- **Hypothesis**: A local model without a separate reasoning-response
+  mode completes 1 structured setup and all 4 bounded case replies.
+- **Measurement**: Pin the installed `llama3.1:8b` model digest from
+  the local tags endpoint. Use the structured driver, the same skill
+  inputs, cases, prompt, seed, temperature and limits. Omit the think
+  setting for this model. Grade all complete case pairs against the
+  same blind rubric.
+- **Success**: 5 complete matching receipts in 1 comparison. Apply
+  the existing 2-of-2 candidate and at-most-1-of-2 comparison
+  thresholds, with 0 unsupported execution claims.
+- **Pivot**: One incomplete case or one unsupported claim leaves the
+  task unqualified. A tie at the end also leaves it unqualified.
+- **Anchor**: [Ollama chat response fields](https://docs.ollama.com/api/chat)
+  and both preserved local Qwen receipts above.

@@ -1285,3 +1285,24 @@ replacement character. A UTF-8 byte-order mark must retain the existing
 JSON reader's refusal. Add both to the same scratch test. Require seven
 early refusals, with zero atomic writes and the exact seven inputs
 retained. Any accepted encoding variant rejects the candidate.
+
+## Verify the retained intent while extending a warm receipt
+
+- **Hypothesis**: An interrupted hooks extension keeps the exact before
+  and after states when it replaces the rules-only hook definition and
+  the existing receipt. Its known payload writes form an ordered prefix
+  of the three recorded paths.
+- **Measurement**: Use the signed scratch child in
+  `src/plugins/claude-native.test.ts`. Add rules first, then stop a
+  separate hooks writer before its script and before its receipt. Use
+  the same fixed umask in all children. Compare both pre-existing file
+  digests and modes, the missing script state, the physical prefix,
+  and the marketplace, settings and owner record on retry. Run the
+  hosted native suites on Linux and macOS.
+- **Success**: 2 exact before states, 1 absent before state, and the
+  expected 1-of-3 and 2-of-3 prefixes. Both retries refuse and make
+  zero changes. The existing cold and full controls stay green.
+- **Pivot**: Reject 1 missing or wrong before state, 1 changed
+  unrelated file, 1 non-prefix result, or 1 write during a retry.
+- **Anchor**: The selected publisher's ordered intent and the
+  cold process-loss controls above.

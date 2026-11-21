@@ -22,6 +22,9 @@ if [[ " $* " == *" rev-parse "* ]]; then
   fi
   exit 0
 fi
+if [[ "$#" == 2 && "$1" == check-ref-format ]]; then
+  exec /usr/bin/git "$@"
+fi
 if [[ " $* " == *" show-ref --verify --quiet -- "* ]]; then
   printf '%s\n' 'object lookup' >>"$GIT_FIXTURE_OBJECT_LOOKUP"
   [[ "${GIT_FIXTURE_REF_ERROR:-}" != 1 ]] || exit 1
@@ -144,6 +147,7 @@ allowed -C linked checkout feat/fixture-branch
 allowed -C linked switch feat/fixture-branch
 allowed checkout -- feat/fixture-branch
 allowed checkout docs/fixture-file
+allowed checkout 'docs/fixture file'
 
 named_branch_failure=0
 for subcommand in checkout switch; do

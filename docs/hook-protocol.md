@@ -349,6 +349,8 @@ The wrapper checks recognized destructive Git arguments, including calls
 from a script. A branch creation or whole-tree operation needs a verified
 linked checkout. The same check applies to a direct `git checkout` or
 `git switch` with an existing local branch name that contains a slash.
+This shorthand uses Git 2.43 or later to check whether the local
+reference exists. It refuses a lookup error before forwarding the command.
 Use `git checkout -- path` to select a file explicitly. Stashes are shared
 across linked checkouts. Ordinary commands keep their arguments and use
 the existing Git command on PATH.

@@ -45,3 +45,9 @@ checkout location check.
   or changed prior outcome rejects the candidate.
 - **Anchor**: [Git reference existence lookup](https://git-scm.com/docs/git-show-ref)
   and the [Git implementation](https://github.com/git/git/blob/v2.43.0/builtin/show-ref.c).
+
+The [hosted lookup baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44910710165)
+recorded 6 object-resolving queries on each platform. It also forwarded
+the operation after the injected lookup error. The exact reference
+existence check now distinguishes an absent reference from a read error.
+Git validates the reference name before reading any stored reference.

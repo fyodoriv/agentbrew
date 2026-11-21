@@ -40,7 +40,8 @@ When the user asks whether cached Git-backed MCP sources have fallen behind, run
 
 When the user asks whether native Claude publication needs review, run
 `agentbrew status --verbose` and relay the publication status line. Leave
-the record in place and treat any writer activity as unknown.
+the record in place and treat any writer activity as unknown. If status
+cannot load Agentbrew state, the record status is unknown.
 
 When the user asks how much agentbrew helps ("how much time does agentbrew save me?", "is agentbrew worth it?"): run `agentbrew metrics --days 30` and show the "Estimated time saved" line. Say that it is an estimate (3 seconds per detected agent for each sync, 5 seconds per drift item a repair fixed), modelled with the Keystroke-Level Model and not timed with people.
 

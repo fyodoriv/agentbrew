@@ -265,7 +265,8 @@ sync. Agents save judged drafts for you and suggest edits to sent messages.
 to see whether a publication owner record needs review. With `--json`,
 `nativePublication` is `owner-record-present` when its file metadata
 matches, or `unavailable` when Agentbrew cannot verify the metadata.
-The probe uses file metadata only and leaves the record in place.
+This signal requires readable Agentbrew state. The probe uses file
+metadata only and leaves the record in place.
 The [publication plan](docs/plans/native-publication-facet-ownership.md#report-a-native-publication-record-that-needs-review)
 explains what the signal can establish.
 

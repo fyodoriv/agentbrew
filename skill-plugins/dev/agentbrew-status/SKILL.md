@@ -39,6 +39,7 @@ agentbrew status           # also shows drift inline (no separate `diff` subcomm
 When the user asks whether native Claude publication needs review, run
 `agentbrew status --verbose`. Relay the publication line as a metadata
 check. Leave the record in place and treat any writer activity as unknown.
+If status cannot load Agentbrew state, the record status is unknown.
 
 ## Setup Overview and Commands
 

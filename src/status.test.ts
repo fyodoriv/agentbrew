@@ -376,6 +376,7 @@ describe("native publication owner status", () => {
     ["missing", undefined, undefined],
     ["owned", "owner-record-present", "Native publication: owner record present. Review before recovery."],
     ["wrong mode", "unavailable", "Native publication: owner record could not be verified."],
+    ["special mode", "unavailable", "Native publication: owner record could not be verified."],
     ["symlink", "unavailable", "Native publication: owner record could not be verified."],
   ])("reports the %s record without opening it", async (shape, expected, line) => {
     const home = mkdtempSync(join(tmpdir(), "ab-native-status-"));
@@ -390,9 +391,11 @@ describe("native publication owner status", () => {
         symlinkSync(target, record);
       } else if (shape !== "missing") {
         writeFileSync(record, marker, { mode: 0o600 });
-        chmodSync(record, shape === "owned" ? 0o600 : 0o644);
+        chmodSync(record, shape === "wrong mode" ? 0o644 : 0o600);
+        if (shape === "special mode") chmodSync(record, 0o4600);
       }
       const before = lstatSync(record, { throwIfNoEntry: false });
+      if (shape === "special mode") expect((before?.mode ?? 0) & 0o7777).toBe(0o4600);
       await vi.mocked(homedir).withImplementation(
         () => home,
         async () => {

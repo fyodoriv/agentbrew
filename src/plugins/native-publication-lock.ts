@@ -45,7 +45,7 @@ export function inspectNativePublicationStatus(): NativePublicationStatus | unde
       !record.isFile() ||
       record.uid !== directory.uid ||
       record.nlink !== 1 ||
-      (record.mode & 0o777) !== 0o600
+      (record.mode & 0o7777) !== 0o600
     ) {
       return "unavailable";
     }

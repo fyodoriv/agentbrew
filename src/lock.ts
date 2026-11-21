@@ -45,16 +45,36 @@ export interface LockFile {
 }
 
 export function readLock(): LockFile {
-  if (!existsSync(LOCK_FILE)) return { locked: [] };
+  return readStoredLock() ?? { locked: [] };
+}
+
+/** Keep an absent or unreadable lock distinct from a recorded empty lock. */
+export function readStoredLock(): LockFile | undefined {
+  if (!existsSync(LOCK_FILE)) return undefined;
 
   try {
     const content = readFileSync(LOCK_FILE, "utf-8");
     const parsed = yaml.load(content) as LockFile | undefined;
-    return parsed?.locked ? parsed : { locked: [] };
+    return parsed?.locked ? parsed : undefined;
   } catch (e) {
     logSkipped("lock/load", e);
-    return { locked: [] };
+    return undefined;
   }
+}
+
+export function hasRecordedEmptyPluginInventory(lock: LockFile | undefined): boolean {
+  if (!Array.isArray(lock?.locked)) return false;
+  const plugins = lock.plugins;
+  if (plugins !== undefined && (!Array.isArray(plugins) || plugins.length !== 0)) return false;
+  return lock.locked.every(
+    (entry) =>
+      typeof entry?.source === "string" &&
+      typeof entry.sha === "string" &&
+      (entry.type === "github" || entry.type === "local" || entry.type === "url") &&
+      Array.isArray(entry.skills) &&
+      entry.skills.every((skill) => typeof skill === "string") &&
+      typeof entry.lockedAt === "string",
+  );
 }
 
 export function writeLock(lock: LockFile): void {

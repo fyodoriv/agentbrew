@@ -189,7 +189,7 @@
 
 - [ ] Remove the remaining node-server range for Alert 181
   - **ID**: development-node-server-advisory-181
-  - **Blocked**: needs-compatible-upstream-parent — Promptfoo 0.124.1 pins node-server 2.1.1. The published 0.126.0 manifest pins 2.1.6 but requires incompatible jks-js and Nunjucks watcher peers. The local resolver still advertises 0.125.1 with node-server 2.1.5. Require a compatible published parent and a normal resolution before changing the lock graph.
+  - **Blocked**: needs-compatible-upstream-parent — The locked Promptfoo 0.124.1 pins node-server 2.1.1. The published 0.126.0 manifest pins 2.1.6 and still conflicts with the protected watcher and Java keystore peers. On Nov 21 the local resolver still offered 0.125.1 with node-server 2.1.5. Require a compatible published parent and a normal resolution before changing the lock graph.
   - **Tags**: security, dependencies, stability
   - **Details**: The first fixed node-server release is 2.1.6. Keep this alert separate from the earlier 172 and 175 comparison. A parent update must preserve existing peer choices, optional dependencies and the Node floor.
   - **Files**: `package.json`, `package-lock.json` and a registered dependency update plan.
@@ -300,13 +300,13 @@
   - **ID**: dependency-alerts-172-175
   - **Tags**: security, stability, dependencies
   - **Mode**: AFK
-  - **Blocked**: needs-compatible-upstream-parent-and-peer-contract — published parents still require vulnerable minimatch 10.x. The newer Promptfoo that fixes its pinned Hono copy adds a peer incompatible with the protected jks stub and retains the watcher peer conflict. Require compatible primary metadata before implementation.
+  - **Blocked**: needs-compatible-upstream-parent-and-peer-contract — the locked graph needs minimatch 10.x. Published Promptfoo 0.126.0 moves its parent ranges to minimatch 11, but still conflicts with the protected jks stub and watcher peer. The local resolver still offers 0.125.1. Require compatible primary metadata before implementation.
   - **Details**: Repair only alerts 172 (`@hono/node-server`, GHSA-rmxm-3fg6-px4f) and 175 (`minimatch`, GHSA-g3hv-75wg-m249). [The evidence and preparation plan](docs/plans/dependency-alerts-172-175.md) records exact ranges and parent constraints. Keep the original nine-row `dependency-alert-remediation` cohort, including MSAL alert 162, unchanged. Preserve optional paths, the local jks stub, existing overrides and the Node floor. This records read-only triage, not a passing baseline or an authorized package update.
   - **Files**: future supported parent resolution in `package.json` and `package-lock.json`; dependency/security documentation; no unrelated root update is pre-approved.
   - **Output**: code
   - **Acceptance**: neither new advisory range matches any resolved locked copy; the complete optional graph has no invalid/missing edges, normal installation and full gate pass, protected contracts remain unchanged, and both alerts report fixed with timestamps. No dismissal, omitted path, forced major override or reduced original-nine requirement counts as success.
   - **Hypothesis**: after compatible metadata and a committed exact candidate prediction, the two unsafe advisory rows fall from a predicted two to zero, with zero new unresolved findings, invalid/missing edges or protected-contract changes. Count rows, not vulnerable package nodes; measure the baseline before implementation.
-  - **Measurement**: first commit the exact supported parent selection and runnable experiment; then run the plan's proposed two-row semver query, strict full-graph/audit checks through npm 10, qualified task-owned normal install, existing lockfile/full gates and live GitHub fixed-status query. Commands are future steps, not passing harness evidence.
+  - **Measurement**: first commit the exact supported parent selection and runnable experiment. Compare `npm ls @hono/node-server minimatch --package-lock-only --all` with the advisory ranges. Run the plan’s strict full-graph and audit checks through npm 10, normal install, required gates and live GitHub status query.
   - **Success**: zero unsafe rows among these two, zero new unresolved findings, zero invalid/missing full-tree edges, zero protected-contract changes, green normal installation/full gate and two fixed-alert timestamps. The original nine-row experiment remains separate.
   - **Pivot**: any affected copy, unsupported parent resolution, concealed peer error, omitted optional path, new unresolved finding, protected-contract change or missing acceptance evidence rejects the candidate. Keep the task blocked rather than force a major override or change the denominator.
   - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary GitHub advisory APIs and published parent manifests linked in the plan.
@@ -315,7 +315,7 @@
   - **ID**: dependency-peer-compatibility
   - **Tags**: security, stability, dependencies
   - **Mode**: AFK
-  - **Blocked**: needs-compatible-upstream-contract — checked published Nunjucks latest 3.2.4 requires optional Chokidar `^3.3.0`; current and latest Promptfoo require `5.0.0`, as does the app root. No supported current placement was found under these protected declarations. A future compatible parent release or separately approved upstream change must supply the missing contract; do not force an override or downgrade the root.
+  - **Blocked**: needs-compatible-upstream-contract — published Nunjucks 3.2.4 requires optional Chokidar `^3.3.0`. The app and its locked Promptfoo declare `5.0.0`. The published latest Promptfoo declares `6.0.0`. No supported placement was found under these protected declarations. A future compatible parent release or separately approved upstream change must supply the missing contract; do not force an override or downgrade the root.
   - **Details**: The unchanged-source dependency tree check reports invalid Chokidar 5 at Promptfoo → Nunjucks. Optional means the peer may be absent; it does not accept an incompatible present version. npm rejects placing a peer inside its consumer. Record supported parent/peer metadata before attempting a resolution. [Stage R's constraint record](docs/plans/dependency-alert-controls.md#exact-constraint-and-source-limit) preserves the source evidence and all original nine-alert final requirements.
   - **Files**: future supported parent resolution in `package-lock.json`; dependency documentation; no root declaration or override change is pre-approved.
   - **Output**: code
@@ -346,7 +346,7 @@
 
 - [ ] PR bodies and new task blocks pass the pre-register checker in CI
   - **ID**: preregistration-ci-gate
-  - **Blocked**: needs-time — measure the first 10 merged descriptions and the first 20 pull requests after the check lands.
+  - **Blocked**: needs-default-merge-requirement — [first field sample](docs/plans/preregistration-changed-task-gate.md#first-field-sample). One of the first ten merges lacked a prediction. The first twenty newly opened pull requests all passed on their sampled heads, with zero false refusals in four earlier failed runs. The default branch has no required prediction check. The next cohort needs merge enforcement and a separate registration.
   - **Tags**: quality, ci, pre-registration, from-minsky
   - **Details**: Check the pull request description and each new or changed task block with `check-preregistration.mjs`. An unchanged task stays outside this check. Continue with the field observation after the gate lands.
   - **Files**: the PR-body check workflow or `scripts/check-pr-vision-trace.mjs`, `scripts/verify-changed.sh`, a ratchet helper and its test, AGENTS.md Delivery.
@@ -437,7 +437,9 @@
 - [ ] Closing a superseded PR proves nothing is lost
   - **ID**: lossless-pr-close
   - **Tags**: ship-it, watch-issues, git, from-minsky
-  - **Details**: Port minsky `scripts/verify-pr-closure-is-lossless.mjs`: before closing a PR as superseded or duplicate, apply its patch onto the surviving branch with `git apply --3way --check` and refuse the close if any hunk is left over. Call it from ship-it and watch-issues; this is the mechanical proof the "Merge means merge" rule asks for.
+  - **Details**: Compare the proposal patch against the replacement with a three-way apply in a disposable Git index. The replacement tree must remain byte-for-byte identical. Ship-it and watch-issues use this proof alongside the existing merge rule.
+  - **Progress**: The [fixture and live controls](docs/plans/verify-pr-preservation.md) accepted two duplicate trees and refused unique text, unique binary content, a conflict and the live #1040/#1041 negative pair. The ten latest closed, unmerged PRs did not name an explicit replacement.
+  - **Blocked**: needs-identified-duplicate-history — obtain verified replacement pairs before measuring the real false-refusal rate.
   - **Files**: `scripts/verify-pr-closure-is-lossless.mjs`, its test, ship-it and watch-issues docs.
   - **Acceptance**: a fixture PR with one unique hunk is refused and the hunk named; a true duplicate passes.
   - **Hypothesis**: PR closes that drop unique work go from unchecked to zero.
@@ -761,6 +763,7 @@
 
 - [ ] Count guard stops reading a time span as an agent count
   - **ID**: volatile-count-time-units
+  - **Blocked**: The fixture gate covers the source change. Observe the next 30 days of hosted documentation checks after merge to measure false warnings in use.
   - **Tags**: quality, docs-guard
   - **Details**: `src/docs/volatile-count-scan.ts` flags a number, up to three words, then an inventory noun. So a time span before such a noun reads as a count. On 2026-11-19 a TASKS.md acceptance line with a 15-minute timebox, followed by "makes the agent", failed hosted CI and cost one full CI cycle. Exempt a match whose first word after the number is a time unit (ms, second, minute, hour, day, week), next to the existing threshold exemption.
   - **Files**: `src/docs/volatile-count-scan.ts`, `src/docs/volatile-count-claims.test.ts`

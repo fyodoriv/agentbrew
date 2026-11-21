@@ -66,7 +66,7 @@ Something breaks silently: nobody notices until a tool stops working.
 - **Never destroys your data.** Manual edits, user-added servers, custom rules — all survive every sync, update, and auto-repair.
 - **Declarative.** Commit an `Agentfile.yaml` to your dotfiles; a fresh machine bootstraps in one command.
 - **Curated 200+-item catalog.** It holds skills from [Vercel][], [Anthropic][], [obra/superpowers][], [Every Compound Engineering][], [gstack][], [Supabase][], [Trail of Bits][], [slavingia/skills][], and [awesome-design-md][]. The team overlay adds more when enabled.
-- **Rollback is always available.** Every sync snapshots pre-state; `sync --rollback` restores it.
+- **Restore the last snapshot.** A real sync saves the previous configuration. Run `sync --rollback` to restore it. The CLI rejects `--rollback` and `--dry-run` together.
 - **Repo verification.** [`/verify`](commands/verify.md) detects the repo type,
   runs its gate, and reports the actual result for each changed repo.
 - **Offline handoff.** [`/offline`](commands/offline.md) preserves active work
@@ -462,6 +462,10 @@ Use `agentbrew sync --dry-run` to validate and preview Agentfile changes, includ
 
 One command translates the source of truth into every agent's native format.
 
+A sync preview shows its own result and preserves the manifest and error
+history from the last real sync. If a selected module fails, the preview
+shows the error and exits with status 1.
+
 When a source refresh finds a recorded skill-to-plugin conversion, it names
 the plugin and links to the upstream setup. Existing copies stay in place.
 For example, Trail of Bits moved `insecure-defaults` to its plugin marketplace.
@@ -527,8 +531,10 @@ tracked skill sources. Select `mcp` to register managed memory.
 
 For example, `agentbrew sync --only commands` leaves the native Claude
 marketplace unchanged. A selection that includes hooks, MCP, or rules
-refreshes the complete native marketplace. Every live sync refreshes the
-privacy redaction patterns.
+refreshes the complete native marketplace when plugins are installed.
+When a valid lock records zero installed plugins, the selection leaves
+native marketplace cleanup to a full sync. Every live sync refreshes
+the privacy redaction patterns.
 
 When an Agentfile is in effect (`--agentfile`, the global Agentfile, or a project Agentfile), the Agentfile decides the skill set. A plain `sync` installs the catalog recommended set only on a machine with no Agentfile; an Agentfile asks for it with `recommended: true`. A skill you remove from the Agentfile is pruned from its source on the next sync that includes skills.
 
@@ -944,7 +950,7 @@ to refresh deployed copies from the intended source.
 - agentbrew fetches exactly `refs/tags/<ref>`, so a branch with the same name never wins. It verifies that one tag object and installs its commit. It refuses a name that looks like a 40- or 64-hex object ID. It also refuses a signed tag object whose own name differs from `<ref>` (an old release published under a new name). Only an SSH signature counts. An OpenPGP or X.509 signature is refused, even from a key in your gpg keyring, and so is a tag message with any other line that starts with `-----BEGIN `. Nothing is checked out until the signature passes. This holds for `add`, `update`, and `rollback`.
 - Trusted signers live in one file shared with dotfiles: `~/.config/agent-plugins/allowed_signers` (or `$AGENT_PLUGINS_ALLOWED_SIGNERS`), in git's `gpg.ssh.allowedSignersFile` format. The principal is the plugin name, so a key trusted for one plugin is not trusted for another.
 - Capabilities are deny by default. Each rule needs its agents in `capabilities.agents` (front matter `agents:`, or any declared agent), each hook event in `capabilities.hooks` (`Event` or `Event:matcher`), each MCP server in `capabilities.mcp_servers`, and a command that runs shell (`allowed-tools: Bash` or `` !`cmd` ``) needs `commands_exec: true`. Anything else fails with exit code 3 and `capability not declared: <kind> <value> (plugin <name>)`, on `plugin add` and on `sync`.
-- Claude Code also gets native output, side by side with file rendering. Each plugin becomes a Claude Code plugin in a local marketplace (`~/.local/share/agentbrew/claude-marketplace`), enabled in `~/.claude/settings.json` (`extraKnownMarketplaces`, `enabledPlugins`). The native plugin carries the plugin's hooks and a `SessionStart` hook that runs `agentbrew plugin rules` for the session's repo. Removing a plugin removes both on the next sync. `plugin add`, `update`, `rollback`, and `remove` refresh the native plugin at once, so a hook a new version adds is on without waiting for the next sync.
+- Claude Code also gets native output, side by side with file rendering. Each plugin becomes a Claude Code plugin in a local marketplace (`~/.local/share/agentbrew/claude-marketplace`), enabled in `~/.claude/settings.json` (`extraKnownMarketplaces`, `enabledPlugins`). The native plugin carries the plugin's hooks and a `SessionStart` hook that runs `agentbrew plugin rules` for the session's repo. A full sync removes residual native output for uninstalled plugins. `plugin add`, `update`, `rollback`, and `remove` refresh the native plugin at once, so a hook a new version adds is on without waiting for the next sync.
 - Plugin MCP servers (`contributes.mcp_servers`, a YAML list of `{name, command, args, env}`) name every env value as a reference: `env:<NAME>`, `keychain:<item>` (macOS `security`, else `secret-tool`), or `op://...`. Literal values are refused. `npx`/`bunx`/`pnpx` packages must be `pkg@1.2.3`, and `uvx`/`pipx` packages `pkg==1.2.3`; `@latest` or no version is refused. agentbrew writes one launcher per server under `~/.local/share/agentbrew/launchers/` that resolves the references at process start, and the native Claude Code plugin's `.mcp.json` names only the launcher. Other agents do not get plugin MCP servers yet.
 - `plugin update <name> <signed-tag>` verifies the new tag and prints a diff of rules (with text diffs), skills, MCP servers, hooks, and capabilities. It applies nothing until you confirm (`--yes` skips that prompt). A capability change always asks at the terminal, even with `--yes`, and is refused without a terminal. The replaced version stays available to `plugin rollback`.
 - Authoring: `agentbrew plugin new <dir> --name <name>` scaffolds a plugin repo; `agentbrew plugin test [dir]` runs the core's static checks (schema, capabilities, MCP secrets and pins, leak patterns) and exits 1 on any problem. `agentbrew plugin migrate <overlay-dir>` prints a draft `agentbrew-plugin.yaml` from a legacy team overlay plus a list of what it could not map. None of them installs anything.

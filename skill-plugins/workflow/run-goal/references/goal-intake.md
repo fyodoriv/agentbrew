@@ -103,10 +103,37 @@ baseline before the first merge.
   slides through a connector (not a sign-in page), and diff a local clone
   against its upstream (it may be a stale fork). List each source in the
   contract with what it gave.
+- **The goal integrates an existing service**: search authorized projects and
+  their current docs for a working client first. Cite the source and the
+  documented route before choosing a new transport. Keep its consent and
+  credential checks. When deployment needs the owner, cite the source for the
+  remaining step and report the unverified outcome.
+- **The goal asks for current readiness**: read the authorized system of record
+  and record the read time. Report the observed tier and the requested target
+  separately. Derive the gaps from the live checks for the target tier. Give
+  an independent reviewer the same authorized capture and ask them to verify
+  each gap. If the current source cannot be read, keep readiness unverified.
 - **The goal grants someone access**: read your own rights first (for a
   GitHub repo, `permissions.admin`). Find the person's account, but invite
   only after the operator confirms it. Without admin rights, write a short
   BLOCKED report: who can grant access, and what the person can already do.
+- When the goal changes the user's own access, read current permissions and the
+  approved access policy. Keep the confirmation step before any form
+  submission. If the user replaces a temporary request with a permanent one,
+  cancel the temporary path without submitting. Cite any policy that blocks
+  permanent access and report the verified current role.
+
+## Ticket gates before first push
+
+Ask for required fields, such as priority and estimate, in the first
+question round.
+Read the ticket from the tracker and check the repository's active PR gate.
+A Done or Closed ticket cannot satisfy a gate that requires work in progress.
+Reuse a matching open ticket when one is available. Create or change a ticket
+only with authorization. Read back the required status and assignee before
+the first push. Use the verified key in the commit header and pull request
+title when the gate requires it. If the tracker or required permission is
+unavailable, hold the push and state what remains unverified.
 
 ## Host authentication intake
 

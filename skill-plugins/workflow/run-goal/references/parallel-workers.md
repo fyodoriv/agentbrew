@@ -173,6 +173,14 @@ Contents: Starting workers · Steering running agents · Files the main session 
 - For CI, metric corrections and native goal evaluation, use
   [quiet external waits](external-waits.md). Reuse the owned watcher and keep
   unchanged observations out of user messages.
+- When a worker sends a finish notice, read its full last report through the
+  host's supported result or the worker's linked artifact before you reply.
+  A shortened notice can omit the last action or remaining blocker. Check
+  the reported PR, revision, and gate result against their sources. If the
+  full report is unavailable, say which evidence is missing and keep the
+  result unverified. Wait only while a live worker or owned watch is verified.
+  When that wait is the only open item, keep any update to one line and send
+  it only for a change or an owner decision.
 
 - A stop hook that blocks while a PR shows conflicts turns every turn into a
   wait. Wait on local state instead: a Monitor that loops until the agent's
@@ -212,6 +220,13 @@ review the merged diff and send each finding back as a new fix round.
 Review rounds on one PR must converge. After the second fix round, tell the
 worker that the next round is the last, and that every finding still open
 becomes a task in the same PR.
+
+Give each judge at most two rounds for the same review. Keep the existing
+cap on fix rounds. Give the judge access to the same authorized evidence the
+author used, or a safe copy with source references. The verdict cites its
+sources next to each claim. If a required source cannot be read, record that
+check as unverified. After the second judge round, carry unresolved evidence
+forward as open work.
 
 A worker that ends its turn while its gate waits in the `heavy-run` queue
 shows as "completed", but its last line says it is waiting. That is not a

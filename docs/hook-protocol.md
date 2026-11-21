@@ -347,6 +347,39 @@ A missing tool or timeout appears in hook diagnostics. The check keeps task
 text out of its output and logs. Use the project's commit check to enforce
 the task rules at delivery.
 
+
+## Check for a live watch before stop
+
+`always-on-watch-stop` is an opt-in Claude Code Stop hook. It reminds a
+configured watcher session once when the session would end with no live
+watch. Enable it through the hook overlay's `enabled:` list. The hook
+reads stamps written by the watcher session. It takes no action on the
+watcher.
+
+Set `ALWAYS_ON_DIR` to an absolute user-owned directory. Set
+`ALWAYS_ON_PROJECTS` to a comma-separated list of project IDs. Keep the
+directory and stamps free of group and other-user write permission.
+For each enrolled session, use its native session ID as the filename
+prefix and these suffixes.
+
+| File | What the writer records |
+| --- | --- |
+| `<session_id>.project` | One project ID from the configured list |
+| `<session_id>.watch` | `pid=<number>` for an active watcher process, or `cron=<id>` after confirming the schedule exists |
+| `<session_id>.wrapup` | A regular file when the owner wants to stop |
+
+Write each stamp to a temporary file and rename it into place. Write a
+new watch stamp after confirming the watch. A cron stamp remains
+valid for `ALWAYS_ON_CRON_MAX_AGE` seconds, which defaults to 300. A PID
+stamp checks for a process at that PID. Refresh it if the watcher restarts.
+
+A wrap-up stamp, an explicit stop in the latest user text,
+`ALWAYS_ON_STOP_GUARD=off`, or the native second Stop event allows the turn
+to end. The hook allows the stop when the transcript or stamp identity
+cannot be verified. It publishes no transcript or stamp contents.
+
+See [registered watch-stop cases](plans/always-on-watch-stop.md).
+
 ## Retry failed calls before stop
 
 `retry-failed-before-stop` (Stop, opt-in) checks the current user turn

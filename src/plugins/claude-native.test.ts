@@ -53,7 +53,7 @@ vi.mock("write-file-atomic", async (original) => {
   return { ...atomic, sync: vi.fn(atomic.sync) };
 });
 
-import { readLock } from "../lock.js";
+import { readLock, writeLock } from "../lock.js";
 import { fixtureGit, fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { emitClaudeNative, MARKETPLACE_NAME, marketplaceDir, policyFragment } from "./claude-native.js";
 import { launcherPath } from "./mcp-launcher.js";
@@ -565,28 +565,102 @@ describe("native publication process loss at output checkpoints", () => {
   });
 
   it.each([
-    ["payload", "hooks", false],
-    ["marketplace index", "index", false],
-    ["activation settings", "settings", true],
-  ] as const)("preserves the partial output before %s across a process restart", (_name, key, full) => {
+    ["payload", "hooks", false, 0],
+    ["output receipt", "receipt", false, 3],
+    ["marketplace index", "index", false, 4],
+    ["activation settings", "settings", true, null],
+  ] as const)("preserves the partial output before %s across a process restart", (_name, key, full, written) => {
     installFacetFixture();
     // The signed fixture uses 0644 even when the local queue applies umask 077.
     chmodSync(join(pluginDir("fixture-native"), "hooks", "guard.sh"), 0o644);
     const paths = nativeFacetPaths();
-    const target = paths[key];
+    const receipt = nativeProofPath();
+    const target = key === "receipt" ? receipt : paths[key];
     try {
       expect(publishFromChild(full, target)).toMatchObject({ status: 77, stdout: "", stderr: "" });
       expect(existsSync(target)).toBe(false);
       expect(existsSync(paths.hooks)).toBe(key !== "hooks");
       expect(existsSync(paths.script)).toBe(key !== "hooks");
-      expect(existsSync(nativeProofPath())).toBe(key !== "hooks");
+      expect(existsSync(receipt)).toBe(key === "index" || full);
       expect(existsSync(paths.index)).toBe(full);
       expect(existsSync(paths.settings)).toBe(false);
-      expect(statSync(owner).mode & 0o777).toBe(0o600);
+      const ownerInfo = lstatSync(owner);
+      expect(ownerInfo.isFile()).toBe(true);
+      expect(ownerInfo.mode & 0o777).toBe(0o600);
+      const record = JSON.parse(readFileSync(owner, "utf8"));
+      expect(record).toMatchObject({ pid: expect.any(Number), token: expect.any(String) });
+      if (written === null) {
+        expect(record).not.toHaveProperty("intent");
+      } else {
+        const plannedPaths = [paths.hooks, paths.script, paths.envelope, receipt, paths.index];
+        expect(record.intent).toEqual(
+          plannedPaths.map((path, position) => {
+            const observed = lstatSync(path, { throwIfNoEntry: false });
+            if (position >= written) {
+              expect(observed).toBeUndefined();
+              return {
+                path: relative(home, path),
+                before: null,
+                after: { digest: expect.stringMatching(/^[0-9a-f]{64}$/u), mode: path === receipt ? 0o600 : 0o644 },
+              };
+            }
+            expect(observed?.isFile()).toBe(true);
+            return {
+              path: relative(home, path),
+              before: null,
+              after: {
+                digest: createHash("sha256").update(readFileSync(path)).digest("hex"),
+                mode: statSync(path).mode & 0o777,
+              },
+            };
+          }),
+        );
+      }
       const roots = [marketplaceDir(), dirname(paths.launcher), dirname(paths.settings), owner];
       const before = roots.map(snapshot);
       expect(publishFromChild(full)).toMatchObject({ status: 75, stdout: "", stderr: "" });
       expect(roots.map(snapshot)).toEqual(before);
+    } finally {
+      rmSync(owner, { force: true });
+    }
+  });
+});
+
+describe("certified full native settings preflight", () => {
+  it.each([
+    ["malformed JSON", '{"broken"'],
+    ["a null root", "null"],
+    ["an array root", "[]"],
+    ["a non-object marketplace map", '{"extraKnownMarketplaces":[]}'],
+    ["a non-object enabled-plugin map", '{"enabledPlugins":"invalid"}'],
+    [
+      "invalid UTF-8 in a quoted setting",
+      Buffer.concat([Buffer.from('{"theme":"'), Buffer.from([0xff]), Buffer.from('"}')]),
+    ],
+    ["a byte-order mark", Buffer.from([0xef, 0xbb, 0xbf, 0x7b, 0x7d])],
+  ])("refuses %s before writing any native output", (_label, body) => {
+    installFacetFixture();
+    chmodSync(join(pluginDir("fixture-native"), "hooks", "guard.sh"), 0o644);
+    const paths = nativeFacetPaths();
+    const owner = join(home, ".agentbrew-native-publication.lock");
+    mkdirSync(dirname(paths.settings), { recursive: true });
+    writeFileSync(paths.settings, body, { mode: 0o600 });
+    const before = observeNativeFiles([paths.settings]);
+    vi.mocked(atomicWrite).mockClear();
+
+    try {
+      let failure: unknown;
+      try {
+        emitClaudeNative({ certifyFullOutput: true });
+      } catch (error) {
+        failure = error;
+      }
+      expect(atomicWrite).not.toHaveBeenCalled();
+      expect(existsSync(marketplaceDir())).toBe(false);
+      expect(existsSync(paths.launcher)).toBe(false);
+      expect(existsSync(owner)).toBe(false);
+      expect(observeNativeFiles([paths.settings])).toEqual(before);
+      expect(failure).toMatchObject({ message: expect.stringMatching(/invalid native settings/u) });
     } finally {
       rmSync(owner, { force: true });
     }
@@ -1291,6 +1365,80 @@ describe("emitClaudeNative", () => {
   it("does nothing (and creates no settings file) when no plugin is installed", () => {
     emitClaudeNative();
     expect(existsSync(SETTINGS())).toBe(false);
+  });
+});
+
+describe("empty-lock publication", () => {
+  const lockPath = join(home, ".config", "agentbrew", "agentbrew.lock");
+
+  function publishForSelection() {
+    emitClaudeNative({ skipEmptyPublication: true });
+  }
+
+  function expectNativeCleanup() {
+    expect(existsSync(marketplaceDir())).toBe(false);
+    expect(existsSync(nativeFacetPaths().launcher)).toBe(false);
+    const current = settings();
+    expect(current.enabledPlugins?.[`fixture-native@${MARKETPLACE_NAME}`]).toBeUndefined();
+    expect(current.extraKnownMarketplaces?.[MARKETPLACE_NAME]).toBeUndefined();
+  }
+
+  it.each(["omitted", "explicit"] as const)("preserves native output with an %s empty plugin inventory", (form) => {
+    installFacetFixture();
+    emitClaudeNative();
+    removePlugin("fixture-native");
+    if (form === "explicit") {
+      writeLock({
+        locked: [
+          {
+            source: "fixture.example/source",
+            type: "github",
+            sha: "a".repeat(40),
+            skills: ["fixture-skill"],
+            lockedAt: "2026-11-20T00:00:00.000Z",
+          },
+        ],
+        plugins: [],
+      });
+    }
+    expect(readLock().plugins ?? []).toEqual([]);
+    const paths = nativeFacetPaths();
+    const before = observeNativeFiles([paths.index, paths.launcher, paths.settings]);
+
+    publishForSelection();
+
+    expect(observeNativeFiles([paths.index, paths.launcher, paths.settings])).toEqual(before);
+    emitClaudeNative();
+    expectNativeCleanup();
+  });
+
+  it.each([
+    "missing",
+    "unparseable",
+    "malformed",
+    "revoked",
+  ] as const)("retains ordinary cleanup with a %s lock or signer", (kind) => {
+    installFacetFixture();
+    emitClaudeNative();
+    if (kind === "missing") rmSync(lockPath);
+    else if (kind === "unparseable") writeFileSync(lockPath, "locked: []\nplugins: invalid\n[");
+    else if (kind === "malformed") writeFileSync(lockPath, "locked: [{}]\n");
+    else revokeSigner("fixture-native", KEY.pub);
+
+    publishForSelection();
+
+    expectNativeCleanup();
+  });
+
+  it("still publishes for an active signed plugin", () => {
+    installFacetFixture();
+
+    publishForSelection();
+
+    const paths = nativeFacetPaths();
+    expect(existsSync(paths.index)).toBe(true);
+    expect(existsSync(paths.launcher)).toBe(true);
+    expect(settings().enabledPlugins?.[`fixture-native@${MARKETPLACE_NAME}`]).toBe(true);
   });
 });
 

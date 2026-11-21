@@ -6,7 +6,7 @@
  * Repos, keys, and HOME are scratch. Git reads an empty global config file.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import yaml from "js-yaml";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,7 +38,7 @@ import { defaultState, saveState } from "../state.js";
 import { fixtureGit, fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { marketplaceDir } from "./claude-native.js";
 import { registerPluginCommands } from "./cli-plugin.js";
-import { lifecycleObservation } from "./lifecycle-observation.js";
+import { completeMarketplaceWorkerOutput, marketplaceObservation } from "./lifecycle-observation-output.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, applyAdd, planAdd, pluginDir, pluginsRoot } from "./store.js";
 
@@ -187,22 +187,6 @@ describe("planAdd and applyAdd", () => {
   });
 });
 
-function marketplaceObservation() {
-  const enabled = process.env.PLUGIN_LIFECYCLE_FIXTURE_OUTPUT === "1";
-  return lifecycleObservation(
-    "marketplace-copy",
-    (record) => {
-      if (!enabled) return;
-      const line = `lifecycle-stage ${record}\n`;
-      if (writeSync(2, line) !== Buffer.byteLength(line)) throw new Error("Incomplete lifecycle stage record");
-    },
-    undefined,
-    () => {
-      if (enabled) writeSync(1, "lifecycle-stage-recorder-failed\n");
-    },
-  );
-}
-
 it("plugin lifecycle observation output", async () => {
   const observe = marketplaceObservation();
   await expect(observe("add", () => true)).resolves.toBe(true);
@@ -217,6 +201,8 @@ it("plugin lifecycle observation output", async () => {
 });
 
 describe("plugin commands re-emit the Claude Code plugin copy (#447)", () => {
+  afterEach(completeMarketplaceWorkerOutput);
+
   const run = async (...args: string[]) => {
     const program = new Command().exitOverride();
     registerPluginCommands(program);

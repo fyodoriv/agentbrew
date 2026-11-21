@@ -105,8 +105,8 @@ So:
 6. Spot human-only steps now: secrets, 2FA codes, payments, production
    deploys, and public or destructive actions that no rule approves. Each one
    goes into the contract. If someone is at the keyboard, ask about it in the
-   question round. If not, schedule it last. A ticket-gated PR check needs
-   ticket fields (priority, estimate): ask for them in the first round.
+   question round. If not, schedule it last. See [ticket gate steps](references/goal-intake.md#ticket-gates-before-first-push) for fields to ask about.
+   Before the first push, read the ticket's current status.
    Classify tasks by their Details (who must act), not only the Blocked flag.
    Probe the actual owner, writable source/config and valid submission route for each criterion before promising changes. Keep unknown ownership or route unverified; access alone is not change authority. Check each Git host: [host authentication intake](references/goal-intake.md#host-authentication-intake).
    Before a write to a live store (migration, sync, move), list the target
@@ -306,7 +306,7 @@ Before you call a failure "pre-existing", compare it with the unchanged base ([r
 For every proof image, read the image itself and cross-check the system-of-record log for the same run or item. A caption, filename or worker verdict is not completion evidence.
 If either reader is unavailable, evidence conflicts or identities differ, leave the criterion unverified and report the gap. Do not manufacture pending input.
 
-For UI work, open and read [screenshots of every view](references/execution.md#screenshot-proof) for
+For UI work, require the [independent live UX gate](references/execution.md#live-ux-review). Open and read [screenshots of every view](references/execution.md#screenshot-proof) for
 wrong content, not only for presence. Tests that assert "the view shows
 text" miss logic bugs such as the same task repeated on every day.
 When the goal brings the user's own data into the app (an import, a sync),

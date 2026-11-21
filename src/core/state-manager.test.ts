@@ -46,6 +46,53 @@ beforeEach(() => {
   resetStateManager();
 });
 
+describe("state manager rejected writes", () => {
+  function refusingFirstWrite() {
+    let stored = makeState();
+    const read = vi.fn(() => structuredClone(stored));
+    const write = vi.fn((next: AgentBrewState): false | undefined => {
+      stored = structuredClone(next);
+      return undefined;
+    });
+    write.mockReturnValueOnce(false);
+    return { manager: createStateManager({ read, write }), read, persisted: () => structuredClone(stored) };
+  }
+
+  it("reloads persisted state after a rejected save of a cached object", () => {
+    const { manager, read, persisted } = refusingFirstWrite();
+    const original = manager.load();
+    if (!original) throw new Error("Fixture state is missing.");
+    original.agents[0].detected = false;
+
+    expect(manager.save(original)).toBe(false);
+    expect(persisted().agents[0].detected).toBe(true);
+
+    const reloaded = manager.load();
+    expect(reloaded?.agents[0].detected).toBe(true);
+    expect(reloaded).not.toBe(original);
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not save a rejected update during a later successful update", () => {
+    const { manager, read, persisted } = refusingFirstWrite();
+    expect(
+      manager.update((state) => {
+        state.agents[0].detected = false;
+      }),
+    ).toBeUndefined();
+    expect(persisted().agents[0].detected).toBe(true);
+
+    manager.update((state) => {
+      state.catalogVersion = "accepted-fixture";
+    });
+
+    expect(persisted().catalogVersion).toBe("accepted-fixture");
+    expect(persisted().agents[0].detected).toBe(true);
+    expect(manager.load()?.agents[0].detected).toBe(true);
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("createStateManager", () => {
   it("load delegates to io.read", () => {
     const state = makeState();

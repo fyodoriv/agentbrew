@@ -1,3 +1,4 @@
+import { CommanderError } from "commander";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./cli-build-health.js", () => ({ checkCliBuildDrift: vi.fn() }));
@@ -108,6 +109,57 @@ describe("native selection publication gate", () => {
     expect(vi.mocked(runSyncParallel).mock.calls[0]?.[0].map(({ name }) => name)).toEqual(modules);
     expect(writeRedactPatterns).toHaveBeenCalledTimes(dryRun ? 0 : 1);
     expect(emitClaudeNative).toHaveBeenCalledTimes(publish ? 1 : 0);
+    if (publish) {
+      expect(emitClaudeNative).toHaveBeenCalledWith(...(only ? [{ skipEmptyPublication: true }] : []));
+    }
+  });
+});
+
+describe("sync preview and rollback options", () => {
+  const conflicts = [
+    { label: "preview first", flags: ["--dry-run", "--rollback"] },
+    { label: "rollback first", flags: ["--rollback", "--dry-run"] },
+  ];
+
+  it.each(conflicts)("refuses $label before any work", async ({ flags }) => {
+    vi.mocked(loadState).mockReturnValue({ agents: [], mcpServers: [], sources: [], catalogVersion: "synthetic" });
+    health.mockReturnValue([]);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const messages: string[] = [];
+    const program = buildProgram();
+    const sync = program.commands.find((command) => command.name() === "sync");
+    if (!sync) throw new Error("Sync command is not registered");
+    sync.exitOverride().configureOutput({ writeErr: (line) => messages.push(line) });
+    let exitStatus: number | undefined;
+    try {
+      await program.parseAsync(["node", "test", "sync", ...flags]);
+    } catch (error) {
+      if (!(error instanceof CommanderError)) throw error;
+      exitStatus = error.exitCode;
+    }
+
+    const message = messages.join("");
+    expect({
+      exitStatus,
+      namesBothFlags: message.includes("--dry-run") && message.includes("--rollback"),
+      restore: vi.mocked(rollbackAgentConfigs).mock.calls.length,
+      prepare: vi.mocked(prepareWorkspaceAgentfile).mock.calls.length,
+      sync: vi.mocked(runSyncParallel).mock.calls.length,
+      events: vi.mocked(recordEvent).mock.calls.length,
+      build: health.mock.calls.length,
+      clearRepairLog: vi.mocked(clearRepairLog).mock.calls.length,
+      touchLastSeen: vi.mocked(touchLastSeen).mock.calls.length,
+    }).toEqual({
+      exitStatus: 1,
+      namesBothFlags: true,
+      restore: 0,
+      prepare: 0,
+      sync: 0,
+      events: 0,
+      build: 0,
+      clearRepairLog: 0,
+      touchLastSeen: 0,
+    });
   });
 });
 
@@ -116,7 +168,7 @@ describe("sync build health", () => {
     ["normal", ["--only", "mcp", "--no-recommended"], runSyncParallel],
     ["dry-run", ["--dry-run", "--only", "mcp", "--no-recommended"], runSyncParallel],
     ["pull", ["--pull", "--dry-run"], update],
-    ["rollback", ["--rollback", "--dry-run"], rollbackAgentConfigs],
+    ["rollback", ["--rollback"], rollbackAgentConfigs],
   ])("warns before %s sync work and still runs it", async (_name, args, operation) => {
     health.mockReturnValue([{ agent: "agentbrew", type: "cli-build", detail: "stale fixture — run `npm run build`" }]);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -153,7 +205,7 @@ describe("initialized sync root-hook ordering", () => {
     ["normal", ["--only", "mcp", "--no-recommended"], runSyncParallel],
     ["dry-run", ["--dry-run", "--only", "mcp", "--no-recommended"], runSyncParallel],
     ["pull", ["--pull", "--dry-run"], update],
-    ["rollback", ["--rollback", "--dry-run"], rollbackAgentConfigs],
+    ["rollback", ["--rollback"], rollbackAgentConfigs],
   ])("initialized %s warns before root-hook output and writes", async (_name, args, operation) => {
     health.mockReturnValue([{ agent: "agentbrew", type: "cli-build", detail: "stale synthetic build" }]);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});

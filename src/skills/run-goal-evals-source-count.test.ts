@@ -69,3 +69,39 @@ describe("run-goal source-count verification (#774)", () => {
     expect(served).toMatch(/fetch the served output and read every entry/i);
   });
 });
+
+describe("run-goal query readiness (#1207)", () => {
+  it("requires an approved read-only query where the target data lives before review", () => {
+    expect(served).toMatch(/green PR lists an unchecked live query[\s\S]*hold\s+the review request/i);
+    expect(served).toMatch(/environment contains the target data[\s\S]*read-only there, with approved access/i);
+    expect(served).toMatch(/dropped eligible rows as a\s+defect/i);
+    expect(served).toMatch(/test-environment[\s\S]*cannot cover an unchecked target environment/i);
+  });
+
+  it("distinguishes a passing test query from one dropped production row", () => {
+    const fixture = evals.find(({ id }) => id === 366);
+    expect(evals.filter(({ id }) => id === 366)).toHaveLength(1);
+    const raw = /Environment receipts:\n```json\n([\s\S]+?)\n```/.exec(fixture?.prompt ?? "");
+    expect(raw).not.toBeNull();
+    const { environments } = JSON.parse(raw?.[1] ?? "{}") as {
+      environments: Array<{
+        name: string;
+        contains_target_data: boolean;
+        eligible_ids: string[];
+        query_ids: string[];
+      }>;
+    };
+    const comparison = environments.map(({ name, contains_target_data, eligible_ids, query_ids }) => ({
+      name,
+      contains_target_data,
+      missing: eligible_ids.filter((id) => !query_ids.includes(id)),
+    }));
+    expect(comparison).toEqual([
+      { name: "test", contains_target_data: false, missing: [] },
+      { name: "production", contains_target_data: true, missing: ["P2"] },
+    ]);
+    expect(fixture?.prompt).toMatch(/PR checks are green[\s\S]*not been checked against live target data/i);
+    expect(fixture?.expected_output).toMatch(/production drops P2, one eligible row/i);
+    expect(fixture?.expected_output).toMatch(/lacks access[\s\S]*unverified[\s\S]*hold/i);
+  });
+});

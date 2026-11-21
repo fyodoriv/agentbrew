@@ -64,6 +64,22 @@ describe("volatile count scan helpers", () => {
     ).toBe(true);
   });
 
+  it.each([
+    ["A 15-minute timebox makes the agent stop.", []],
+    ["After 15 minutes the agent checks status.", []],
+    ["After 250 ms the agent checks 12 agents.", ["12 agents"]],
+    ["After 2–4 hours the agent checks 12 agents.", ["12 agents"]],
+    ["15 second-line agents are configured.", ["15 second-line agents"]],
+    ["After 1 second the agent checks status.", []],
+    ["3 MS tools are configured.", ["3 MS tools"]],
+    ["3 second wave agents are configured.", ["3 second wave agents"]],
+    ["1 second wave agent is configured.", ["1 second wave agent"]],
+    ["3 day shift agents are configured.", ["3 day shift agents"]],
+    ["3 week one tests are configured.", ["3 week one tests"]],
+  ])("distinguishes durations from inventory in %s", (line, expected) => {
+    expect(scanTextForVolatileCounts(line)).toEqual(expected);
+  });
+
   it("flags volatile counts inside comments", () => {
     const source = "// writing stale shared-rules content to the 11 delegated agents.\n";
     expect(findVolatileCountClaimsInComments(source, "fixture.ts").some((v) => v.includes("11 delegated"))).toBe(true);

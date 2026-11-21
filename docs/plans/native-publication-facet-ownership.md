@@ -1195,3 +1195,93 @@ survived with a mode-0600 intent and no receipt or index. A retry refused
 before making a write. The two focused cases and all 85 native tests
 passed on Mac, and TypeScript passed. Independent review verified the
 guard and the fixture.
+
+## Check the retained intent against interrupted output
+
+- **Hypothesis**: The selected publisher retains an ordered description of
+  all five planned files when its process stops. The files already written
+  form an exact prefix of that description. The certified full publisher's
+  record identifies an owner only and cannot describe which files to recover.
+- **Measurement**: Use the existing signed scratch child in
+  `src/plugins/claude-native.test.ts` with its fixed umask 022. Stop the
+  selected writer before the first payload file, before the output receipt,
+  and before the marketplace index. Compare the private record to the fixed
+  five-path order and the regular file checksums and modes. Keep the fourth
+  control that stops certified full publication before its settings write.
+  Run both native publisher files in required hosted CI.
+- **Success**: Three selected prefixes contain exactly 0, 3 and 4 planned
+  files with matching digests and modes. The remaining 5, 2 and 1 paths are
+  absent. The full record has zero per-file intent entries. Each of the four
+  retries refuses and makes zero file or owner changes.
+- **Pivot**: One wrong path, unexpected file, wrong digest or mode, missing
+  owner record, or changed retry output leaves the evidence unqualified.
+  Keep activation and recovery on hold.
+- **Anchor**: The existing process-loss cases and the intent layout in
+  `src/plugins/claude-native-selected.ts`.
+
+## Preserve native output during a selection with an empty lock
+
+- **Hypothesis**: A live selection with hooks, MCP or rules and a valid
+  lock listing zero installed plugins has no native payload to publish.
+  Leaving its existing native output alone avoids an unrelated cleanup.
+- **Measurement**: Run hosted `npx vitest run src/cli-sync-build-health.test.ts src/plugins/claude-native.test.ts src/plugins/claude-native-ordinary.test.ts`.
+  Exercise the three selected CLI gates and the mixed selection. In the signed
+  scratch fixture, leave a marketplace, launcher and settings in place after
+  removing the last installed pin. Compare the three output surfaces in
+  selected mode, then run the ordinary publisher. Compare a missing
+  lock, a malformed lock, a revoked signer and an active signed plugin
+  with the existing ordinary behavior.
+- **Success**: All four selected CLI cases request empty-lock preservation.
+  The three native surfaces have zero changes in the valid empty case.
+  Ordinary full publication still cleans the same three surfaces. All
+  four missing, malformed, revoked and active controls keep their prior
+  behavior. No selected call enters the experimental facet publisher.
+- **Pivot**: Reject after 1 changed surface with a valid empty lock,
+  1 skipped cleanup for a missing, malformed or revoked lock, or 1 changed
+  ordinary publication outcome.
+- **Anchor**: The ordinary publisher's empty marketplace, launcher and
+  settings branches, and the existing selected CLI gate.
+
+The [Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44859673123/job/136709923106)
+failed the four selected CLI cases. In the signed scratch test, the first
+marketplace file was gone when it should have been preserved. The four
+missing, malformed, revoked and active compatibility cases passed.
+
+Independent review identified a second empty-lock case and a data-shape
+control. Before measuring them, require the same three surfaces to survive
+both omitted and explicit empty plugin arrays. A parseable lock with
+`locked: [{}]` must trigger ordinary cleanup of all three surfaces.
+A single mistaken preservation or cleanup rejects the candidate.
+
+## Validate Claude settings before certified full output
+
+- **Hypothesis**: The opt-in full publisher can detect unknown settings
+  before the first write. Earlier refusal leaves no partial native output
+  or pending publication owner.
+- **Measurement**: Run hosted `npx vitest run src/plugins/claude-native.test.ts src/plugins/claude-native-ordinary.test.ts`.
+  With the existing signed scratch plugin, seed malformed JSON, a null
+  root, an array root, a non-object marketplace map, and a non-object
+  enabled-plugin map. Keep the signed scratch launcher's destination
+  and the current settings bytes and mode in the observation.
+- **Success**: All 5 malformed cases refuse before any native output or
+  settings write, leave zero publisher owners, and preserve the exact
+  settings bytes and mode. The existing valid, missing-settings and
+  ordinary publication controls still pass.
+- **Pivot**: Reject after 1 partial output, 1 changed setting, 1 retained
+  owner before mutation, or 1 ordinary publication change.
+- **Anchor**: The existing settings ownership fence and the certified
+  publisher's separate settings commit.
+
+These controls apply only to the opt-in full publisher. They do not
+establish recovery after a write has already started.
+
+The [Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44864963822/job/136726482731)
+failed all five early validation cases. The malformed JSON arm made six
+atomic write calls before refusal. Each of the other four arms made seven.
+
+Independent review identified two encoding controls before qualification.
+An invalid UTF-8 byte inside a quoted setting must refuse without a
+replacement character. A UTF-8 byte-order mark must retain the existing
+JSON reader's refusal. Add both to the same scratch test. Require seven
+early refusals, with zero atomic writes and the exact seven inputs
+retained. Any accepted encoding variant rejects the candidate.

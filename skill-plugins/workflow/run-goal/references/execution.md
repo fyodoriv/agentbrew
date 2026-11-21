@@ -43,9 +43,15 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
 - Right before each commit, re-check the current branch and stage exact file
   paths, never a folder. Another session can switch a shared checkout
   mid-run, and a folder add sweeps in its untracked files.
-- After a scripted edit, check that `git diff --stat` shows only the lines
-  you meant to change. A script that wrote a different indent turned a
-  one-panel change into a diff of thousands of lines.
+- For a scripted multi-line edit, require one exact whole-line anchor.
+  Before running tests, read the full `git diff` for each changed file and
+  compare it with the intended edit. Use `git diff --stat` to spot scope
+  changes. Restore unintended changes before testing.
+- For a writer under the home directory, ask the reviewer to check links at
+  the target and in its parent path, a directory or named pipe at the target,
+  and unset `HOME`. A new-file writer must publish without replacing a
+  destination that appears after validation. Check that status reads only a
+  verified regular file and returns promptly for a named pipe.
 - Never end a turn only to wait for a background agent. Do independent work,
   or read the code yourself, while it runs.
 - Verify every subagent claim you put in a deliverable. Check high-severity
@@ -233,6 +239,11 @@ served output after the deploy, not only the pipeline's output.
   check unverified. If the fresh result fails, leave the criterion open and
   record the cause only when you can verify it. Keep release status and
   approval fields tied to their own evidence.
+- When a dashboard or report must show current data, register the freshness
+  window and identify the live query or scheduled refresh that feeds it.
+  Verify the mechanism ran for the data viewers see. Read the deployed panel
+  values and record both the read time and the data's as-of time. Keep data
+  delivery open if the mechanism is missing or the data is stale.
 - For a dashboard or report goal, include a done-criterion that compares at
   least the headline numbers with source-of-truth data: raw events, the source
   channel, or the database. Use the same time window, filters, and counting unit.
@@ -240,6 +251,12 @@ served output after the deploy, not only the pipeline's output.
   Have an independent judge trace mismatches to source records. If source access
   or required fields are missing, keep the criterion unverified and name the gap.
   Do not invent requester names or change source data to make the totals agree.
+  If a green PR lists an unchecked live query, keep that check open and hold
+  the review request. Verify which environment contains the target data. Run the
+  current query read-only there, with approved access, and compare its rows
+  with the source for the same scope. Treat dropped eligible rows as a
+  defect. Record the environment and result. A passing test-environment
+  query cannot cover an unchecked target environment.
 - A self-built judge needs calibration first. Fix its false failures and call them
   judge bugs, not product wins. Then have a grader that did not write the code
   check a sample against the source.
@@ -461,6 +478,20 @@ start it again after the edits; never report its result for the new code.
 - Write a script file that holds git command text with the file tool, not
   a shell heredoc. A command-guard hook reads the heredoc text as the
   command and blocks it.
+
+## Live UX review
+
+When the goal changes the user interface, add a fresh UX reviewer to the
+goal's judges. Apply **Independent live UX review** under **Browser and web
+UI work** in the shared rules. Record the verdict, the deployment revision
+or immutable build ID, the changed states, and their screenshots. Confirm
+that the tested build contains the current change. If the build identity is
+missing or mismatched, record UNVERIFIED.
+
+Hold the review request and completion on FAIL, UNVERIFIED, or no verdict.
+Keep the PR in draft when making it ready would ask for review. Fix the
+failing states and get a fresh PASS on the latest change. Goals without a UI
+change use their existing review steps.
 
 ## Required reviewer approvals
 

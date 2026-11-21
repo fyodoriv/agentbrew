@@ -1386,3 +1386,9 @@ the existing diagnosis instructions.
 
 These controls check one writer's ownership evidence in its scratch
 home. Runtime recovery and writer rollout remain open.
+
+The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44890936287/job/136806367121)
+accepted the special mode in both cases. The writer checked only
+the read, write and execute bits, while status checked the complete
+mode. Both now use the same private-file check. The writer still
+checks its exact file identity and record bytes before each action.

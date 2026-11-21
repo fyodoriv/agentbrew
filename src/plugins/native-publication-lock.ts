@@ -7,6 +7,7 @@ import {
   openSync,
   readFileSync,
   realpathSync,
+  type Stats,
   unlinkSync,
   writeFileSync,
   writeSync,
@@ -31,6 +32,10 @@ const NATIVE_PUBLICATION_LOCK_NAME = ".agentbrew-native-publication.lock";
 
 export type NativePublicationStatus = "owner-record-present" | "unavailable";
 
+function isPrivateOwnerRecord(record: Stats, owner: number): boolean {
+  return record.isFile() && record.uid === owner && record.nlink === 1 && (record.mode & 0o7777) === 0o600;
+}
+
 /** Inspect file metadata without opening the owner record or deciding whether its writer is active. */
 export function inspectNativePublicationStatus(): NativePublicationStatus | undefined {
   try {
@@ -42,10 +47,7 @@ export function inspectNativePublicationStatus(): NativePublicationStatus | unde
     if (
       !directory.isDirectory() ||
       directory.uid !== process.getuid?.() ||
-      !record.isFile() ||
-      record.uid !== directory.uid ||
-      record.nlink !== 1 ||
-      (record.mode & 0o7777) !== 0o600
+      !isPrivateOwnerRecord(record, directory.uid)
     ) {
       return "unavailable";
     }
@@ -83,12 +85,10 @@ export function withNativePublicationLock<T>(publish: (beginMutation: BeginNativ
     const assertOwner = () => {
       const current = lstatSync(path, { throwIfNoEntry: false });
       if (
-        !current?.isFile() ||
+        !current ||
+        !isPrivateOwnerRecord(current, directory.uid) ||
         current.dev !== identity.dev ||
         current.ino !== identity.ino ||
-        current.uid !== directory.uid ||
-        current.nlink !== 1 ||
-        (current.mode & 0o777) !== 0o600 ||
         current.size !== record.length ||
         !readFileSync(path).equals(record)
       ) {

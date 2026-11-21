@@ -144,8 +144,8 @@ receipt on stdout, and a terminal marker on stderr.
   a harmless Vitest test while preserving the separate capture receipts.
 - **Measurement**: Run a nested disposable Vitest fixture with a 125 ms
   deadline. Use the same reporters and separate buffered output streams.
-  Test the three extra failures for a nested lookalike, a pending test, and a
-  missing completion marker on either stream.
+  Test a nested lookalike, a pending test, and a missing completion marker on
+  each stream.
 - **Success**: The real short fixture reports 125 ms and both completion
   receipts. All 4 extra invalid cases stay unqualified. The original
   marketplace-copy test runs 0 times with observation during qualification.
@@ -153,3 +153,26 @@ receipt on stdout, and a terminal marker on stderr.
   with an incomplete channel, or 1 original diagnostic invocation.
 - **Anchor**: The locked Vitest `Reporter.onTestRunEnd` and `TestResult.errors`
   interfaces and the earlier stage output check.
+
+### Verify the worker stream and exclusive test selection
+
+The coordinator can finish while a test worker's stderr closes early. Add
+one opt-in completion line from the same worker, after the selected test's
+stage writes. The ordinary suite keeps the hook quiet and preserves the
+original test body. Disable the result cache and keep the disposable test's
+dependency cache inside its own folder.
+
+- **Hypothesis**: Anchoring the launch to the exact file, suite and test
+  skips a nested lookalike. A worker marker followed by the coordinator
+  marker supplies evidence from both legs of stderr capture.
+- **Measurement**: Add the same quiet worker hook and a nested lookalike to
+  the disposable 125 ms Vitest fixture. Verify the result statuses, marker
+  order, cache scope, and independent missing and out-of-order marker cases.
+- **Success**: Exactly 1 disposable case executes, 1 nested lookalike is
+  skipped, both worker and coordinator markers appear in order, and 0 cache
+  writes leave the disposable folder. Both new invalid captures stay
+  unqualified. The original diagnostic still runs 0 times.
+- **Pivot**: Stop after 1 extra case executes, 1 unknown worker result is
+  accepted, or 1 observed write escapes the disposable folder.
+- **Anchor**: The locked Vitest test-name filter, worker transport and
+  recorder output contracts.

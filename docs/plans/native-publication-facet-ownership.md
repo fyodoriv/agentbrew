@@ -1306,3 +1306,11 @@ retained. Any accepted encoding variant rejects the candidate.
   unrelated file, 1 non-prefix result, or 1 write during a retry.
 - **Anchor**: The selected publisher's ordered intent and the
   cold process-loss controls above.
+
+For an exact after-state comparison, first let the extension succeed
+in each scratch home. Record the digest and mode of all three files.
+Restore the two original files and the absence of the script. Compare
+the entire scratch output snapshot before testing the interruption.
+Require both interruption records to match all three known after states,
+including the writes that have yet to happen. Reject one wrong digest or
+mode, or any change outside the three planned paths.

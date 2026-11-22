@@ -324,6 +324,12 @@ claim before you save or post it, not only before you claim done. A
 deterministic gate proves the shape, not the facts. When a gate passes but the
 grader fails, move the grader's failures into the gate as new tests.
 
+**Judge consensus** (every goal): the goal is met only when three of the best
+judges for its field, run as fresh-context subagents on the final state, each
+score it 8/10 or more. Higher is better. Judges are cached files that you
+improve after each use. Follow [references/goal-judges.md](references/goal-judges.md);
+the `goal-judges-before-stop` hook holds a `met` retro until they agree.
+
 Before you merge each PR, ask a fresh-context subagent to review its diff, also when the full suite is green. In one goal run, reviewers found real
 defects in 6 of 8 green PRs, such as a cache entry saved under the wrong
 key and a CLI crash in sandboxed shells. Send each

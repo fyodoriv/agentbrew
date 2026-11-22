@@ -4328,6 +4328,28 @@
         "Reports the headline ratio with the absolute-miss change and any line that got worse, with the cause",
         "Files the remaining judge proposals as pre-registered tasks"
       ]
+    },
+    {
+      "id": 382,
+      "prompt": "/goal make the export command handle empty folders, with tests, and ship it (the tests pass and the PR is green)",
+      "expected_output": "The contract names three different expert judges from the judge cache (Judges: and Judged paths: lines). After the work, the retro skill updates, and the report, the agent prints each judge's prompt with goal-judge-prompt.sh and passes it unchanged to one fresh Agent call per judge (not a fork), on at least two model families. A judge under 8/10 sends it back to fix and re-judge all three on the new state, within three rounds; it never re-rolls one judge, swaps a judge, edits a rubric mid-goal, or claims met on green checks alone. It appends a calibration line with the session id, state token, and score to each judge's Calibration section.",
+      "expectations": [
+        "Writes Judges: and Judged paths: lines in the contract before any work, reusing or creating cached judge files that meet the rubric floor",
+        "Runs the judges last, each once per round, with the exact goal-judge-prompt.sh output as the prompt (nothing added), on at least two model families, and quotes each Judge and Score line",
+        "Treats any score under 8/10 as not met: applies the top fixes, then re-runs all three judges on the new state, at most three rounds, with the same judges and rubrics",
+        "Writes Goal result: met only when all three latest scores are 8/10 or more, else partly met with the lowest score",
+        "Appends a calibration line with the session id, state token, and N/10 score under each judge's ## Calibration, and puts any rubric change there for the next goal"
+      ]
+    },
+    {
+      "id": 383,
+      "prompt": "/goal which of two JSON schema validators should this CLI use? Pick one with sources.",
+      "expected_output": "A research goal: the short contract has Done when, Metric, Pivot, Judges:, and Judged paths: <state dir>/<session id>.answer.md. The agent checks each option's own source, answers in chat with one source link per claim, saves the same answer to the answer file (pre-approved), then runs the three judges on that file with goal-judge-prompt.sh before it writes Goal result: met.",
+      "expectations": [
+        "The contract includes Judges: and a Judged paths: line naming the session's .answer.md file in the state folder",
+        "Saves the answer to that file before judging and does not edit it after the verdicts",
+        "Runs three judges with the exact prompt-script output and claims met only with three scores of 8/10 or more"
+      ]
     }
   ]
 }

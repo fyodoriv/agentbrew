@@ -293,6 +293,19 @@ when it has "Done when", "Metric", and "Pivot", and blocks other file edits
 until it exists. A valid contract file, `/goal clear`, or a marker older
 than one day ends the block.
 
+`goal-judges-before-stop` (Stop) gates the `met` claim. While the retro
+says `Goal result: met`, it blocks Stop until the transcript holds a
+`GOAL-JUDGE-VERDICT` block (Judge, Score N/10, Cache) from at least three
+different judges, each judge's latest score is 8/10 or more
+(`RUN_GOAL_JUDGE_MIN`, `RUN_GOAL_JUDGE_COUNT`), and every verdict came after
+the last file edit outside the state folder and the judge cache. Only
+`Agent` or `Task` results and their background notifications count, never
+the agent's text or Bash output. Each verdict's cache file must sit in
+`~/.config/agentbrew/goal-judges` (`RUN_GOAL_JUDGE_DIR`) and name the
+session id, the runner's calibration line for this use. After five blocks it
+rewrites the result to `partly met (judge consensus not reached: ...)` and
+allows. Procedure: `skill-plugins/workflow/run-goal/references/goal-judges.md`.
+
 `goal-retro-before-stop` (Stop) closes the goal. While the session's
 contract file exists, it blocks Stop until `<session_id>.retro.md` has one
 line per skill used (each `Skill` call, plus each `skills/<name>/SKILL.md`

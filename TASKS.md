@@ -360,6 +360,19 @@
   - **Pivot**: more than 2 false blocks in the next 20 PRs.
   - **Anchor**: Munafò et al. 2017 (A manifesto for reproducible science, Nature Human Behaviour).
 
+- [ ] Instructions drift that a sync cannot clear is reported as drift
+  - **ID**: instructions-drift-sync-cannot-clear
+  - **Tags**: doctor, drift, sync
+  - **Details**: Seen 2026-11-22 on the owner's Mac. `agentbrew status --ci` reports `claude-code [instructions] instructions out of date (-299 lines)` (codex and opencode -276), and so does the dotfiles doctor. Running `agentbrew sync --only instructions` from `~` prints "3 drift issue(s) remain after sync". So the check and the sync disagree about the expected file, and the advised fix cannot work. `src/drift-checks/instructions.ts` compares the deployed file with `loadInstructions()` through `isInstructionsUpToDate`; the global CLI runs from `~/.local/share/agentbrew-runtimes/...`, which may be an older build than the file format that `dotfiles apply` deployed. Find which side is wrong, make status use the same render the sync writes, and add a test where sync then status reports 0 instructions drift.
+  - **Files**: `src/drift-checks/instructions.ts`, `src/sync/instructions-content.ts`, `src/drift.test.ts`
+  - **Output**: code
+  - **Acceptance**: after `agentbrew sync`, `agentbrew status --ci` reports 0 instructions drift on a fixture with shared rules plus Agentfile rule layers; a real edit still reports drift.
+  - **Hypothesis**: drift items that a sync cannot clear drop from 3 (this Mac) to 0, with true drift still caught.
+  - **Measurement**: `npx vitest run src/drift.test.ts` and, on the Mac, `agentbrew sync && agentbrew status --ci | grep -c instructions`.
+  - **Success**: the new test passes and the Mac count is 0 right after a sync.
+  - **Pivot**: if the runtime build is just stale, fix the runtime refresh (a doctor check that the runtime matches the checkout) instead of the drift check.
+  - **Anchor**: Nielsen 1994, heuristic 9 (help users recognize, diagnose and recover from errors).
+
 ## P2
 
 - [ ] A goal retro knows which rule wins when a repo rule limits where skill updates go

@@ -35,18 +35,27 @@ CMD="$(json_get "$INPUT" '.tool_input.command')"
 
 # Heredoc bodies and quoted strings are text, so drop them before the detach match: this
 # keeps a PR body or commit message that mentions `nohup … &` from being blocked.
-# The rest of a `<<EOF` line stays code. A quote opens only at a word start ("don't" is no quote).
-TEXTLESS="$(perl -0777 -pe 's/<<-?[ \t]*([\x27"]?)(\w+)\1([^\n]*\n)(?:.*?\n)??[ \t]*\2[ \t]*(?=\n|\z)/$3/sg; s/(?<![\w\\])\x27[^\x27]*\x27//g; s/(?<![\w\\])"(?:\\.|[^"\\])*"//g' <<<"$CMD")"
-# Fail closed: a program that may run that text as code (a shell, an interpreter, a wrapper),
-# anywhere outside the text, or any $( ) or backtick, keeps the whole command as code.
-RUNNER='(^|[^[:alnum:]_-])(([[:alnum:]_.-]*/)*((ba|z|da|k|fi|c|tc|a)?sh|python[0-9.]*|node|deno|bun|perl|ruby|php|lua|r?awk|gawk|eval|exec|source|ssh|docker|podman|kubectl|xargs|find|watch|tmux|screen|script|timeout|time|sudo|doas|env|nice|parallel|osascript)([^[:alnum:]_-]|$))|(^|[;&|(])[[:space:]]*\.[[:space:]]'
-if grep -qE "$RUNNER" <<<"$TEXTLESS" || grep -qE '\$\(|`' <<<"$CMD"; then
-  CODE="$CMD"
-else
-  CODE="$TEXTLESS"
-fi
+# The rest of a `<<EOF` line stays code; `<<<` is a here-string, not a heredoc.
+# A quote opens only at a word start ("don't" is no quote).
+TEXTLESS="$(perl -0777 -pe 's/(?<!<)<<(?!<)-?[ \t]*([\x27"]?)(\w+)\1([^\n]*\n)(?:.*?\n)??[ \t]*\2[ \t]*(?=\n|\z)/$3/sg; s/(?<![\w\\])\x27[^\x27]*\x27/Q/g; s/(?<![\w\\])"(?:\\.|[^"\\])*"/Q/g' <<<"$CMD")"
+# Fail closed: drop text only when every command in the line is a known data-only command.
+# Any other first word (a shell, an interpreter, a quoted or $VAR name) may run the text as code.
+SAFE_CMDS=" echo printf cat git gh grep rg jq yq ls cd pwd tee mkdir touch cp mv rm head tail wc sort uniq cut tr diff test [ true false basename dirname date sleep kill wait pgrep curl "
+text_is_data() {
+  grep -qE '\$\(|`|(^|[[:space:]])git[[:space:]]+-c([[:space:]]|$)' <<<"$CMD" && return 1
+  local seg word
+  while IFS= read -r seg; do
+    seg="$(sed -E 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//' <<<"$seg")"
+    word="${seg%%[[:space:]]*}"
+    [ -z "$word" ] && continue
+    case "$SAFE_CMDS" in *" ${word##*/} "*) ;; *) return 1 ;; esac
+  done < <(sed -E 's/&&|\|\|/\n/g; s/[;&|(){}!]/\n/g' <<<"$TEXTLESS")
+  return 0
+}
+if text_is_data; then CODE="$TEXTLESS"; else CODE="$CMD"; fi
 # Drop `&&`, `2>&1`, `&>` and `>&` so only a real detaching `&` is left.
 STRIPPED="$(sed -E 's/&&//g; s/[0-9]?>&[0-9]?//g; s/&>//g' <<<"$CODE")"
+[ "$CODE" = "$CMD" ] && STRIPPED="$(tr -d "'\"" <<<"$STRIPPED")"
 if ! grep -qE '(^|[^[:alnum:]_-])(nohup|setsid|disown)([^[:alnum:]_-]|$)|&' <<<"$STRIPPED"; then
   verdict_allow "$HOOK_ID" "no detach"
 fi

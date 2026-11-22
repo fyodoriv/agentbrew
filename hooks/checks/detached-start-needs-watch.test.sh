@@ -61,5 +61,19 @@ nohup x &
 EOF" false
 check "awk system blocked" 2 "awk 'BEGIN{system(\"sleep 1 &\")}'" false
 check "tmux blocked" 2 "tmux new-session -d 'sleep 100 &'" false
+check "quoted nohup blocked" 2 "'nohup' sleep 100" false
+check "split-quoted nohup blocked" 2 "n'o'hup sleep 100" false
+check "quoted shell name blocked" 2 "\"bash\" -c 'sleep 1 &'" false
+check "shell in a variable blocked" 2 "\$SHELL -c 'sleep 1 &'" false
+check "here-string is not a heredoc" 2 "cat <<<EOF
+nohup a &
+EOF" false
+check "unknown runner blocked" 2 "pwsh -c 'sleep 1 &'" false
+check "git -c alias blocked" 2 "git -c alias.x='!sleep 1 &' x" false
+check "sed e blocked" 2 "sed '1e sleep 1 &' f" false
+check "gh pr body heredoc ok" 0 "cat > b.md <<'EOF'
+nohup x &
+EOF
+gh pr edit 1 --body-file b.md && echo done" false
 [ "$FAIL" = 0 ] && echo "detached-start-needs-watch: all passed"
 exit $FAIL

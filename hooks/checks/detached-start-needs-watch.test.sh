@@ -91,5 +91,12 @@ check "gh passes git options blocked" 2 "gh repo clone o/r -- --upload-pack='sle
 check "quoted kill -0 is no watch" 2 "echo 'kill -0 1' ; nohup y &" false
 check "quoted pgrep is no watch" 2 "git commit -m 'pgrep'; nohup y &" false
 check "git push message ok" 0 "git commit -m 'stop nohup & co' && git push -u origin HEAD" false
+check "git option prefix blocked" 2 "git fetch --upload='sleep 1 &' /tmp/r" false
+check "git exec prefix blocked" 2 "git pull --rebase --ex 'sleep 1 &'" false
+check "wait as an argument is no watch" 2 "echo wait; nohup y &" false
+check "pgrep in a comment is no watch" 2 "nohup y & # pgrep" false
+check "kill -0 as an argument is no watch" 2 "echo kill -0 ; setsid y" false
+check "real wait after a detach ok" 0 "a & b & wait" false
+check "kill -0 after a detach ok" 0 "w & p=\$!; sleep 2; kill -0 \$p" false
 [ "$FAIL" = 0 ] && echo "detached-start-needs-watch: all passed"
 exit $FAIL

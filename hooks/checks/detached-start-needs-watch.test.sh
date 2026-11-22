@@ -84,5 +84,12 @@ check "rg --pre blocked" 2 "rg --pre 'sleep 1 &' foo ." false
 check "gh extension blocked" 2 "gh extension exec foo 'sleep 1 &'" false
 check "path-named cat blocked" 2 "/tmp/x/cat 'nohup x &'" false
 check "git commit message ok" 0 "git commit -m 'run nohup x & check'" false
+check "git fetch upload-pack blocked" 2 "git fetch --upload-pack='sleep 1 &' /tmp/r" false
+check "git push receive-pack blocked" 2 "git push --receive-pack='sleep 1 &' /tmp/r" false
+check "git pull exec blocked" 2 "git pull -r -x 'sleep 1 &'" false
+check "gh passes git options blocked" 2 "gh repo clone o/r -- --upload-pack='sleep 1 &'" false
+check "quoted kill -0 is no watch" 2 "echo 'kill -0 1' ; nohup y &" false
+check "quoted pgrep is no watch" 2 "git commit -m 'pgrep'; nohup y &" false
+check "git push message ok" 0 "git commit -m 'stop nohup & co' && git push -u origin HEAD" false
 [ "$FAIL" = 0 ] && echo "detached-start-needs-watch: all passed"
 exit $FAIL

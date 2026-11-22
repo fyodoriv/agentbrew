@@ -53,6 +53,10 @@ text_is_data() {
     # A VAR=value prefix can name a program (GIT_SSH_COMMAND, EDITOR), so it keeps the text as code.
     grep -qE '^[A-Za-z_][A-Za-z0-9_]*=' <<<"$seg" && return 1
     word="${seg%%[[:space:]]*}"
+    # git and gh options that name a program to run (--upload-pack, --exec, -x, `--` to git).
+    if [ "$word" = git ] || [ "$word" = gh ]; then
+      grep -qE -- '--(upload|receive)-pack|--exec|(^|[[:space:]])-[[:alpha:]]*x([=[:space:]]|$)|[[:space:]]--([[:space:]]|$)' <<<"$seg" && return 1
+    fi
     sub="$(awk '{print $2}' <<<"$seg")"
     case "$word" in
       git) case "$SAFE_GIT" in *" $sub "*) ;; *) return 1 ;; esac ;;
@@ -69,7 +73,8 @@ STRIPPED="$(sed -E 's/&&//g; s/[0-9]?>&[0-9]?//g; s/&>//g' <<<"$CODE")"
 if ! grep -qE '(^|[^[:alnum:]_-])(nohup|setsid|disown)([^[:alnum:]_-]|$)|&' <<<"$STRIPPED"; then
   verdict_allow "$HOOK_ID" "no detach"
 fi
-if grep -qE 'kill -0|(^|[;&|[:space:]])wait([[:space:]]|$|;)|pgrep' <<<"$CMD"; then
+# The watch must be code too: a quoted 'kill -0' in a message is not a watch.
+if grep -qE 'kill -0|(^|[;&|[:space:]])wait([[:space:]]|$|;)|pgrep' <<<"$TEXTLESS"; then
   verdict_allow "$HOOK_ID" "checks the child in the same call"
 fi
 verdict_block "$HOOK_ID" "this starts a detached process with no watch, so a refused or dead start looks like success. Do one of: (1) drop nohup/& and run the command with run_in_background: true, so the harness tells you when it exits; or (2) keep the detach and check it in the same call, e.g. \`cmd >\"\$LOG\" 2>&1 & pid=\$!; sleep 3; kill -0 \$pid && tail -5 \"\$LOG\"\`. Then confirm a pid, lock or log line before you report it as started."

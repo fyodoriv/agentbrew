@@ -34,8 +34,13 @@ INPUT="$(read_hook_stdin)"
 CMD="$(json_get "$INPUT" '.tool_input.command')"
 
 # Drop `&&`, `2>&1`, `&>` and `>&` so only a real detaching `&` is left.
-# Heredoc bodies and quoted strings are text, not commands: drop them first.
-CODE="$(perl -0777 -pe 's/<<-?\s*([\x27"]?)(\w+)\1[^\n]*\n.*?\n\s*\2[ \t]*(\n|\z)/\n/sg; s/\x27[^\x27]*\x27//g; s/"(?:\\.|[^"\\])*"//g' <<<"$CMD")"
+# Heredoc bodies are text: drop only the body; the rest of the `<<EOF` line stays code.
+CODE="$(perl -0777 -pe 's/<<-?[ \t]*([\x27"]?)(\w+)\1([^\n]*\n)(?:.*?\n)??[ \t]*\2[ \t]*(?=\n|\z)/$3/sg' <<<"$CMD")"
+# Quoted strings are text too, unless the command runs them as code (bash -c, eval, ssh, $(), backticks).
+if ! grep -qE '(^|[^[:alnum:]_-])((ba|z)?sh[[:space:]]+-c|eval|ssh)([^[:alnum:]_-]|$)|\$\(|`' <<<"$CODE"; then
+  # A quote opens only at a word start, so the apostrophe in "don't" is not one.
+  CODE="$(perl -0777 -pe 's/(?<![\w\\])\x27[^\x27]*\x27//g; s/(?<![\w\\])"(?:\\.|[^"\\])*"//g' <<<"$CODE")"
+fi
 STRIPPED="$(sed -E 's/&&//g; s/[0-9]?>&[0-9]?//g; s/&>//g' <<<"$CODE")"
 if ! grep -qE '(^|[^[:alnum:]_-])(nohup|setsid|disown)([^[:alnum:]_-]|$)|&' <<<"$STRIPPED"; then
   verdict_allow "$HOOK_ID" "no detach"

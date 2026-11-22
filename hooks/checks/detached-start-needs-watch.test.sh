@@ -30,5 +30,19 @@ check "detach after a heredoc blocked" 2 "cat > a <<EOF
 x
 EOF
 nohup node w.js &" false
+check "detach on a heredoc line blocked" 2 "cat <<'EOF' ; nohup sleep 1 &
+x
+EOF" false
+check "heredoc piped to setsid blocked" 2 "cat <<EOF | setsid foo
+x
+EOF" false
+check "apostrophes in words keep a detach" 2 "echo don't; nohup sleep 100 & echo can't" false
+check "apostrophes in comments keep a detach" 2 "git log # it's
+sleep 9 & # isn't" false
+check "bash -c detach blocked" 2 "bash -c 'nohup sleep 100 &'" false
+check "eval detach blocked" 2 "eval \"sleep 100 &\"" false
+check "ssh detach blocked" 2 "ssh host 'nohup x &'" false
+check "command substitution in quotes blocked" 2 "echo \"started \$(setsid foo &)\"" false
+check "backticks in quotes blocked" 2 "x=\"\`nohup a &\`\"" false
 [ "$FAIL" = 0 ] && echo "detached-start-needs-watch: all passed"
 exit $FAIL

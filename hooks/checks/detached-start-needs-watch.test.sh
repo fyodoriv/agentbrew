@@ -98,5 +98,9 @@ check "pgrep in a comment is no watch" 2 "nohup y & # pgrep" false
 check "kill -0 as an argument is no watch" 2 "echo kill -0 ; setsid y" false
 check "real wait after a detach ok" 0 "a & b & wait" false
 check "kill -0 after a detach ok" 0 "w & p=\$!; sleep 2; kill -0 \$p" false
+check "backslash nohup blocked" 2 "no\\hup sleep 100" false
+check "coproc blocked" 2 "coproc sleep 100" false
+check "wait before the detach is no watch" 2 "wait; nohup y &" false
+check "pgrep before the detach is no watch" 2 "pgrep foo; nohup y &" false
 [ "$FAIL" = 0 ] && echo "detached-start-needs-watch: all passed"
 exit $FAIL

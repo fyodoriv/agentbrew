@@ -12,6 +12,8 @@
 #
 # Allowed: `run_in_background: true` (the harness reports the exit), a command that checks the
 # child in the same call (`kill -0 $!`, `wait`, `pgrep`), and every command with no detach.
+# Known limits (it catches mistakes, not evasion): a name built from variables ($x"up"), and a
+# watch behind || or && or inside an unused function.
 # Bypass: HOOK_BYPASS_DETACHED_START_NEEDS_WATCH=1.
 # Test: bash detached-start-needs-watch.test.sh
 
@@ -70,12 +72,14 @@ text_is_data() {
 if text_is_data; then CODE="$TEXTLESS"; else CODE="$CMD"; fi
 # Drop `&&`, `2>&1`, `&>` and `>&` so only a real detaching `&` is left.
 STRIPPED="$(sed -E 's/&&//g; s/[0-9]?>&[0-9]?//g; s/&>//g' <<<"$CODE")"
-[ "$CODE" = "$CMD" ] && STRIPPED="$(tr -d "'\"" <<<"$STRIPPED")"
-if ! grep -qE '(^|[^[:alnum:]_-])(nohup|setsid|disown)([^[:alnum:]_-]|$)|&' <<<"$STRIPPED"; then
+[ "$CODE" = "$CMD" ] && STRIPPED="$(tr -d "'\"\\\\" <<<"$STRIPPED")"
+if ! grep -qE '(^|[^[:alnum:]_-])(nohup|setsid|disown|coproc)([^[:alnum:]_-]|$)|&' <<<"$STRIPPED"; then
   verdict_allow "$HOOK_ID" "no detach"
 fi
 # The watch must be a command of its own: a quoted, commented or argument 'wait' is not a watch.
-WATCH_CODE="$(sed -E 's/(^|[[:space:]])#.*$//; s/&&|\|\|/;/g' <<<"$TEXTLESS")"
+# It must also come after the detach: a wait that runs before the child exists watches nothing.
+AFTER="$(perl -0777 -ne 'print $1 if /(?:nohup|setsid|disown|coproc|&)(.*)\z/s' <<<"$STRIPPED")"
+WATCH_CODE="$(sed -E 's/(^|[[:space:]])#.*$//; s/\|\|/;/g' <<<"$AFTER")"
 if grep -qE '(^|[;&|])[[:space:]]*(wait|pgrep|kill[[:space:]]+-0)([[:space:]]|$|;)' <<<"$WATCH_CODE"; then
   verdict_allow "$HOOK_ID" "checks the child in the same call"
 fi

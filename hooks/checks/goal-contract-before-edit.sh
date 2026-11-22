@@ -21,6 +21,8 @@
 #     valid contract file exists;
 #   - allows everything in sessions with no pending goal;
 #   - approves a Write to `<session_id>.retro.md` (read by goal-retro-before-stop).
+#   - approves a Write or Edit of `<session_id>.answer.md` while a contract
+#     exists: a research or Q&A goal saves its answer there to be judged.
 #   - approves a Write or Edit of a goal judge file `<RUN_GOAL_JUDGE_DIR>/<id>.md`
 #     (default `~/.config/agentbrew/goal-judges`) while a contract exists.
 #
@@ -91,6 +93,12 @@ case "$FILE_PATH" in
     esac
     ;;
 esac
+
+if { [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; } && [ "$FILE_PATH" = "$STATE_DIR/$SESSION_ID.answer.md" ] && [ -f "$CONTRACT" ]; then
+  log_decision "$HOOK_ID" "allow" "goal answer file written"
+  hook_jq -cn '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "allow", permissionDecisionReason: "run-goal answer file"}}'
+  exit 0
+fi
 
 if [ "$TOOL" = "Write" ] && [ "$FILE_PATH" = "$STATE_DIR/$SESSION_ID.retro.md" ]; then
   log_decision "$HOOK_ID" "allow" "goal retro file written"

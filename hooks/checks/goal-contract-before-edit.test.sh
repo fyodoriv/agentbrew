@@ -75,6 +75,9 @@ expect "judge file Write approved during a goal" 1 "$(approved "$(run s2 Write "
 expect "judge file Edit approved during a goal" 1 "$(approved "$(run s2 Edit "$ROOT/judges/devex-cli.md")")"
 expect "judge file outside a goal is not approved" 0 "$(approved "$(run s9 Write "$ROOT/judges/devex-cli.md" x)")"
 expect "a judge path with .. is not approved" 0 "$(approved "$(run s2 Write "$ROOT/judges/../evil.md" x)")"
+expect "answer file Write approved during a goal" 1 "$(approved "$(run s2 Write "$RUN_GOAL_STATE_DIR/s2.answer.md" x)")"
+expect "answer file Edit approved during a goal" 1 "$(approved "$(run s2 Edit "$RUN_GOAL_STATE_DIR/s2.answer.md")")"
+expect "another session's answer file is not approved" 0 "$(approved "$(run s2 Write "$RUN_GOAL_STATE_DIR/s9.answer.md" x)")"
 
 echo "goal-contract-before-edit.test.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

@@ -79,6 +79,18 @@ marker_check "goal clear removes the marker" 0
 check "missing skill (marker run)" "/goal ship it" 0 "$MISSING"
 marker_check "no marker without the skill" 0
 
+# Judge counters from an earlier goal never carry into the next one.
+counters_gone() { # label
+  if [ ! -e "$RUN_GOAL_STATE_DIR/s.judgeblocks" ] && [ ! -e "$RUN_GOAL_STATE_DIR/s.judgewaits" ]; then
+    PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$1"); fi
+}
+mkdir -p "$RUN_GOAL_STATE_DIR"; echo 5 >"$RUN_GOAL_STATE_DIR/s.judgeblocks"; echo 9 >"$RUN_GOAL_STATE_DIR/s.judgewaits"
+check "second goal (counter run)" "/goal second goal" 1
+counters_gone "a new goal clears the judge block and wait counters"
+echo 5 >"$RUN_GOAL_STATE_DIR/s.judgeblocks"; echo 9 >"$RUN_GOAL_STATE_DIR/s.judgewaits"
+check "goal clear (counter run)" "/goal clear" 0
+counters_gone "/goal clear clears the judge block and wait counters"
+
 # Malformed stdin must not block the prompt.
 MALFORMED_CODE=$(printf 'not json' | RUN_GOAL_SKILL_DIR="$INSTALLED" bash "$SCRIPT" >/dev/null 2>&1; echo $?)
 if [ "$MALFORMED_CODE" = "0" ]; then PASS=$((PASS + 1)); else

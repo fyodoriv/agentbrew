@@ -5,9 +5,10 @@ the final result 8/10 or more. Higher is better: keep improving while the
 budget allows. Green checks show the work runs. Judges show it is good.
 
 In Claude Code with agentbrew, the `goal-judges-before-stop` hook enforces
-this. While the retro says `Goal result: met`, it blocks Stop until each
-judge the contract names has exactly one verdict for the current state, each
-at 8/10 or more.
+this. While the retro claims met (any `Goal result` line that is not partly
+met, not met, in progress, or blocked), it blocks Stop until each judge the
+contract names has exactly one verdict for the current state, each at 8/10 or
+more, within three judging rounds.
 
 ## 1. Pick the judges (in the contract, before any work)
 
@@ -32,8 +33,17 @@ at 8/10 or more.
    ```
 
    Judged paths are everything the judges grade: the worktrees, the output
-   files. Both lines are frozen: changing them, or a judge's rubric, makes
-   every verdict stale. That stops swapping in a softer judge later.
+   files. A research or Q&A goal with no repo writes its answer to
+   `<state dir>/<session id>.answer.md` (next to the contract; the write is
+   pre-approved) and judges that file.
+   The judge set and each rubric freeze at the goal's first judging round:
+   the hook rejects a swapped judge or an edited rubric later, even in a new
+   round. Rubric changes go into `## Calibration` notes and are merged at the
+   start of the next goal.
+
+   A judge file must meet the rubric floor: `Field:`, `Applies:`, and
+   `Scale:` lines and three or more rubric lines with a "capped at" limit.
+   The hook refuses a file below it.
 
 ```markdown
 # <judge id>
@@ -41,36 +51,38 @@ at 8/10 or more.
 Field: <field>
 Applies: <named standards, books, checklists, metrics>
 Rubric (score each line; the final score is the lowest line after caps):
-- <criterion>: what earns a 10, what caps it at 6
+- <criterion>: what earns a 10; capped at 6 when <defect>
+- <criterion>: ...; capped at 5 when <defect>
+- <criterion>: ...; capped at 7 when <defect>
 Scale: 10 best in the field; 8 a top expert would ship it with minor notes;
 6 works but has a defect they would block on; 4 serious defects; 2 wrong.
 Blind spots to check: <things this judge missed before>
 
 ## Calibration
-- <date> session <session id>: <score>/10 on <goal>. Caught: <...>.
-  Missed: <...>. Next rubric change: <edit, or "none: <why>">.
+- <date> session <session id> state <token>: <score>/10 on <goal>.
+  Caught: <...>. Missed: <...>. Next rubric change: <edit, or "none: <why>">.
 ```
 
 ## 2. Judge last
 
-Judge after everything else that edits files: the work, the Phase 6 retro
-skill updates, and the final report. Any edit to a judged path after the
-verdicts makes them stale.
+Judge after everything else that edits a judged path: the work, the Phase 6
+retro skill updates, and the final report when it is a judged file. Any edit
+to a judged path after the verdicts makes them stale. A report outside the
+judged paths can get its judge line after the verdicts.
 
-1. Get the state token: `bash ~/.claude/codeassist/hooks-scripts/lib/goal-state.sh
-   <contract path>` (the `/goal` context names the contract path; its file
-   name is the session id). It hashes the contract, the three rubrics, and
-   the judged paths (git HEAD, status, diff, untracked files).
-2. Run each judge once as a **fresh-context subagent** (the `Agent` tool), all
-   three in parallel. Use at least two models: set `model` on one judge (for
-   example `sonnet` when you run on Opus). Same-model judges share blind
-   spots. Each prompt has:
-   - the judge file's full path (the hook checks the prompt names it),
-   - the raw goal text, the contract path, and the state token,
-   - where the result is (paths, PR URLs, commands). Not your summary.
-     Never suggest a score.
-3. Ask for a score per rubric line with evidence (file:line, command output),
-   the top three fixes, and this block at the end, exactly once:
+1. For each judge, print its prompt:
+   `bash ~/.claude/codeassist/hooks-scripts/lib/goal-judge-prompt.sh <contract path> <judge id>`
+   (the `/goal` context names the contract path; its file name is the
+   session id). The prompt holds the judge file, the state token, the judged
+   paths, the contract verbatim, and the verdict block to end with.
+2. Pass that output **unchanged** as the `prompt` of one `Agent` call per
+   judge, all three in parallel. The hook rebuilds the prompt and counts a
+   verdict only on an exact match, so add nothing: no summary, no hints, no
+   score. Use a fresh subagent, never `subagent_type: fork` (it shares your
+   context). Use at least two model families: set `model` on one judge (for
+   example `sonnet` when you run on Opus). An Agent call with no `model`
+   counts as your own model.
+3. The judge ends with this block, once:
 
 ```
 GOAL-JUDGE-VERDICT
@@ -81,32 +93,38 @@ State: <state token>
 ```
 
 The hook counts only `Agent` or `Task` results and their background
-notifications. Your own text and Bash output never count. A result with two
-verdict blocks counts for none.
+notifications (bold field names are fine). Your own text and Bash output
+never count. A result with two verdict blocks counts for none. While a judge
+runs in the background the hook lets Stop through, at most 10 times; other
+background tasks never excuse a met claim.
 
 ## 3. Iterate the work
 
 - Any judge under 8: apply its top fixes, then run **all three** again on the
-  new state. Judging one judge twice on one state is a re-roll and fails.
+  new state. Judging one judge twice on one state is a re-roll and fails. A
+  goal gets three judging rounds (`RUN_GOAL_JUDGE_ROUNDS`); more rounds farm
+  for a lucky score.
 - All at 8 or more: apply cheap top fixes while the budget allows, then
   judge again. Report the lowest and median score.
 - No path to 8 within the budget: write `Goal result: partly met (judge
   consensus <lowest>/10)`. Never claim met without it. After five blocks the
-  hook writes that line for you.
+  hook writes that line for you (five, not three like the retro hook: each
+  round needs the judges to run between two Stops).
 
 Print one goal-check line, for example
 `Goal check judges ✅ 9, 8, 9 (agent-harness-reliability, llm-evaluation-methodology, devex-workflow-design)`.
 
 ## 4. Iterate the judges
 
-After each use, append a calibration line with this session id to each
-judge's `## Calibration` section (the hook checks it; notes there do not
-change the state token). Compare the verdict with later evidence:
+After each use, append a calibration line to each judge's `## Calibration`
+section with the session id, the state token, and the score as `N/10` (the
+hook checks all three; notes there do not change the state token). Compare the verdict with later evidence:
 
 - A defect another judge, a reviewer, or a check found that this judge
   missed: add it as a blind spot in the next rubric change.
 - A high score on work that later failed: tighten the rubric line.
-- Merge the notes into the rubric at the start of the next goal (step 1.2).
+- Merge the notes into the rubric at the start of the next goal (step 1.2),
+  never mid-goal: the rubric froze at the first round.
   Keep the file short.
 
 The cache is personal state on this machine. Name fields and methods; keep
@@ -116,16 +134,22 @@ private data out.
 
 - **Codex, OpenCode, or no hook**: follow the same steps and check the rules
   yourself. Run each judge as a fresh process (`claude -p` or `codex exec`
-  with the judge file and the token), never in your own context.
+  with the output of `goal-judge-prompt.sh`), never in your own context.
 - **No way to run an independent judge**: write `Goal result: partly met (no
   independent judges available)`. Never judge your own work.
 
 ## Measure the effect
 
-Consensus rate, give-ups, and lowest scores over the last 30 days:
+Outcome per goal (the hook's last decision in each session), over the whole
+decision log:
 
 ```bash
-jq -r 'select(.hookId=="goal-judges-before-stop") | .reason' ~/.cache/agentbrew/hook-decisions.jsonl |
-  awk '/^judge consensus/{c++; split($0,a,"lowest "); sub("/.*","",a[2]); s+=a[2]} /^gave up/{g++} /no judge consensus/{b++}
-       END{printf "consensus %d, gave up %d, blocks %d, mean lowest %.1f\n", c, g, b, (c?s/c:0)}'
+jq -r 'select(.hookId=="goal-judges-before-stop" and .sessionId) | [.sessionId, .decision, .reason] | @tsv' \
+  ~/.cache/agentbrew/hook-decisions.jsonl |
+  awk -F'\t' '{last[$1]=$2" "$3} END{for (s in last) { r=last[s];
+    if (r ~ /judge consensus/) c++; else if (r ~ /gave up/) g++; else if (r ~ /^bypass/) b++; else o++ }
+    printf "consensus %d, gave up %d, met by bypass (no consensus) %d, other %d\n", c, g, b, o}'
 ```
+
+"Met by bypass" counts goals that ended met without a consensus. The target
+there is 0.

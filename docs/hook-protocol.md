@@ -293,25 +293,33 @@ when it has "Done when", "Metric", and "Pivot", and blocks other file edits
 until it exists. A valid contract file, `/goal clear`, or a marker older
 than one day ends the block.
 
-`goal-judges-before-stop` (Stop) gates the `met` claim. While the retro
-says `Goal result: met` (any case, with or without a list dash or bold), it
-blocks Stop until each judge on the contract's `Judges:` line has exactly
-one `GOAL-JUDGE-VERDICT` block (Judge, Score N/10, Cache, State) whose
-`State:` equals the token `hooks/lib/goal-state.sh <contract>` prints now.
-The token hashes the contract, each judge's rubric (its file up to
-`## Calibration`), and the `Judged paths:` (git HEAD, status, diff,
-untracked files), so any edit by any tool, a swapped judge, or a softened
-rubric makes the verdicts stale. Only `Agent` or `Task` results and their
-background notifications (user, `attachment`, or `queue-operation` rows)
-count. A result with two verdict blocks counts for none; two verdicts from
-one judge on one state is a re-roll. Each score is 0-10 and at least
-`RUN_GOAL_JUDGE_MIN` (8); the cache must be `<judge dir>/<id>.md`; the
-call's prompt must name it and hold no pre-filled score; the judges use at
-least `RUN_GOAL_JUDGE_MODELS` (2) models; and each judge's `## Calibration`
-names the session id. While a background task runs, it allows up to 10
-times. After five blocks it rewrites the result to `partly met (judge
-consensus not reached: ...)` and allows. `goal-contract-before-edit`
-pre-approves Write and Edit of judge files while a contract exists.
+`goal-judges-before-stop` (Stop) gates the `met` claim. A retro line that
+starts with `Goal result` (after list, heading, quote, or bold marks) is a
+claim unless it says partly met, not met, in progress, or blocked. While
+the retro has a claim, the hook blocks Stop until each judge on the
+contract's `Judges:` line has exactly one `GOAL-JUDGE-VERDICT` block (Judge,
+Score N/10, Cache, State) whose `State:` equals the token
+`hooks/lib/goal-state.sh <contract>` prints now. The token hashes the
+contract, each judge's rubric (its file up to `## Calibration`), and the
+`Judged paths:` (git HEAD, status, diff, untracked files), so any edit by
+any tool makes the verdicts stale. Each judge call's prompt must equal the
+output of `hooks/lib/goal-judge-prompt.sh <contract> <id>` (no added text)
+and must not be a `fork`. The judge set and rubric hashes freeze at the
+goal's first round (read from earlier judge prompts after the last `/goal`
+command), and a goal gets `RUN_GOAL_JUDGE_ROUNDS` (3) rounds. Only `Agent`
+or `Task` results and their background notifications (user, `attachment`,
+or `queue-operation` rows) count. A result with two verdict blocks counts
+for none; two verdicts from one judge on one state is a re-roll. Each score
+is 0-10 and at least `RUN_GOAL_JUDGE_MIN` (8); the cache must be
+`<judge dir>/<id>.md`; the judges use at least `RUN_GOAL_JUDGE_MODELS` (2)
+model families (a call with no `model` counts as the runner's); each
+judge's `## Calibration` has a line with the session id, the token, and the
+score. Judge files must meet a rubric floor (`Field:`, `Applies:`,
+`Scale:`, three "capped at" lines). While a judge runs in the background it
+allows up to 10 times. After five blocks it rewrites the result to
+`partly met (judge consensus not reached: ...)`, resets its counters, and
+allows. `goal-contract-before-edit` pre-approves Write and Edit of judge
+files and of `<session>.answer.md` while a contract exists.
 Procedure: `skill-plugins/workflow/run-goal/references/goal-judges.md`.
 
 `goal-retro-before-stop` (Stop) closes the goal. While the session's

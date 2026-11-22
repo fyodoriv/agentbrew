@@ -38,6 +38,7 @@ What you will see:
 2. It prints a goal contract: done-criteria, a metric, and a pivot.
 3. It asks at most one round of questions. You can skip it.
 4. It works alone and prints a `Goal check` line per criterion.
+   At the end, three expert judges score the result; it is met only at 8/10 or more from each.
 5. It ends with a published Artifact report, a retro, and updates to the skills it used.
 
 Tips: name an end state, not an activity. Add "and ship it" if a PR is approved. A filled-in example: [references/goal-contract.md](references/goal-contract.md).
@@ -64,9 +65,10 @@ Follow this order, even for a small goal:
    [plan artifact judge](references/plan-artifact-judge.md); on resume, review the existing artifact and its identity before continuing.
 5. Work, printing a `Goal check` line after each done-criterion (Phase 4).
 6. Verify with fresh evidence (Phase 5), then the retro and the final report (Phase 6).
+   Judge last: three judges from the contract must each score 8/10 or more (Phase 6 step 7).
 
 A small goal gets a short contract, not none. Without it, the goal checker cannot verify done and the user cannot review your plan.
-**Research or choice goal** (pick between options, answer a question, no repo change): print a 3-line contract (`Done when:` the pick and why, `Metric:` sources checked per option, `Pivot:` what means "no clear winner"; save it if the hook names a file). Check each option's own source, then answer in chat with the pick and one source link per claim. Skip the plan Artifact, HTML report, and skill PR; keep a one-line retro.
+**Research or choice goal** (pick between options, answer a question, no repo change): print a short contract (`Done when:` the pick and why, `Metric:` sources checked per option, `Pivot:` what means "no clear winner", plus `Judges:` and `Judged paths: <state dir>/<session id>.answer.md`; save it if the hook names a file). Check each option's own source, then answer in chat with the pick and one source link per claim. Save the same answer to the answer file, then judge it ([references/goal-judges.md](references/goal-judges.md)). Skip the plan Artifact, HTML report, and skill PR; keep a one-line retro.
 
 ## Why the transcript matters
 
@@ -385,7 +387,10 @@ with actuals and update the estimation method as described in
 7. **Judge consensus** (every goal, last, after the retro edits and the final
    report): the goal is met only when the three contract judges (`Judges:`
    line, picked in Phase 2), run as fresh-context subagents on the final
-   state, each score it 8/10 or more. Higher is better; you improve each
+   state with the exact prompt from `goal-judge-prompt.sh`, each score it
+   8/10 or more, within three rounds. The final report shows each score; when
+   the report is a judged file, add the scores before judging as `pending`
+   and fill them in only in chat. Higher is better; you improve each
    cached judge after use. Follow [references/goal-judges.md](references/goal-judges.md).
    The `goal-judges-before-stop` hook holds a `met` retro until they agree.
 8. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)`

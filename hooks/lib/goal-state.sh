@@ -6,6 +6,7 @@
 # verdict counts only for the exact state it judged.
 #
 # Usage: bash goal-state.sh <contract path> [judge dir]
+#        bash goal-state.sh --rubric-sha <judge file>   (16 hex of the rubric)
 #
 # The token is a SHA-256 over:
 #   - the contract file (so its `Judges:` and `Judged paths:` lines are frozen),
@@ -21,15 +22,35 @@
 #   Judged paths: <path>, <path>     (`~` expands to $HOME)
 #
 # Exit 2 with a message on stderr when the contract lacks either line, a judge
-# file is missing, or a judged path does not exist.
+# file is missing or below the rubric floor, or a judged path does not exist.
+#
+# Rubric floor: a judge file needs `Field:`, `Applies:`, and `Scale:` lines and
+# at least three rubric lines with a "capped at" limit. A file that lost its
+# rubric (for example one that only says "give 10") cannot be judged with.
 
 set -uo pipefail
+
+sha() { if command -v shasum >/dev/null 2>&1; then shasum -a 256; else sha256sum; fi | cut -c1-64; }
+rubric() { awk '/^## Calibration/{exit} {print}' "$1"; }
+floor() { # judge file -> empty when it meets the rubric floor, else the gap
+  local f="$1" gap=""
+  grep -qE '^Field:[[:space:]]*[^[:space:]]' "$f" || gap="$gap no Field: line,"
+  grep -qE '^Applies:[[:space:]]*[^[:space:]]' "$f" || gap="$gap no Applies: line,"
+  grep -qE '^Scale:[[:space:]]*[^[:space:]]' "$f" || gap="$gap no Scale: line,"
+  [ "$(rubric "$f" | grep -cE '^- .*capped at [0-9]')" -ge 3 ] || gap="$gap fewer than 3 'capped at' rubric lines,"
+  printf '%s' "${gap%,}"
+}
+
+if [ "${1:-}" = "--rubric-sha" ]; then
+  [ -f "${2:-}" ] || { echo "goal-state: judge file missing: ${2:-}" >&2; exit 2; }
+  rubric "$2" | sha | cut -c1-16
+  exit 0
+fi
 
 CONTRACT="${1:-}"
 JUDGE_DIR="${2:-${RUN_GOAL_JUDGE_DIR:-$HOME/.config/agentbrew/goal-judges}}"
 [ -f "$CONTRACT" ] || { echo "goal-state: no contract file: $CONTRACT" >&2; exit 2; }
 
-sha() { if command -v shasum >/dev/null 2>&1; then shasum -a 256; else sha256sum; fi | cut -c1-64; }
 field() { # contract field value: "Judges" -> "a, b, c"
   sed -nE "s/^[-*_ ]*$1:[*_ ]*(.*)$/\\1/p" "$CONTRACT" | head -1
 }
@@ -43,6 +64,8 @@ PATHS="$(field 'Judged paths' | split)"
 while IFS= read -r id; do
   case "$id" in *[!a-z0-9-]* | "") echo "goal-state: bad judge id '$id' (use a-z, 0-9, -)" >&2; exit 2 ;; esac
   [ -f "$JUDGE_DIR/$id.md" ] || { echo "goal-state: judge file missing: $JUDGE_DIR/$id.md" >&2; exit 2; }
+  gap="$(floor "$JUDGE_DIR/$id.md")"
+  [ -z "$gap" ] || { echo "goal-state: judge file $JUDGE_DIR/$id.md is below the rubric floor:$gap" >&2; exit 2; }
 done <<<"$JUDGES"
 while IFS= read -r p; do
   [ -e "${p/#\~/$HOME}" ] || { echo "goal-state: judged path missing: ${p/#\~/$HOME}" >&2; exit 2; }
@@ -53,7 +76,7 @@ done <<<"$PATHS"
   while IFS= read -r id; do
     f="$JUDGE_DIR/$id.md"
     printf '\njudge %s\n' "$id"
-    awk '/^## Calibration/{exit} {print}' "$f"
+    rubric "$f"
   done <<<"$JUDGES"
   while IFS= read -r p; do
     p="${p/#\~/$HOME}"

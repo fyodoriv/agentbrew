@@ -21,5 +21,14 @@ check "&& is not a detach" 0 "pnpm install && pnpm build" false
 check "2>&1 is not a detach" 0 "make test 2>&1 | tail" false
 check "&> is not a detach" 0 "make &> log.txt" false
 check "foreground ok" 0 "scripts/ship.sh --title x" false
+check "heredoc text is not a detach" 0 "cat > body.md <<'EOF'
+\$ nohup sleep 1 > /dev/null 2>&1 &
+EOF
+gh pr edit 1 --body-file body.md" false
+check "quoted text is not a detach" 0 "echo 'run nohup cmd &' && git commit -m \"use & and nohup\"" false
+check "detach after a heredoc blocked" 2 "cat > a <<EOF
+x
+EOF
+nohup node w.js &" false
 [ "$FAIL" = 0 ] && echo "detached-start-needs-watch: all passed"
 exit $FAIL

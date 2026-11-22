@@ -34,7 +34,9 @@ INPUT="$(read_hook_stdin)"
 CMD="$(json_get "$INPUT" '.tool_input.command')"
 
 # Drop `&&`, `2>&1`, `&>` and `>&` so only a real detaching `&` is left.
-STRIPPED="$(sed -E 's/&&//g; s/[0-9]?>&[0-9]?//g; s/&>//g' <<<"$CMD")"
+# Heredoc bodies and quoted strings are text, not commands: drop them first.
+CODE="$(perl -0777 -pe 's/<<-?\s*([\x27"]?)(\w+)\1[^\n]*\n.*?\n\s*\2[ \t]*(\n|\z)/\n/sg; s/\x27[^\x27]*\x27//g; s/"(?:\\.|[^"\\])*"//g' <<<"$CMD")"
+STRIPPED="$(sed -E 's/&&//g; s/[0-9]?>&[0-9]?//g; s/&>//g' <<<"$CODE")"
 if ! grep -qE '(^|[^[:alnum:]_-])(nohup|setsid|disown)([^[:alnum:]_-]|$)|&' <<<"$STRIPPED"; then
   verdict_allow "$HOOK_ID" "no detach"
 fi

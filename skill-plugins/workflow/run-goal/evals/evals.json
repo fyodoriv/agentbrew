@@ -4260,6 +4260,17 @@
         "Ships from a clean worktree, never stashing or committing the other session's edit",
         "Chains repo-changing steps with set -e so a failed worktree add never runs git add in another checkout"
       ]
+    },
+    {
+      "id": 376,
+      "prompt": "/goal fix all issues you see. (Mid-goal the user asks for three side sessions; the Stop hook re-fires saying the side sessions are still running.)",
+      "expected_output": "Writes a finite issue list in the contract; marks the side sessions as outside this goal with their owners, in the contract and chat; never lists them under the goal's Pending; on a repeat re-fire with no new evidence replies with one line, not another full status.",
+      "expectations": [
+        "Lists the finite issues for the open-ended goal in the contract",
+        "Marks side-session work as outside this goal, naming the owner",
+        "Never lists another session's work under the goal's Pending",
+        "Replies with one line to a repeat re-fire with no new evidence"
+      ]
     }
   ]
 }

@@ -195,7 +195,7 @@ docs, memory, or a quick experiment can answer.
 - Preserve a pending question until answered. Stop re-fires do not authorize
   another question, chat re-ask, or waiting message. Do independent work or ready
   retro tasks. If only the human step remains, yield without re-asking.
-  Do not disable hooks or invent completion to escape the wait.
+  Never disable hooks or fake completion. Handed-off work, repeat re-fires: [§ Outside this goal](references/external-waits.md#outside-this-goal).
 - Honor **Later / Skip**. An optional quiz is not a new mandatory criterion.
   Keep explicit understanding criteria unverified until answers are graded or
   the user revises the contract. Do not claim mastery or required quiz completion

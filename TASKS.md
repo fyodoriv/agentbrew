@@ -343,6 +343,18 @@
 
 ## P1
 
+- [ ] A plain `agentbrew sync` deploys the hooks on current `main`, not an old pinned runtime
+  - **ID**: sync-uses-current-hooks
+  - **Tags**: hooks, sync, upgrade
+  - **Details**: On 2026-11-22 the `agentbrew` on PATH ran a runtime built on Nov 14 (`~/.local/share/agentbrew-runtimes/<id>/`), and `agentbrew upgrade --check` said it was up to date. So `agentbrew sync` did not deploy the hooks merged that day (`detached-start-needs-watch`, `start-refused-caught`). They deployed only with `tsx src/cli.ts sync` from a checkout of `main`. Make sync (or doctor) say when the runtime's hooks are older than the source checkout's, and give the one command that brings them current.
+  - **Files**: `src/sync/`, `src/doctor/`, the runtime builder, `docs/` for the upgrade path.
+  - **Acceptance**: with a runtime older than `main`, `agentbrew sync` or `agentbrew doctor` prints a stale-runtime line with the fix command; after the fix, the deployed `hooks-scripts/` match `hooks/checks/` on `main`.
+  - **Hypothesis**: hooks merged but not deployed go from 2 seen on 2026-11-22 to 0, because sync names a stale runtime.
+  - **Measurement**: `diff <(ls hooks/checks | grep -v test) <(ls ~/.claude/codeassist/hooks-scripts)` after a plain `agentbrew sync`.
+  - **Success**: 0 missing hook scripts after a plain sync.
+  - **Pivot**: if 1 or more hooks are still missing after the fix, make sync always read hooks from the source checkout.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (Accelerate, deployment frequency and change failure rate).
+
 - [ ] Remove the remaining node-server range for Alert 181
   - **ID**: development-node-server-advisory-181
   - **Blocked**: needs-compatible-upstream-parent — The locked Promptfoo 0.124.1 pins node-server 2.1.1. The published 0.126.0 manifest pins 2.1.6 and still conflicts with the protected watcher and Java keystore peers. On Nov 21 the local resolver still offered 0.125.1 with node-server 2.1.5. Require a compatible published parent and a normal resolution before changing the lock graph.

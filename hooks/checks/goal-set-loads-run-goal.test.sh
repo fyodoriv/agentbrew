@@ -12,7 +12,8 @@ PASS=0
 FAIL=0
 FAIL_DETAILS=()
 
-FIXTURE_ROOT="$(mktemp -d)"
+FIXTURE_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/goal-set.XXXXXX")"
+export HOOK_DECISIONS_LOG="$FIXTURE_ROOT/decisions.jsonl"
 trap 'rm -rf "$FIXTURE_ROOT"' EXIT
 INSTALLED="$FIXTURE_ROOT/installed/run-goal"
 MISSING="$FIXTURE_ROOT/missing/run-goal"

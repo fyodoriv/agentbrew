@@ -8,14 +8,19 @@
 #   (owner request 2026-11-22: a goal succeeds only when three of the best
 #   judges in its field agree it scores 8/10 or more)
 #
-# A goal may end as "met" only with a judge consensus. While the session's
-# retro claims met, this hook blocks Stop until each judge the contract names
-# has exactly one verdict for the current state, each scored at least the
-# minimum (default 8 of 10).
+# A goal may end as "met" only with a judge consensus. The hook is
+# success-gated: while a goal contract exists, Stop is allowed only when each
+# judge the contract names has exactly one verdict for the current state, each
+# scored at least the minimum (default 8 of 10), or when the retro says plainly
+# that the goal is not met.
 #
-# **Claim**: a retro line that starts with `Goal result` (after list,
-# heading, quote, bold, or number marks) and does not say partly met, not
-# met, in progress, or blocked. Unknown forms count as claims.
+# **Not met**: the retro has a `Goal result` line and every such line says
+# partly met, not met, in progress, blocked, impossible, or pending. Mid-goal
+# Stops (a question round, a wait) need `Goal result: in progress (<why>)`.
+#
+# **Claim**: anything else: no retro, no `Goal result` line, or a `Goal
+# result` line (after list, heading, quote, bold, or number marks) in any
+# other form ("met", "fully met", "done").
 #
 # **Contract**: `Judges: <id>, <id>, <id>` and `Judged paths: <path>, ...`.
 #
@@ -27,7 +32,10 @@
 #
 # **Prompt**: each judge call's prompt must equal the output of
 # `lib/goal-judge-prompt.sh <contract> <id>` (outer whitespace aside), so the
-# runner cannot add steering text, and must not be a `fork`.
+# runner cannot add steering text. The prompt holds the rubric, so the judge
+# never reads the runner-written calibration notes. The call must have no
+# `subagent_type` or `general-purpose`: a fork shares the runner's context and
+# a custom agent type brings its own system prompt.
 #
 # **Verdicts**: one block per judge subagent result (bold names allowed):
 #
@@ -43,8 +51,8 @@
 # re-roll and fails. Judges must use at least `RUN_GOAL_JUDGE_MODELS` model
 # families (a call with no `model` counts as the runner's own).
 #
-# **Rounds**: the judge prompts in the transcript freeze the judge set and
-# each rubric hash at the goal's first round; a goal gets
+# **Rounds**: the judge prompts in the transcript freeze the judge set, each
+# rubric hash, and the contract hash at the goal's first round; a goal gets
 # `RUN_GOAL_JUDGE_ROUNDS` distinct judged states.
 #
 # **Judge cache**: `RUN_GOAL_JUDGE_DIR` (default
@@ -56,8 +64,14 @@
 # allows, at most 10 times per goal. Other background tasks do not excuse.
 #
 # **Give-up**: after five blocks it rewrites each claim line to
-# `Goal result: partly met (judge consensus not reached: <reason>)`, resets
-# its counters, and allows, so a goal never reads as met without consensus.
+# `Goal result: partly met (judge consensus not reached: <reason>)` (and adds
+# that line when the retro has none, creating the retro if needed), resets its
+# counters, and allows, so a goal never reads as met without consensus.
+#
+# **Fails open** when: the bypass is set, no contract exists (no `/goal` or
+# `/goal clear`), the agent has no Stop hook (Codex), or the session id is
+# unusable. A lenient runner-written judge file is limited by the rubric floor
+# and the prompt's field-standard rule, not removed.
 #
 # **Bypass**: `HOOK_BYPASS_GOAL_JUDGES_BEFORE_STOP=1`
 #
@@ -86,7 +100,9 @@ readonly MAX_WAITS=10
 # A retro line claims met when it starts with "Goal result" (after list,
 # heading, quote, bold, and number marks) and its value is not a known
 # not-met form. Unknown forms ("met", "fully met", "done") are claims.
-readonly CLAIM_AWK='function claim(l,  r) { l = tolower(l); gsub(/[*_`]/, "", l); sub(/^[[:space:]#>0-9.)-]*/, "", l)
+readonly CLAIM_AWK='function norm(l) { l = tolower(l); gsub(/[*_`]/, "", l); sub(/^[[:space:]#>0-9.)-]*/, "", l); return l }
+function result(l) { return norm(l) ~ /^goal result([^a-z]|$)/ }
+function claim(l,  r) { l = norm(l)
   if (l !~ /^goal result([^a-z]|$)/) return 0
   r = substr(l, 12); sub(/^[^a-z]*/, "", r)
   return r !~ /^(partly|partially|not|un|in progress|blocked|impossible|pending)/ }'
@@ -118,9 +134,12 @@ WAITS="$STATE_DIR/$SESSION_ID.judgewaits"
 PROMPT_CMD="bash $__HOOK_LIB_DIR/goal-judge-prompt.sh $CONTRACT <judge id>"
 
 [ -f "$CONTRACT" ] || verdict_allow "$HOOK_ID" "no active goal contract"
-[ -f "$RETRO" ] || verdict_allow "$HOOK_ID" "no retro yet"
-awk "$CLAIM_AWK"' claim($0) { f = 1 } END { exit !f }' "$RETRO" ||
-  verdict_allow "$HOOK_ID" "goal does not claim met"
+# Success-gated: only an explicit not-met result skips judging. No retro, no
+# result line, or any claim line all need a consensus.
+if [ -f "$RETRO" ] &&
+  awk "$CLAIM_AWK"' result($0) { r = 1 } claim($0) { c = 1 } END { exit !(r && !c) }' "$RETRO"; then
+  verdict_allow "$HOOK_ID" "goal says it is not met"
+fi
 
 count() { local n=0; [ -f "$1" ] && n="$(cat "$1" 2>/dev/null || echo 0)"; case "$n" in "" | *[!0-9]*) n=0 ;; esac; echo "$n"; }
 
@@ -169,6 +188,10 @@ if [ -n "$PROWS" ]; then
   FIRST_SET="$(printf '%s\n' "$PROWS" | awk -F'\t' -v s="$FIRST_STATE" '$5==s{print $3}' | LC_ALL=C sort -u)"
   [ "$FIRST_SET" = "$JUDGES" ] ||
     add "the judge set changed after the first round (first: $(printf '%s ' $FIRST_SET)now: $(printf '%s ' $JUDGES)); keep the first panel"
+  FIRST_CONTRACT="$(printf '%s\n' "$PROWS" | awk -F'\t' 'NR==1{print $6}')"
+  NOW_CONTRACT="$(bash "$__HOOK_LIB_DIR/goal-state.sh" --file-sha "$CONTRACT" 2>/dev/null || true)"
+  [ -z "$FIRST_CONTRACT" ] || [ "$FIRST_CONTRACT" = "$NOW_CONTRACT" ] ||
+    add "the goal contract changed after the first round; judge against the contract you started with"
   while IFS= read -r id; do
     [ -n "$id" ] && [ -f "$JUDGE_DIR/$id.md" ] || continue
     first="$(printf '%s\n' "$PROWS" | awk -F'\t' -v j="$id" '$3==j{print $4; exit}')"
@@ -196,10 +219,10 @@ if [ -n "$TOKEN" ]; then
     elif [ "$n" -gt 1 ]; then
       add "$id was judged $n times on one state (a re-roll); change the work, then judge all again"; continue
     fi
-    IFS=$'\t' read -r _ _ _ score vcache _ model ok fork <<<"$mine"
+    IFS=$'\t' read -r _ _ _ score vcache _ model ok typeok <<<"$mine"
     [ "${vcache/#\~/$HOME}" = "$cache" ] || add "$id cites cache $vcache, not $cache"
     [ "$ok" = 1 ] || add "$id's prompt is not the exact output of goal-judge-prompt.sh for this state"
-    [ "$fork" = 1 ] && add "$id ran as a fork (it shares the runner's context); use a fresh subagent"
+    [ "$typeok" = 1 ] || add "$id ran as a fork or a custom agent type; use a fresh general-purpose subagent (no subagent_type)"
     case "$score" in bad | "") add "$id's Score line is not N/10"; continue ;; esac
     if awk -v a="$score" 'BEGIN{exit !(a>10)}'; then add "$id score $score is out of range"; continue; fi
     awk -v a="$score" -v m="$MIN" 'BEGIN{exit !(a<m)}' && add "$id scored $score/10"
@@ -224,11 +247,13 @@ blocks="$(count "$COUNTER")"
 if [ "$blocks" -ge "$MAX_BLOCKS" ]; then
   reason="$(printf '%s' "$PROBLEMS" | tr -d '\n' | cut -c1-300)"
   tmp="$RETRO.tmp.$$"
-  awk -v r="$reason" "$CLAIM_AWK"' claim($0) { print "Goal result: partly met (judge consensus not reached: " r ")"; next } { print }' "$RETRO" >"$tmp" &&
+  src="$RETRO"; [ -f "$src" ] || src=/dev/null
+  awk -v r="$reason" "$CLAIM_AWK"' BEGIN { line = "Goal result: partly met (judge consensus not reached: " r ")" }
+    claim($0) { print line; s = 1; next } result($0) { s = 1 } { print } END { if (!s) print line }' "$src" >"$tmp" &&
     mv "$tmp" "$RETRO"
   rm -f "$COUNTER" "$WAITS"
   verdict_allow "$HOOK_ID" "gave up after $MAX_BLOCKS blocks; retro downgraded to partly met: $PROBLEMS"
 fi
 echo $((blocks + 1)) >"$COUNTER"
 
-verdict_block "$HOOK_ID" "The goal says met, but it has no judge consensus yet: $PROBLEMS. Follow run-goal references/goal-judges.md as the last step, after the retro and the report: for each contract judge, print its prompt with \`$PROMPT_CMD\` and pass that output unchanged as the prompt of one fresh-context Agent call (not a fork; at least $MODELS model families). Then add a calibration line with session $SESSION_ID, the state, and the score to each judge's ## Calibration section. Every judge needs $MIN/10 or more, within $ROUNDS rounds. If you cannot reach it, apply the top fixes and judge all again, or change the retro to Goal result: partly met."
+verdict_block "$HOOK_ID" "The goal says met, but it has no judge consensus yet: $PROBLEMS. Follow run-goal references/goal-judges.md as the last step, after the retro and the report: for each contract judge, print its prompt with \`$PROMPT_CMD\` and pass that output unchanged as the prompt of one fresh-context Agent call (no subagent_type or general-purpose; at least $MODELS model families). Then add a calibration line with session $SESSION_ID, the state, and the score to each judge's ## Calibration section. Every judge needs $MIN/10 or more, within $ROUNDS rounds. If you cannot reach it, apply the top fixes and judge all again, or write Goal result: partly met (<lowest score and why>) in the retro. Mid-goal, write Goal result: in progress (<why>) before you stop."

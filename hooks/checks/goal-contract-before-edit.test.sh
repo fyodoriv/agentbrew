@@ -12,7 +12,8 @@ PASS=0
 FAIL=0
 FAIL_DETAILS=()
 
-ROOT="$(mktemp -d)"
+ROOT="$(mktemp -d "${TMPDIR:-/tmp}/goal-contract.XXXXXX")"
+export HOOK_DECISIONS_LOG="$ROOT/decisions.jsonl"
 trap 'rm -rf "$ROOT"' EXIT
 export RUN_GOAL_STATE_DIR="$ROOT/state"
 mkdir -p "$RUN_GOAL_STATE_DIR"

@@ -4,6 +4,7 @@
 # Builds a state folder, a judge cache, judged work, and fake transcripts,
 # pipes Stop fixture JSON to the hook, and asserts the exit code. Each attack
 # the expert judges reproduced on 2026-11-22 (rounds 1 to 3) has a case.
+# The hook is success-gated: only an explicit not-met retro skips judging.
 # Run: `bash goal-judges-before-stop.test.sh`.
 
 set -uo pipefail
@@ -85,16 +86,17 @@ new_goal_row() { # session, condition
 
 expect "no contract allows" 0 "$(run s0)"
 printf 'Done when\n' >"$RUN_GOAL_STATE_DIR/s1.contract.md"; : >"$ROOT/s1.jsonl"
-expect "no retro yet allows (the retro hook asks for it)" 0 "$(run s1)"
+expect "no retro yet blocks while a contract exists (success-gated)" 2 "$(run s1)"
 
 # Retro forms: every claim form is gated; known not-met forms are not.
 for form in "Goal result: partly met (2/3 met)" "Goal result: not met" "Goal result: in progress (clock goal, wrap-up at 18:00)" \
-  "Goal result: blocked on 2FA" "The goal results table is below."; do
+  "Goal result: blocked on 2FA" "$(printf 'Notes.\nGoal result: partly met (lowest 6/10)')"; do
   goal nm "$form"; expect "retro '$form' needs no consensus" 0 "$(run nm)"
 done
 for form in "Goal result: met" "- Goal result: met" "**Goal result:** met" "GOAL RESULT: MET" "## Goal result: met" \
   "> Goal result: met" "1. Goal result: met" "$(printf 'Goal result:\tmet')" "Goal result - met" "Goal result: fully met" \
-  "**Goal result: met**" "Goal result: done"; do
+  "**Goal result: met**" "Goal result: done" "The goal results table is below." "Retro notes, no result line." \
+  "$(printf 'Goal result: in progress\nGoal result: met')"; do
   i=$((${i:-0} + 1)); goal "fm$i" "$form"; expect "retro '$form' is gated" 2 "$(run "fm$i")"
 done
 
@@ -173,6 +175,14 @@ goal fork "Goal result: met (3/3 met)"; judge fork ja 9 sonnet; judge fork jb 9
 st="$(token fork)"; call fork Agent f3 "" "$(prompt fork jc)" '{"subagent_type":"fork"}'
 result fork f3 "$(block_text jc 9 "$st")"; calibrate fork jc 9
 expect "a fork judge (it shares the runner's context) blocks" 2 "$(run fork)"
+goal ctype "Goal result: met (3/3 met)"; judge ctype ja 9 sonnet; judge ctype jb 9
+st="$(token ctype)"; call ctype Agent c3 "" "$(prompt ctype jc)" '{"subagent_type":"lenient-reviewer"}'
+result ctype c3 "$(block_text jc 9 "$st")"; calibrate ctype jc 9
+expect "a custom agent type judge (its own system prompt) blocks" 2 "$(run ctype)"
+goal gptype "Goal result: met (3/3 met)"; judge gptype ja 9 sonnet; judge gptype jb 9
+st="$(token gptype)"; call gptype Agent g3 "" "$(prompt gptype jc)" '{"subagent_type":"general-purpose"}'
+result gptype g3 "$(block_text jc 9 "$st")"; calibrate gptype jc 9
+expect "a general-purpose judge counts" 0 "$(run gptype)"
 
 goal bold "Goal result: met (3/3 met)"; judge bold ja 9 sonnet; judge bold jb 9; st="$(token bold)"
 call bold Agent b3 "" "$(prompt bold jc)"
@@ -185,6 +195,12 @@ expect "three judges on the runner's model block" 2 "$(run onemodel)"
 expect "RUN_GOAL_JUDGE_MODELS=1 allows one model" 0 "$(run onemodel RUN_GOAL_JUDGE_MODELS=1)"
 goal inherit "Goal result: met (3/3 met)"; judge inherit ja 9 opus; judge inherit jb 9; judge inherit jc 9
 expect "an inherited model counts as the runner's family, not a new one" 2 "$(run inherit)"
+goal inh2 "Goal result: met (3/3 met)"; judge inh2 ja 9 inherit; judge inh2 jb 9 opus; judge inh2 jc 9
+expect "model: inherit is the runner's family, not a family of its own" 2 "$(run inh2)"
+
+goal cfreeze "Goal result: met (3/3 met)"; panel cfreeze 9 5 9
+printf 'Done when: easier now\n' >>"$RUN_GOAL_STATE_DIR/cfreeze.contract.md"; panel cfreeze 9 9 9
+expect "a contract edited after the first round blocks" 2 "$(run cfreeze)"
 
 goal bash "Goal result: met (3/3 met)"; judge bash ja 9 sonnet; judge bash jb 9; judge bash jc 9 "" Bash
 expect "a verdict printed by Bash does not count" 2 "$(run bash)"
@@ -249,6 +265,16 @@ expect "sixth Stop allows after downgrading" 0 "$(run giveup)"
 check "give-up rewrites the claim to partly met" grep -q '^Goal result: partly met (judge consensus not reached: jb scored 5/10' "$RUN_GOAL_STATE_DIR/giveup.retro.md"
 check "give-up resets the block counter" test ! -e "$RUN_GOAL_STATE_DIR/giveup.judgeblocks"
 expect "a downgraded goal keeps passing" 0 "$(run giveup)"
+
+goal gnoretro "x"; rm -f "$RUN_GOAL_STATE_DIR/gnoretro.retro.md"; panel gnoretro 9 5 9
+for i in 1 2 3 4 5; do run gnoretro >/dev/null; done
+expect "with no retro, the sixth Stop allows after writing one" 0 "$(run gnoretro)"
+check "give-up creates a partly met retro" grep -q '^Goal result: partly met (judge consensus not reached' "$RUN_GOAL_STATE_DIR/gnoretro.retro.md"
+goal gnoline "Retro notes only."; panel gnoline 9 5 9
+for i in 1 2 3 4 5; do run gnoline >/dev/null; done
+expect "with no result line, the sixth Stop allows" 0 "$(run gnoline)"
+check "give-up appends the partly met line and keeps the notes" \
+  bash -c "grep -q '^Retro notes only.' '$RUN_GOAL_STATE_DIR/gnoline.retro.md' && grep -q '^Goal result: partly met' '$RUN_GOAL_STATE_DIR/gnoline.retro.md'"
 
 echo "goal-judges-before-stop: $PASS passed, $FAIL failed"
 for d in "${FAIL_DETAILS[@]+"${FAIL_DETAILS[@]}"}"; do echo "  FAIL: $d"; done

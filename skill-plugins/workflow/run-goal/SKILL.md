@@ -392,7 +392,9 @@ with actuals and update the estimation method as described in
    the report is a judged file, add the scores before judging as `pending`
    and fill them in only in chat. Higher is better; you improve each
    cached judge after use. Follow [references/goal-judges.md](references/goal-judges.md).
-   The `goal-judges-before-stop` hook holds a `met` retro until they agree.
+   The `goal-judges-before-stop` hook holds every Stop while a contract
+   exists until they agree or the retro says `Goal result: in progress` or
+   `partly met` (with why).
 8. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)`
    in the retro file, run `scripts/export-goals.py`, and refresh the one
    Goals dashboard: [references/dashboard.md](references/dashboard.md).

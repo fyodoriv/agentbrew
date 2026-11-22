@@ -7,6 +7,7 @@
 #
 # Usage: bash goal-state.sh <contract path> [judge dir]
 #        bash goal-state.sh --rubric-sha <judge file>   (16 hex of the rubric)
+#        bash goal-state.sh --file-sha <file>           (16 hex of the file)
 #
 # The token is a SHA-256 over:
 #   - the contract file (so its `Judges:` and `Judged paths:` lines are frozen),
@@ -46,6 +47,11 @@ if [ "${1:-}" = "--rubric-sha" ]; then
   rubric "$2" | sha | cut -c1-16
   exit 0
 fi
+if [ "${1:-}" = "--file-sha" ]; then
+  [ -f "${2:-}" ] || { echo "goal-state: file missing: ${2:-}" >&2; exit 2; }
+  sha <"$2" | cut -c1-16
+  exit 0
+fi
 
 CONTRACT="${1:-}"
 JUDGE_DIR="${2:-${RUN_GOAL_JUDGE_DIR:-$HOME/.config/agentbrew/goal-judges}}"
@@ -63,9 +69,9 @@ PATHS="$(field 'Judged paths' | split)"
 
 while IFS= read -r id; do
   case "$id" in *[!a-z0-9-]* | "") echo "goal-state: bad judge id '$id' (use a-z, 0-9, -)" >&2; exit 2 ;; esac
-  [ -f "$JUDGE_DIR/$id.md" ] || { echo "goal-state: judge file missing: $JUDGE_DIR/$id.md" >&2; exit 2; }
+  [ -f "$JUDGE_DIR/$id.md" ] || { echo "goal-state: judge file missing: $JUDGE_DIR/$id.md; create it from the template in run-goal references/goal-judges.md step 1: Field:, Applies:, and Scale: lines and three or more rubric lines with 'capped at N'" >&2; exit 2; }
   gap="$(floor "$JUDGE_DIR/$id.md")"
-  [ -z "$gap" ] || { echo "goal-state: judge file $JUDGE_DIR/$id.md is below the rubric floor:$gap" >&2; exit 2; }
+  [ -z "$gap" ] || { echo "goal-state: judge file $JUDGE_DIR/$id.md is below the rubric floor:$gap; create it from the template in run-goal references/goal-judges.md step 1: Field:, Applies:, and Scale: lines and three or more rubric lines with 'capped at N'" >&2; exit 2; }
 done <<<"$JUDGES"
 while IFS= read -r p; do
   [ -e "${p/#\~/$HOME}" ] || { echo "goal-state: judged path missing: ${p/#\~/$HOME}" >&2; exit 2; }

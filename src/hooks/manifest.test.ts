@@ -67,6 +67,7 @@ afterEach(() => {
 // Hooks that encode one maintainer's workflow. They ship off; a machine opts
 // in through the overlay `enabled:` list (the owner's dotfiles do this).
 const OWNER_WORKFLOW_HOOK_IDS = [
+  "start-refused-caught",
   "code-no-timestamps",
   "selectors-pure",
   "tests-adapt-to-production",
@@ -472,7 +473,7 @@ describe("canonical hook manifest", () => {
       .filter((hook) => hook.event === "PreToolUse" && hook.matcher === "Bash")
       .map((hook) => hook.id);
 
-    expect(bashHookIds).toHaveLength(23);
+    expect(bashHookIds).toHaveLength(24);
     expect(bashHookIds).toContain("no-destructive-commands");
     expect([...resolvedManifest.offByDefault].sort()).toEqual(
       [...bashHookIds, "context-budget-measure", ...OWNER_WORKFLOW_HOOK_IDS].sort(),

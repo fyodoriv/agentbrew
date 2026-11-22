@@ -206,6 +206,7 @@ these three axes when a task allows it:
   voice. Keep one idea per sentence or bullet. Use headings, bullets, or numbered
   steps when they improve scanning. Surface blockers and the next action.
 - Keep required technical terms. Define an uncommon abbreviation on first use.
+- **Asks carry full context:** every question or ask to the user (a question, a blocker, a "Needed from you" line) explains, in plain words, each term, file, flag, step, or internal name it names: what it is, why it needs the user, each option and what it changes for the user, and where to do it. Assume the user has not seen the code or the term. A judge or reviewer rejects an ask that does not.
 - Preserve required artifact formats and verbatim code, commands, logs, JSON, or
   user text. Apply this rule to agent-authored prose around them.
 - Apply the rule to a code comment only when the code needs a comment. Do not add

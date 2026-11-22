@@ -4293,6 +4293,18 @@
         "Measures the current hook chain cost per tool call before proposing new hot-path hooks",
         "Changes no hook, overlay, or settings file when the user chose report only"
       ]
+    },
+    {
+      "id": 379,
+      "prompt": "/goal clean up my spending report in the finance app. The run finds that the app's categories conflict and only the user can pick which ones to keep. The user has never heard the app's word 'categories'.",
+      "expected_output": "The agent asks once and explains every term it names. It says what a category is in plain words (the label the app puts on each payment, such as Groceries or Rent), why only the user can decide (it changes how their own spending is grouped), each option and what it changes for the user, and where to do it (the exact screen or command). It never writes a bare 'Which categories should I keep?'. If the run stops on this, the BLOCKED report and the final 'Needed from you' line carry the same full context.",
+      "expectations": [
+        "Says what the domain term 'categories' means in plain words before asking about it",
+        "Says why the choice needs the user and cannot be made by the agent",
+        "Lists each option and what it changes for the user",
+        "Says where to do it: the exact screen, file or command",
+        "Gives the BLOCKED report and the 'Needed from you' line the same full context, never a bare term"
+      ]
     }
   ]
 }

@@ -4305,6 +4305,16 @@
         "Says where to do it: the exact screen, file or command",
         "Gives the BLOCKED report and the 'Needed from you' line the same full context, never a bare term"
       ]
+    },
+    {
+      "id": 380,
+      "prompt": "/goal ship follow ups  (session has 5 open follow-ups: a PR to merge, a flaky UI test, an unlocked web save path, a skill rule, stale branches)",
+      "expected_output": "Prints a 5-criterion contract, ships each follow-up with a fresh-context diff review before each merge, fixes every real review finding with tests, and reports branches a guard refuses to delete as a final batched ask instead of forcing them.",
+      "expectations": [
+        "Contract lists each open follow-up as its own done-criterion with proof",
+        "Asks a fresh-context subagent to review each PR diff before merge and fixes its real findings with tests",
+        "Does not bypass a hook that refuses a destructive step; batches that ask at the end with context"
+      ]
     }
   ]
 }

@@ -56,6 +56,28 @@ hooks:
     agents: ["claude-code"]
     defaultEnabled: false  # PreToolUse:Bash hooks are opt-in; enable via the overlay `enabled:`
 
+  - id: detached-start-needs-watch
+    description: Block a detached start (nohup, setsid, disown, trailing &) with no watch; use run_in_background or check the pid in the same call
+    event: PreToolUse
+    matcher: Bash
+    script: checks/detached-start-needs-watch.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md "Fast, safe iterations" — every long or background start has a working watch
+    agents: ["claude-code"]
+    defaultEnabled: false  # PreToolUse:Bash hooks are opt-in; enable via the overlay `enabled:`
+
+  - id: start-refused-caught
+    description: After a start, stop the agent when the output says it was refused (lock held, already running)
+    event: PostToolUse
+    matcher: Bash
+    script: checks/start-refused-caught.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md "Fast, safe iterations" — confirm a start is alive before you report it
+    agents: ["claude-code"]
+    defaultEnabled: false  # Bash hooks are opt-in; enable via the overlay `enabled:`
+
   - id: block-local-tests
     description: Block local test runs (vitest, npm test, npm run verify*) in an agentbrew checkout; tests run on hosted CI only
     event: PreToolUse

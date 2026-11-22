@@ -222,7 +222,7 @@ When only an external wait remains, use the supported [quiet wait](references/ex
 
 - Keep a task list (`update_plan`, TodoWrite, or a list in chat), ordered by
   risk: unknowns first. Two apps joined: read [references/cross-app-poc.md](references/cross-app-poc.md).
-- Work in small verified steps. Run the guard after each change that matters.
+- Work in small verified steps. Run the guard after each change that matters. Start background work only with a watch (`run_in_background: true`); a run is live only after a pid, lock or log line proves it.
 - Before you start, read [references/execution.md](references/execution.md) and follow every
   bullet: live-tool probes, test loops, commits, subagents, workers, restarts, secrets, web facts.
 - A tool's "fixed" or "auto-fixed" line is a claim, not evidence. Check

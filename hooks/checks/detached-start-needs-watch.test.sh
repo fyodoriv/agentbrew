@@ -75,5 +75,14 @@ check "gh pr body heredoc ok" 0 "cat > b.md <<'EOF'
 nohup x &
 EOF
 gh pr edit 1 --body-file b.md && echo done" false
+check "git -c joined blocked" 2 "git -calias.x='!sleep 1 &' x" false
+check "git rebase -x blocked" 2 "git rebase -x 'sleep 1 &' HEAD~1" false
+check "git config alias blocked" 2 "git config alias.x '!sleep 1 &' && git x" false
+check "env var command blocked" 2 "GIT_SSH_COMMAND='sleep 1 &' git ls-remote origin" false
+check "editor var blocked" 2 "EDITOR='sleep 1 &' git commit" false
+check "rg --pre blocked" 2 "rg --pre 'sleep 1 &' foo ." false
+check "gh extension blocked" 2 "gh extension exec foo 'sleep 1 &'" false
+check "path-named cat blocked" 2 "/tmp/x/cat 'nohup x &'" false
+check "git commit message ok" 0 "git commit -m 'run nohup x & check'" false
 [ "$FAIL" = 0 ] && echo "detached-start-needs-watch: all passed"
 exit $FAIL

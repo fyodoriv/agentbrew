@@ -39,16 +39,26 @@ CMD="$(json_get "$INPUT" '.tool_input.command')"
 # A quote opens only at a word start ("don't" is no quote).
 TEXTLESS="$(perl -0777 -pe 's/(?<!<)<<(?!<)-?[ \t]*([\x27"]?)(\w+)\1([^\n]*\n)(?:.*?\n)??[ \t]*\2[ \t]*(?=\n|\z)/$3/sg; s/(?<![\w\\])\x27[^\x27]*\x27/Q/g; s/(?<![\w\\])"(?:\\.|[^"\\])*"/Q/g' <<<"$CMD")"
 # Fail closed: drop text only when every command in the line is a known data-only command.
-# Any other first word (a shell, an interpreter, a quoted or $VAR name) may run the text as code.
-SAFE_CMDS=" echo printf cat git gh grep rg jq yq ls cd pwd tee mkdir touch cp mv rm head tail wc sort uniq cut tr diff test [ true false basename dirname date sleep kill wait pgrep curl "
+# Any other first word (a shell, an interpreter, a path, a quoted or $VAR name) may run the text as code.
+# git and gh pass only with these subcommands: others (rebase -x, config alias, extension) run text.
+SAFE_CMDS=" echo printf cat ls cd pwd tee mkdir touch cp mv rm head tail wc cut tr diff test [ true false basename dirname date sleep kill wait pgrep curl "
+SAFE_GIT=" commit add status log show diff push fetch pull switch checkout branch "
+SAFE_GH=" pr issue run repo api "
 text_is_data() {
-  grep -qE '\$\(|`|(^|[[:space:]])git[[:space:]]+-c([[:space:]]|$)' <<<"$CMD" && return 1
-  local seg word
+  grep -qE '\$\(|`' <<<"$CMD" && return 1
+  local seg word sub
   while IFS= read -r seg; do
-    seg="$(sed -E 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//' <<<"$seg")"
+    seg="${seg#"${seg%%[![:space:]]*}"}"
+    [ -z "$seg" ] && continue
+    # A VAR=value prefix can name a program (GIT_SSH_COMMAND, EDITOR), so it keeps the text as code.
+    grep -qE '^[A-Za-z_][A-Za-z0-9_]*=' <<<"$seg" && return 1
     word="${seg%%[[:space:]]*}"
-    [ -z "$word" ] && continue
-    case "$SAFE_CMDS" in *" ${word##*/} "*) ;; *) return 1 ;; esac
+    sub="$(awk '{print $2}' <<<"$seg")"
+    case "$word" in
+      git) case "$SAFE_GIT" in *" $sub "*) ;; *) return 1 ;; esac ;;
+      gh) case "$SAFE_GH" in *" $sub "*) ;; *) return 1 ;; esac ;;
+      *) case "$SAFE_CMDS" in *" $word "*) ;; *) return 1 ;; esac ;;
+    esac
   done < <(sed -E 's/&&|\|\|/\n/g; s/[;&|(){}!]/\n/g' <<<"$TEXTLESS")
   return 0
 }

@@ -49,7 +49,9 @@ describe("long-run reports end as a published Artifact", () => {
     expect(section(sharedRules, "Communication")).toMatch(
       /every question or ask to the user .* explains, in plain words, each term, file, flag, step, or internal name it names/,
     );
-    expect(section(sharedRules, "Communication")).toMatch(/The \[fresh-reader review\]\(#fresh-reader-review\) fails an ask that does not/);
+    expect(section(sharedRules, "Communication")).toMatch(
+      /The \[fresh-reader review\]\(#fresh-reader-review\) fails an ask that does not/,
+    );
     expect(runGoal).toMatch(/every later ask: the BLOCKED report and the final "Needed from you" line/);
   });
 

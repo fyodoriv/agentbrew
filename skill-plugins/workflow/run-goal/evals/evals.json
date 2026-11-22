@@ -4271,6 +4271,17 @@
         "Never lists another session's work under the goal's Pending",
         "Replies with one line to a repeat re-fire with no new evidence"
       ]
+    },
+    {
+      "id": 377,
+      "prompt": "/goal make repo R open source: keep its old history private and publish one fresh root commit (two other sessions have open branches on R)",
+      "expected_output": "Before the cut the agent tells the open branches how to port onto the new root; it builds the root in a fresh clone and removes the clone's remote refs, reflog and unreachable objects before the history leak check; it pushes the root while the new repo is private and makes it public only after the push allowlist and history check pass; the old-history remote never becomes the public origin while side branches remain.",
+      "expectations": [
+        "Lists open PRs and linked sessions before the cut and gives them a `git rebase --onto` port command",
+        "Removes the fresh clone's remote and non-main refs, expires the reflog and runs gc before the history leak check",
+        "Pushes the root commit while the new repo is private and changes visibility only after the allowlist and history check pass",
+        "Keeps the old-history remote away from the public repo name until every side branch has moved"
+      ]
     }
   ]
 }

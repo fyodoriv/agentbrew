@@ -588,3 +588,19 @@ cutover are proven.
 Timestamps, assumed replay, or an old backup alone are not proof. If that proof
 is absent, stop at read-only diagnosis; do not propose a speculative recovery.
 Do not treat a healthy long task as blocked or override an explicit deadline.
+
+## History cuts
+
+A goal that publishes a repo from one fresh root commit (the old history stays private):
+
+- Before the cut, list open PRs and linked sessions on the repo. Tell each to
+  stop merging into the old history and to port later with
+  `git rebase --onto <public>/main <old main tip> <branch>`.
+- Build the root in a fresh clone, then drop its remote and every ref but
+  `main`, expire the reflog and run `git gc --prune=now` before the history
+  leak check. A clone keeps `origin/*` refs, so the check still reads the old
+  history: one run reported 544 private-pattern hits on a 1-commit root.
+- Push the root to the new repo while it is still private, then make it
+  public only after the push allowlist and the history check pass.
+- Keep the old-history remote out of `origin` until every side branch has
+  moved: a guard that allows the public name also allows an old-history push.

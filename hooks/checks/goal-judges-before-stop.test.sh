@@ -16,7 +16,7 @@ PASS=0
 FAIL=0
 FAIL_DETAILS=()
 
-ROOT="$(mktemp -d)" || { echo "mktemp failed" >&2; exit 1; }
+ROOT="$(mktemp -d "${TMPDIR:-/tmp}/goal-judges.XXXXXX")" || { echo "mktemp failed" >&2; exit 1; }
 [ -d "$ROOT" ] || { echo "mktemp gave no folder" >&2; exit 1; }
 trap 'rm -rf "$ROOT"' EXIT
 export RUN_GOAL_STATE_DIR="$ROOT/state"

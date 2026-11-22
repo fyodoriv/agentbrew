@@ -33,14 +33,17 @@ INPUT="$(read_hook_stdin)"
 [ "$(json_get "$INPUT" '.tool_input.run_in_background')" = "true" ] && verdict_allow "$HOOK_ID" "harness tracks it"
 CMD="$(json_get "$INPUT" '.tool_input.command')"
 
-# Drop `&&`, `2>&1`, `&>` and `>&` so only a real detaching `&` is left.
 # Heredoc bodies are text: drop only the body; the rest of the `<<EOF` line stays code.
 CODE="$(perl -0777 -pe 's/<<-?[ \t]*([\x27"]?)(\w+)\1([^\n]*\n)(?:.*?\n)??[ \t]*\2[ \t]*(?=\n|\z)/$3/sg' <<<"$CMD")"
 # Quoted strings are text too, unless the command runs them as code (bash -c, eval, ssh, $(), backticks).
-if ! grep -qE '(^|[^[:alnum:]_-])((ba|z)?sh[[:space:]]+-c|eval|ssh)([^[:alnum:]_-]|$)|\$\(|`' <<<"$CODE"; then
-  # A quote opens only at a word start, so the apostrophe in "don't" is not one.
-  CODE="$(perl -0777 -pe 's/(?<![\w\\])\x27[^\x27]*\x27//g; s/(?<![\w\\])"(?:\\.|[^"\\])*"//g' <<<"$CODE")"
+# A quote opens only at a word start, so the apostrophe in "don't" is not one.
+UNQUOTED="$(perl -0777 -pe 's/(?<![\w\\])\x27[^\x27]*\x27//g; s/(?<![\w\\])"(?:\\.|[^"\\])*"//g' <<<"$CODE")"
+# A runner counts only in command position (line start, after ; | & ( or a sudo/env prefix), outside quotes.
+RUNNER='(^|[;&|(])[[:space:]]*((sudo|env|exec|command|nice)[[:space:]]+)*((ba|z|da|k|fi)?sh([[:space:]]+-[-[:alnum:]]*)*[[:space:]]+-[[:alpha:]]*c|(python[0-9.]*|node|perl|ruby)[[:space:]]+-[[:alpha:]]*[ce]|eval|ssh)([^[:alnum:]_-]|$)|(^|[;&|(])[[:space:]]*(source|\.)[[:space:]]+<\('
+if ! grep -qE "$RUNNER" <<<"$UNQUOTED" && ! grep -qE '\$\(|`' <<<"$CODE"; then
+  CODE="$UNQUOTED"
 fi
+# Drop `&&`, `2>&1`, `&>` and `>&` so only a real detaching `&` is left.
 STRIPPED="$(sed -E 's/&&//g; s/[0-9]?>&[0-9]?//g; s/&>//g' <<<"$CODE")"
 if ! grep -qE '(^|[^[:alnum:]_-])(nohup|setsid|disown)([^[:alnum:]_-]|$)|&' <<<"$STRIPPED"; then
   verdict_allow "$HOOK_ID" "no detach"

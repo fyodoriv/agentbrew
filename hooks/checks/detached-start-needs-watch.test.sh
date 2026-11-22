@@ -44,5 +44,11 @@ check "eval detach blocked" 2 "eval \"sleep 100 &\"" false
 check "ssh detach blocked" 2 "ssh host 'nohup x &'" false
 check "command substitution in quotes blocked" 2 "echo \"started \$(setsid foo &)\"" false
 check "backticks in quotes blocked" 2 "x=\"\`nohup a &\`\"" false
+check "bash -lc detach blocked" 2 "bash -lc 'sleep 1 &'" false
+check "bash --norc -c detach blocked" 2 "bash --norc -c 'sleep 1 &'" false
+check "dash -c detach blocked" 2 "dash -c 'sleep 1 &'" false
+check "source process substitution blocked" 2 "source <(echo 'sleep 1 &')" false
+check "python -c detach blocked" 2 "python3 -c 'import os; os.system(\"sleep 1 &\")'" false
+check "ssh and eval words in a message ok" 0 "git commit -m 'fix ssh & eval handling'" false
 [ "$FAIL" = 0 ] && echo "detached-start-needs-watch: all passed"
 exit $FAIL

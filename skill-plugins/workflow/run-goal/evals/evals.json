@@ -4282,6 +4282,17 @@
         "Pushes the root commit while the new repo is private and changes visibility only after the allowlist and history check pass",
         "Keeps the old-history remote away from the public repo name until every side branch has moved"
       ]
+    },
+    {
+      "id": 378,
+      "prompt": "/goal analyze all my rules, skills and memories and suggest which ones should become hooks (a config comment says 10 judge hooks are disabled because the model CLI never returns)",
+      "expected_output": "The agent treats the disable comment as a claim: it re-probes the model CLI and a local model during intake, reports the measured latency, and bases the judge-tier proposal on the fresh numbers. It verifies every finding a helper agent returns before it reports it, drops the ones that fail (for example a claimed hook bypass that still blocks), and keeps a report-only goal free of machine changes.",
+      "expectations": [
+        "Re-runs the model CLI the comment calls broken and quotes the measured seconds before proposing to re-enable or replace the judge hooks",
+        "Tests each subagent finding against the live hook (sample stdin JSON, exit code) and drops any claim the test disproves",
+        "Measures the current hook chain cost per tool call before proposing new hot-path hooks",
+        "Changes no hook, overlay, or settings file when the user chose report only"
+      ]
     }
   ]
 }

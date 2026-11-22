@@ -101,6 +101,7 @@ A long task or a user-requested deadline remains valid.
 
 ## Verification
 
+- **Watch every start:** start long or background work with `run_in_background: true` (or check `kill -0 $!` in the same call), then confirm a pid, lock or fresh log line before you call it started; a "lock held" or "already running" line means it did not start (hooks `detached-start-needs-watch`, `start-refused-caught`).
 - Before claiming work is complete/fixed/passing, run the relevant verification and quote the result.
 - **Live proof before presentation:** For a dashboard or tool, verify each claim
   in the version the reader will see. This applies to demos, proof pages, message

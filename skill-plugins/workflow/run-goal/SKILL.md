@@ -172,9 +172,8 @@ docs, memory, or a quick experiment can answer.
 - Give each question its full context. Say what the thing is in plain
   words, why it needs the user, what each option does, what changes for the
   user, and where to do it. Never ask about a hook, flag, file, domain term,
-  or internal name without explaining it first: the user may not know it,
-  and "I'm not sure what this is" wastes the one round. The same holds for
-  every later ask: the BLOCKED report and the final "Needed from you" line.
+  or internal name without explaining it first; it wastes the round. The same
+  holds for every later ask: the BLOCKED report and the final "Needed from you" line.
 - Prefer the structured question tool when it exists (`AskUserQuestion` in
   Claude Code).
 - Someone is at the keyboard when the structured question tool exists and

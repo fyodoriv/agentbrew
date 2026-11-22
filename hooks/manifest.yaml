@@ -538,7 +538,7 @@ hooks:
     agents: ["claude-code"]
 
   - id: goal-judges-before-stop
-    description: While a /goal retro says met, hold Stop until three fresh expert-judge subagent verdicts each score 8/10 or more and each cached judge logs this session
+    description: While a /goal retro says met, hold Stop until each contract judge has one subagent verdict for the current state token, each 8/10 or more, on two or more models, and each cached judge logs this session
     event: Stop
     script: checks/goal-judges-before-stop.sh
     tier: deterministic

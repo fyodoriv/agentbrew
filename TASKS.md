@@ -343,6 +343,19 @@
 
 ## P1
 
+- [ ] goal-retro-before-stop counts quoted launch text as a running task
+  - **ID**: goal-retro-launch-false-positive
+  - **Tags**: hooks, run-goal, reliability
+  - **Details**: Found 2026-11-22 while building goal-judges-before-stop. goal-retro-before-stop treats any tool result whose text matches "Async agent launched|running in background with ID" as a background launch. A Bash command that prints hook source (or a log) matches, so the hook thinks a task is still running and allows Stop without the retro, every time. On one real session 3 such false launches kept it open. goal-judges-before-stop now counts only calls with `run_in_background: true` and Agent/Task results that start with the launch line (`hooks/lib/goal-judge-verdicts.jq`); reuse that logic here.
+  - **Files**: `hooks/checks/goal-retro-before-stop.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture where Bash output quotes the launch text still blocks a missing retro; real Agent and run_in_background launches still allow.
+  - **Hypothesis**: false "still running" allows drop from at least 3 in one real session to 0.
+  - **Measurement**: `bash hooks/checks/goal-retro-before-stop.test.sh` plus the launch count from the new jq over the 5 largest local transcripts.
+  - **Success**: 0 false launches in the fixture and in the 5 transcripts.
+  - **Pivot**: if more than 1 real launch is missed in the 5 transcripts, match the harness launch line by tool name instead.
+  - **Anchor**: Claude Code hooks reference (transcript_path), https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
+
 - [ ] Remove the remaining node-server range for Alert 181
   - **ID**: development-node-server-advisory-181
   - **Blocked**: needs-compatible-upstream-parent — The locked Promptfoo 0.124.1 pins node-server 2.1.1. The published 0.126.0 manifest pins 2.1.6 and still conflicts with the protected watcher and Java keystore peers. On Nov 21 the local resolver still offered 0.125.1 with node-server 2.1.5. Require a compatible published parent and a normal resolution before changing the lock graph.

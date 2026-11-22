@@ -146,6 +146,9 @@ Write the contract in the chat before you change anything. Fill in the template 
   you cannot cite, such as "if the repo rules allow it", is not granted.
   When another team owns a required change, keep the original acceptance criteria blocked or unverified. Only explicit user approval may replace those criteria with a narrower goal.
   Name the owner, route and test path. An owner-ask draft or filed request is not evidence the original goal is complete; post only with authorization.
+- **Judges**: `Judges: <id>, <id>, <id>` and `Judged paths: <...>`, three
+  expert judges for the goal's fields from the judge cache
+  ([references/goal-judges.md](references/goal-judges.md) step 1).
 - **Budget**: retain elapsed time and known waits across resumes. At the budget,
   after a narrowing correction and at twice the budget, apply the [scope checkpoint](references/execution.md#budget-and-scope-checkpoint).
 - **Assumptions and risks**: what you believe without proof.
@@ -324,12 +327,6 @@ claim before you save or post it, not only before you claim done. A
 deterministic gate proves the shape, not the facts. When a gate passes but the
 grader fails, move the grader's failures into the gate as new tests.
 
-**Judge consensus** (every goal): the goal is met only when three of the best
-judges for its field, run as fresh-context subagents on the final state, each
-score it 8/10 or more. Higher is better. Judges are cached files that you
-improve after each use. Follow [references/goal-judges.md](references/goal-judges.md);
-the `goal-judges-before-stop` hook holds a `met` retro until they agree.
-
 Before you merge each PR, ask a fresh-context subagent to review its diff, also when the full suite is green. In one goal run, reviewers found real
 defects in 6 of 8 green PRs, such as a cache entry saved under the wrong
 key and a CLI crash in sandboxed shells. Send each
@@ -385,7 +382,13 @@ with actuals and update the estimation method as described in
    writable change in this session (gate, PR, merge, cite the PR); when a
    tried write is refused, cite the task with its error; never bypass it.
 6. **Remember**: store reusable lessons in memory, if the agent has memory.
-7. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)`
+7. **Judge consensus** (every goal, last, after the retro edits and the final
+   report): the goal is met only when the three contract judges (`Judges:`
+   line, picked in Phase 2), run as fresh-context subagents on the final
+   state, each score it 8/10 or more. Higher is better; you improve each
+   cached judge after use. Follow [references/goal-judges.md](references/goal-judges.md).
+   The `goal-judges-before-stop` hook holds a `met` retro until they agree.
+8. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)`
    in the retro file, run `scripts/export-goals.py`, and refresh the one
    Goals dashboard: [references/dashboard.md](references/dashboard.md).
 

@@ -200,7 +200,7 @@
   - **Measurement**: `agentbrew status --verbose` drift lines over 30 days (doctor history), and the repo's link check in CI, before and after.
   - **Success**: 0 hand-edit drift events and 0 broken-link CI failures in 30 days.
   - **Pivot**: if the link check warns on more than 1 in 10 valid edits (anchors, generated paths), limit it to links added in the diff.
-  - **Anchor**: shared-rules "Referential integrity" and "Timeless committed content"; Claude Code hooks reference.
+  - **Anchor**: Claude Code hooks reference, https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
 
 - [ ] Block banned vendors and unsafe installs from one denylist
   - **ID**: hook-banned-items-denylist
@@ -213,7 +213,7 @@
   - **Measurement**: focused tests via `heavy-run`, then `git log -p --since=30.days -- . | rg -c "<table patterns>"` across the tooling repos.
   - **Success**: 0 violations and 0 false blocks in 30 days.
   - **Pivot**: if any false block hits a rule, doc, or test file, switch that row to warn-only.
-  - **Anchor**: owner rules (vendors, local AI, browsers); Claude Code hooks reference.
+  - **Anchor**: Claude Code hooks reference, https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
 
 - [ ] Bring the judge hooks back on a local model, off the hot path
   - **ID**: hook-judge-tier-local-model
@@ -239,7 +239,7 @@
   - **Measurement**: time the PreToolUse Bash chain with one sample stdin JSON (`git status`) before and after, summing each command's wall time, 10 runs, median.
   - **Success**: median 150 ms or less CPU per Bash call, 0 duplicate check ids in generated settings.
   - **Pivot**: if a dispatcher crash would disable every check, keep one process per check but dedupe ids only.
-  - **Anchor**: Claude Code hooks reference (parallel hook execution); ESLint architecture (one runner, many rules).
+  - **Anchor**: Claude Code hooks reference (parallel hook execution), https://code.claude.com/docs/en/hooks; ESLint architecture, https://eslint.org/docs/latest/contribute/architecture/.
 
 - [ ] Warn on bare IDs and unnamed state scope
   - **ID**: hook-owner-text-warnings
@@ -249,7 +249,7 @@
   - **Output**: code
   - **Acceptance**: fixtures for a bare ID (warn), an ID with a title (silent), a markdown link with a title (silent), `globalState` in a diff (warn).
   - **Hypothesis**: final messages with a bare issue or PR number drop from the current share to 5% or less.
-  - **Measurement**: sample 100 final assistant messages from transcripts before and 14 days after, count bare-ID matches with the same regex as the hook.
+  - **Measurement**: `bash hooks/checks/<hook id>.test.sh` for the fixtures, then sample 100 final assistant messages from transcripts before and 14 days after and count bare-ID matches with the same regex as the hook.
   - **Success**: 5% or less.
   - **Pivot**: if more than 1 in 10 warnings is a false alarm (code, logs, quoted text), restrict the check to prose outside code fences.
   - **Anchor**: owner "IDs with names" rule; Basili, Caldiera, Rombach 1994 (GQM).
@@ -264,8 +264,8 @@
   - **Hypothesis**: false passes (refused call counted) drop from at least 1 known case to 0, and false blocks after a real gate run drop to 0.
   - **Measurement**: the new regression fixtures via `heavy-run`, plus 14 days of Stop-hook blocks from the perf log reviewed for false blocks.
   - **Success**: all fixtures pass; 0 false blocks in 14 days.
-  - **Pivot**: if transcript result matching proves unreliable across Claude Code versions, read the perf log rows (`ok: true`) instead.
-  - **Anchor**: Prove-It pattern (shared-rules Verification); Claude Code hooks reference (transcript_path).
+  - **Pivot**: if more than 1 in 10 of its Stop blocks in 14 days is a false block, read the perf log rows (`ok: true`) instead of transcript matching.
+  - **Anchor**: Claude Code hooks reference (transcript_path), https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
 
 - [ ] Enforce skill-scoped tool limits after a Skill call
   - **ID**: hook-skill-scoped-limits
@@ -290,7 +290,7 @@
   - **Hypothesis**: the generated global CLAUDE.md shrinks by 15% or more with no rise in rule violations the hooks measure.
   - **Measurement**: `wc -l ~/.claude/CLAUDE.md` before and after; the per-hook metrics of the tasks above.
   - **Success**: 15% or more fewer lines and no metric regression.
-  - **Pivot**: if a cut rule's violations rise in its hook metric, restore the prose.
+  - **Pivot**: if a cut rule's violations rise by more than 20% in its hook metric over 14 days, restore the prose.
   - **Anchor**: context-budget skill; Liu et al. 2023, "Lost in the Middle".
 
 - [ ] An org overlay adopts the November 2026 core (plugin form, hosted CI, telemetry sink, core paths)

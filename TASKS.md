@@ -137,6 +137,162 @@
 
 ## P0
 
+- [ ] Check the end-of-turn closeout in one Stop hook
+  - **ID**: hook-closeout-stop
+  - **Tags**: hooks, reliability, owner-rules
+  - **Details**: From the 2026-11-22 rules-to-hooks audit. Owner rules ask every turn to end with the footer lines, to run `agentbrew sync` after a rule or skill source edit, and to publish an Artifact after a long run. Agents forget, so the owner asked "wrap up… tell me what is pending" by hand 13 times and "Is everything done?" 5 times in 45 days. Add one Stop hook that searches the transcript and blocks the stop once when one of these is missing. **Parallel changes first**: fetch `origin/main` and list open PRs touching `hooks/`. dotfiles PR #829 ("split Pending into Follow-ups and Waiting on") renames the footer lines, so read the labels from the owner-rules config (`config/agentfile-owner-rules.yaml` in dotfiles), never hard-code them. Guards: skip when `stop_hook_active` is true, skip subagent turns, and keep a per-session state file so each reminder fires once. The memory save (`commit_session_legacy`) belongs to SessionEnd or a once-per-session reminder, not every turn. Ship it as opt-in (`defaultEnabled: false`) and fold it into the per-event dispatcher (`hook-dispatcher-per-event`) if that lands first.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/closeout-before-stop.sh`, its bats or vitest cases, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: fixture transcripts cover: footer missing (block once), footer present (allow), `stop_hook_active` (allow), subagent turn (allow), a rule-source edit without sync (block once), a long run without an Artifact (block once), and a second stop in the same session (allow).
+  - **Hypothesis**: owner prompts that ask for the wrap-up by hand drop from 13 per 45 days to 3 or fewer, because the hook catches a missing closeout before the turn ends.
+  - **Measurement**: focused hook tests via `heavy-run`, then 30 days after enabling: `fd -e jsonl --changed-within 30d . ~/.claude/projects -x jq -r 'select(.type=="user" and (.message.content|type)=="string")|.message.content' {} | rg -ci "wrap up when done|is everything done"`.
+  - **Success**: all fixture cases pass and the 30-day count is 3 or fewer.
+  - **Pivot**: if false blocks exceed 1 in 20 stops in the perf log (`ev: denied` or repeated Stop blocks), switch from block to a warn-only `additionalContext` reminder.
+  - **Anchor**: Claude Code hooks reference (Stop, `stop_hook_active`), https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Guard `gh pr merge` before it runs, not after
+  - **ID**: hook-pr-merge-guard
+  - **Tags**: hooks, delivery, ci, reliability
+  - **Details**: From the 2026-11-22 audit. `a-pr-is-not-ready` fires at Stop, after a merge already happened. Add a PreToolUse Bash hook for `gh pr merge` that blocks `--admin`, blocks unless `gh pr checks <n>` reports every check passed, and blocks unless an Agent tool call (a fresh review) appears in the transcript after the last commit. Also block a second `gh pr comment` in the same place within 24 hours (shared-rules "One comment per place on a PR"). **Parallel changes first**: fetch `origin/main`, list open PRs touching `hooks/` and the dotfiles `bin/gh` wrapper, and reuse the wrapper's checks where they already exist. The PR body shape check stays in the wrapper (dotfiles task `gh-pr-body-shape-reconcile`); do not add a second body check here.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/pr-merge-guard.sh`, its tests, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: fixtures: `--admin` (block), pending or red checks (block), green checks with no review after the last commit (block), green checks plus review (allow), and a repeat comment within 24 h (block). Network calls time out within 5 s and fail closed for merge, open for comments.
+  - **Hypothesis**: merges made while a required check was pending or red drop from the current baseline to 0 per 30 days.
+  - **Measurement**: baseline and after: `gh search prs --author @me --merged --merged-at '>=<date>' --json number,repository` then per PR `gh pr checks <n> --repo <repo>` at merge time from the GitHub checks API; plus the focused hook tests via `heavy-run`.
+  - **Success**: 0 merges on pending or red checks in 30 days, and all fixtures pass.
+  - **Pivot**: if the checks call adds more than 2 s per merge or blocks a merge that was green, cache the check result per head SHA or move the check into the gh wrapper.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (change failure rate); Claude Code hooks reference.
+
+- [ ] Lint TASKS.md right after an agent edits it
+  - **ID**: hook-tasks-md-lint-on-edit
+  - **Tags**: hooks, tasks, prereg
+  - **Details**: From the 2026-11-22 audit. The rule "every task carries Hypothesis, Measurement, Success, Pivot, Anchor" appears in the global CLAUDE.md, shared-rules, and many skills, but nothing checks it at edit time. Add a PostToolUse `Write|Edit` hook that runs `npx @tasks-md/lint --require-prereg <file>` when the edited path ends in `TASKS.md`, and returns its errors to the agent. **Parallel changes first**: fetch `origin/main`, check the tasks.md repo for a newer lint CLI or flags, and reuse an existing lint wrapper if one landed.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/tasks-md-lint-on-edit.sh`, its tests.
+  - **Output**: code
+  - **Acceptance**: an edit that drops `Pivot:` gets the lint error back in the same turn; a valid edit passes silently; a missing `npx` cache or a timeout (10 s cap) warns and never blocks.
+  - **Hypothesis**: TASKS.md lint failures found in CI or at PR time drop from the current count to 0 per 30 days, because the agent sees them while it edits.
+  - **Measurement**: `gh run list --workflow <task-lint workflow> --status failure --created '>=<date>' --json databaseId | jq length` before and 30 days after, plus the focused hook tests via `heavy-run`.
+  - **Success**: 0 task-lint CI failures in 30 days.
+  - **Pivot**: if the hook adds more than 2 s per TASKS.md edit, run the lint on Stop once per turn instead.
+  - **Anchor**: tasks.md lint docs; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Give the agent its project context at session start
+  - **ID**: hook-session-entry-context
+  - **Tags**: hooks, session-entry, memory
+  - **Details**: From the 2026-11-22 audit. Owner rules tell agents to run `load-project-context.sh` and to load the memory bootstrap at session entry. Agents skip it. Add a SessionStart hook that runs `~/.config/agentbrew/scripts/load-project-context.sh` in the repo root and injects its file list, with an output cap (2 KB), the way `perf-brief` injects the time brief. Add a short memory brief only if the memory service has a local CLI or HTTP path a hook can call; otherwise inject a one-line reminder. **Parallel changes first**: fetch `origin/main` and check for changes to `perf-brief`, `updates-landed`, or the project-context script.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/session-entry-context.sh`, its tests, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: a repo with an `Agentfile.yaml` gets the file list in context; a non-repo folder gets nothing; output never exceeds the cap; the hook finishes within 1 s or prints nothing.
+  - **Hypothesis**: sessions whose opening tool calls (the first ten) include a read of the repo's `AGENTS.md` rise from the current share to 90% or more.
+  - **Measurement**: from the perf log: `jq -r 'select(.ev=="attempt")|[.sid,.key]|@tsv' ~/.local/state/agentbrew/perf/<month>.jsonl` grouped per session, counting sessions whose first 10 keys contain an `AGENTS.md` read, before and 14 days after.
+  - **Success**: 90% or more of repo sessions.
+  - **Pivot**: if the injected text pushes session-start context over 2 KB on large repos, inject only the path list and drop the summaries.
+  - **Anchor**: Claude Code hooks reference (SessionStart additionalContext); Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Block edits to generated agent files and keep docs links valid
+  - **ID**: hook-generated-targets-doc-hygiene
+  - **Tags**: hooks, docs, agentbrew-config
+  - **Details**: From the 2026-11-22 audit. "Edit the source, never the installed mirror" appears in many skills. Add a PreToolUse `Write|Edit` hook that blocks edits to generated targets (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, generated hook entries in `~/.claude/settings.json`) and names the source file plus `agentbrew sync`. Exempt the update-config skill's normal settings edits. Add a PostToolUse check for `*.md` edits that warns when a relative link target does not exist, and warns on PR numbers, branch names, or `## Status` tables added to skills, rules, or AGENTS.md (shared-rules "Timeless committed content"). **Parallel changes first**: fetch `origin/main`; the session sandbox already denies some of these paths, so test which ones an agent can still reach.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/generated-targets.sh`, `hooks/checks/doc-hygiene.sh`, their tests.
+  - **Output**: code
+  - **Acceptance**: an edit to a generated target is blocked with the source path named; a broken relative link and an added `#123` in a SKILL.md each produce one warning; normal edits stay silent.
+  - **Hypothesis**: `agentbrew status` drift caused by hand edits to generated files drops to 0 per 30 days, and broken relative doc links found by CI drop to 0.
+  - **Measurement**: `agentbrew status --verbose` drift lines over 30 days (doctor history), and the repo's link check in CI, before and after.
+  - **Success**: 0 hand-edit drift events and 0 broken-link CI failures in 30 days.
+  - **Pivot**: if the link check warns on more than 1 in 10 valid edits (anchors, generated paths), limit it to links added in the diff.
+  - **Anchor**: Claude Code hooks reference, https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Block banned vendors and unsafe installs from one denylist
+  - **ID**: hook-banned-items-denylist
+  - **Tags**: hooks, security, owner-rules
+  - **Details**: From the 2026-11-22 audit. Owner rules ban several things in prose: xAI, Grok, and X API endpoints; re-adding removed Windsurf or Devin targets; new Augment tasks; a second local model engine (LM Studio, mlx-lm); Chrome launches by code without `--use-mock-keychain --password-store=basic`; AppleScript keystrokes or window activation; `agentbrew add --git` without `--ref`. Add one PreToolUse hook backed by one table. Match only install commands, API endpoints, and config keys, never plain words: rule files and tests (for example `tests/no-cursor-grok.bats` in dotfiles) mention these names on purpose. **Parallel changes first**: fetch `origin/main` and search for existing guards of the same items (`rg -n "mock-keychain|lm-studio|osascript" hooks src`), and extend them instead.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/banned-items.sh`, `hooks/banned-items.tsv`, its tests.
+  - **Output**: code
+  - **Acceptance**: one positive and one negative fixture per table row; editing a rule file that names a banned vendor stays allowed.
+  - **Hypothesis**: banned-item violations reaching a commit drop to 0 per 30 days, with 0 false blocks on rule or test files.
+  - **Measurement**: focused tests via `heavy-run`, then `git log -p --since=30.days -- . | rg -c "<table patterns>"` across the tooling repos.
+  - **Success**: 0 violations and 0 false blocks in 30 days.
+  - **Pivot**: if any false block hits a rule, doc, or test file, switch that row to warn-only.
+  - **Anchor**: Claude Code hooks reference, https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Bring the judge hooks back on a local model, off the hot path
+  - **ID**: hook-judge-tier-local-model
+  - **Tags**: hooks, judges, local-llm, reliability
+  - **Details**: From the 2026-11-22 audit. The owner overlay disables 10 judge hooks because `claude --print` "never returns". On 2026-11-22 it answered in 9 s, and a local `qwen3:4b` call with an Ollama JSON-schema `format` gave the right ALLOW/BLOCK verdict in 1.5 s warm. Move the judge runner (`hooks-scripts/lib/claude-verifier.sh`) to the local model first, per the owner's local-first rule, with a 3 s timeout and fail-open. Run judges only on rare events: Stop (plain-language check, after a cheap sentence-length count), `AskUserQuestion` (every term explained), and posts as the user. Never on each Bash or Edit call. **Parallel changes first**: open PR #755 ("add declared artifact judges") builds a judge framework and PR #1249 ("every ask explains each term it names") changes the question rule. Rebase onto whatever merged and reuse its judge declarations instead of a second runner.
+  - **Files**: `hooks/lib/claude-verifier.sh` or its replacement, `hooks/manifest.yaml` (judge entries), tests with recorded verdicts, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: warn-only mode first; a labeled set of 20 examples per judge scores 90% or more; median judge time 2 s or less; a dead model server never blocks a tool call.
+  - **Hypothesis**: judge hooks that enforce something go from 0 (all 10 disabled) to 3 or more, at 2 s or less median latency, with a false-alarm rate of 10% or less.
+  - **Measurement**: replay the labeled examples with `heavy-run node <judge eval script>`; perf-log median `ms` for judge hook rows over 7 days.
+  - **Success**: 3 or more judges enabled, 90% or more labeled accuracy, median 2 s or less.
+  - **Pivot**: if labeled accuracy stays under 80% on `qwen3:4b`, try `qwen3:8b`; if still under 80%, keep only the cheap deterministic proxies.
+  - **Anchor**: Ollama structured outputs docs; Zheng et al. 2023, "Judging LLM-as-a-Judge"; Claude Code hooks reference.
+
+- [ ] Run each hook event's checks in one process
+  - **ID**: hook-dispatcher-per-event
+  - **Tags**: hooks, performance, reliability
+  - **Details**: From the 2026-11-22 audit. Each Bash call starts 11 hook processes; the 9 Bash ones used 645 ms CPU together (about 110 ms wall, run in parallel). `block-local-tests` is wired twice, from dotfiles `~/.config/dotfiles/hooks/` and from agentbrew `codeassist/hooks-scripts/`. Generate one dispatcher per event that reads stdin once and runs every enabled check in one process, like a lint runner, and dedupe identical check ids across Agentfiles. This keeps a 200 ms wall budget as new hooks land. **Parallel changes first**: fetch `origin/main`; open PR #1248 adds two Bash hooks, and the dotfiles task `guard-final-command-hook-order` studies hook ordering and rewrites. Keep `updatedInput` rewrites in a defined order.
+  - **Files**: `src/hooks/deploy.ts`, `src/hooks/manifest.ts`, a dispatcher script under `hooks/`, tests, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: `settings.json` has one command per event and matcher; every existing hook test still passes through the dispatcher; one block still exits 2 with that hook's message.
+  - **Hypothesis**: hook CPU per Bash call drops from 645 ms to 150 ms or less, and duplicate check runs drop from 2 to 0.
+  - **Measurement**: time the PreToolUse Bash chain with one sample stdin JSON (`git status`) before and after, summing each command's wall time, 10 runs, median.
+  - **Success**: median 150 ms or less CPU per Bash call, no duplicate check ids in generated settings.
+  - **Pivot**: if a dispatcher crash would disable every check, keep one process per check but dedupe ids only.
+  - **Anchor**: Claude Code hooks reference (parallel hook execution), https://code.claude.com/docs/en/hooks; ESLint architecture, https://eslint.org/docs/latest/contribute/architecture/.
+
+- [ ] Warn on bare IDs and unnamed state scope
+  - **ID**: hook-owner-text-warnings
+  - **Tags**: hooks, owner-rules, docs
+  - **Details**: From the 2026-11-22 audit. Owner rules: every issue, PR, or task number gets its title after it; mutable state names its lifecycle scope and never says `globalState`, "global state", or `singleton`; `globalThis` and `Symbol.for` live in one owner module. Add warn-only checks: at Stop, a bare `#123` or `PR 123` in the final text with no title after it; after a code or doc edit, the banned scope terms or a second module touching `globalThis`. **Parallel changes first**: fetch `origin/main` and check for an existing ids-with-names rule check.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/owner-text-warnings.sh`, its tests.
+  - **Output**: code
+  - **Acceptance**: fixtures for a bare ID (warn), an ID with a title (silent), a markdown link with a title (silent), `globalState` in a diff (warn).
+  - **Hypothesis**: final messages with a bare issue or PR number drop from the current share to 5% or less.
+  - **Measurement**: `bash hooks/checks/<hook id>.test.sh` for the fixtures, then sample 100 final assistant messages from transcripts before and 14 days after and count bare-ID matches with the same regex as the hook.
+  - **Success**: 5% or less.
+  - **Pivot**: if more than 1 in 10 warnings is a false alarm (code, logs, quoted text), restrict the check to prose outside code fences.
+  - **Anchor**: owner "IDs with names" rule; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Count only real test runs in verify-before-completion
+  - **ID**: hook-verify-before-completion-real-runs
+  - **Tags**: hooks, verification, bug
+  - **Details**: From the 2026-11-22 audit. `hooks/checks/verify-before-completion.sh` counts any Bash command whose text matches a test pattern (lines ~83-87), including calls another hook refused, so a blocked `npx vitest` counts as verified. It also does not know `make check`, `scripts/check.sh`, or `heavy-run <gate>`, so dotfiles work can be blocked after a real gate run. Count only tool calls that have a result, and read the repo's declared gate. Also align the skill text: `verify.md` and code-smells-aware say "run the gate locally", but `block-local-tests` forbids local tests in agentbrew, where hosted CI is the gate. **Parallel changes first**: fetch `origin/main` and check recent changes to both hooks.
+  - **Files**: `hooks/checks/verify-before-completion.sh`, its tests, the verify skill text.
+  - **Output**: code
+  - **Acceptance**: failing test first: a transcript with only a refused `npx vitest` blocks; `heavy-run make check` with a result allows; agentbrew edits with pushed hosted CI allow per the documented exception.
+  - **Hypothesis**: false passes (refused call counted) drop from at least 1 known case to 0, and false blocks after a real gate run drop to 0.
+  - **Measurement**: the new regression fixtures via `heavy-run`, plus 14 days of Stop-hook blocks from the perf log reviewed for false blocks.
+  - **Success**: all fixtures pass; 0 false blocks in 14 days.
+  - **Pivot**: if more than 1 in 10 of its Stop blocks in 14 days is a false block, read the perf log rows (`ok: true`) instead of transcript matching.
+  - **Anchor**: Claude Code hooks reference (transcript_path), https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Enforce skill-scoped tool limits after a Skill call
+  - **ID**: hook-skill-scoped-limits
+  - **Tags**: hooks, skills, reliability
+  - **Details**: From the 2026-11-22 skills scan of every skill source. Rules repeated across skills: read-only skills (analyze, companion-*, sweep) never edit files; autonomous skills (grind, watch-issues, iterate) never ask the user (5); no `--watch` or `npm run dev` in agent shells (5); no installs during verify, test-gaps, or checkup runs (4); never print secrets (5). Add one PreToolUse hook that reads the last `Skill` call in the transcript and applies that skill's declared limits from a `limits:` frontmatter key, plus the always-on `--watch` and secret-print rules. **Parallel changes first**: fetch `origin/main`, check whether skill frontmatter already has a permission or allowed-tools key and reuse it.
+  - **Files**: skill frontmatter schema, `hooks/checks/skill-scoped-limits.sh`, tests, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: after a read-only skill call an Edit is blocked; after an autonomous skill call `AskUserQuestion` is blocked when the run is unattended; `npm run dev` without background is blocked.
+  - **Hypothesis**: edits made during read-only skill runs drop to 0, and questions asked during unattended runs drop to 0, per 30 days.
+  - **Measurement**: perf log: `ev:"attempt"` Edit or Write rows that follow a read-only Skill row in the same session, and AskUserQuestion rows in unattended sessions, before and after.
+  - **Success**: 0 of each in 30 days.
+  - **Pivot**: if the last-Skill heuristic misattributes more than 1 in 20 calls, require skills to set an explicit session flag instead.
+  - **Anchor**: Claude Code skills and hooks references; Saltzer and Schroeder 1975 (least privilege).
+
+- [ ] Shrink always-loaded rule prose once a hook enforces it
+  - **ID**: rules-prose-after-hooks
+  - **Tags**: rules, context-budget, hooks
+  - **Details**: From the 2026-11-22 audit. The generated global CLAUDE.md is long and loads into every session. When one of the hook tasks above lands, cut that rule's prose in `docs/shared-rules.md` (and the owner-rules source in dotfiles) to one line naming the hook; the hook message teaches the rule when it matters. Do this per hook in the same PR as the hook, or in a follow-up right after. **Parallel changes first**: fetch both repos; other sessions edit shared-rules often.
+  - **Files**: `docs/shared-rules.md`, dotfiles owner-rules config.
+  - **Output**: docs
+  - **Acceptance**: each enforced rule has one line in shared-rules that names its hook; `agentbrew sync` and `agentbrew status` show 0 drift.
+  - **Hypothesis**: the generated global CLAUDE.md shrinks by 15% or more with no rise in rule violations the hooks measure.
+  - **Measurement**: `wc -l ~/.claude/CLAUDE.md` before and after; the per-hook metrics of the tasks above.
+  - **Success**: 15% or more fewer lines and no metric regression.
+  - **Pivot**: if a cut rule's violations rise by more than 20% in its hook metric over 14 days, restore the prose.
+  - **Anchor**: context-budget skill; Liu et al. 2023, "Lost in the Middle".
+
 - [ ] An org overlay adopts the November 2026 core (plugin form, hosted CI, telemetry sink, core paths)
   - **ID**: org-overlay-adopt-core-2026-11
   - **Tags**: plugins, org-overlay, ci, telemetry, org-sink

@@ -166,7 +166,7 @@
 - [ ] Lint TASKS.md right after an agent edits it
   - **ID**: hook-tasks-md-lint-on-edit
   - **Tags**: hooks, tasks, prereg
-  - **Details**: From the 2026-11-22 audit. The rule "every task carries Hypothesis, Measurement, Success, Pivot, Anchor" appears in the global CLAUDE.md, shared-rules, and 10 skills, but nothing checks it at edit time. Add a PostToolUse `Write|Edit` hook that runs `npx @tasks-md/lint --require-prereg <file>` when the edited path ends in `TASKS.md`, and returns its errors to the agent. **Parallel changes first**: fetch `origin/main`, check the tasks.md repo for a newer lint CLI or flags, and reuse an existing lint wrapper if one landed.
+  - **Details**: From the 2026-11-22 audit. The rule "every task carries Hypothesis, Measurement, Success, Pivot, Anchor" appears in the global CLAUDE.md, shared-rules, and many skills, but nothing checks it at edit time. Add a PostToolUse `Write|Edit` hook that runs `npx @tasks-md/lint --require-prereg <file>` when the edited path ends in `TASKS.md`, and returns its errors to the agent. **Parallel changes first**: fetch `origin/main`, check the tasks.md repo for a newer lint CLI or flags, and reuse an existing lint wrapper if one landed.
   - **Files**: `hooks/manifest.yaml`, `hooks/checks/tasks-md-lint-on-edit.sh`, its tests.
   - **Output**: code
   - **Acceptance**: an edit that drops `Pivot:` gets the lint error back in the same turn; a valid edit passes silently; a missing `npx` cache or a timeout (10 s cap) warns and never blocks.
@@ -183,7 +183,7 @@
   - **Files**: `hooks/manifest.yaml`, `hooks/checks/session-entry-context.sh`, its tests, `docs/hook-protocol.md`.
   - **Output**: code
   - **Acceptance**: a repo with an `Agentfile.yaml` gets the file list in context; a non-repo folder gets nothing; output never exceeds the cap; the hook finishes within 1 s or prints nothing.
-  - **Hypothesis**: sessions whose first 10 tool calls include a read of the repo's `AGENTS.md` rise from the current share to 90% or more.
+  - **Hypothesis**: sessions whose opening tool calls (the first ten) include a read of the repo's `AGENTS.md` rise from the current share to 90% or more.
   - **Measurement**: from the perf log: `jq -r 'select(.ev=="attempt")|[.sid,.key]|@tsv' ~/.local/state/agentbrew/perf/<month>.jsonl` grouped per session, counting sessions whose first 10 keys contain an `AGENTS.md` read, before and 14 days after.
   - **Success**: 90% or more of repo sessions.
   - **Pivot**: if the injected text pushes session-start context over 2 KB on large repos, inject only the path list and drop the summaries.
@@ -192,7 +192,7 @@
 - [ ] Block edits to generated agent files and keep docs links valid
   - **ID**: hook-generated-targets-doc-hygiene
   - **Tags**: hooks, docs, agentbrew-config
-  - **Details**: From the 2026-11-22 audit. "Edit the source, never the installed mirror" appears in 12 skills. Add a PreToolUse `Write|Edit` hook that blocks edits to generated targets (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, generated hook entries in `~/.claude/settings.json`) and names the source file plus `agentbrew sync`. Exempt the update-config skill's normal settings edits. Add a PostToolUse check for `*.md` edits that warns when a relative link target does not exist, and warns on PR numbers, branch names, or `## Status` tables added to skills, rules, or AGENTS.md (shared-rules "Timeless committed content"). **Parallel changes first**: fetch `origin/main`; the session sandbox already denies some of these paths, so test which ones an agent can still reach.
+  - **Details**: From the 2026-11-22 audit. "Edit the source, never the installed mirror" appears in many skills. Add a PreToolUse `Write|Edit` hook that blocks edits to generated targets (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, generated hook entries in `~/.claude/settings.json`) and names the source file plus `agentbrew sync`. Exempt the update-config skill's normal settings edits. Add a PostToolUse check for `*.md` edits that warns when a relative link target does not exist, and warns on PR numbers, branch names, or `## Status` tables added to skills, rules, or AGENTS.md (shared-rules "Timeless committed content"). **Parallel changes first**: fetch `origin/main`; the session sandbox already denies some of these paths, so test which ones an agent can still reach.
   - **Files**: `hooks/manifest.yaml`, `hooks/checks/generated-targets.sh`, `hooks/checks/doc-hygiene.sh`, their tests.
   - **Output**: code
   - **Acceptance**: an edit to a generated target is blocked with the source path named; a broken relative link and an added `#123` in a SKILL.md each produce one warning; normal edits stay silent.
@@ -237,7 +237,7 @@
   - **Acceptance**: `settings.json` has one command per event and matcher; every existing hook test still passes through the dispatcher; one block still exits 2 with that hook's message.
   - **Hypothesis**: hook CPU per Bash call drops from 645 ms to 150 ms or less, and duplicate check runs drop from 2 to 0.
   - **Measurement**: time the PreToolUse Bash chain with one sample stdin JSON (`git status`) before and after, summing each command's wall time, 10 runs, median.
-  - **Success**: median 150 ms or less CPU per Bash call, 0 duplicate check ids in generated settings.
+  - **Success**: median 150 ms or less CPU per Bash call, no duplicate check ids in generated settings.
   - **Pivot**: if a dispatcher crash would disable every check, keep one process per check but dedupe ids only.
   - **Anchor**: Claude Code hooks reference (parallel hook execution), https://code.claude.com/docs/en/hooks; ESLint architecture, https://eslint.org/docs/latest/contribute/architecture/.
 
@@ -270,7 +270,7 @@
 - [ ] Enforce skill-scoped tool limits after a Skill call
   - **ID**: hook-skill-scoped-limits
   - **Tags**: hooks, skills, reliability
-  - **Details**: From the 2026-11-22 skills scan (125 files). Rules repeated across skills: read-only skills (analyze, companion-*, sweep) never edit files (6 skills); autonomous skills (grind, watch-issues, iterate) never ask the user (5); no `--watch` or `npm run dev` in agent shells (5); no installs during verify, test-gaps, or checkup runs (4); never print secrets (5). Add one PreToolUse hook that reads the last `Skill` call in the transcript and applies that skill's declared limits from a `limits:` frontmatter key, plus the always-on `--watch` and secret-print rules. **Parallel changes first**: fetch `origin/main`, check whether skill frontmatter already has a permission or allowed-tools key and reuse it.
+  - **Details**: From the 2026-11-22 skills scan of every skill source. Rules repeated across skills: read-only skills (analyze, companion-*, sweep) never edit files; autonomous skills (grind, watch-issues, iterate) never ask the user (5); no `--watch` or `npm run dev` in agent shells (5); no installs during verify, test-gaps, or checkup runs (4); never print secrets (5). Add one PreToolUse hook that reads the last `Skill` call in the transcript and applies that skill's declared limits from a `limits:` frontmatter key, plus the always-on `--watch` and secret-print rules. **Parallel changes first**: fetch `origin/main`, check whether skill frontmatter already has a permission or allowed-tools key and reuse it.
   - **Files**: skill frontmatter schema, `hooks/checks/skill-scoped-limits.sh`, tests, `docs/hook-protocol.md`.
   - **Output**: code
   - **Acceptance**: after a read-only skill call an Edit is blocked; after an autonomous skill call `AskUserQuestion` is blocked when the run is unattended; `npm run dev` without background is blocked.
@@ -283,7 +283,7 @@
 - [ ] Shrink always-loaded rule prose once a hook enforces it
   - **ID**: rules-prose-after-hooks
   - **Tags**: rules, context-budget, hooks
-  - **Details**: From the 2026-11-22 audit. The generated global CLAUDE.md is about 425 lines and loads into every session. When one of the hook tasks above lands, cut that rule's prose in `docs/shared-rules.md` (and the owner-rules source in dotfiles) to one line naming the hook; the hook message teaches the rule when it matters. Do this per hook in the same PR as the hook, or in a follow-up right after. **Parallel changes first**: fetch both repos; other sessions edit shared-rules often.
+  - **Details**: From the 2026-11-22 audit. The generated global CLAUDE.md is long and loads into every session. When one of the hook tasks above lands, cut that rule's prose in `docs/shared-rules.md` (and the owner-rules source in dotfiles) to one line naming the hook; the hook message teaches the rule when it matters. Do this per hook in the same PR as the hook, or in a follow-up right after. **Parallel changes first**: fetch both repos; other sessions edit shared-rules often.
   - **Files**: `docs/shared-rules.md`, dotfiles owner-rules config.
   - **Output**: docs
   - **Acceptance**: each enforced rule has one line in shared-rules that names its hook; `agentbrew sync` and `agentbrew status` show 0 drift.

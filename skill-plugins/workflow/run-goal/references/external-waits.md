@@ -166,3 +166,16 @@ lift command, and put that command in the "Needed from you" line. Never
 write "Needed from you: nothing" while the queue waits on a lift. A silent
 wait at 84% held 7 merges for 8 hours (2026-11-08) while the user expected
 only Claude's own limit.
+
+## Outside this goal
+
+- Open-ended goal ("fix all issues you see"): list the finite issues in the
+  contract. Work you hand to another session or file as a task is outside
+  this goal. Say so in the contract and in chat ("Outside this goal: <item>,
+  owned by <session or task>"), and never list it under the goal's
+  **Pending**. The checker reads the chat, and an item under Pending keeps
+  the goal open.
+- Same Stop re-fire, no new evidence: never send a second identical status.
+  Act on the checker's reason once (finish the item, or move it outside the
+  goal with an owner). If nothing changed after that, reply with one line.
+  Twelve repeated "still waiting" replies cost tokens and changed nothing.

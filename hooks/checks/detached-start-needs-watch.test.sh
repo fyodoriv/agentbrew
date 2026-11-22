@@ -50,5 +50,16 @@ check "dash -c detach blocked" 2 "dash -c 'sleep 1 &'" false
 check "source process substitution blocked" 2 "source <(echo 'sleep 1 &')" false
 check "python -c detach blocked" 2 "python3 -c 'import os; os.system(\"sleep 1 &\")'" false
 check "ssh and eval words in a message ok" 0 "git commit -m 'fix ssh & eval handling'" false
+check "absolute shell path blocked" 2 "/bin/bash -c 'sleep 1 &'" false
+check "env prefix blocked" 2 "/usr/bin/env FOO=1 bash -c 'sleep 1 &'" false
+check "sudo options blocked" 2 "sudo -u root bash -o pipefail -c 'sleep 1 &'" false
+check "then prefix blocked" 2 "if true; then bash -c 'sleep 1 &'; fi" false
+check "xargs sh blocked" 2 "echo x | xargs sh -c 'sleep 1 &'" false
+check "pipe into bash blocked" 2 "echo 'sleep 1 &' | bash" false
+check "heredoc into sh blocked" 2 "sh <<'EOF'
+nohup x &
+EOF" false
+check "awk system blocked" 2 "awk 'BEGIN{system(\"sleep 1 &\")}'" false
+check "tmux blocked" 2 "tmux new-session -d 'sleep 100 &'" false
 [ "$FAIL" = 0 ] && echo "detached-start-needs-watch: all passed"
 exit $FAIL

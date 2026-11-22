@@ -33,15 +33,17 @@ INPUT="$(read_hook_stdin)"
 [ "$(json_get "$INPUT" '.tool_input.run_in_background')" = "true" ] && verdict_allow "$HOOK_ID" "harness tracks it"
 CMD="$(json_get "$INPUT" '.tool_input.command')"
 
-# Heredoc bodies are text: drop only the body; the rest of the `<<EOF` line stays code.
-CODE="$(perl -0777 -pe 's/<<-?[ \t]*([\x27"]?)(\w+)\1([^\n]*\n)(?:.*?\n)??[ \t]*\2[ \t]*(?=\n|\z)/$3/sg' <<<"$CMD")"
-# Quoted strings are text too, unless the command runs them as code (bash -c, eval, ssh, $(), backticks).
-# A quote opens only at a word start, so the apostrophe in "don't" is not one.
-UNQUOTED="$(perl -0777 -pe 's/(?<![\w\\])\x27[^\x27]*\x27//g; s/(?<![\w\\])"(?:\\.|[^"\\])*"//g' <<<"$CODE")"
-# A runner counts only in command position (line start, after ; | & ( or a sudo/env prefix), outside quotes.
-RUNNER='(^|[;&|(])[[:space:]]*((sudo|env|exec|command|nice)[[:space:]]+)*((ba|z|da|k|fi)?sh([[:space:]]+-[-[:alnum:]]*)*[[:space:]]+-[[:alpha:]]*c|(python[0-9.]*|node|perl|ruby)[[:space:]]+-[[:alpha:]]*[ce]|eval|ssh)([^[:alnum:]_-]|$)|(^|[;&|(])[[:space:]]*(source|\.)[[:space:]]+<\('
-if ! grep -qE "$RUNNER" <<<"$UNQUOTED" && ! grep -qE '\$\(|`' <<<"$CODE"; then
-  CODE="$UNQUOTED"
+# Heredoc bodies and quoted strings are text, so drop them before the detach match: this
+# keeps a PR body or commit message that mentions `nohup … &` from being blocked.
+# The rest of a `<<EOF` line stays code. A quote opens only at a word start ("don't" is no quote).
+TEXTLESS="$(perl -0777 -pe 's/<<-?[ \t]*([\x27"]?)(\w+)\1([^\n]*\n)(?:.*?\n)??[ \t]*\2[ \t]*(?=\n|\z)/$3/sg; s/(?<![\w\\])\x27[^\x27]*\x27//g; s/(?<![\w\\])"(?:\\.|[^"\\])*"//g' <<<"$CMD")"
+# Fail closed: a program that may run that text as code (a shell, an interpreter, a wrapper),
+# anywhere outside the text, or any $( ) or backtick, keeps the whole command as code.
+RUNNER='(^|[^[:alnum:]_-])(([[:alnum:]_.-]*/)*((ba|z|da|k|fi|c|tc|a)?sh|python[0-9.]*|node|deno|bun|perl|ruby|php|lua|r?awk|gawk|eval|exec|source|ssh|docker|podman|kubectl|xargs|find|watch|tmux|screen|script|timeout|time|sudo|doas|env|nice|parallel|osascript)([^[:alnum:]_-]|$))|(^|[;&|(])[[:space:]]*\.[[:space:]]'
+if grep -qE "$RUNNER" <<<"$TEXTLESS" || grep -qE '\$\(|`' <<<"$CMD"; then
+  CODE="$CMD"
+else
+  CODE="$TEXTLESS"
 fi
 # Drop `&&`, `2>&1`, `&>` and `>&` so only a real detaching `&` is left.
 STRIPPED="$(sed -E 's/&&//g; s/[0-9]?>&[0-9]?//g; s/&>//g' <<<"$CODE")"

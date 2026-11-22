@@ -4254,7 +4254,12 @@
       "id": 375,
       "prompt": "/goal show the options page you made earlier for person A, add an app view that lists such pages per person with feedback, and make a new options page for person B (the main checkout has another session's uncommitted edit)",
       "expected_output": "Finds the earlier page by listing artifacts and links it in the first message; asks one question only for a fact no source holds (person B's size) and saves the answer; runs the web research in a background subagent while building the view; ships from a clean worktree of the feature branch instead of stashing or committing the other session's edit; chains repo-changing steps with set -e so a failed worktree add never runs git add in another checkout; prints a Goal check line with each page URL.",
-      "files": []
+      "expectations": [
+        "Links the earlier page in the first message after finding it by listing artifacts",
+        "Asks one question only for a fact no source holds and saves the answer",
+        "Ships from a clean worktree, never stashing or committing the other session's edit",
+        "Chains repo-changing steps with set -e so a failed worktree add never runs git add in another checkout"
+      ]
     }
   ]
 }

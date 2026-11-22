@@ -196,6 +196,15 @@ docs, memory, or a quick experiment can answer.
   another question, chat re-ask, or waiting message. Do independent work or ready
   retro tasks. If only the human step remains, yield without re-asking.
   Do not disable hooks or invent completion to escape the wait.
+- Open-ended goal ("fix all issues you see"): list the finite issues in the
+  contract. Work you hand to another session or file as a task is out of this
+  goal: say so in the contract and in chat ("Outside this goal: <item>, owned
+  by <session or task>"), and never list it under the goal's **Pending**. The
+  checker reads the chat, and an item under Pending keeps the goal open.
+- Same Stop re-fire, no new evidence: never send a second identical status.
+  Act on the checker's reason once (finish the item, or move it out of goal
+  with an owner). If nothing changed after that, reply with one line only.
+  Twelve repeated "still waiting" replies cost tokens and changed nothing.
 - Honor **Later / Skip**. An optional quiz is not a new mandatory criterion.
   Keep explicit understanding criteria unverified until answers are graded or
   the user revises the contract. Do not claim mastery or required quiz completion

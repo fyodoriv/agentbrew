@@ -334,7 +334,7 @@ met claim. A give-up that cannot rewrite a met retro blocks instead of
 allowing. The judge
 set, rubric hashes, and the contract hash freeze at the goal's first round
 (read from earlier judge prompts after the last `/goal` command), only
-the latest round can pass, and a goal gets `RUN_GOAL_JUDGE_ROUNDS` (3) rounds. Only `Agent`
+the latest round can pass, and a goal gets `RUN_GOAL_JUDGE_ROUNDS` (3) rounds; the owner raises the cap for one goal by typing a message that starts with "approve round N" or "approve N more rounds" (tool results, hook feedback and the runner's own text never count). Only `Agent`
 or `Task` results and their background notifications (user, `attachment`,
 or `queue-operation` rows) count. A result with two verdict blocks counts
 for none; two launches of one judge on one state are a re-roll, even when

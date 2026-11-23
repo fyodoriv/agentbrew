@@ -38,7 +38,7 @@ contract_text() {
     skip { next }
     l ~ /([0-9]|one|two|three|four|five|six|seven|eight|nine|ten) *(\/|out of|of) *(10|ten)/ ||
     (l ~ /score|judge|grade|rating|pass mark/ && l ~ /[0-9]|one|two|three|four|five|six|seven|eight|nine|ten/ &&
-     l ~ /or more|or higher|or better|or above|or less|or lower|or below|at least|at most|minimum|maximum|above|below|target|bar|threshold|>=|<=|>|</) {
+     l ~ /or more|or higher|or better|or above|or less|or lower|or below|at least|minimum|above|below|target|bar|threshold|>=|<=|>|</) {
       print "(a line about judge scores removed: score the work, not a target)"; next }
     { print }' "$1"
 }

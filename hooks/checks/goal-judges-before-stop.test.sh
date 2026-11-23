@@ -640,9 +640,10 @@ expect "an overseer verdict on another state blocks" 2 "$(run gost)"
 check "that block names the wrong state" grep -q "State: gs2-wrongstate, not" <(run_out gost)
 tc="$TMPDIR/gjt-$$.md"
 printf '%s\n' 'Success: lowest judge score >= 8' 'Pass mark: eight of ten from all judges' 'Success: scores of 8 minimum' \
-  'Success: all judges 9 or better' 'Pivot: lowest effective score 5 or less' 'Done when 3 tests pass' >"$tc"
+  'Success: all judges 9 or better' 'Pivot: lowest effective score 5 or less' 'Done when 3 tests pass' \
+  '3. The overseer may correct each judge by at most 2 points with a reason.' >"$tc"
 check "every score-target phrasing is filtered and plain lines stay" bash -c \
-  "out=\$(bash '$PROMPT_SH' --contract-text '$tc'); [ \$(grep -c 'judge scores removed' <<<\"\$out\") = 5 ] && grep -q 'Done when 3 tests pass' <<<\"\$out\""
+  "out=\$(bash '$PROMPT_SH' --contract-text '$tc'); [ \$(grep -c 'judge scores removed' <<<\"\$out\") = 5 ] && grep -q 'Done when 3 tests pass' <<<\"\$out\" && grep -q 'at most 2 points' <<<\"\$out\""
 rm -f "$tc"
 
 echo "goal-judges-before-stop: $PASS passed, $FAIL failed"

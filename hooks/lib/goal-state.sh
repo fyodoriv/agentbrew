@@ -56,10 +56,11 @@ floor() { # judge file -> empty when it meets the rubric floor, else the gap
   [ "$(rubric "$f" | grep -cE '^- .*capped at [0-9]')" -ge 3 ] || gap="$gap fewer than 3 'capped at' rubric lines,"
   rubric "$f" | grep -oE 'capped at [0-9]+(\.[0-9]+)?' | awk -v m="$MIN" '{ if ($3 + 0 >= m + 0) bad = 1 } END { exit !bad }' &&
     gap="$gap a cap at or above the passing bar $MIN (caps must be below it),"
-  rubric "$f" | grep -qiE "$STEER" && gap="$gap a rubric line steers the judge ($(rubric "$f" | grep -iE "$STEER" | head -1 | cut -c1-80)),"
-  if calib "$f" | grep -q '[^[:space:]]'; then
+  local rtext ctext; rtext="$(rubric "$f")"; ctext="$(calib "$f")"
+  grep -qiE "$STEER" <<<"$rtext" && gap="$gap a rubric line steers the judge ($(grep -iE "$STEER" <<<"$rtext" | head -1 | cut -c1-80)),"
+  if grep -q '[^[:space:]]' <<<"$ctext"; then
     local rs; rs="$(rubric "$f" | sha | cut -c1-16)"
-    calib "$f" | grep -qE "Rubric $rs: *[^[:space:]]" ||
+    grep -qE "Rubric $rs: *[^[:space:]]" <<<"$ctext" ||
       gap="$gap no calibration line 'Rubric $rs: <missed defect it fixes>' for the current rubric,"
   fi
   printf '%s' "${gap%,}"

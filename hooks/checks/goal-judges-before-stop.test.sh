@@ -406,6 +406,8 @@ goal resumed "Goal result: met (3/3 met)"; judge resumed ja 9 sonnet; judge resu
 jq -cn '{type:"system",subtype:"resume",content:"Session resumed"}' >>"$ROOT/resumed.jsonl"
 local_judge resumed jc 9
 expect "a judge run after a resumed session counts" 0 "$(run resumed)"
+# A scratch HOME and no BASH_ENV/ENV/DOTFILES_DIR keep the endpoint bootstrap
+# from swapping this counting jq for the dotfiles one.
 cat >"$ROOT/jq-count" <<'EOS'
 #!/bin/bash
 case " $* " in *" --arg mode all "*) echo all >>"$JQ_COUNT_LOG" ;; esac
@@ -413,7 +415,7 @@ exec jq "$@"
 EOS
 chmod +x "$ROOT/jq-count"
 goal once "Goal result: met (3/3 met)"; panel once 9 9 9; : >"$ROOT/jq-count.log"
-expect "the one-parse fixture allows" 0 "$(run once "DOTFILES_JQ=$ROOT/jq-count JQ_COUNT_LOG=$ROOT/jq-count.log")"
+expect "the one-parse fixture allows" 0 "$(mkdir -p "$ROOT/nohome" && run once "-u BASH_ENV -u ENV -u DOTFILES_DIR HOME=$ROOT/nohome DOTFILES_JQ=$ROOT/jq-count JQ_COUNT_LOG=$ROOT/jq-count.log")"
 expect "each Stop parses the full transcript once" 1 "$(wc -l <"$ROOT/jq-count.log" | tr -d ' ')"
 
 goal giveup "- Goal result: met (3/3 met)"; panel giveup 9 5 9

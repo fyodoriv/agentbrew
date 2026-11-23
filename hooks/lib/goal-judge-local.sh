@@ -60,7 +60,7 @@ evidence() { # contract -> evidence text
       { printf '%s\n' "$files" | grep -vE '(\.test\.|/tests?/|_test\.|\.spec\.)'
         printf '%s\n' "$files" | grep -E '(\.test\.|/tests?/|_test\.|\.spec\.)'; } | sed '/^$/d' |
         while IFS= read -r f; do
-          if printf '%s\n' "$untracked" | grep -qxF -- "$f"; then
+          if grep -qxF -- "$f" <<<"$untracked"; then
             (cd "$p" && git diff --no-index -- /dev/null "$f" 2>/dev/null)
           else
             git -C "$p" diff "$base" -- "$f" 2>/dev/null

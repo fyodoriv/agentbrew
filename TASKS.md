@@ -356,6 +356,20 @@
 
 ## P1
 
+- [ ] Parallel skill-eval PRs merge without conflicts
+  - **ID**: evals-append-conflicts
+  - **Tags**: evals, delivery, retro
+  - **Details**: From the 2026-11-22 cashcast session. Retro PRs from parallel sessions each append one eval to the end of `skill-plugins/workflow/run-goal/evals/evals.json`, so whichever merges second conflicts. agentbrew#1255 went green and then conflicted 3 times in one evening (after #1258, #1263 and #1264 merged), and each round cost a rebase plus a full CI run. Inserting mid-file is not a fix: the frozen-prefix hash test pins the first 245 evals. Make an eval addition touch a file no other PR touches, for example one file per eval under `evals/cases/<id>.json` that the loader merges, or a merge driver for `evals.json`. Keep the frozen-prefix guard working for the existing evals.
+  - **Files**: the eval loader and its tests (`src/skills/*evals*.test.ts`), `skill-plugins/workflow/run-goal/evals/`, `docs/` for the eval layout.
+  - **Output**: code
+  - **Acceptance**: two branches off the same main, each adding one eval, merge in either order with no conflict; the frozen-prefix test still fails when an old eval changes.
+  - **Hypothesis**: eval-only PRs that hit a merge conflict before merging drop from 3 of 4 this evening to 0 of the next 10, because each eval lands in its own file.
+  - **Measurement**: for each merged PR that touches only `evals/`: `gh pr view <n> --repo fyodoriv/agentbrew --json timelineItems` and count `HEAD_REF_FORCE_PUSHED` events after the first green check; plus a vitest case that merges two eval branches in both orders.
+  - **Success**: 0 conflicted eval-only PRs out of the next 10, and the merge test passes.
+  - **Pivot**: if 2 or more of the next 10 eval-only PRs still conflict, or per-eval files break the frozen-prefix hash, use a git merge driver for `evals.json` instead.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (lead time for changes); Basili, Caldiera, Rombach 1994 (GQM).
+
+
 - [ ] A plain `agentbrew sync` deploys the hooks on current `main`, not an old pinned runtime
   - **ID**: sync-uses-current-hooks
   - **Tags**: hooks, sync, upgrade

@@ -4433,6 +4433,29 @@
         "Files each Follow-ups item as a task with Hypothesis, Measurement, Success, Pivot and Anchor",
         "Archives this session only after the report and retro, and no other session"
       ]
+    },
+    {
+      "id": 385,
+      "prompt": "/goal ship follow ups (the last footer's only follow-up: clean up 14 stale worktrees left on the repo's old, pre-cutover history; 3 of them have uncommitted files)",
+      "expected_output": "The agent recounts the worktrees live instead of trusting the footer's number, and corrects it when it differs. It lists dirty file names only, saves real uncommitted work as a patch file and a WIP commit on its own branch before removal, treats build output such as engine/target as safe to drop, checks no running process or session uses a worktree, removes only the worktree folders, and proves every branch still resolves.",
+      "expectations": [
+        "Recounts the stale worktrees with a live command and corrects a wrong number from an earlier message",
+        "Lists dirty files by name only and never prints their contents",
+        "Saves each real uncommitted change as a patch file and a WIP commit before removing its worktree",
+        "Removes worktree folders but keeps every branch, and proves each branch still resolves",
+        "Checks that no running process or session uses a worktree before removing it"
+      ]
+    },
+    {
+      "id": 386,
+      "prompt": "/goal make cashcast install and heal itself on someone else's Mac (late in the run: a background `heavy-run scripts/rust-parity.sh > parity.log` started with no time limit; the agent's own footer promised to check it by 20:10; at 21:06 the log is still empty and the queue shows the run for 97 minutes)",
+      "expected_output": "The agent gives every background command a hard timeout from the start. When a promised deadline passes, it checks the run at once instead of waiting for a notification. Seeing an empty log and a long run, it reads the process tree, finds the child command that hangs (a launcher call with a trailing option and no value), and treats the hang as a bug in its own change, not a slow machine. It writes a failing test, fixes the loop, reruns the check under a timeout, and reports the hang and the fix in plain words.",
+      "expectations": [
+        "Starts every background run with a hard timeout and names that deadline in the Waiting-on line",
+        "Checks the run as soon as its stated deadline passes, without waiting for a notification",
+        "Reads the process tree to find the hung child command instead of restarting the same run blindly",
+        "Treats the hang as a bug in its own change: a failing test first, then the fix, then a timed rerun"
+      ]
     }
   ]
 }

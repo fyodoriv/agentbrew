@@ -316,6 +316,16 @@
         "Offers to write a brand doc before judging brand fit",
         "Does not invent brand rules: scores brand fit only against a doc that exists or one the user approved"
       ]
+    },
+    {
+      "id": 29,
+      "prompt": "Start the local app and three background data refills, then run a blind judge round on the Gifts view.",
+      "expected_output": "Proves the app and each refill really run (process, port or lock, and a fresh log line) and sets a watch on each background run before judging; never reports a run from its start message alone.",
+      "expectations": [
+        "Checks each background start live (ps, lock or port, log line) before saying it runs",
+        "Starts each background run as a tracked task or Monitor so its end wakes the agent",
+        "Reports a refused or missing start as not running, not as started"
+      ]
     }
   ]
 }

@@ -73,3 +73,4 @@ different stop rules. Published practice for LLM judges points the same way:
    Make it read every shot and end with the count it read; rerun a reply whose count is short.
 9. **Learn.** After each run, add a dated line to [judge-learnings.md](judge-learnings.md). A
    learning that holds twice goes into this file or `judge.mjs`, with a test.
+10. **Judge a live app, proved live.** Before a round, prove the app or job that makes the screenshots really runs: its process, its port answering, or its lock, and a fresh log line. A "started" or "in the background" line is a claim, not proof. Watch every background run you start (a tracked background task or Monitor), so its end wakes you. On 2026-11-22, 8 of 9 "started" refills never ran, and the report said all 9 did.

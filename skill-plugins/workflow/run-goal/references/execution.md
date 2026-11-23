@@ -467,6 +467,9 @@ start it again after the edits; never report its result for the new code.
   diff review before the first push, or with it. Put its fixes and the
   first CI fixes in one push. In one goal the review came after the push
   and its 10 fixes cost a second 30-minute cycle.
+- The same holds for a local full gate: start the review in the same
+  message as the first gate run, not after it passes. In one goal the
+  review ran after a green gate and its 4 fixes cost a second full gate.
 - For a new command that prints data about private records, tell the
   reviewer to list every field an agent can read and to name each one as
   an id, a count, or owner text. One such review found a reading's value

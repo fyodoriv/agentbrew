@@ -35,7 +35,7 @@ contract is back or the retro says not met.
 goal gets at most three rounds, so at most nine judge runs. A round takes
 about 3 to 6 minutes of wall time with the judges in parallel. Each judge
 and the overseer work to a budget stated in their prompts: about 10 minutes
-and about 20 tool calls, running a long test suite only when a defect
+and a capped number of tool calls (see `goal-judge-prompt.sh`), running a long test suite only when a defect
 depends on it.
 
 ## 1. Pick the judges (in the contract, before any work)

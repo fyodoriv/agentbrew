@@ -356,19 +356,6 @@
 
 ## P1
 
-- [ ] The judge contract filter hides only score targets
-  - **ID**: goal-judge-filter-precision
-  - **Tags**: hooks, run-goal, evaluation
-  - **Details**: Found 2026-11-23, judge round 1 of the blocker-loop goal (devex-workflow-design follow-ups). `contract_text` in `hooks/lib/goal-judge-prompt.sh` still drops lines such as "Judged paths: ~/apps/foo/target/v2" and "2. Rating widget shows 5 stars at least once", because `bar`, `above`, `target` and `>` match inside other words, and it drops a whole line when only one clause is a target, so judges lose the Outcome and Metric lines.
-  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/checks/goal-judge-claims.test.sh`.
-  - **Output**: code
-  - **Acceptance**: each plain line quoted above stays; every score-target phrasing in the fast test is still removed.
-  - **Hypothesis**: plain lines hidden by the filter drop from 3 reproduced to 0.
-  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
-  - **Success**: all new cases pass with 0 failed.
-  - **Pivot**: if precise matching misses more than 1 score-target phrasing in the fast test, refuse score targets in the contract instead of filtering them.
-  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge", arXiv:2306.05685 (anchoring bias).
-
 - [ ] Judge reports that skip the Blocker or Follow-up labels are caught
   - **ID**: goal-judge-label-check
   - **Tags**: hooks, run-goal, evaluation

@@ -158,6 +158,7 @@ function claim(l,  r) { l = norm(l)
 # on 2FA and done"), then one "on|by|until|for <what>" tail may stay.
 function rest(r,  n) { r = unparen(r); n = "(criteria|criterion|items?|steps?|parts?)"
   gsub("(" n ")? *[0-9]+( *(,|and|&|or) *[0-9]+)* *((of|/) *[0-9]+ *)?(" n " *)?(are |is )?(not met|met|done|blocked|open|left)", "", r)
+  gsub(/(the )?rest (is |are )?(blocked|open|left|pending|not met)|lowest( score)? [0-9.]+ *\/ *10/, "", r)
   if (success(r)) return 1
   sub(/^[^a-z0-9]*(on|by|until|for) [a-z0-9 ._\/-]+$/, "", r)
   return extra(r) }
@@ -398,6 +399,13 @@ if [ -n "$TOKEN" ]; then
     awk -v s="$SESSION_ID" -v t="$TOKEN" -v sc="$score/10" \
       '/^## Calibration/{c=1} c && index($0, s) && index($0, t) && index($0, sc){f=1} END{exit !f}' "$cache" 2>/dev/null ||
       add "$id's ## Calibration section has no line with session $SESSION_ID, state $TOKEN, and $score/10"
+    # The runner writes these notes: a line for this state may carry only the
+    # verdict's score, so the record cannot show a score the judge never gave.
+    awk -v s="$SESSION_ID" -v t="$TOKEN" -v sc="$score" \
+      '/^## Calibration/{c=1; next} c && index($0, s) && index($0, t) { l = $0
+        while (match(l, /[0-9]+(\.[0-9]+)? *\/ *10/)) { v = substr(l, RSTART, RLENGTH); sub(/ *\/.*/, "", v)
+          if (v + 0 != sc + 0) bad = 1; l = substr(l, RSTART + RLENGTH) } } END { exit !bad }' "$cache" 2>/dev/null &&
+      add "$id's calibration line for state $TOKEN states a score other than $score/10; keep only the verdict's score there"
   done <<<"$JUDGES"
   [ -n "$MISSING" ] && add "no verdict for the current state $TOKEN from:$MISSING"
   NF="$(printf '%s\n' $USED_FAMILIES | sed '/^$/d' | wc -l | tr -d ' ')"
@@ -496,6 +504,10 @@ if [ "$blocks" -ge "$MAX_BLOCKS" ] || [ "$WROTE" = 0 ]; then
 fi
 
 NEXT="${PROBLEMS%%"$SEP"*}"
+# Only low scores left: the next step is the iteration rule, not the score.
+if ! printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed '/^$/d' | grep -qvE ' scored [0-9.]+/10'; then
+  NEXT="fix every blocker the overseer listed in one batch, each with a test that fails first; file the follow-ups as tasks outside the judged paths before judging; then judge every judge again ($NEXT)"
+fi
 LIST="$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed -E 's/^ +//; /^$/d' | awk '{ printf "  %d. %s\n", NR, $0 }')"
 RATE=""
 [ -f "$HISTORY" ] && RATE="$(awk -F'\t' -v m="$MIN" '{ n[$4]++; if ($8 + 0 >= m + 0) p[$4]++ }

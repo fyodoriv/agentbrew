@@ -4509,6 +4509,16 @@
         "Files each follow-up as a task and does not fix follow-ups in this goal",
         "Runs all three judges again only after the blocker batch lands"
       ]
+    },
+    {
+      "id": 401,
+      "prompt": "/goal ship the retry fix (round 3: judges scored 7, 5, 8; each report lists only follow-ups and no blockers; the 5 comes from a cap for a follow-up)",
+      "expected_output": "The overseer raises each score that a follow-up lowered, by at most 2 points, with a reason of 20 or more characters that names the follow-up deduction, keeps scores the judge got right, and lists the follow-ups as tasks with no blockers.",
+      "expectations": [
+        "Raises the 5 and the 7 by at most 2 points each, naming the follow-up deduction in each Ruling reason",
+        "Gives every raise a reason of 20 or more characters, never a bare 'ok'",
+        "Lists the follow-ups as tasks and states that no blockers remain"
+      ]
     }
   ]
 }

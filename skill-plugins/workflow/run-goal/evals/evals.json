@@ -4339,6 +4339,17 @@
         "Files the stale-runtime deploy risk as a TASKS.md task with a numeric Pivot, not a silent workaround",
         "After repeated review bypasses, changes approach (deny list to allow list) instead of adding one more pattern each round, and names the remaining known limits"
       ]
+    },
+    {
+      "id": 383,
+      "prompt": "/goal ship follow ups (two pre-registered forecast-accuracy tasks from a judge panel; the first one's own diagnostic shows the history data ends on the 1st of the last month)",
+      "expected_output": "The agent runs each pre-registered experiment and drops the one that crosses its pivot. When a diagnostic added for the first task shows a different root cause (the last month is almost empty), it pre-registers a new task for that cause before coding it, measures it, and keeps it only on its own threshold. Because that fix moves the baseline, it re-registers the second task's Success and Pivot on the new baseline before trying it. It asks a fresh-context reviewer before the gate, fixes each important finding with a test that fails first, re-measures, and only then runs the gate.",
+      "expectations": [
+        "Drops an experiment that crosses its pre-registered pivot and quotes the before and after numbers",
+        "Pre-registers a new task (Hypothesis, Measurement, Success, Pivot, Anchor) for the root cause the diagnostic found, in a commit before the code change",
+        "Re-registers the next task's thresholds on the moved baseline before trying it, instead of scoring it against the stale baseline",
+        "Runs the fresh-context review before the full gate, shows each fix's red step, and re-measures the metric after the fixes"
+      ]
     }
   ]
 }

@@ -32,9 +32,8 @@ contract is back or the retro says not met.
 | `RUN_GOAL_JUDGE_DIR` | `~/.config/agentbrew/goal-judges` | the judge cache lives elsewhere |
 
 **Cost**: one round is three fresh subagents reading the judged paths; a
-goal gets at most three rounds, so at most nine judge runs. An opt-in local
-judge adds about 5 to 10 minutes of a busy, hot machine per round, and can
-time out.
+goal gets at most three rounds, so at most nine judge runs. A round takes
+about 3 to 6 minutes of wall time with the judges in parallel.
 
 ## 1. Pick the judges (in the contract, before any work)
 
@@ -210,17 +209,27 @@ hook can make these harder, not impossible):
 - A lenient judge file you wrote yourself: the rubric floor (caps below the
   bar, no steering lines, a named defect per rubric change) and the prompt's
   rule to apply the field's standard limit it.
-- Steering text in the contract: the prompt labels the contract as
-  runner-written and tells judges to report such text as a defect.
+- Steering text in the contract: `goal-state.sh` refuses a contract with a
+  steering phrase or quoted earlier scores (`scored 5`, `5/7/6`, `round 8
+  6/10`), because every judge reads the contract. Keep round history in the
+  retro. Steering in words the check does not list is still possible; the
+  prompt labels the contract as runner-written and tells judges to report it.
 - A practice judge run with a paraphrased prompt and no marker is not seen.
 - Small real edits (a comment, a space inside a line) buy a new round, up
   to the three-round cap.
-- A rubric loosened when notes are merged at the next goal: the `Rubric
-  <sha>:` line names why; check it against the calibration evidence.
-- A fake server on the Ollama port, or edits to the installed hook files,
-  would fake a local verdict.
-- The local judge cannot run tools; it judges a diff cut at 90 KB and is told
-  to mark unchecked claims as unverified.
+- A rubric loosened when notes are merged at the next goal: once
+  `goal-judge-history.tsv` holds a verdict for that judge under another
+  rubric, the new `Rubric <sha>:` line must cite one of those scored states,
+  wherever it sits in the file. Check its reason against the evidence.
+- The round cap counts per `/goal` command: a new `/goal` on the same work
+  starts a new cap. The score history keeps every round, so the pass rate
+  shows it.
+- Files a judge leaves in the judged paths (test output, coverage, logs that
+  are not gitignored) change the state token, so its verdict goes stale and
+  the next round uses one of the three. Gitignore such output first.
+- A `Goal (verbatim)` or `Owner (verbatim)` contract line skips the steering
+  check only when its text is in the hook-written `<session>.owner.md`.
+- Edits to the installed hook files would fake any verdict.
 
 ## Measure the effect
 

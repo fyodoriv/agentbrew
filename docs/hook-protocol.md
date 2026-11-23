@@ -313,16 +313,23 @@ fork, no custom agent type); the prompt embeds the rubric, so judges never read 
 runner-written calibration notes. A missing contract during an active goal
 (read from the transcript's last `/goal` command) blocks. The hook rewrites
 `<session>.owner.md` from that command, so the prompt carries the owner's
-own words. A judge that got a SendMessage, or any unofficial judge run
-(an Agent call without the header, or `claude -p`, `codex exec`, `ollama
-run`, `llm`, or an Ollama HTTP call in command position in Bash, whose
-result holds a filled-in verdict block), uses up one round of the cap. A
+own words. A judge that got a SendMessage does not count. Any unofficial
+judge run (an Agent call without the header, or `claude -p`, `codex exec`,
+`ollama run`, `llm`, or an Ollama HTTP call in command position in Bash,
+whose result holds a filled-in verdict block) uses up one round of the cap. A
 review that only quotes the template returns no verdict, so it is free.
 The block message lists `Next step:`, the numbered problems, the honest
 exit, and each judge's pass rate from `<state dir>/goal-judge-history.tsv`
 (one line per counted verdict). Each judge prompt carries a review role
 (refuter, spec auditor, or first-time user) picked from the state token and
-the judge's place on the `Judges:` line. The judge
+the judge's place on the `Judges:` line. The history keeps every official
+verdict of the goal, failing rounds included. `goal-state.sh` refuses a
+contract that steers the judges or quotes earlier scores, and a rubric changed
+after scored rounds whose `Rubric <sha>:` line cites none of their states. A
+block counter that cannot be written falls back to `$TMPDIR`, then gives up
+at once (partly met); a wait counter that cannot be written never excuses a
+met claim. A give-up that cannot rewrite a met retro blocks instead of
+allowing. The judge
 set, rubric hashes, and the contract hash freeze at the goal's first round
 (read from earlier judge prompts after the last `/goal` command), only
 the latest round can pass, and a goal gets `RUN_GOAL_JUDGE_ROUNDS` (3) rounds. Only `Agent`

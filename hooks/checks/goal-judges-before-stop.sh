@@ -38,7 +38,8 @@
 #
 # **State token**: `lib/goal-state.sh <contract>` hashes the contract, each
 # judge's rubric (its file up to `## Calibration`), and the judged paths (git
-# HEAD, status, diff, untracked files). Any edit by any tool changes it. A
+# files tracked or untracked but not ignored, with trailing whitespace
+# normalized). An edit to any of them by any tool changes it. A
 # verdict counts only when its `State:` equals the token now. goal-state.sh
 # also refuses a judge file below the rubric floor.
 #
@@ -71,7 +72,7 @@
 # Each judge gets a review role (refuter, spec auditor, first-time user) that
 # goal-judge-prompt.sh picks from the state token, so the runner cannot choose
 # it. Every counted verdict is appended to `<state dir>/goal-judge-history.tsv`
-# (date, session, judge, rubric, state, family, score), and the block message
+# (date, tool_use id, session, judge, rubric, state, family, score), and the block message
 # shows each judge's pass rate from it: a base rate for the 8/10 bar.
 #
 # **Rounds**: the judge prompts in the transcript freeze the judge set, each
@@ -100,10 +101,13 @@
 # (Codex), or the session id is unusable. Known limits, not closed: a
 # lenient runner-written judge file (the rubric floor, the cap-below-bar and
 # steering checks, and the field-standard rule limit it), a paraphrased
-# practice run with no marker, steering text in the runner-written contract
-# (the prompt tells judges to report it), up to three rounds bought by small
-# real edits, a fake server on the Ollama port, and a runner that
-# edits the installed hook files.
+# practice run with no marker, steering phrased in words the steering
+# check does not list, up to three rounds bought by small real edits, rounds
+# counted per /goal command (a new /goal on the same work starts a new cap),
+# and a runner that edits the installed hook files. A block counter that
+# cannot be written falls back to $TMPDIR, then gives up (partly met) at once,
+# so the hook never blocks forever; a wait counter that cannot be written
+# never excuses a met claim.
 #
 # **Bypass**: `HOOK_BYPASS_GOAL_JUDGES_BEFORE_STOP=1`
 #
@@ -141,7 +145,7 @@ function claim(l,  r) { l = norm(l)
   if (r ~ /^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)([^a-z]|$)/) return 0
   if (r !~ /^(in progress|blocked|impossible|pending)([^a-z]|$)/) return 1
   sub(/^(in progress|blocked|impossible|pending)/, "", r); gsub(/\([^)]*\)/, "", r)
-  gsub(/[0-9]+ *(of|\/) *[0-9]+[^,;.]*met/, "", r)
+  gsub(/[0-9]+ *(of|\/) *[0-9]+( [a-z]+)? met/, "", r)
   return r ~ /(^|[^a-z])met([^a-z]|$)/ }'
 
 INPUT="$(read_hook_stdin)"
@@ -254,7 +258,8 @@ case "$RUNNING" in "" | *[!0-9]*) RUNNING=0 ;; esac
 if [ "$RUNNING" -gt 0 ]; then
   waits="$(count "$WAITS")"
   if [ "$waits" -lt "$MAX_WAITS" ]; then
-    { echo $((waits + 1)) >"$WAITS"; } 2>/dev/null || true
+    { echo $((waits + 1)) >"$WAITS"; } 2>/dev/null ||
+      verdict_block "$HOOK_ID" "Next step: make $WAITS writable. The hook cannot count judge waits there, so a running judge cannot excuse this Stop."
     # Never let a met claim stand while judges run: rewrite it to in progress.
     if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$RETRO"; then
       tmp="$RETRO.tmp.$$"
@@ -277,9 +282,12 @@ if [ -n "$PROWS" ]; then
   LAST_STATE="$(printf '%s\n' "$PROWS" | awk -F'\t' '{s=$5} END{print s}')"
   [ -z "$TOKEN" ] || [ "$LAST_STATE" = "$TOKEN" ] ||
     add "the latest judging round was on state $LAST_STATE, not the current state $TOKEN; only the latest round counts, so judge all again"
+  # The contract (with its Judges: line) freezes at the first round; a
+  # partial first round may judge fewer, never other, judges.
   FIRST_SET="$(printf '%s\n' "$PROWS" | awk -F'\t' -v s="$FIRST_STATE" '$5==s{print $3}' | LC_ALL=C sort -u)"
-  [ "$FIRST_SET" = "$JUDGES" ] ||
-    add "the judge set changed after the first round (first: $(printf '%s ' $FIRST_SET)now: $(printf '%s ' $JUDGES)); keep the first panel"
+  EXTRA="$(printf '%s\n' "$FIRST_SET" | { grep -vxF -f <(printf '%s\n' "$JUDGES") || true; } | tr '\n' ' ')"
+  [ -z "${EXTRA// /}" ] ||
+    add "the first round judged ${EXTRA}which the contract's Judges: line no longer names; keep the first panel"
   FIRST_CONTRACT="$(printf '%s\n' "$PROWS" | awk -F'\t' 'NR==1{print $6}')"
   [ -z "$FIRST_CONTRACT" ] || [ "$FIRST_CONTRACT" = "$NOW_CONTRACT" ] ||
     add "the goal contract changed after the first round; judge against the contract you started with"
@@ -313,7 +321,7 @@ if [ -n "$TOKEN" ]; then
     elif [ "$n" -gt 1 ]; then
       add "$id was judged $n times on one state (a re-roll); change the work, then judge all again"; continue
     fi
-    IFS=$'\t' read -r _ tid _ score vcache _ model ok typeok msg <<<"$mine"
+    IFS=$'\t' read -r _ tid _ score vcache _ model ok typeok msg _ <<<"$mine"
     [ "${vcache/#\~/$HOME}" = "$cache" ] || add "$id cites cache $vcache, not $cache"
     [ "$ok" = 1 ] || add "$id's prompt is not the exact output of goal-judge-prompt.sh for this state"
     [ "$typeok" = 1 ] || add "$id ran as a fork or a custom agent type; leave subagent_type out, or set it to general-purpose"
@@ -322,11 +330,6 @@ if [ -n "$TOKEN" ]; then
     if awk -v a="$score" 'BEGIN{exit !(a>10)}'; then add "$id score $score is out of range"; continue; fi
     awk -v a="$score" -v m="$MIN" 'BEGIN{exit !(a<m)}' && add "$id scored $score/10"
     if [ -z "$LOWEST" ] || awk -v a="$score" -v b="$LOWEST" 'BEGIN{exit !(a<b)}'; then LOWEST="$score"; fi
-    # Score history (one line per verdict, keyed by tool_use id): a base rate.
-    if [ "$ok" = 1 ] && ! grep -qF -- "	$tid	" "$HISTORY" 2>/dev/null; then
-      rs="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$id" '$1==j{print $2; exit}')"
-      { printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%F)" "$tid" "$SESSION_ID" "$id" "$rs" "$TOKEN" "$model" "$score" >>"$HISTORY"; } 2>/dev/null || true
-    fi
     case " $USED_FAMILIES " in *" $model "*) ;; *) USED_FAMILIES="$USED_FAMILIES $model" ;; esac
     [ -n "$RUNNER" ] && [ "$model" = "$RUNNER" ] && RUNNER_JUDGES=$((RUNNER_JUDGES + 1))
     awk -v s="$SESSION_ID" -v t="$TOKEN" -v sc="$score/10" \
@@ -342,23 +345,41 @@ if [ -n "$TOKEN" ]; then
 fi
 PROBLEMS="${PROBLEMS#; }"
 
+# Score history: every official verdict of this goal, failing rounds and older
+# states included, one line per tool_use id, so the pass rate is a fair base rate.
+printf '%s\n' "$ROWS" | awk -F'\t' '$1 == "V" && $11 == "1" && !seen[$2]++' | while IFS=$'\t' read -r _ tid hj hs _ hst hm _; do
+  grep -qF -- "	$tid	" "$HISTORY" 2>/dev/null && continue
+  rs="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$hj" '$1==j{print $2; exit}')"
+  { printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%F)" "$tid" "$SESSION_ID" "$hj" "$rs" "$hst" "$hm" "$hs" >>"$HISTORY"; } 2>/dev/null || true
+done
+
 if [ -z "$PROBLEMS" ]; then
-  rm -f "$COUNTER" "$WAITS"
+  rm -f "$COUNTER" "$WAITS" "${TMPDIR:-/tmp}/goal-judges-$(id -u).$SESSION_ID.judgeblocks" 2>/dev/null || true
   verdict_allow "$HOOK_ID" "judge consensus: $NJ judges, lowest $LOWEST/10, state $TOKEN"
 fi
 
-blocks="$(count "$COUNTER")"
-if [ "$blocks" -ge "$MAX_BLOCKS" ]; then
+FALLBACK="${TMPDIR:-/tmp}/goal-judges-$(id -u).$SESSION_ID.judgeblocks"
+blocks="$(count "$COUNTER")"; b2="$(count "$FALLBACK")"; [ "$b2" -gt "$blocks" ] && blocks="$b2"
+WROTE=0
+{ echo $((blocks + 1)) >"$COUNTER"; } 2>/dev/null && WROTE=1
+[ "$WROTE" = 1 ] || { { echo $((blocks + 1)) >"$FALLBACK"; } 2>/dev/null && WROTE=1; }
+if [ "$blocks" -ge "$MAX_BLOCKS" ] || [ "$WROTE" = 0 ]; then
+  # Bounded: a counter that cannot be written ends the loop now, as a give-up.
+  [ "$WROTE" = 0 ] && PROBLEMS="the block counter cannot be written ($COUNTER); $PROBLEMS"
   reason="$(printf '%s' "$PROBLEMS" | tr -d '\n' | cut -c1-300)"
-  tmp="$RETRO.tmp.$$"
   src="$RETRO"; [ -f "$src" ] || src=/dev/null
-  awk -v r="$reason" "$CLAIM_AWK"' BEGIN { line = "Goal result: partly met (judge consensus not reached: " r ")" }
-    claim($0) { print line; s = 1; next } result($0) { s = 1 } { print } END { if (!s) print line }' "$src" >"$tmp" &&
-    mv "$tmp" "$RETRO"
-  rm -f "$COUNTER" "$WAITS"
-  verdict_allow "$HOOK_ID" "gave up after $MAX_BLOCKS blocks; retro downgraded to partly met: $PROBLEMS"
+  # Rewrite in place from memory (no temp file), so a read-only state folder
+  # or a missing $TMPDIR still gets the downgrade.
+  new="$(awk -v r="$reason" "$CLAIM_AWK"' BEGIN { line = "Goal result: partly met (judge consensus not reached: " r ")" }
+    claim($0) { print line; s = 1; next } result($0) { s = 1 } { print } END { if (!s) print line }' "$src")" &&
+    { printf '%s\n' "$new" >"$RETRO"; } 2>/dev/null || true
+  # Never allow while the retro still claims met: that would end as met.
+  if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$RETRO"; then
+    verdict_block "$HOOK_ID" "Goal cannot end as met: the judge consensus was not reached after $blocks block(s), and the hook cannot downgrade the retro ($RETRO is not writable). Make it writable, or write Goal result: partly met (<why>) in it yourself. Problems: $PROBLEMS"
+  fi
+  rm -f "$COUNTER" "$WAITS" "$FALLBACK" 2>/dev/null || true
+  verdict_allow "$HOOK_ID" "gave up after $blocks block(s); the goal is NOT met; retro downgraded to partly met: $PROBLEMS"
 fi
-{ echo $((blocks + 1)) >"$COUNTER"; } 2>/dev/null || true
 
 NEXT="$(printf '%s' "$PROBLEMS" | cut -d';' -f1 | sed -E 's/^ +//')"
 LIST="$(printf '%s' "$PROBLEMS" | tr ';' '\n' | sed -E 's/^ +//; /^$/d' | awk '{ printf "  %d. %s\n", NR, $0 }')"

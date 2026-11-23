@@ -16,7 +16,7 @@
 #               one per judge call whose prompt has the GOAL-JUDGE-PROMPT
 #               header, in transcript order (rounds, frozen set, rubrics, and
 #               contract)
-#   V <tool_use_id> <judge> <score> <cache> <state> <model> <prompt_ok> <type_ok> <messaged>
+#   V <tool_use_id> <judge> <score> <cache> <state> <model> <prompt_ok> <type_ok> <messaged> <header_ok>
 #   T <family>  the runner's model family (its last turn), so the hook can
 #               keep the runner's own model from holding a judge majority
 #   M <tool_use_id>   a result with more than one verdict block (ignored)
@@ -54,7 +54,7 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
 | ([ range(0; $all | length) as $i | $all[$i]
      | select(.type == "user") | .message.content | strings
      | select(test("^\\s*<command-name>/goal</command-name>"))
-     | select((capture("<command-args>(?<a>[^<]*)</command-args>").a // "" | trim | ascii_downcase)
+     | select((capture("<command-args>(?<a>[\\s\\S]*?)</command-args>").a // "" | trim | ascii_downcase)
               | IN("", "clear", "stop", "off", "reset", "none", "cancel") | not)
      | $i ] | last // 0) as $start
 | ([ $all[] | select(.type == "user") | .message.content | strings
@@ -112,7 +112,7 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
 | ([ $notes[] | .id ] | unique) as $done
 | ([ $results[] | select(($agents[.id].judge // "") != "")
      | {key: .id, value: ((.text | capture("agentId:[ \t]*(?<a>[A-Za-z0-9_-]+)").a) // "")} ] | from_entries) as $agentid
-| ([ $rows[] | select(.type == "assistant") | .message.model // empty | strings
+| ([ $rows[] | select(.type == "assistant" and (.isSidechain // false | not)) | .message.model // empty | strings
      | select(. != "<synthetic>") ] | last // "" | family) as $runner
 | "G\t\(if $active then 1 else 0 end)\t\($lastargs | @base64)",
   "T\t\($runner)",
@@ -134,6 +134,11 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
            | (($aid != "" and ($sent | index($aid)) != null)
               or ($call.name != "" and ($sent | index($call.name)) != null))) as $msg
         | ["V", $id, $judge, $score, $x[2], $x[3], $call.model, (if $ok then "1" else "0" end), $call.typeok,
-           (if $msg then "1" else "0" end)] | @tsv
+           (if $msg then "1" else "0" end),
+           # Header bound to this verdict's own judge and state: an official
+           # run of an earlier round (for the score history).
+           (if ($call.prompt | test("^\\s*GOAL-JUDGE-PROMPT v[0-9]"))
+               and ($call.prompt | contains("\nJudge-Id: " + $judge + "\n"))
+               and ($call.prompt | contains("\nState: " + $x[3] + "\n")) then "1" else "0" end)] | @tsv
       else empty end )
   end

@@ -49,7 +49,7 @@ rubric() { awk '/^## Calibration/{exit} {print}' "$1"; }
 calib() { awk '/^## Calibration/{c=1; next} c' "$1"; }
 MIN="${RUN_GOAL_JUDGE_MIN:-8}"
 case "$MIN" in "" | *[!0-9.]*) MIN=8 ;; esac
-STEER='trust (the |its |their )?(runner|summar|contract|claim|report|author)|skip (the |all )?(check|test|reproduc|command)|(do not|don.t|never) (run|reproduce|check|verify)|(give|award|assign)s? (it |them |a )?(score of |at least |a minimum of )?(8|9|10)([^0-9]|$)|minimum score|always (pass|score)|full marks|benefit of the doubt|(be|stay|err on the side of being) (generous|lenient|kind|charitable)|lean(ing)? (toward|towards) (passing|a pass|high)|round (the score )?up|(ignore|overlook|forgive) (minor |small )?(defects|issues|bugs|gaps)'
+STEER='trust (the |its |their )?(runner|summar|contract|claim|report|author)|skip (the |all )?(check|test|reproduc|command)|(do not|don.t|never) (run|reproduce|check|verify)|(give|award|assign)s? (it |them |a )?(score of |at least |a minimum of )?(8|9|10)([^0-9]|$)|minimum score|always (pass|score)|full marks|benefit of the doubt|(be|stay|err on the side of being) (generous|lenient|kind|charitable)|lean(ing)? (toward|towards) (passing|a pass|high)|round (the score )?up|(ignore|overlook|forgive) (minor |small )?(defects|issues|bugs|gaps)|(an? )?[0-9]+(/10)? is (typical|usual|normal|expected|the norm)|usually (scores?|gets?|passes)|note to (the )?judges?'
 
 floor() { # judge file -> empty when it meets the rubric floor, else the gap
   local f="$1" gap=""
@@ -75,6 +75,13 @@ floor() { # judge file -> empty when it meets the rubric floor, else the gap
           $0 = substr($0, RSTART + RLENGTH) } }
       END { exit !(found == 0 || ok) }' <<<"$ctext" ||
       gap="$gap the 'Rubric $rs:' line cites no state token of an earlier calibration line (name the round whose missed defect it fixes),"
+    local hist id old
+    hist="${RUN_GOAL_STATE_DIR:-$HOME/.cache/agentbrew/run-goal}/goal-judge-history.tsv"
+    id="$(basename "$f" .md)"
+    old="$(awk -F'\t' -v j="$id" -v r="$rs" '$4 == j && $5 != r && $5 != "" { print $6 }' "$hist" 2>/dev/null | sort -u)"
+    if [ -n "$old" ] && ! grep -E "Rubric $rs:" <<<"$ctext" | grep -qF -f <(printf '%s\n' "$old"); then
+      gap="$gap the rubric changed after scored rounds in goal-judge-history.tsv, and its 'Rubric $rs:' line cites none of their states (name the round whose missed defect it fixes),"
+    fi
   fi
   printf '%s' "${gap%,}"
 }
@@ -110,6 +117,20 @@ while IFS= read -r id; do
   gap="$(floor "$JUDGE_DIR/$id.md")"
   [ -z "$gap" ] || { echo "goal-state: judge file $JUDGE_DIR/$id.md is below the rubric floor:$gap; fix it per run-goal references/goal-judges.md step 1 (Field:, Applies:, Scale:, three or more 'capped at N' lines with N below $MIN, no steering lines, and a 'Rubric <sha>: <defect>' calibration line once it has notes)" >&2; exit 2; }
 done <<<"$JUDGES"
+# A verbatim owner line skips the check only when its text is in the
+# hook-written owner file (the /goal words from the transcript).
+OWNER_FILE="${CONTRACT%.contract.md}.owner.md"
+CTEXT="$(while IFS= read -r l || [ -n "$l" ]; do
+  if grep -qiE '^(Goal \(verbatim\)|Owner, verbatim|Owner \(verbatim\))' <<<"$l"; then
+    t="$(sed -E 's/^[^:]*:[[:space:]"]*//; s/[[:space:]"]+$//' <<<"$l")"
+    [ -n "$t" ] && [ -f "$OWNER_FILE" ] && grep -qF -- "$t" "$OWNER_FILE" && continue
+  fi
+  printf '%s\n' "$l"
+done <"$CONTRACT")"
+if grep -qiE "$STEER|scored [0-9]|[0-9]+/[0-9]+/[0-9]+|(lowest|judge|round [0-9]+) (score )?[0-9]+/10" <<<"$CTEXT"; then
+  echo "goal-state: the contract steers or anchors the judges ($(grep -iE "$STEER|scored [0-9]|[0-9]+/[0-9]+/[0-9]+|(lowest|judge|round [0-9]+) (score )?[0-9]+/10" <<<"$CTEXT" | head -1 | cut -c1-80)); every judge reads it, so keep instructions to judges and earlier scores out of it (put round history in the retro)" >&2
+  exit 2
+fi
 while IFS= read -r p; do
   [ -e "${p/#\~/$HOME}" ] || { echo "goal-state: judged path missing: ${p/#\~/$HOME}" >&2; exit 2; }
 done <<<"$PATHS"

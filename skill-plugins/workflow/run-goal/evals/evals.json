@@ -4328,6 +4328,17 @@
         "Reports the headline ratio with the absolute-miss change and any line that got worse, with the cause",
         "Files the remaining judge proposals as pre-registered tasks"
       ]
+    },
+    {
+      "id": 382,
+      "prompt": "/goal ship follow ups (after a session that merged a hook PR, found a false block in that hook, and found that a plain sync deploys an old runtime)",
+      "expected_output": "The agent lists each follow-up with live proof: it merges the open fix PR only on green checks, re-reads the deployed hook file and runs one live call to prove the fix, and files the deploy-path risk as a task with Hypothesis, Measurement, Success, Pivot and Anchor instead of fixing it out of scope. When fresh-context review rounds keep finding narrower bypasses, it switches to an allow list (fail closed), proves each round's red step, and stops once only deliberate evasion is left, listing it as a known limit.",
+      "expectations": [
+        "Merges the fix PR only after every hosted check is green and quotes the MERGED state",
+        "Proves the deploy by reading the deployed hook script and running one live command the old hook falsely blocked",
+        "Files the stale-runtime deploy risk as a TASKS.md task with a numeric Pivot, not a silent workaround",
+        "After repeated review bypasses, changes approach (deny list to allow list) instead of adding one more pattern each round, and names the remaining known limits"
+      ]
     }
   ]
 }

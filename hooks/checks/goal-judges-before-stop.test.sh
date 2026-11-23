@@ -54,7 +54,7 @@ goal() { # session, result line, [judges line]
   : >"$ROOT/$1.jsonl"
 }
 token() { bash "$STATE_SH" "$RUN_GOAL_STATE_DIR/$1.contract.md"; }
-prompt() { bash "$PROMPT_SH" "$RUN_GOAL_STATE_DIR/$1.contract.md" "$2"; }
+prompt() { GOAL_STATE_TOKEN="${3:-}" bash "$PROMPT_SH" "$RUN_GOAL_STATE_DIR/$1.contract.md" "$2"; }
 block_text() { # judge, score, state, [cache]
   printf 'Findings.\n\nGOAL-JUDGE-VERDICT\nJudge: %s\nScore: %s/10\nCache: %s\nState: %s\n' \
     "$1" "$2" "${4:-$RUN_GOAL_JUDGE_DIR/$1.md}" "$3"
@@ -73,7 +73,7 @@ calibrate() { # session, judge, score, [line]
 judge() { # session, judge, score, [model], [tool], [prompt suffix]
   local s="$1" j="$2" sc="$3" st id="t$RANDOM$RANDOM"
   st="$(token "$s")"
-  call "$s" "${5:-Agent}" "$id" "${4:-}" "$(prompt "$s" "$j")${6:-}"
+  call "$s" "${5:-Agent}" "$id" "${4:-}" "$(prompt "$s" "$j" "$st")${6:-}"
   result "$s" "$id" "$(block_text "$j" "$sc" "$st")"
   [ -n "${NOCAL:-}" ] || calibrate "$s" "$j" "$sc"
 }

@@ -356,6 +356,19 @@
   - **Pivot**: if more than 1 real launch is missed in the 5 transcripts, match the harness launch line by tool name instead.
   - **Anchor**: Claude Code hooks reference (transcript_path), https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
 
+- [ ] The goal-judges hook test suite finishes in under 90 seconds
+  - **ID**: goal-judges-test-speed
+  - **Tags**: hooks, speed
+  - **Details**: Found 2026-11-22 while iterating PR #1253. `hooks/checks/goal-judges-before-stop.test.sh` ran 4m09s, then 3m20s after the prompt helper reused the state token. Each fixture still hashes the judged paths with `goal-state.sh` several times, and the hook hashes again per Stop. Every judge redesign round reruns it.
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`, `hooks/lib/goal-state.sh`.
+  - **Output**: code
+  - **Acceptance**: the suite keeps every case and passes in under 90 s on this Mac.
+  - **Hypothesis**: caching one token per session state in the test helpers cuts the suite from 200 s to under 90 s.
+  - **Measurement**: `time /bin/bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: under 90 s with all cases passing.
+  - **Pivot**: above 150 s after caching means the hook itself is the cost; profile `goal-state.sh` instead.
+  - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (fast feedback loops).
+
 - [ ] The detached-start hook no longer flags an `&` inside quoted text
   - **ID**: detached-start-quoted-ampersand
   - **Tags**: hooks, reliability

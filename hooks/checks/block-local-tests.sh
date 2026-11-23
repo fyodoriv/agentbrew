@@ -215,8 +215,10 @@ for d in "${dirs[@]}"; do
     source "$__HOOK_LIB_DIR/verdict.sh"
     verdict_block "block-local-tests" "BLOCKED: agentbrew tests run on hosted CI only, not on this machine.
 Run \`npm run lint\`, \`npm run typecheck\` or \`shellcheck <file>\` locally. Then push the branch and read CI:
-  gh pr checks <number> --repo fyodoriv/agentbrew --watch
+  gh run list --repo fyodoriv/agentbrew --workflow CI --commit \"\$(git rev-parse HEAD)\"
+  gh run watch <run-id> --repo fyodoriv/agentbrew --exit-status
   gh run view <run-id> --log-failed
+  gh pr checks <number> --repo fyodoriv/agentbrew   (one look, before merge)
 Opt-out: export AGENTBREW_ALLOW_LOCAL_TESTS=1 before the agent starts. See docs/ci.md."
   fi
 done

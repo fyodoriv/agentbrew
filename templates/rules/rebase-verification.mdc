@@ -12,7 +12,7 @@ When rebasing a feature branch onto its PR base (`master`/`main`/parent), **do n
 1. **Rebase, do not merge** when the repo forbids merge commits on PRs (for example a Commitlint check that fails on merge commits). Use `git rebase origin/<base>`, not `git merge origin/<base>`.
 2. Resolve conflicts; run repo-local gates on touched packages (typecheck, lint, unit tests).
 3. `git push --force-with-lease` to update the PR.
-4. **Poll CI** with `gh pr checks <pr>` until all checks are green **except** e2e/automation (`*e2e*`, `*automation*`). Use `gh pr checks --watch` but interrupt if only e2e remains pending.
+4. **Poll CI** with `gh pr checks <pr>` until all checks are green **except** e2e/automation (`*e2e*`, `*automation*`). Wait with `gh run watch <run-id> --exit-status` on the CI run for the pushed head (find it with `gh run list --workflow <name> --commit <full-sha>`), not a `gh pr checks --watch` started right after the push; stop waiting if only e2e remains pending.
 5. Never hand off with "CI should pass" or "waiting on CI" — fix failures, push again, and re-poll until non-e2e checks are green.
 
 ## Blocking checks (typical)

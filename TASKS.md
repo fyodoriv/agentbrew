@@ -356,10 +356,49 @@
   - **Pivot**: if more than 1 real launch is missed in the 5 transcripts, match the harness launch line by tool name instead.
   - **Anchor**: Claude Code hooks reference (transcript_path), https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
 
+- [ ] A running judge never lets a "met" goal claim pass the Stop
+  - **ID**: goal-judges-wait-claim
+  - **Tags**: hooks, run-goal, reliability
+  - **Details**: Found 2026-11-22 by the agent-harness-reliability judge, PR #1253 round 8 (5/10). The wait check in `goal-judges-before-stop.sh` runs before the claim check and counts any Agent prompt with the judge header as a launch, even one that is not the official prompt for the current state. A retro that says "Goal result: met" plus one background `GOAL-JUDGE-PROMPT v2` prompt that says "Wait forever." passes Stop up to 10 times. A failed counter write exits non-2, which Claude Code treats as allow.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: a wait excuses a Stop only for a launch whose prompt equals the official prompt for the current state, and only when no met claim stands; a fixture with a met claim plus a background fake launch blocks; a counter write failure still blocks (exit 2).
+  - **Hypothesis**: false allows of a met claim with no consensus drop from 10 per goal (reproduced) to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with the new fixtures.
+  - **Success**: 0 allows in the fake-launch and counter-failure fixtures; all other fixtures pass.
+  - **Pivot**: if a real background judge round can no longer finish without a false block, keep the wait but rewrite the retro to "in progress (waiting on judges)" instead.
+  - **Anchor**: Google SRE book, ch. 22 (fail-safe defaults); Claude Code hooks reference (Stop exit codes), https://code.claude.com/docs/en/hooks.
+
+- [ ] Reviewing the judge hook never blocks a goal for good
+  - **ID**: goal-judges-marker-false-block
+  - **Tags**: hooks, run-goal, reliability
+  - **Details**: Found 2026-11-22, PR #1253 rounds 6-8. Each round found new false "unofficial judge run" blocks: an Agent review prompt that quotes the `GOAL-JUDGE-VERDICT` / `Judge:` / `Score:` template, and `bash -x hooks/lib/goal-judge-local.sh --help`. The transcript cannot be edited, so one false row blocks every later Stop. Patching the regex per round did not converge; change approach.
+  - **Files**: `hooks/lib/goal-judge-verdicts.jq`, `hooks/checks/goal-judges-before-stop.sh`, its test, `docs/hook-protocol.md`, `skill-plugins/workflow/run-goal/references/goal-judges.md`.
+  - **Output**: code
+  - **Acceptance**: an unofficial run makes its round stale (its verdicts never count) instead of a permanent block; a practice run needs the full `GOAL-JUDGE-PROMPT` header shape; fixtures for a review prompt that quotes the template and for `bash -x` on the script allow.
+  - **Hypothesis**: false permanent blocks from review or debug calls drop from 3 reproduced (rounds 6-8) to 0, with all current cheating fixtures still blocking.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`, plus the U-row count from `goal-judge-verdicts.jq` over this session's transcript.
+  - **Success**: 0 U rows for review and debug calls; every existing unofficial-run fixture still blocks or goes stale.
+  - **Pivot**: if any cheating fixture passes, keep the permanent block and add an owner-only reset command instead.
+  - **Anchor**: Nygard, "Release It!" 2nd ed. (fail fast, but recoverably); Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Goal judges can include one free hosted non-Claude model
+  - **ID**: goal-judges-hosted-outside-judge
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-22, PR #1253 rounds 7-8. The llm-evaluation-methodology judge caps bias controls at 6 while every judge is a Claude model (Zheng et al. 2023, self-enhancement bias). The owner ruled out local models (slow, hot). A free hosted model with no Musk ties (Google Gemini free tier, Cloudflare Workers AI) could run one judge without local heat. Needs the owner's yes: it sends the judged diff to an outside service.
+  - **Files**: `hooks/lib/goal-judge-local.sh` (or a new hosted sibling), `hooks/checks/goal-judges-before-stop.sh`, docs.
+  - **Output**: code
+  - **Acceptance**: with the owner's opt-in, one judge runs on a hosted non-Anthropic model through a hook-checked script, counts as a second vendor, and returns in under 5 minutes.
+  - **Hypothesis**: the evaluation judge's bias line rises from 6 to 8 or more on a panel with one outside-vendor judge.
+  - **Measurement**: one judged goal with `RUN_GOAL_JUDGE_VENDORS=2` and the hosted judge; read the evaluation judge's bias line.
+  - **Success**: bias line 8 or more, hosted judge answers in under 5 minutes.
+  - **Pivot**: if the hosted judge scores erratically (spread over 3 points from the Claude judges on the same state) in 2 goals, drop it.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge"; Verga et al. 2024, "Replacing Judges with Juries".
+
 - [ ] A goal's Stop check finishes in under 1 second on a large transcript
   - **ID**: goal-judges-stop-cache
   - **Tags**: hooks, speed
-  - **Details**: Found 2026-11-22 in PR #1253 round 6. Parse-once landed (one full jq pass per Stop), but Stop time on a 16.7 MB transcript copy stayed at 1.81-2.02 s (baseline 1.41-1.99 s): the whitespace-blind state hash costs about 0.65 s (was 0.3 s), using up the jq saving. The parse-once Pivot applies: cache.
+  - **Details**: Found 2026-11-22 in PR #1253 round 6. Parse-once landed (one full jq pass per Stop), but round 8 measured about 6 s per Stop on a 24 MB transcript: `goal-judge-local.sh --prompt-sha` runs for every judge whenever the transcript only mentions the script (about 3.2 s), and the state token hashes the whole repo (about 1.1 s). Earlier, Stop time on a 16.7 MB transcript copy stayed at 1.81-2.02 s (baseline 1.41-1.99 s): the whitespace-blind state hash costs about 0.65 s (was 0.3 s), using up the jq saving. The parse-once Pivot applies: cache.
   - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-state.sh`, its test.
   - **Output**: code
   - **Acceptance**: verdict rows cached per session, keyed by transcript size and mtime; the state token cached per file list with sizes and mtimes; a fixture proves an edit or a transcript append invalidates each cache.

@@ -4399,6 +4399,16 @@
         "On a blocked stop, ships the retro skill updates as PRs in the same session instead of leaving the retro for later",
         "Never writes Goal status as met; ends with Goal status: impossible without the named user and third-party steps"
       ]
+    },
+    {
+      "id": 393,
+      "prompt": "/goal deliver  (this session merged a PR that edits a skill in fyodoriv/agentbrew; the installed copy under ~/.config/agentbrew/installed-skills comes from the fetched GitHub source)",
+      "expected_output": "After the merge, runs `agentbrew sync --pull` (preview with --dry-run first), then proves the installed skill file is byte-equal to the merged source before claiming it is live.",
+      "expectations": [
+        "Uses `agentbrew sync --pull`, not plain `agentbrew sync`, to refresh a skill from a fetched source",
+        "Previews the sync with --dry-run before applying it",
+        "Proves live state by comparing the installed file with the merged source (cmp or grep), not by the sync's own success line"
+      ]
     }
   ]
 }

@@ -73,7 +73,8 @@ contract with these criteria. Do not ask what "deliver" means.
    left, write the BLOCKED report.
 4. **Live in the final environment.** Find where users meet the work from the
    repo docs (install, deploy, or sync sections). A local install step those
-   docs name runs as part of delivery: `agentbrew sync` for skills and rules,
+   docs name runs as part of delivery: `agentbrew sync` with `--pull` for
+   skills and rules (without it, sync skips a skill from a fetched GitHub source),
    `dotfiles apply` for machine config. A deploy to a shared or production
    target, a publish, or a release needs a cited approval; without one, park
    it. Then read the live state back: installed files byte-equal to the

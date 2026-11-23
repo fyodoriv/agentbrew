@@ -117,7 +117,7 @@
 #   - RUN_GOAL_JUDGE_MIN: lowest passing score. Default 8.
 #   - RUN_GOAL_JUDGE_COUNT: judges needed. Default 3.
 #   - RUN_GOAL_JUDGE_MODELS: different judge model families needed. Default 3.
-#   - RUN_GOAL_JUDGE_ROUNDS: judging rounds allowed per goal. Default 3.
+#   - RUN_GOAL_JUDGE_ROUNDS: judging rounds allowed per goal. Default 4.
 
 set -euo pipefail
 
@@ -176,7 +176,7 @@ JUDGE_DIR="${RUN_GOAL_JUDGE_DIR:-$HOME/.config/agentbrew/goal-judges}"
 MIN="${RUN_GOAL_JUDGE_MIN:-8}"
 NEED="${RUN_GOAL_JUDGE_COUNT:-3}"
 MODELS="${RUN_GOAL_JUDGE_MODELS:-3}"
-ROUNDS="${RUN_GOAL_JUDGE_ROUNDS:-3}"
+ROUNDS="${RUN_GOAL_JUDGE_ROUNDS:-4}"
 case "$MIN" in "" | *[!0-9.]*) MIN=8 ;; esac
 case "$NEED" in "" | *[!0-9]*) NEED=3 ;; esac
 case "$MODELS" in "" | *[!0-9]*) MODELS=3 ;; esac

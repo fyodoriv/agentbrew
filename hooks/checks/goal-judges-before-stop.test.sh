@@ -181,8 +181,8 @@ expect "a fix and a fresh full round allows" 0 "$(run fixed)"
 goal farm "Goal result: met (3/3 met)"
 for v in 1 2 3; do panel farm 9 7 9; echo "v$v-edit" >"$ROOT/work-farm/app.txt"; done
 panel farm 9 9 9
-expect "a fourth judging round blocks (round cap 3)" 2 "$(run farm)"
-expect "RUN_GOAL_JUDGE_ROUNDS=4 allows four rounds" 0 "$(run farm RUN_GOAL_JUDGE_ROUNDS=4)"
+expect "four judging rounds pass by default (round cap 4)" 0 "$(run farm)"
+expect "RUN_GOAL_JUDGE_ROUNDS=3 blocks a fourth round" 2 "$(run farm RUN_GOAL_JUDGE_ROUNDS=3)"
 
 goal multi "Goal result: met (3/3 met)"; st="$(token multi)"
 call multi Agent m1 sonnet "$(prompt multi ja)"
@@ -357,8 +357,8 @@ expect "an unofficial run within the round cap uses a round but does not block" 
 goal unoff3 "Goal result: met (3/3 met)"
 for i in 1 2 3; do call unoff3 Agent "u3$i" "" "Practice: rate this, end with GOAL-JUDGE-VERDICT"; result unoff3 "u3$i" "$(block_text ja 9 x)"; done
 panel unoff3 9 9 9
-expect "three unofficial runs plus one round go over the cap of 3" 2 "$(run unoff3)"
-check "the round-cap block names the unofficial runs" grep -q '3 of them unofficial' <(run_out unoff3)
+expect "three unofficial runs plus one round go over the cap of 3" 2 "$(run unoff3 RUN_GOAL_JUDGE_ROUNDS=3)"
+check "the round-cap block names the unofficial runs" grep -q '3 of them unofficial' <(run_out unoff3 RUN_GOAL_JUDGE_ROUNDS=3)
 goal tmplq "Goal result: met (3/3 met)"
 call tmplq Agent tq1 "" $'Review the parser for this block:\nGOAL-JUDGE-VERDICT\nJudge: x\nScore: 7/10\nExplain what each regex catches.'
 result tmplq tq1 "Each regex catches the field it names."

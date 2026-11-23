@@ -191,6 +191,16 @@ if [ -n "$SEL" ]; then
   G_ACTIVE="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G"{print $2; exit}')"
 fi
 SEL=""
+# The owner text comes from the transcript. Rewrite the owner file when it
+# differs (whitespace aside), so the runner's prompts and the hook's agree.
+# This runs before any early allow: the runner builds judge prompts while
+# the retro still says in progress.
+G_OWNER="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G"{print $3; exit}' | hook_jq -Rr '@base64d' 2>/dev/null || true)"
+if [ "$G_ACTIVE" = 1 ] && [ -n "$G_OWNER" ]; then
+  norm_ws() { tr -s '[:space:]' ' ' | sed -E 's/^ //; s/ $//'; }
+  [ -f "$OWNER" ] && [ "$(norm_ws <"$OWNER")" = "$(printf '%s' "$G_OWNER" | norm_ws)" ] ||
+    { mkdir -p "$STATE_DIR" && printf '%s\n' "$G_OWNER" >"$OWNER"; } 2>/dev/null || true
+fi
 # No contract and no active goal: nothing to judge. A contract with no
 # readable transcript still gates (fail closed).
 [ -f "$CONTRACT" ] || [ "$G_ACTIVE" = 1 ] || verdict_allow "$HOOK_ID" "no active goal contract"
@@ -222,14 +232,6 @@ TOKEN=""
 CANON="{}"
 NOW_CONTRACT=""
 RUBRIC_SHAS=""
-# The owner text comes from the transcript. Rewrite the owner file when it
-# differs (whitespace aside), so the runner's prompts and the hook's agree.
-G_OWNER="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G"{print $3; exit}' | hook_jq -Rr '@base64d' 2>/dev/null || true)"
-if [ "$G_ACTIVE" = 1 ] && [ -n "$G_OWNER" ]; then
-  norm_ws() { tr -s '[:space:]' ' ' | sed -E 's/^ //; s/ $//'; }
-  [ -f "$OWNER" ] && [ "$(norm_ws <"$OWNER")" = "$(printf '%s' "$G_OWNER" | norm_ws)" ] ||
-    { mkdir -p "$STATE_DIR" && printf '%s\n' "$G_OWNER" >"$OWNER"; } 2>/dev/null || true
-fi
 if [ ! -f "$CONTRACT" ]; then
   add "the goal contract file is missing ($CONTRACT); save the contract there again, or write Goal result: partly met (<why>) in the retro"
 elif [ "$NJ" -lt "$NEED" ]; then

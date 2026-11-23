@@ -506,6 +506,10 @@ goal gside "Goal result: met (3/3 met)"; judge gside ja 9 opus; judge gside jb 9
 jq -cn '{type:"assistant",isSidechain:true,message:{model:"claude-sonnet-5-5",content:[{type:"text",text:"x"}]}}' >>"$ROOT/gside.jsonl"
 expect "a sidechain row does not hide the runner's family" 2 "$(run gside)"
 
+goal gown2 "Goal result: in progress (judges running)"; new_goal_row gown2 "first goal"; printf 'first goal\n' >"$RUN_GOAL_STATE_DIR/gown2.owner.md"; new_goal_row gown2 "second goal"
+expect "an in-progress retro still allows" 0 "$(run gown2)"
+check "an in-progress Stop still refreshes the owner file for the new /goal" grep -qx 'second goal' "$RUN_GOAL_STATE_DIR/gown2.owner.md"
+
 goal compact "Goal result: met (3/3 met)"; panel compact 9 9 9
 jq -cn '{type:"user",isCompactSummary:true,message:{content:"This session is being continued. Earlier: <command-name>/goal</command-name> <command-args>old</command-args>"}}' >>"$ROOT/compact.jsonl"
 expect "a compaction summary after the round keeps the verdicts" 0 "$(run compact)"

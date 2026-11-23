@@ -575,6 +575,12 @@ expect "sixth Stop allows after downgrading" 0 "$(run giveup)"
 check "give-up rewrites the claim to partly met" grep -q '^Goal result: partly met (judge consensus not reached: jb scored 5/10' "$RUN_GOAL_STATE_DIR/giveup.retro.md"
 check "give-up resets the block counter" test ! -e "$RUN_GOAL_STATE_DIR/giveup.judgeblocks"
 expect "a downgraded goal keeps passing" 0 "$(run giveup)"
+# A give-up reason cut at 300 characters inside a bracket must not read as a
+# met claim, or the downgraded line blocks forever (round 1, 2026-11-23).
+goal gfam "Goal result: met (3/3 met)"; judge gfam ja 9 sonnet; judge gfam jb 9 haiku; judge gfam jc 9 haiku
+for i in 1 2 3 4 5; do run gfam >/dev/null; done
+expect "a give-up whose reason is cut inside a bracket still ends the loop" 0 "$(run gfam)"
+check "that give-up line keeps no bracket from the cut reason" grep -qE '^Goal result: partly met \(judge consensus not reached: [^()]*\)$' "$RUN_GOAL_STATE_DIR/gfam.retro.md"
 
 goal gnoretro "x"; rm -f "$RUN_GOAL_STATE_DIR/gnoretro.retro.md"; panel gnoretro 9 5 9
 for i in 1 2 3 4 5; do run gnoretro >/dev/null; done

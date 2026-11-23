@@ -356,6 +356,32 @@
 
 ## P1
 
+- [ ] The judge contract filter hides only score targets
+  - **ID**: goal-judge-filter-precision
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, judge round 1 of the blocker-loop goal (devex-workflow-design follow-ups). `contract_text` in `hooks/lib/goal-judge-prompt.sh` still drops lines such as "Judged paths: ~/apps/foo/target/v2" and "2. Rating widget shows 5 stars at least once", because `bar`, `above`, `target` and `>` match inside other words, and it drops a whole line when only one clause is a target, so judges lose the Outcome and Metric lines.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/checks/goal-judge-claims.test.sh`.
+  - **Output**: code
+  - **Acceptance**: each plain line quoted above stays; every score-target phrasing in the fast test is still removed.
+  - **Hypothesis**: plain lines hidden by the filter drop from 3 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
+  - **Success**: all new cases pass with 0 failed.
+  - **Pivot**: if precise matching misses more than 1 score-target phrasing in the fast test, refuse score targets in the contract instead of filtering them.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge", arXiv:2306.05685 (anchoring bias).
+
+- [ ] Judge reports that skip the Blocker or Follow-up labels are caught
+  - **ID**: goal-judge-label-check
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, judge round 1 (devex-workflow-design follow-up). The rule that judges label each defect Blocker or Follow-up is prose only; nothing checks a report, and the Pivot "2 rounds in a row each raise new blockers" has no command that counts it. Also: the block message says "ja scored 6/10" but not the next step (fix every overseer blocker with a failing-first test, file follow-ups, judge all three again), and `goal-judge-prompt.sh` with no arguments prints an empty path instead of its usage line.
+  - **Files**: `hooks/lib/goal-judge-verdicts.jq`, `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-judge-prompt.sh`.
+  - **Output**: code
+  - **Acceptance**: a report with no Blocker or Follow-up label gets a named warning; a score under the bar prints the iteration step; the no-argument run prints usage.
+  - **Hypothesis**: rounds that end with unlabelled defects drop from 1 seen to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: the new cases pass with 0 failed.
+  - **Pivot**: if label checks reject more than 1 honest report in the 5 largest local transcripts, keep them as warnings only.
+  - **Anchor**: Krippendorff 2018, "Content Analysis", 4th ed. (coding reliability).
+
 - [ ] Agents can run one named case of the goal-judge hook suite
   - **ID**: goal-judge-suite-one-case
   - **Tags**: hooks, run-goal, speed

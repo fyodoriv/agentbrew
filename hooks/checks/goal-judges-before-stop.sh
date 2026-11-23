@@ -470,7 +470,9 @@ WROTE=0
 if [ "$blocks" -ge "$MAX_BLOCKS" ] || [ "$WROTE" = 0 ]; then
   # Bounded: a counter that cannot be written ends the loop now, as a give-up.
   [ "$WROTE" = 0 ] && PLAIN="the block counter cannot be written ($COUNTER); $PLAIN"
-  reason="$(printf '%s' "$PLAIN" | tr -d '\n' | cut -c1-300)"
+  # No brackets in the reason: a cut inside one would leave text the claim
+  # check reads as "met", and the downgraded line would block forever.
+  reason="$(printf '%s' "$PLAIN" | tr -d '\n()' | cut -c1-300)"
   src="$RETRO"; [ -f "$src" ] || src=/dev/null
   # Rewrite in place from memory (no temp file), so a read-only state folder
   # or a missing $TMPDIR still gets the downgrade.
@@ -492,6 +494,8 @@ RATE=""
   END { for (j in n) printf "%s %d/%d, ", j, p[j], n[j] }' "$HISTORY" 2>/dev/null | sed 's/, $//')"
 if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$RETRO"; then
   WHY="The retro claims the goal is met, but there is no judge consensus yet."
+  awk "$CLAIM_AWK"' claim($0) && norm($0) ~ /^goal result[^a-z]*(partly|partially|not|unmet|failed|abandoned|cancelled|canceled|stopped|in progress|blocked|impossible|pending)/ { c = 1 } END { exit !c }' "$RETRO" &&
+    WHY="The retro's Goal result line starts as not met, but text after it reads as a claim. Put the reason in brackets: Goal result: partly met (<why>)."
 else
   WHY="No Goal result line says the goal is not met, so this Stop needs a judge consensus. Mid-goal (a question round, a wait), write Goal result: in progress (<why>) and stop again."
 fi

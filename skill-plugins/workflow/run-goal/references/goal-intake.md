@@ -87,6 +87,25 @@ contract with these criteria. Do not ask what "deliver" means.
 The metric is the before/after number from step 5. Pick it and take its
 baseline before the first merge.
 
+`/goal ship follow ups` (also "ship the follow-ups", "close the follow-ups")
+is a full goal too. It means: close every item on the last message's
+**Follow-ups:** line. Expand it into the contract without asking what it
+means:
+
+1. **One criterion per item.** Copy each follow-up word for word as a
+   done-criterion. Each one ends as a merged PR, a filed task with its
+   pre-registered fields, or a drop with a stated reason.
+2. **Owner choices go in the one question round.** Ask only about items whose
+   result depends on the owner (keep or drop, which of two designs, a setting
+   only they may change). Put your pick first.
+3. **Drops need a reason.** An item that turns out not to fit the repo or the
+   app (for example, not a money feature in a money app) is dropped in the
+   contract with one sentence why, not silently.
+4. **Proof per item.** A task id on the default branch, a merged PR URL, or a
+   fresh read-only run of the check the item named.
+
+The metric is open follow-ups: baseline the count on that line, target 0.
+
 ## Special cases
 
 - **The goal is only the user's own work** (no agent work in it): do not arm

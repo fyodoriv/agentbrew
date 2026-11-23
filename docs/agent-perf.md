@@ -315,7 +315,8 @@ adds a hint as `additionalContext`. It never blocks.
   `bash -c '...'` is quoted text, so the hook misses it.
 - The hint names three cheaper waits: run the command with
   `run_in_background: true` and wait for the completion notice; use a
-  blocking wait such as `gh pr checks --watch` or `wait <pid>`; or raise the
+  blocking wait such as `gh run watch <run-id>` on the CI run for your head
+  commit, or `wait <pid>`; or raise the
   poll interval and cap the total time.
 - Turn it on with `- poll-loop-hint` under `enabled:` in
   `~/.config/agentbrew/hooks-overlay/manifest.yaml`, then run

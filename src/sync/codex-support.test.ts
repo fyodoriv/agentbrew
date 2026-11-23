@@ -67,7 +67,12 @@ describe("Codex hook policy scope", () => {
     const codex = manifest.hooks.filter((hook) => hook.agents.includes("codex"));
     expect(codex.map((hook) => hook.id)).toContain("no-git-add-all");
     expect(codex.every((hook) => hook.matcher === "Bash")).toBe(true);
-    for (const id of ["goal-contract-before-edit", "goal-retro-before-stop", "goal-judges-before-stop", "poll-loop-hint"]) {
+    for (const id of [
+      "goal-contract-before-edit",
+      "goal-retro-before-stop",
+      "goal-judges-before-stop",
+      "poll-loop-hint",
+    ]) {
       expect(manifest.hooks.find((hook) => hook.id === id)?.agents).not.toContain("codex");
     }
   });

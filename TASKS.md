@@ -366,7 +366,7 @@
   - **Hypothesis**: cosmetic re-roll passes drop from 1 reproduced path to 0.
   - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with a trailing-space re-roll fixture.
   - **Success**: the re-roll fixture blocks and all other fixtures pass.
-  - **Pivot**: if a whitespace-blind hash breaks real formatting-only goals, keep the hash and pool minimum scores instead.
+  - **Pivot**: if more than 1 of 10 formatting-only goals gets a false block from the whitespace-blind hash, drop the hash and pool minimum scores instead.
   - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"; Goodhart's law (Strathern 1997).
 
 - [ ] Judge rubrics cannot be loosened by the agent they judge
@@ -379,7 +379,7 @@
   - **Hypothesis**: steering or empty rubrics accepted by the floor drop from 1 reproduced case to 0.
   - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with steering-rubric fixtures.
   - **Success**: the steering-rubric fixtures block and all other fixtures pass.
-  - **Pivot**: if a meaning check needs an LLM, keep the judge cache in a git repo the owner reviews instead.
+  - **Pivot**: if the rubric floor misses more than 0 of the steering fixtures without an LLM check, keep the judge cache in a git repo the owner reviews instead.
   - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"; Goodhart's law (Strathern 1997).
 
 - [ ] Goal judges come from more than one model vendor
@@ -391,7 +391,7 @@
   - **Acceptance**: families are vendors; at least one counted judge runs on a non-Anthropic model (a local Ollama model first, per the owner's local-first order) through a recorded, hook-checked path; the runner's own model never holds a majority.
   - **Hypothesis**: panels with one vendor drop from accepted to blocked (0 accepted).
   - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with a one-vendor panel fixture and a local-model judge fixture.
-  - **Success**: the one-vendor fixture blocks and the local-model judge fixture counts.
+  - **Success**: 1 of 1 one-vendor fixture blocks and 1 of 1 local-model judge fixture counts; 0 other fixtures fail.
   - **Pivot**: if no other vendor can run a judge here, keep model families and require 'partly met (one vendor)' in the report.
   - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"; Goodhart's law (Strathern 1997).
 
@@ -405,7 +405,7 @@
   - **Hypothesis**: Stop time on a 10 MB transcript drops from about 2 s to under 1 s.
   - **Measurement**: `time` of one Stop fixture on a real transcript copy, plus the hook test suite.
   - **Success**: under 1 s and all fixtures pass.
-  - **Pivot**: if one pass cannot build the canonical prompts first, cache the rows by transcript size and mtime.
+  - **Pivot**: if one jq pass stays above 1.5 s on the 10 MB transcript, cache the rows by transcript size and mtime instead.
   - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"; Goodhart's law (Strathern 1997).
 
 - [ ] The goal-judges hook test suite finishes in under 90 seconds

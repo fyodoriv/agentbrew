@@ -305,16 +305,16 @@ contract, each judge's rubric (its file up to `## Calibration`), and the
 `Judged paths:` (git HEAD, status, diff, untracked files), so any edit by
 any tool makes the verdicts stale. Each judge call's prompt must equal the
 output of `hooks/lib/goal-judge-prompt.sh <contract> <id>` (no added text)
-and must have no `subagent_type` or `general-purpose` (no fork, no custom
-agent type); the prompt embeds the rubric, so judges never read the
+and must leave `subagent_type` out or set it to `general-purpose` (no
+fork, no custom agent type); the prompt embeds the rubric, so judges never read the
 runner-written calibration notes. A missing contract during an active goal
 (read from the transcript's last `/goal` command) blocks. The hook rewrites
 `<session>.owner.md` from that command, so the prompt carries the owner's
 own words. A judge that got a SendMessage, or any unofficial judge run
 (markers without the header, or `claude -p`/`codex exec`), blocks. The judge
 set, rubric hashes, and the contract hash freeze at the goal's first round
-(read from earlier judge prompts after the last `/goal` command), and a goal
-gets `RUN_GOAL_JUDGE_ROUNDS` (3) rounds. Only `Agent`
+(read from earlier judge prompts after the last `/goal` command), only
+the latest round can pass, and a goal gets `RUN_GOAL_JUDGE_ROUNDS` (3) rounds. Only `Agent`
 or `Task` results and their background notifications (user, `attachment`,
 or `queue-operation` rows) count. A result with two verdict blocks counts
 for none; two verdicts from one judge on one state is a re-roll. Each score

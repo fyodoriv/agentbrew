@@ -99,7 +99,8 @@ expect "no retro yet blocks while a contract exists (success-gated)" 2 "$(run s1
 for form in "Goal result: partly met (2/3 met)" "Goal result: not met" "Goal result: in progress (clock goal, wrap-up at 18:00)" \
   "Goal result: blocked on 2FA" "$(printf 'Notes.\nGoal result: partly met (lowest 6/10)')" \
   "Goal result: not yet met" "Goal result: unmet" "Goal result: partially met" "Goal result: blocked on CI (tests met)" \
-  "Goal result: partly met: criteria 1 and 2 met, 3 blocked"; do
+  "Goal result: partly met: criteria 1 and 2 met, 3 blocked" "Goal result: failed (could not reproduce)" \
+  "Goal result: abandoned (owner cleared)" "Goal result: partially-met" "Goal result: blocked: 2 of 4 criteria met"; do
   goal nm "$form"; expect "retro '$form' needs no consensus" 0 "$(run nm)"
 done
 for form in "Goal result: met" "- Goal result: met" "**Goal result:** met" "GOAL RESULT: MET" "## Goal result: met" \
@@ -307,6 +308,12 @@ goal unoffb "Goal result: met (3/3 met)"; call unoffb Bash u2 "" ""
 jq -cn '{type:"assistant",message:{content:[{type:"tool_use",id:"u3",name:"Bash",input:{command:"claude -p \"$(bash goal-judge-prompt.sh c.md ja)\""}}]}}' >>"$ROOT/unoffb.jsonl"
 panel unoffb 9 9 9
 expect "a claude -p judge run in Bash blocks" 2 "$(run unoffb)"
+
+# Round 5 attack: revert to an earlier passing state after a failing round.
+goal revert "Goal result: met (3/3 met)"; panel revert 9 9 9
+echo "v2" >"$ROOT/work-revert/app.txt"; panel revert 5 5 5
+echo "v1" >"$ROOT/work-revert/app.txt"
+expect "reverting to an earlier passing state after a failing round blocks" 2 "$(run revert)"
 
 goal giveup "- Goal result: met (3/3 met)"; panel giveup 9 5 9
 for i in 1 2 3 4 5; do expect "give-up block $i" 2 "$(run giveup)"; done

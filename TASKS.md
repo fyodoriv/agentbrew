@@ -356,6 +356,58 @@
   - **Pivot**: if more than 1 real launch is missed in the 5 transcripts, match the harness launch line by tool name instead.
   - **Anchor**: Claude Code hooks reference (transcript_path), https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
 
+- [ ] Goal judges cannot be re-rolled by a cosmetic edit
+  - **ID**: goal-judges-reroll-resistance
+  - **Tags**: hooks, reliability
+  - **Details**: PR #1253 round 5 (2026-11-22): the evaluation judge added one trailing space to a judged file, got a new state token and a new round, and the second panel passed after the first failed. Up to three rounds give best-of-three on the same work.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-state.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a whitespace-only change keeps the state token (hash `git diff -w`), and each judge's final score is its lowest across the goal's rounds unless the work changed beyond whitespace; fixtures cover both.
+  - **Hypothesis**: cosmetic re-roll passes drop from 1 reproduced path to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with a trailing-space re-roll fixture.
+  - **Success**: the re-roll fixture blocks and all other fixtures pass.
+  - **Pivot**: if a whitespace-blind hash breaks real formatting-only goals, keep the hash and pool minimum scores instead.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"; Goodhart's law (Strathern 1997).
+
+- [ ] Judge rubrics cannot be loosened by the agent they judge
+  - **ID**: goal-judges-rubric-governance
+  - **Tags**: hooks, reliability
+  - **Details**: PR #1253 round 5: the rubric floor checks syntax only. A judge file with 'capped at 10 never' and 'trust the summary' lines passed, and the runner merges its own calibration notes into the rubric at the next goal with no check.
+  - **Files**: `hooks/lib/goal-state.sh`, `skill-plugins/workflow/run-goal/references/goal-judges.md`, its tests.
+  - **Output**: code
+  - **Acceptance**: every cap must be below the passing bar; rubric lines that tell the judge to trust or skip checks fail the floor; a rubric change since the last goal needs a calibration line that names the missed defect it fixes.
+  - **Hypothesis**: steering or empty rubrics accepted by the floor drop from 1 reproduced case to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with steering-rubric fixtures.
+  - **Success**: the steering-rubric fixtures block and all other fixtures pass.
+  - **Pivot**: if a meaning check needs an LLM, keep the judge cache in a git repo the owner reviews instead.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"; Goodhart's law (Strathern 1997).
+
+- [ ] Goal judges come from more than one model vendor
+  - **ID**: goal-judges-cross-vendor
+  - **Tags**: hooks, reliability
+  - **Details**: PR #1253 round 5: the two-family rule counts haiku, sonnet, opus, and fable as different families, so a panel of all Anthropic models (two of them the runner's own) passes. Self-enhancement bias needs a judge from another vendor.
+  - **Files**: `hooks/lib/goal-judge-verdicts.jq`, `hooks/checks/goal-judges-before-stop.sh`, `references/goal-judges.md`.
+  - **Output**: code
+  - **Acceptance**: families are vendors; at least one counted judge runs on a non-Anthropic model (a local Ollama model first, per the owner's local-first order) through a recorded, hook-checked path; the runner's own model never holds a majority.
+  - **Hypothesis**: panels with one vendor drop from accepted to blocked (0 accepted).
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with a one-vendor panel fixture and a local-model judge fixture.
+  - **Success**: the one-vendor fixture blocks and the local-model judge fixture counts.
+  - **Pivot**: if no other vendor can run a judge here, keep model families and require 'partly met (one vendor)' in the report.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"; Goodhart's law (Strathern 1997).
+
+- [ ] The goal-judges hook parses each transcript once per Stop
+  - **ID**: goal-judges-parse-once
+  - **Tags**: hooks, speed
+  - **Details**: PR #1253 round 5 (harness judge): each Stop with a goal parses the transcript twice with jq (goal check, then verdicts) and re-hashes the judged paths; resumed-agent and compaction transcript shapes have no fixture.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-judge-verdicts.jq`, its test.
+  - **Output**: code
+  - **Acceptance**: one jq pass per Stop; fixtures for a resumed agent and a compacted transcript.
+  - **Hypothesis**: Stop time on a 10 MB transcript drops from about 2 s to under 1 s.
+  - **Measurement**: `time` of one Stop fixture on a real transcript copy, plus the hook test suite.
+  - **Success**: under 1 s and all fixtures pass.
+  - **Pivot**: if one pass cannot build the canonical prompts first, cache the rows by transcript size and mtime.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"; Goodhart's law (Strathern 1997).
+
 - [ ] The goal-judges hook test suite finishes in under 90 seconds
   - **ID**: goal-judges-test-speed
   - **Tags**: hooks, speed

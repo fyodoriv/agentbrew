@@ -14,8 +14,10 @@ line, or any other form ("met", "done") all need the consensus.
 Mid-goal Stops (the question round, a wait on CI) need a retro line
 `Goal result: in progress (<why>)` first. A goal that ends below the bar
 writes `Goal result: partly met (<lowest score and why>)`. A not-met line
-must start with a whole phrase: partly met, partially met, not met, not yet
-met, unmet, in progress, blocked, impossible, or pending.
+must start with a whole phrase (hyphens are fine): partly met, partially
+met, not met, not yet met, unmet, failed, abandoned, cancelled, stopped, in
+progress, blocked, impossible, or pending. Only the latest judging round
+counts: going back to an earlier passing state after a failing round blocks.
 
 Deleting the contract file during an active goal does not end the gate: the
 hook reads the `/goal` command from the transcript and blocks until the

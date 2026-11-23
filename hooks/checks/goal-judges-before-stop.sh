@@ -505,7 +505,7 @@ fi
 
 NEXT="${PROBLEMS%%"$SEP"*}"
 # Only low scores left: the next step is the iteration rule, not the score.
-if ! printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed '/^$/d' | grep -qvE ' scored [0-9.]+/10'; then
+if ! grep -qvE ' scored [0-9.]+/10' <<<"$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed '/^$/d')"; then
   NEXT="fix every blocker the overseer listed in one batch, each with a test that fails first; file the follow-ups as tasks outside the judged paths before judging; then judge every judge again ($NEXT)"
 fi
 LIST="$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed -E 's/^ +//; /^$/d' | awk '{ printf "  %d. %s\n", NR, $0 }')"

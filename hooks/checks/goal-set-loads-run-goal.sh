@@ -78,7 +78,7 @@ CONDITION="${CONDITION%"${CONDITION##*[![:space:]]}"}"
 case "$(printf '%s' "$CONDITION" | tr '[:upper:]' '[:lower:]')" in
   "" | clear | stop | off | reset | none | cancel)
     if [ -n "$SESSION_ID" ] && [ -n "$CONDITION" ]; then
-      rm -f "$STATE_DIR/$SESSION_ID.pending" "$STATE_DIR/$SESSION_ID.contract.md" "$STATE_DIR/$SESSION_ID.stopblocks" "$STATE_DIR/$SESSION_ID.judgeblocks" "$STATE_DIR/$SESSION_ID.judgewaits"
+      rm -f "$STATE_DIR/$SESSION_ID.pending" "$STATE_DIR/$SESSION_ID.contract.md" "$STATE_DIR/$SESSION_ID.stopblocks" "$STATE_DIR/$SESSION_ID.judgeblocks" "$STATE_DIR/$SESSION_ID.judgewaits" "$STATE_DIR/$SESSION_ID.owner.md"
     fi
     verdict_allow "$HOOK_ID" "goal cleared or status"
     ;;
@@ -116,7 +116,10 @@ CONTEXT="A goal was just set with /goal. Before any other work, load the run-goa
 if [ -n "$SESSION_ID" ] && mkdir -p "$STATE_DIR" 2>/dev/null; then
   rm -f "$STATE_DIR/$SESSION_ID.contract.md" "$STATE_DIR/$SESSION_ID.retro.md" "$STATE_DIR/$SESSION_ID.stopblocks" "$STATE_DIR/$SESSION_ID.judgeblocks" "$STATE_DIR/$SESSION_ID.judgewaits"
   : >"$STATE_DIR/$SESSION_ID.pending" 2>/dev/null || true
-  find "$STATE_DIR" \( -name '*.contract.md' -o -name '*.retro.md' -o -name '*.stopblocks' -o -name '*.judgeblocks' -o -name '*.judgewaits' \) -mtime +7 -delete 2>/dev/null || true
+  # The owner's words for the judge prompts; goal-judges-before-stop
+  # rewrites this file from the transcript if it differs.
+  printf '%s\n' "$CONDITION" >"$STATE_DIR/$SESSION_ID.owner.md" 2>/dev/null || true
+  find "$STATE_DIR" \( -name '*.contract.md' -o -name '*.retro.md' -o -name '*.stopblocks' -o -name '*.judgeblocks' -o -name '*.judgewaits' -o -name '*.owner.md' \) -mtime +7 -delete 2>/dev/null || true
 fi
 
 log_decision "$HOOK_ID" "warn" "goal set: added run-goal context"

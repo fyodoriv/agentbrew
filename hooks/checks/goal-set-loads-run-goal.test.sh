@@ -88,9 +88,13 @@ counters_gone() { # label
 mkdir -p "$RUN_GOAL_STATE_DIR"; echo 5 >"$RUN_GOAL_STATE_DIR/s.judgeblocks"; echo 9 >"$RUN_GOAL_STATE_DIR/s.judgewaits"
 check "second goal (counter run)" "/goal second goal" 1
 counters_gone "a new goal clears the judge block and wait counters"
+if [ "$(cat "$RUN_GOAL_STATE_DIR/s.owner.md" 2>/dev/null)" = "second goal" ]; then PASS=$((PASS + 1)); else
+  FAIL=$((FAIL + 1)); FAIL_DETAILS+=("a new goal writes the owner's words to the owner file"); fi
 echo 5 >"$RUN_GOAL_STATE_DIR/s.judgeblocks"; echo 9 >"$RUN_GOAL_STATE_DIR/s.judgewaits"
 check "goal clear (counter run)" "/goal clear" 0
 counters_gone "/goal clear clears the judge block and wait counters"
+if [ ! -e "$RUN_GOAL_STATE_DIR/s.owner.md" ]; then PASS=$((PASS + 1)); else
+  FAIL=$((FAIL + 1)); FAIL_DETAILS+=("/goal clear removes the owner file"); fi
 
 # Malformed stdin must not block the prompt.
 MALFORMED_CODE=$(printf 'not json' | RUN_GOAL_SKILL_DIR="$INSTALLED" bash "$SCRIPT" >/dev/null 2>&1; echo $?)

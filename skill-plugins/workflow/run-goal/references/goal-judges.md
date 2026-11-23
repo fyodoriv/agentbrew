@@ -13,7 +13,21 @@ line, or any other form ("met", "done") all need the consensus.
 
 Mid-goal Stops (the question round, a wait on CI) need a retro line
 `Goal result: in progress (<why>)` first. A goal that ends below the bar
-writes `Goal result: partly met (<lowest score and why>)`.
+writes `Goal result: partly met (<lowest score and why>)`. A not-met line
+must start with a whole phrase: partly met, partially met, not met, not yet
+met, unmet, in progress, blocked, impossible, or pending.
+
+Deleting the contract file during an active goal does not end the gate: the
+hook reads the `/goal` command from the transcript and blocks until the
+contract is back or the retro says not met.
+
+| Setting | Default | Change it when |
+|---|---|---|
+| `RUN_GOAL_JUDGE_MIN` | 8 | the owner sets another bar for this machine |
+| `RUN_GOAL_JUDGE_COUNT` | 3 | never lower it to pass a goal |
+| `RUN_GOAL_JUDGE_MODELS` | 2 | you can run only one model family (then say so in the report) |
+| `RUN_GOAL_JUDGE_ROUNDS` | 3 | the owner approves more rounds for one goal |
+| `RUN_GOAL_JUDGE_DIR` | `~/.config/agentbrew/goal-judges` | the judge cache lives elsewhere |
 
 **Cost**: one round is three fresh subagents reading the judged paths; a goal
 gets at most three rounds, so at most nine judge runs.
@@ -82,14 +96,19 @@ judged paths can get its judge line after the verdicts.
    `bash ~/.claude/codeassist/hooks-scripts/lib/goal-judge-prompt.sh <contract path> <judge id>`
    (the `/goal` context names the contract path; its file name is the
    session id). The prompt holds the judge's rubric verbatim (its file up to
-   `## Calibration`), the state token, the judged paths, the contract
-   verbatim, and the verdict block to end with. The judge does not read the
+   `## Calibration`), the state token, the judged paths, the owner's own
+   `/goal` words (from `<session>.owner.md`, which the hook rewrites from the
+   transcript), the contract labelled as runner-written, and the verdict
+   block to end with. The judge does not read the
    judge file: you write its calibration notes, so they are not evidence.
 2. Pass that output **unchanged** as the `prompt` of one `Agent` call per
    judge, all three in parallel. The hook rebuilds the prompt and counts a
    verdict only on an exact match, so add nothing: no summary, no hints, no
    score. Leave `subagent_type` out (or use `general-purpose`): a fork
    shares your context, and a custom agent type brings its own system prompt.
+   Never message a running judge (SendMessage) and never run practice judges
+   (judge markers without the header, or `claude -p` with a judge prompt):
+   the hook rejects both.
    Use at least two model families: set `model` on one judge (for example
    `sonnet` when you run on Opus). An Agent call with no `model`, or
    `model: inherit`, counts as your own model.
@@ -152,24 +171,37 @@ private data out.
 ## Where it fails open
 
 The hook allows without a consensus when: the bypass
-`HOOK_BYPASS_GOAL_JUDGES_BEFORE_STOP=1` is set, no contract exists (no `/goal`,
-or after `/goal clear`), the agent has no Stop hook (Codex), or the session id
-is unusable. A lenient judge file you wrote yourself is limited by the rubric
-floor and the prompt's rule to apply the field's standard, not ruled out.
+`HOOK_BYPASS_GOAL_JUDGES_BEFORE_STOP=1` is set during an active goal, no goal
+is active (no `/goal`, or after `/goal clear`), the agent has no Stop hook
+(Codex), or the session id is unusable.
+
+Known limits (the agent being judged writes the files it is judged by, so a
+hook can make these harder, not impossible):
+
+- A lenient judge file you wrote yourself: the rubric floor and the prompt's
+  rule to apply the field's standard limit it.
+- Steering text in the contract: the prompt labels the contract as
+  runner-written and tells judges to report such text as a defect.
+- A practice judge run with a paraphrased prompt and no marker is not seen.
+- Small edits buy a new round, up to the three-round cap.
+- A rubric loosened when notes are merged at the next goal: check the merge
+  against the calibration evidence.
 
 ## Measure the effect
 
-Outcome per goal (the hook's last decision in each real session; test
-fixtures use short ids, so only UUID session ids count), over the whole
-decision log:
+Outcome per goal: the hook's last decision in each real goal session.
+Rows for sessions with no goal ("no active goal contract") and test fixtures
+(short ids; only UUID session ids count) are left out, so each counted
+session is one goal:
 
 ```bash
-jq -r 'select(.hookId=="goal-judges-before-stop" and ((.sessionId // "") | test("^[0-9a-f]{8}-[0-9a-f]{4}-")))
+jq -r 'select(.hookId=="goal-judges-before-stop" and ((.sessionId // "") | test("^[0-9a-f]{8}-[0-9a-f]{4}-"))
+    and ((.reason // "") | test("no active goal contract") | not))
   | [.sessionId, .decision, .reason] | @tsv' ~/.cache/agentbrew/hook-decisions.jsonl |
-  awk -F'\t' '{last[$1]=$2" "$3; if ($2=="block") bl[$1]=1} END{for (s in last) { r=last[s];
-    if (r ~ /judge consensus/) c++; else if (r ~ /gave up/) g++; else if (r ~ /^bypass/) b++; else o++
+  awk -F'\t' '{last[$1]=$2" "$3; if ($2=="block") bl[$1]=1} END{for (s in last) { n++; r=last[s];
+    if (r ~ /judge consensus/) c++; else if (r ~ /gave up/) g++; else if (r ~ /bypass/) b++; else o++
     if (bl[s] && r ~ /gave up|not met/) f++ }
-    printf "consensus %d, gave up %d, met by bypass %d, other %d, blocked then not met %d\n", c, g, b, o, f}'
+    printf "goals %d: consensus %d, gave up %d, met by bypass %d, other %d, blocked then not met %d\n", n, c, g, b, o, f}'
 ```
 
 "Met by bypass" counts goals that ended met without a consensus; the target

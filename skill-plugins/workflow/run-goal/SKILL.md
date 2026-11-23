@@ -174,6 +174,9 @@ whether an action is allowed. Never ask about something that the code, the
 docs, memory, or a quick experiment can answer.
 
 - One round only, three questions at most. Put your recommended option first.
+  Before you ask (and before any other mid-goal Stop), write
+  `Goal result: in progress (<why>)` to the retro file the `/goal` context
+  names: the judge hook holds every Stop of an active goal without it.
 - Give each question its full context. Say what the thing is in plain
   words, why it needs the user, what each option does, what changes for the
   user, and where to do it. Never ask about a hook, flag, file, domain term,

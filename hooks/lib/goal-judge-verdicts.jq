@@ -4,13 +4,20 @@
 # skipped, not fatal). Only rows after the last `/goal <condition>` command
 # count, so an earlier goal's judges never count for this one.
 # Output, tab-separated:
+#   G <active> <owner text, base64>
+#               active is 1 when the last `/goal` command with an argument
+#               set a goal (not clear/stop/...); the owner text is that
+#               argument, read from the transcript the runner cannot edit
 #   R <n>       judge launches (background) with no completion yet
 #   P <tool_use_id> <judge> <rubric sha> <state> <contract sha>
 #               one per judge call whose prompt has the GOAL-JUDGE-PROMPT
 #               header, in transcript order (rounds, frozen set, rubrics, and
 #               contract)
-#   V <tool_use_id> <judge> <score> <cache> <state> <model> <prompt_ok> <type_ok>
+#   V <tool_use_id> <judge> <score> <cache> <state> <model> <prompt_ok> <type_ok> <messaged>
 #   M <tool_use_id>   a result with more than one verdict block (ignored)
+#   U <tool_use_id>   an unofficial judge run: an Agent/Task call without the
+#               header, or a `claude -p`/`codex exec` Bash call, whose text
+#               holds the GOAL-JUDGE-PROMPT or GOAL-JUDGE-VERDICT marker
 #
 # Only Agent/Task results and their background notifications carry verdicts.
 # Notifications are read from user rows, `attachment` rows (queued_command
@@ -19,7 +26,9 @@
 # else (none, empty, or "inherit") the calling turn's model, reduced to its
 # family (opus, sonnet, ...). type_ok is 1 only for no `subagent_type` or
 # `general-purpose`: a fork shares the runner's context, and a custom agent
-# type brings its own system prompt that could steer the score.
+# type brings its own system prompt that could steer the score. messaged is
+# 1 when a SendMessage went to the judge's agent id (from its launch result)
+# or name: a message can steer a running judge.
 
 def texts: if type == "string" then . elif type == "array" then map(texts) | join("\n")
   elif type == "object" then ((.text // .content // "") | texts) else "" end;
@@ -37,6 +46,11 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
      | select((capture("<command-args>(?<a>[^<]*)</command-args>").a // "" | trim | ascii_downcase)
               | IN("", "clear", "stop", "off", "reset", "none", "cancel") | not)
      | $i ] | last // 0) as $start
+| ([ $all[] | select(.type == "user") | .message.content | strings
+     | select(test("^\\s*<command-name>/goal</command-name>"))
+     | (capture("<command-args>(?<a>[\\s\\S]*?)</command-args>").a // "" | trim)
+     | select(. != "") ] | last // "") as $lastargs
+| ($lastargs != "" and ($lastargs | ascii_downcase | IN("clear", "stop", "off", "reset", "none", "cancel") | not)) as $active
 | $all[$start:] as $rows
 | ([ $rows[] | select(.type == "assistant") | (.message.model // "inherit") as $turn
      | .message.content[]? | select(.type == "tool_use") | select(.name == "Agent" or .name == "Task")
@@ -49,8 +63,20 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
          contract: ($p | header("Contract-SHA")),
          model: ((if $m == "" or ($m | ascii_downcase) == "inherit" then $turn else $m end) | tostring | family),
          typeok: (if ((.input.subagent_type // "") | IN("", "general-purpose")) then "1" else "0" end),
+         name: ((.input.name // "") | tostring),
          bg: (.input.run_in_background? == true) }} ]
    | from_entries) as $agents
+| ([ $rows[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use")
+     | select(.name == "SendMessage") | (.input.to // "") | tostring | select(. != "") ] | unique) as $sent
+| ([ $rows[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use")
+     | select(
+         ((.name == "Agent" or .name == "Task")
+           and (((.input.prompt // "") | tostring) | test("^\\s*GOAL-JUDGE-PROMPT v[0-9]") | not)
+           and (((.input.prompt // "") | tostring) | test("GOAL-JUDGE-(PROMPT|VERDICT)")))
+         or (.name == "Bash"
+           and (((.input.command // "") | tostring) | test("(^|[^A-Za-z0-9_-])(claude[ \t]+(-p|--print)|codex[ \t]+exec)([^A-Za-z0-9_-]|$)"))
+           and (((.input.command // "") | tostring) | test("GOAL-JUDGE-(PROMPT|VERDICT)|goal-judge-prompt"))))
+     | .id ]) as $unofficial
 | ([ $rows[]
      | if .type == "user" then (.message.content | if type == "string" then . else empty end)
        elif .type == "attachment" then (.attachment.prompt // .attachment.content // empty | texts)
@@ -66,7 +92,11 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
      ($results[] | select(($agents[.id].judge // "") != "")
        | select(.text | test("^\\s*Async agent launched")) | .id) ] | unique) as $launched
 | ([ $notes[] | .id ] | unique) as $done
-| "R\t\(($launched - $done) | length)",
+| ([ $results[] | select(($agents[.id].judge // "") != "")
+     | {key: .id, value: ((.text | capture("agentId:[ \t]*(?<a>[A-Za-z0-9_-]+)").a) // "")} ] | from_entries) as $agentid
+| "G\t\(if $active then 1 else 0 end)\t\($lastargs | @base64)",
+  "R\t\(($launched - $done) | length)",
+  ( $unofficial[] | "U\t\(.)" ),
   ( $agents | to_entries[] | select(.value.judge != "")
     | ["P", .key, .value.judge, .value.rubric, .value.state, .value.contract] | @tsv ),
   ( ($results + $notes)[] | select($agents[.id] != null)
@@ -79,5 +109,9 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
         | ($x[1] | capture("^(?<n>[0-9]+(\\.[0-9]+)?)[ \t]*/[ \t]*10$").n // "bad") as $score
         | ($x[0] | ascii_downcase) as $judge
         | ((($call.prompt | trim) == (($canon[$judge] // "") | trim)) and ($canon[$judge] != null)) as $ok
-        | ["V", $id, $judge, $score, $x[2], $x[3], $call.model, (if $ok then "1" else "0" end), $call.typeok] | @tsv
+        | (($agentid[$id] // "") as $aid
+           | (($aid != "" and ($sent | index($aid)) != null)
+              or ($call.name != "" and ($sent | index($call.name)) != null))) as $msg
+        | ["V", $id, $judge, $score, $x[2], $x[3], $call.model, (if $ok then "1" else "0" end), $call.typeok,
+           (if $msg then "1" else "0" end)] | @tsv
       else empty end )

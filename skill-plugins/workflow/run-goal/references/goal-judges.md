@@ -191,6 +191,17 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
 
 ## 3. Iterate the work
 
+- Do not change the judged paths while judges run: a judge that re-reads a
+  half-edited file reports garbage. Point `Judged paths:` at a checkout you
+  leave alone (for example the merged `main`), and fix in another worktree.
+- Give judges a fast proof: a test that runs in seconds for each done-when
+  claim. A judge with a 10-minute budget cannot read a suite that takes
+  longer. For this hook: `bash hooks/checks/goal-judge-claims.test.sh`.
+- Write a not-met result with its reason in brackets:
+  `Goal result: partly met (<why>)`. After the not-met word, only a bracket,
+  a count (`3/5 met`), or `on|by|until|for <what>` may follow; other text
+  reads as a claim.
+
 - Any judge under 8: fix **every** blocker the overseer listed, in one
   batch, each with a test that fails before the fix. File each follow-up as
   a task before the next round, and do not fix follow-ups in this goal.

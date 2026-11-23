@@ -566,7 +566,7 @@
   - **Hypothesis**: graders disagree less on eval 384: count disagreements across 3 grader runs drop from about 1 in 3 to 0.
   - **Measurement**: `npm run eval:agent-artifacts` run 3 times on hosted CI, comparing the eval 384 verdicts.
   - **Success**: 3 of 3 runs give the same verdict.
-  - **Pivot**: if verdicts still differ, split the eval into one case per expectation.
+  - **Pivot**: below 2 of 3 matching verdicts, split the eval into one case per expectation.
   - **Anchor**: Cohen 1960, "A coefficient of agreement for nominal scales".
 
 - [ ] A goal retro knows which rule wins when a repo rule limits where skill updates go

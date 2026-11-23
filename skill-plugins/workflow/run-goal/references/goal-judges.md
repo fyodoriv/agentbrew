@@ -27,13 +27,15 @@ contract is back or the retro says not met.
 |---|---|---|
 | `RUN_GOAL_JUDGE_MIN` | 8 | the owner sets another bar for this machine |
 | `RUN_GOAL_JUDGE_COUNT` | 3 | never lower it to pass a goal |
-| `RUN_GOAL_JUDGE_MODELS` | 2 | model vendors needed; lower it only when no local model can run (then say so in the report) |
+| `RUN_GOAL_JUDGE_MODELS` | 2 | model families needed (opus, sonnet, haiku); lower it only when one family can run (then say so in the report) |
+| `RUN_GOAL_JUDGE_VENDORS` | 1 | the owner wants a non-Anthropic judge too; then run one local judge (slow, loads the machine) |
 | `RUN_GOAL_JUDGE_ROUNDS` | 3 | the owner approves more rounds for one goal |
 | `RUN_GOAL_JUDGE_DIR` | `~/.config/agentbrew/goal-judges` | the judge cache lives elsewhere |
 
-**Cost**: one round is two fresh subagents reading the judged paths and one
-local model run (about 5 to 9 minutes for a 90 KB diff on qwen3:14b); a goal
-gets at most three rounds, so at most nine judge runs.
+**Cost**: one round is three fresh subagents reading the judged paths; a
+goal gets at most three rounds, so at most nine judge runs. An opt-in local
+judge adds about 5 to 10 minutes of a busy, hot machine per round, and can
+time out.
 
 ## 1. Pick the judges (in the contract, before any work)
 
@@ -77,7 +79,8 @@ gets at most three rounds, so at most nine judge runs.
      defect this rubric fixes>` for the current rubric
      (`bash goal-state.sh --rubric-sha <judge file>` prints the sha). Each
      rubric change must name the defect it fixes, so the owner can audit a
-     loosened rubric.
+     loosened rubric. After a scored round, the line must cite the state
+     token of an earlier score line: the round where the defect was missed.
 
 ```markdown
 # <judge id>
@@ -93,7 +96,7 @@ Scale: 10 best in the field; 8 a top expert would ship it with minor notes;
 Blind spots to check: <things this judge missed before>
 
 ## Calibration
-- Rubric <rubric sha>: <the missed defect this rubric version fixes>.
+- Rubric <rubric sha>: <the missed defect this rubric version fixes, missed in state <token of that round>>.
 - <date> session <session id> state <token>: <score>/10 on <goal>.
   Caught: <...>. Missed: <...>. Next rubric change: <edit, or "none: <why>">.
 ```
@@ -122,9 +125,11 @@ judged paths can get its judge line after the verdicts.
    Never message a running judge (SendMessage) and never run practice judges
    (judge markers without the header, or `claude -p` with a judge prompt):
    the hook rejects both.
-   Use at least two model vendors, and give fewer than half the judges your
-   own model family. An Agent judge always runs a Claude model (Anthropic),
-   so run one judge on a local model:
+   Use at least two model families, and give fewer than half the judges your
+   own model family: on Opus, run two judges on `sonnet` (or one `sonnet` and
+   one `haiku`) and one with no `model`. Only when the owner sets
+   `RUN_GOAL_JUDGE_VENDORS=2` (an Agent judge always runs a Claude model),
+   run one judge on a local model:
    `bash <hook lib dir>/goal-judge-local.sh <contract path> <judge id> qwen3:14b`
    in the foreground, exactly in that form (no env prefix, no pipe, no
    `&`), and outside the sandbox (it blocks the Ollama port). The script
@@ -147,8 +152,11 @@ State: <state token>
 The hook counts only `Agent` or `Task` results, their background
 notifications, and the output of the exact local judge command (bold field
 names are fine). Your own text and other Bash output never count; a
-hand-run `ollama` judge or a changed local command counts as an unofficial
-run and blocks. A result with two verdict blocks counts for none. While a judge
+hand-run `ollama` judge, or a run or copy of `goal-judge-local.sh` in
+another form, counts as an unofficial run and blocks. So does an Agent prompt
+that holds a marker and asks to rate or grade (or holds the `Judge:` ...
+`Score:` template) without the header. Staging or linting the script, and a
+code review that only names a marker, are fine. A result with two verdict blocks counts for none. While a judge
 runs in the background the hook lets Stop through, at most 10 times; other
 background tasks never excuse a met claim.
 
@@ -156,8 +164,9 @@ background tasks never excuse a met claim.
 
 - Any judge under 8: apply its top fixes, then run **all three** again on the
   new state. Judging one judge twice on one state is a re-roll and fails.
-  The state token ignores whitespace and commits, so a whitespace-only edit
-  is the same state: it cannot buy a new round. A
+  The state token ignores trailing spaces, line endings, end-of-file blank
+  lines, and commits, so such an edit is the same state: it cannot buy a new
+  round. A space added or removed inside a line is a real change. A
   goal gets three judging rounds (`RUN_GOAL_JUDGE_ROUNDS`); more rounds farm
   for a lucky score.
 - All at 8 or more: apply cheap top fixes while the budget allows, then
@@ -210,8 +219,8 @@ hook can make these harder, not impossible):
 - Steering text in the contract: the prompt labels the contract as
   runner-written and tells judges to report such text as a defect.
 - A practice judge run with a paraphrased prompt and no marker is not seen.
-- Small non-whitespace edits (a comment) buy a new round, up to the
-  three-round cap.
+- Small real edits (a comment, a space inside a line) buy a new round, up
+  to the three-round cap.
 - A rubric loosened when notes are merged at the next goal: the `Rubric
   <sha>:` line names why; check it against the calibration evidence.
 - A fake server on the Ollama port, or edits to the installed hook files,

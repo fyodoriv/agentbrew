@@ -24,7 +24,11 @@
 #               header, or a `claude -p`/`codex exec` Bash call, whose text
 #               holds the GOAL-JUDGE-PROMPT or GOAL-JUDGE-VERDICT marker, an
 #               `ollama`/`llm`/port 11434 Bash call that builds a judge
-#               prompt, or a goal-judge-local.sh call not in the official form
+#               prompt, or a run or copy of goal-judge-local.sh not in the
+#               official form (reading or staging the file, such as `git add`
+#               or `shellcheck`, is not a run). An Agent prompt counts as a
+#               practice judge only when it holds a marker and asks to rate or
+#               grade, or holds the `Judge:` ... `Score:` template.
 #
 # Local judges: a Bash call that is exactly `bash <lib>/goal-judge-local.sh
 # <contract> <judge id> <model>` (foreground, no other shell syntax) is a
@@ -113,11 +117,16 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
      | select(
          ((.name == "Agent" or .name == "Task")
            and (((.input.prompt // "") | tostring) | test("^\\s*GOAL-JUDGE-PROMPT v[0-9]") | not)
-           and (((.input.prompt // "") | tostring) | test("GOAL-JUDGE-(PROMPT|VERDICT)")))
+           and (((.input.prompt // "") | tostring) | test("GOAL-JUDGE-(PROMPT|VERDICT)"))
+           and (((.input.prompt // "") | tostring | gsub("GOAL-JUDGE-(PROMPT|VERDICT)"; ""))
+                | test("(?i)(^|[^a-z])(rate|rating|grade|grading)([^a-z]|$)") or test("(?s)Judge:.*Score:")))
          or (.name == "Bash"
            and (((.input.command // "") | tostring) | test("(^|[^A-Za-z0-9_-])(claude[ \t]+(-p|--print)|codex[ \t]+exec|ollama|llm)([^A-Za-z0-9_-]|$)|11434"))
            and (((.input.command // "") | tostring) | test("GOAL-JUDGE-(PROMPT|VERDICT)|goal-judge-(prompt|local)")))
-         or (.name == "Bash" and (((.input.command // "") | tostring) | test("goal-judge-local\\.sh"))
+         or (.name == "Bash" and (((.input.command // "") | tostring)
+               | test("(^|[;&|(`{]|\\$\\()[ \t]*(([A-Za-z_][A-Za-z0-9_]*=[^ \t]*|env|nohup|exec|time|command|sudo|timeout[ \t]+[^ \t]+)[ \t]+)*((bash|sh|zsh|source|\\.)[ \t]+[^;&|]*)?[^;&| \t]*goal-judge-local\\.sh")
+                 or test("(^|[;&|( \t])(cp|ln|install|rsync|mv|tee)[ \t][^;&|]*goal-judge-local\\.sh")
+                 or test("(^|[;&|( \t])cat[ \t][^;&|]*goal-judge-local\\.sh[^;&|]*>"))
            and (official | not)
            and (((.input.command // "") | tostring) | test("--prompt(-sha)?[ \t]") | not)))
      | .id ]) as $unofficial

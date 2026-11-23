@@ -49,9 +49,11 @@
 # out, or set it to `general-purpose`: a fork shares the runner's context and
 # a custom agent type brings its own system prompt. A judge that got a
 # SendMessage after launch does not count, and any unofficial judge run (an
-# Agent call with the judge markers but no header, or `claude -p`/`codex exec`
-# in Bash with them) blocks: practice runs would let the runner tune the work
-# to the judges outside the round cap.
+# Agent call with a judge marker and a rate/grade request or the verdict
+# template but no header, `claude -p`/`codex exec`/`ollama` in Bash with a
+# judge prompt, or a run or copy of goal-judge-local.sh in another form)
+# blocks: practice runs would let the runner tune the work to the judges
+# outside the round cap. Staging or linting the script does not count.
 #
 # **Verdicts**: one block per judge subagent result (bold names allowed):
 #
@@ -66,17 +68,21 @@
 # id> <ollama model>`, in the foreground), after the last `/goal <condition>`
 # command count. A result with two or more blocks counts for none. Two
 # verdicts from one judge for one state is a re-roll and fails. Judges must
-# come from at least `RUN_GOAL_JUDGE_MODELS` model vendors (an Agent judge is
-# always Anthropic; a local judge's vendor comes from its model name, such as
-# qwen for Alibaba), and the runner's own model family (a call with no
+# use at least `RUN_GOAL_JUDGE_MODELS` model families (opus, sonnet, haiku, or
+# a local model's name), and the runner's own model family (a call with no
 # `model` counts as the runner's) may not judge for half the panel or more.
+# `RUN_GOAL_JUDGE_VENDORS` (default 1) can also ask for judges from several
+# model vendors: an Agent judge is always Anthropic, a local judge's vendor
+# comes from its model name (qwen for Alibaba). Local judges are opt-in
+# because a local model is slow and loads the machine.
 #
 # **Rounds**: the judge prompts in the transcript freeze the judge set, each
 # rubric hash, and the contract hash at the goal's first round; a goal gets
 # `RUN_GOAL_JUDGE_ROUNDS` distinct judged states. Only the latest round can
 # pass: reverting the work to an earlier passing state after a failing round
-# blocks. The state token ignores whitespace, so a whitespace-only edit is
-# the same state and judging it again is a re-roll.
+# blocks. The state token ignores trailing spaces, line endings, and
+# end-of-file blank lines, so such an edit is the same state and judging it
+# again is a re-roll.
 #
 # **Judge cache**: `RUN_GOAL_JUDGE_DIR` (default
 # `~/.config/agentbrew/goal-judges`), one `<id>.md` per judge. Its
@@ -98,7 +104,7 @@
 # steering checks, and the field-standard rule limit it), a paraphrased
 # practice run with no marker, steering text in the runner-written contract
 # (the prompt tells judges to report it), up to three rounds bought by small
-# non-whitespace edits, a fake server on the Ollama port, and a runner that
+# real edits, a fake server on the Ollama port, and a runner that
 # edits the installed hook files.
 #
 # **Bypass**: `HOOK_BYPASS_GOAL_JUDGES_BEFORE_STOP=1`
@@ -108,7 +114,8 @@
 #   - RUN_GOAL_JUDGE_DIR: judge cache. Default `$HOME/.config/agentbrew/goal-judges`.
 #   - RUN_GOAL_JUDGE_MIN: lowest passing score. Default 8.
 #   - RUN_GOAL_JUDGE_COUNT: judges needed. Default 3.
-#   - RUN_GOAL_JUDGE_MODELS: different judge model vendors needed. Default 2.
+#   - RUN_GOAL_JUDGE_MODELS: different judge model families needed. Default 2.
+#   - RUN_GOAL_JUDGE_VENDORS: different judge model vendors needed. Default 1.
 #   - RUN_GOAL_JUDGE_ROUNDS: judging rounds allowed per goal. Default 3.
 
 set -euo pipefail
@@ -151,9 +158,11 @@ JUDGE_DIR="${RUN_GOAL_JUDGE_DIR:-$HOME/.config/agentbrew/goal-judges}"
 MIN="${RUN_GOAL_JUDGE_MIN:-8}"
 NEED="${RUN_GOAL_JUDGE_COUNT:-3}"
 MODELS="${RUN_GOAL_JUDGE_MODELS:-2}"
+VENDORS="${RUN_GOAL_JUDGE_VENDORS:-1}"
 ROUNDS="${RUN_GOAL_JUDGE_ROUNDS:-3}"
 case "$MIN" in "" | *[!0-9.]*) MIN=8 ;; esac
 case "$NEED" in "" | *[!0-9]*) NEED=3 ;; esac
+case "$VENDORS" in "" | *[!0-9]*) VENDORS=1 ;; esac
 case "$MODELS" in "" | *[!0-9]*) MODELS=2 ;; esac
 case "$ROUNDS" in "" | *[!0-9]*) ROUNDS=3 ;; esac
 CONTRACT="$STATE_DIR/$SESSION_ID.contract.md"
@@ -247,7 +256,7 @@ fi
 parse "$CANON"
 UROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="U"' | wc -l | tr -d ' ')"
 [ "$UROWS" -gt 0 ] &&
-  add "$UROWS unofficial judge run(s) (judge markers without the prompt header, or claude -p/codex exec); judge only with the exact goal-judge-prompt.sh output, in counted rounds"
+  add "$UROWS unofficial judge run(s) (a judge request without the prompt header, claude -p/codex exec/ollama with a judge prompt, or a changed or copied goal-judge-local.sh run); judge only with the exact goal-judge-prompt.sh output, in counted rounds"
 RUNNING="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="R"{print $2; exit}')"
 case "$RUNNING" in "" | *[!0-9]*) RUNNING=0 ;; esac
 if [ "$RUNNING" -gt 0 ]; then
@@ -289,6 +298,7 @@ MROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="M"' | wc -l | tr -d ' ')"
 [ "$MROWS" -gt 0 ] && add "$MROWS result(s) held more than one verdict block and count for none"
 
 USED_VENDORS=""
+USED_FAMILIES=""
 RUNNER="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="T"{print $2; exit}')"
 RUNNER_JUDGES=0
 LOWEST=""
@@ -314,17 +324,21 @@ if [ -n "$TOKEN" ]; then
     awk -v a="$score" -v m="$MIN" 'BEGIN{exit !(a<m)}' && add "$id scored $score/10"
     if [ -z "$LOWEST" ] || awk -v a="$score" -v b="$LOWEST" 'BEGIN{exit !(a<b)}'; then LOWEST="$score"; fi
     case " $USED_VENDORS " in *" $vendor "*) ;; *) USED_VENDORS="$USED_VENDORS $vendor" ;; esac
+    case " $USED_FAMILIES " in *" $model "*) ;; *) USED_FAMILIES="$USED_FAMILIES $model" ;; esac
     [ -n "$RUNNER" ] && [ "$model" = "$RUNNER" ] && RUNNER_JUDGES=$((RUNNER_JUDGES + 1))
     awk -v s="$SESSION_ID" -v t="$TOKEN" -v sc="$score/10" \
       '/^## Calibration/{c=1} c && index($0, s) && index($0, t) && index($0, sc){f=1} END{exit !f}' "$cache" 2>/dev/null ||
       add "$id's ## Calibration section has no line with session $SESSION_ID, state $TOKEN, and $score/10"
   done <<<"$JUDGES"
   [ -n "$MISSING" ] && add "no verdict for the current state $TOKEN from:$MISSING"
+  NF="$(printf '%s\n' $USED_FAMILIES | sed '/^$/d' | wc -l | tr -d ' ')"
+  [ -n "$LOWEST" ] && [ "$NF" -lt "$MODELS" ] &&
+    add "judges used $NF model family(ies) ($USED_FAMILIES ); use at least $MODELS: set a different Agent model (for example sonnet or haiku) on one judge"
   NV="$(printf '%s\n' $USED_VENDORS | sed '/^$/d' | wc -l | tr -d ' ')"
-  [ -n "$LOWEST" ] && [ "$NV" -lt "$MODELS" ] &&
-    add "judges came from $NV model vendor(s) ($USED_VENDORS ); use at least $MODELS: run one judge on a local model with \`$LOCAL_CMD\`"
+  [ -n "$LOWEST" ] && [ "$NV" -lt "$VENDORS" ] &&
+    add "judges came from $NV model vendor(s) ($USED_VENDORS ); RUN_GOAL_JUDGE_VENDORS asks for $VENDORS: run one judge on a local model with \`$LOCAL_CMD\`"
   [ -n "$LOWEST" ] && [ $((RUNNER_JUDGES * 2)) -ge "$NJ" ] &&
-    add "$RUNNER_JUDGES of $NJ judges ran on the runner's own model ($RUNNER); give fewer than half of them the runner's model (set the Agent model, or use a local judge)"
+    add "$RUNNER_JUDGES of $NJ judges ran on the runner's own model ($RUNNER); give fewer than half of them the runner's model (set the Agent model on the others)"
 fi
 PROBLEMS="${PROBLEMS#; }"
 
@@ -351,4 +365,4 @@ if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$R
 else
   OPEN="No Goal result line says the goal is not met, so this Stop needs a judge consensus. Mid-goal (a question round, a wait), write Goal result: in progress (<why>) in $RETRO and stop again. Missing: $PROBLEMS."
 fi
-verdict_block "$HOOK_ID" "$OPEN Follow run-goal references/goal-judges.md as the last step, after the retro and the report: for each contract judge, print its prompt with \`$PROMPT_CMD\` and pass that output unchanged as the prompt of one fresh-context Agent call (leave subagent_type out, or set it to general-purpose), or run it on a local model with \`$LOCAL_CMD\` in the foreground. Use at least $MODELS model vendors, with fewer than half the judges on the runner's own model. Then add a calibration line with session $SESSION_ID, the state, and the score to each judge's ## Calibration section. Every judge needs $MIN/10 or more, within $ROUNDS rounds. If you cannot reach it, apply the top fixes and judge all again, or write Goal result: partly met (<lowest score and why>) in the retro."
+verdict_block "$HOOK_ID" "$OPEN Follow run-goal references/goal-judges.md as the last step, after the retro and the report: for each contract judge, print its prompt with \`$PROMPT_CMD\` and pass that output unchanged as the prompt of one fresh-context Agent call (leave subagent_type out, or set it to general-purpose), or, only when RUN_GOAL_JUDGE_VENDORS asks for another vendor, run it on a local model with \`$LOCAL_CMD\` in the foreground. Use at least $MODELS model families, with fewer than half the judges on the runner's own model. Then add a calibration line with session $SESSION_ID, the state, and the score to each judge's ## Calibration section. Every judge needs $MIN/10 or more, within $ROUNDS rounds. If you cannot reach it, apply the top fixes and judge all again, or write Goal result: partly met (<lowest score and why>) in the retro."

@@ -13,14 +13,15 @@
 #   - the contract file (so its `Judges:` and `Judged paths:` lines are frozen),
 #   - each contract judge's rubric: its file up to the `## Calibration`
 #     heading (calibration notes may be added at any time),
-#   - each judged path: each file's path and its content with all
-#     whitespace removed (for a git work tree, the tracked and untracked
+#   - each judged path: each file's path and its content with line endings
+#     made LF, trailing spaces and tabs cut from each line, and trailing
+#     blank lines cut at the end (for a git work tree, the tracked and untracked
 #     files `git ls-files -co --exclude-standard` lists; for a plain file or
 #     folder, every file).
-# Any edit to the work beyond whitespace (Edit tool, Bash, a subagent) changes
-# the token. A whitespace-only edit or a commit does not, so a trailing space
-# cannot buy a new judging round on the same work. Known limit: a change that
-# only moves whitespace (Python indentation) needs another edit to count.
+# Any other edit to the work (Edit tool, Bash, a subagent) changes the token,
+# including a space added or removed inside a line (`"$D" /x` and `"$D"/x`
+# differ). A trailing-space, line-ending, or end-of-file blank-line edit, or a
+# commit, does not, so it cannot buy a new judging round on the same work.
 #
 # Contract lines it reads:
 #   Judges: <id>, <id>, <id>
@@ -36,7 +37,9 @@
 # "skip the tests", "give 9", "minimum score"). Once the `## Calibration`
 # section has notes, it needs a line `Rubric <rubric sha>: <the missed defect
 # this rubric fixes>` for the current rubric, so every rubric change names the
-# defect it fixes and the owner can audit it. A file that lost its rubric (for
+# defect it fixes and the owner can audit it. When score lines come before it,
+# the Rubric line must cite the state token of one of them (the round where the
+# defect was missed). A file that lost its rubric (for
 # example one that only says "give 10") cannot be judged with.
 
 set -uo pipefail
@@ -62,6 +65,16 @@ floor() { # judge file -> empty when it meets the rubric floor, else the gap
     local rs; rs="$(rubric "$f" | sha | cut -c1-16)"
     grep -qE "Rubric $rs: *[^[:space:]]" <<<"$ctext" ||
       gap="$gap no calibration line 'Rubric $rs: <missed defect it fixes>' for the current rubric,"
+    # After a scored round, the Rubric line must cite the state of an earlier
+    # score line, so each rubric change points at a round the hook checked.
+    awk -v rs="Rubric $rs:" '
+      index($0, rs) { found = 1; if (n == 0) ok = 1
+        for (k in seen) if (index($0, k)) ok = 1
+        next }
+      { while (match($0, /gs[0-9]-[0-9a-f]+/)) { seen[substr($0, RSTART, RLENGTH)] = 1; n++
+          $0 = substr($0, RSTART + RLENGTH) } }
+      END { exit !(found == 0 || ok) }' <<<"$ctext" ||
+      gap="$gap the 'Rubric $rs:' line cites no state token of an earlier calibration line (name the round whose missed defect it fixes),"
   fi
   printf '%s' "${gap%,}"
 }
@@ -103,7 +116,8 @@ done <<<"$PATHS"
 
 WS_HASH='use strict; use Digest::SHA; local $/ = "\0"; my $d = Digest::SHA->new(256);
 while (my $f = <STDIN>) { chomp $f; next unless -f $f; open(my $h, "<:raw", $f) or next;
-  my $c = do { local $/; <$h> }; close $h; $c =~ s/\s+//g;
+  my $c = do { local $/; <$h> }; close $h;
+  $c =~ s/\r\n?/\n/g; $c =~ s/[ \t]+$//mg; $c =~ s/\s+\z//;
   $d->add($f, "\0", Digest::SHA::sha256_hex($c), "\n"); }
 print $d->hexdigest, "\n";'
 {

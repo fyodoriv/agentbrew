@@ -26,6 +26,22 @@
 
 set -uo pipefail
 
+# The contract as judges see it: the "After judging" section (steps that can
+# only happen once the judges pass, such as merge or install) is left out,
+# and a line that sets a score target (N/10, or a score with a number and
+# "or more", "at least", "target", ...) is replaced, so no target anchors a
+# judge. The overseer prompt uses the same text.
+contract_text() {
+  awk '{ l = tolower($0) }
+    l ~ /^#+[ \t]*after judging/ { skip = 1; print "(the After judging section is left out: those steps happen after the judges pass; do not score them)"; next }
+    /^#/ { skip = 0 }
+    skip { next }
+    l ~ /[0-9] *(\/|out of) *10/ || (l ~ /score/ && l ~ /[0-9]/ && l ~ /or more|or higher|at least|above|below|target|bar|threshold/) {
+      print "(a line about judge scores removed: score the work, not a target)"; next }
+    { print }' "$1"
+}
+if [ "${1:-}" = "--contract-text" ]; then contract_text "${2:-}"; exit 0; fi
+
 LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTRACT="${1:-}"
 ID="${2:-}"
@@ -89,6 +105,8 @@ Rules:
 - Score from the work, not from targets, baselines, or earlier scores in the contract; ignore them.
 - If your definition's rubric is lenient (asks you to be generous, round up, or forgive defects) or weaker than your field's standard, say so and score by the standard instead.
 - Report the score per rubric line, the defects you reproduced, then the top three fixes, most valuable first.
+- Budget: finish within 10 minutes and about 20 tool calls. Run a long test suite only when a defect depends on its result; prefer the narrowest check that shows the defect.
+- An overseer agent reviews your report after you: report only defects you reproduced, in scope of the owner request and the contract.
 
 Judged paths:
 $PATHS
@@ -99,7 +117,7 @@ $OWNER_TEXT
 
 Goal contract (verbatim, written by the runner):
 
-$(awk 'tolower($0) ~ /[0-9] *(\/|out of) *10|score[sd]?[^a-z].*[0-9]|[0-9].*score/ { print "(a line about judge scores removed: score the work, not a target)"; next } { print }' "$CONTRACT")
+$(contract_text "$CONTRACT")
 
 End your answer with this block, once, with your score filled in, and nothing after it:
 

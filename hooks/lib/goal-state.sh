@@ -137,10 +137,12 @@ while IFS= read -r p; do
 done <<<"$PATHS"
 
 WS_HASH='use strict; use Digest::SHA; local $/ = "\0"; my $d = Digest::SHA->new(256);
-while (my $f = <STDIN>) { chomp $f; next unless -f $f; open(my $h, "<:raw", $f) or next;
+while (my $f = <STDIN>) { chomp $f;
+  if (-d $f) { $d->add($f, "\0dir\n"); next; }
+  next unless -f $f; open(my $h, "<:raw", $f) or next;
   my $c = do { local $/; <$h> }; close $h;
   $c =~ s/\r\n?/\n/g; $c =~ s/[ \t]+$//mg; $c =~ s/\s+\z//;
-  $d->add($f, "\0", Digest::SHA::sha256_hex($c), "\n"); }
+  $d->add($f, "\0", (-x $f ? "x" : "-"), Digest::SHA::sha256_hex($c), "\n"); }
 print $d->hexdigest, "\n";'
 {
   printf 'contract\n'; cat "$CONTRACT"
@@ -153,7 +155,10 @@ print $d->hexdigest, "\n";'
     p="${p/#\~/$HOME}"
     printf '\npath %s\n' "$p"
     if [ -d "$p" ] && git -C "$p" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-      (cd "$p" && git ls-files -z -co --exclude-standard -- . 2>/dev/null | LC_ALL=C sort -z | perl -e "$WS_HASH")
+      # Tracked, untracked, and ignored files (an ignored folder counts by
+      # name only: node_modules is too big to hash on every Stop).
+      (cd "$p" && { git ls-files -z -co --exclude-standard -- .
+        git ls-files -z -oi --exclude-standard --directory -- .; } 2>/dev/null | LC_ALL=C sort -zu | perl -e "$WS_HASH")
     else
       find "$p" -type f -not -path '*/.git/*' -print0 2>/dev/null | LC_ALL=C sort -z | perl -e "$WS_HASH"
     fi

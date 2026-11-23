@@ -20,6 +20,12 @@
 #   T <family>  the runner's model family (its last turn), so the hook can
 #               keep the runner's own model from holding a judge majority
 #   M <tool_use_id>   a result with more than one verdict block (ignored)
+#   J <tool_use_id> <judge> <state> <report, base64>
+#               the judge's report as the overseer prompt quotes it
+#   O <tool_use_id> <state> <model> <type_ok> <messaged> <prompt, base64>
+#               one per overseer call (GOAL-OVERSEER-PROMPT header)
+#   Q <tool_use_id> <judge> <score>
+#               a ruling from the overseer's last GOAL-OVERSEER-VERDICT block
 #   U <tool_use_id>   an unofficial judge run: an Agent/Task call without the
 #               header, or a Bash call that starts a model (`claude -p`,
 #               `codex exec`, `ollama run`, `llm`, or an Ollama HTTP call, in
@@ -74,6 +80,7 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
      | {key: .id, value: {
          prompt: $p,
          judge: (if ($p | test("^\\s*GOAL-JUDGE-PROMPT v[0-9]")) then ($p | header("Judge-Id") | ascii_downcase) else "" end),
+         overseer: ($p | test("^\\s*GOAL-OVERSEER-PROMPT v[0-9]")),
          rubric: ($p | header("Rubric-SHA")), state: ($p | header("State")),
          contract: ($p | header("Contract-SHA")),
          model: ((if $m == "" or ($m | ascii_downcase) == "inherit" then $turn else $m end) | tostring | family),
@@ -97,7 +104,9 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
      | select(($outs[.id] // "") | test($filled))
      | select(
          ((.name == "Agent" or .name == "Task")
-           and (((.input.prompt // "") | tostring) | test("^\\s*GOAL-JUDGE-PROMPT v[0-9]") | not))
+           and ($agents[.id].overseer | not)
+           and ((((.input.prompt // "") | tostring) | test("^\\s*GOAL-JUDGE-PROMPT v[0-9]") | not)
+                or $agents[.id].judge == ""))
          or (.name == "Bash"
            and (((.input.command // "") | tostring) | nocheck
                 | test("(^|[;&|(`{\n]|\\$\\()[ \t]*(([A-Za-z_][A-Za-z0-9_]*=[^ \t]*|env|nohup|exec|time|command|sudo|timeout[ \t]+[^ \t]+)[ \t]+)*(claude[ \t]+([^;&|]*[ \t])?(-p|--print)|codex[ \t]+exec|ollama[ \t]+(run|generate)|llm)([^A-Za-z0-9_-]|$)|(curl|xh|http|wget)[^;&|]*(11434|/api/(generate|chat))"))))
@@ -106,11 +115,11 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
 # background, or a judge call whose result starts with the launch line.
 | def official_prompt($a): ($a.judge != "") and ($canon[$a.judge] != null)
     and (($a.prompt | trim) == ($canon[$a.judge] | trim));
-  ([ ($agents | to_entries[] | select(.value.bg and official_prompt(.value)) | .key),
+  ([ ($agents | to_entries[] | select(.value.bg and (official_prompt(.value) or .value.overseer)) | .key),
      ($results[] | select($agents[.id] != null and official_prompt($agents[.id]))
        | select(.text | test("^\\s*Async agent launched")) | .id) ] | unique) as $launched
 | ([ $notes[] | .id ] | unique) as $done
-| ([ $results[] | select(($agents[.id].judge // "") != "")
+| ([ $results[] | select(($agents[.id].judge // "") != "" or ($agents[.id].overseer // false))
      | {key: .id, value: ((.text | capture("agentId:[ \t]*(?<a>[A-Za-z0-9_-]+)").a) // "")} ] | from_entries) as $agentid
 | ([ $rows[] | select(.type == "assistant" and (.isSidechain // false | not)) | .message.model // empty | strings
      | select(. != "<synthetic>") ] | last // "" | family) as $runner
@@ -120,8 +129,20 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
   ( $unofficial[] | "U\t\(.)" ),
   ( $agents | to_entries[] | select(.value.judge != "")
     | ["P", .key, .value.judge, .value.rubric, .value.state, .value.contract] | @tsv ),
-  ( ($results + $notes)[] | select($agents[.id] != null)
-    | .id as $id | $agents[$id] as $call
+  # O: one per overseer call; Q: its rulings, from the last verdict block in
+  # its output (the overseer may quote judge blocks before its own).
+  ( $agents | to_entries[] | select(.value.overseer)
+    | .key as $id | .value as $call
+    | (($agentid[$id] // "") as $aid
+       | (($aid != "" and ($sent | index($aid)) != null)
+          or ($call.name != "" and ($sent | index($call.name)) != null))) as $msg
+    | ($outs[$id] // "") as $out
+    | (["O", $id, $call.state, $call.model, $call.typeok, (if $msg then "1" else "0" end), ($call.prompt | @base64)] | @tsv),
+      ( ($out | [splits("GOAL-OVERSEER-VERDICT")] | if length > 1 then last else "" end)
+        | [ scan("(?m)^[ \t>*_-]*Ruling[ \t]+([A-Za-z0-9_.-]+)[*_]*:[*_ \t]*([0-9]+(?:\\.[0-9]+)?)[ \t]*/[ \t]*10") ][]
+        | ["Q", $id, (.[0] | ascii_downcase), .[1]] | @tsv ) ),
+  ( ($results + $notes)[] | select($agents[.id] != null and ($agents[.id].overseer | not))
+    | .id as $id | $agents[$id] as $call | .text as $text
     | [ .text | scan("[*_]*GOAL-JUDGE-VERDICT[*_]*[ \t]*\r?\n" + f("Judge") + f("Score") + f("Cache") + f("State")) ] as $raw
     | [ $raw[] | map(trim | gsub("^`|`$"; "")) ] as $v
     | if ($v | length) > 1 then "M\t\($id)"
@@ -139,6 +160,8 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
            # run of an earlier round (for the score history).
            (if ($call.prompt | test("^\\s*GOAL-JUDGE-PROMPT v[0-9]"))
                and ($call.prompt | contains("\nJudge-Id: " + $judge + "\n"))
-               and ($call.prompt | contains("\nState: " + $x[3] + "\n")) then "1" else "0" end)] | @tsv
+               and ($call.prompt | contains("\nState: " + $x[3] + "\n")) then "1" else "0" end)] | @tsv,
+          # J: the judge's report as the overseer reads it.
+          (["J", $id, $judge, $x[3], ($text | trim | @base64)] | @tsv)
       else empty end )
   end

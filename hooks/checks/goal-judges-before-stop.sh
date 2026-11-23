@@ -136,19 +136,25 @@ readonly MAX_BLOCKS=5
 readonly MAX_WAITS=10
 # A retro line claims met when it starts with "Goal result" (after list,
 # heading, quote, bold, and number marks) and its value is not a known
-# not-met form. Unknown forms ("met", "fully met", "done") are claims.
+# not-met form. Unknown forms ("met", "fully met", "done") are claims, and so
+# is a not-met or waiting form followed by a success word outside parentheses.
 readonly CLAIM_AWK='function norm(l) { l = tolower(l); gsub(/[*_`]/, "", l); sub(/^[[:space:]#>0-9.)-]*/, "", l); return l }
 function result(l) { return norm(l) ~ /^goal result([^a-z]|$)/ }
 function claim(l,  r) { l = norm(l)
   if (l !~ /^goal result([^a-z]|$)/) return 0
   r = substr(l, 12); sub(/^[^a-z]*/, "", r); gsub(/-/, " ", r)
   if (r ~ /^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)([^a-z]|$)/) {
-    sub(/^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)/, "", r); gsub(/\([^)]*\)/, "", r)
-    return r ~ /(^|[^a-z])(but|yet|however|actually|now|fully|is|are|all) +met([^a-z]|$)/ }
+    sub(/^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)/, "", r); sub(/\(.*\)/, "", r)
+    gsub(/(criteria|criterion|items?|steps?|parts?)? *[0-9]+( *(,|and|&|or) *[0-9]+)* *(of *[0-9]+ *)?(are |is )?(met|done)/, "", r)
+    return success(r) }
   if (r !~ /^(in progress|blocked|impossible|pending)([^a-z]|$)/) return 1
   sub(/^(in progress|blocked|impossible|pending)/, "", r); gsub(/\([^)]*\)/, "", r)
-  gsub(/[0-9]+ *(of|\/) *[0-9]+( [a-z]+)? met/, "", r)
-  return r ~ /(^|[^a-z])met([^a-z]|$)/ }'
+  gsub(/[0-9]+ *(of|\/) *[0-9]+( [a-z]+)? (met|done)/, "", r)
+  return success(r) }
+# After a not-met or waiting form, any success word or score still claims met:
+# "partly met -> fully achieved", "failed to find a gap; done", "9/10".
+function success(r) {
+  return r ~ /(^|[^a-z])(met|achieved|accomplished|done|success|successful|succeeded|complete|completed|passed|delivered|shipped)([^a-z]|$)/ || r ~ /[0-9] *\/ *10/ }'
 
 INPUT="$(read_hook_stdin)"
 SESSION_ID="$(json_get "$INPUT" '.session_id')"
@@ -172,6 +178,8 @@ COUNTER="$STATE_DIR/$SESSION_ID.judgeblocks"
 WAITS="$STATE_DIR/$SESSION_ID.judgewaits"
 OWNER="$STATE_DIR/$SESSION_ID.owner.md"
 PROMPT_CMD="bash $LIB_REAL/goal-judge-prompt.sh $CONTRACT <judge id>"
+OVERSEER_CMD="bash $LIB_REAL/goal-overseer-prompt.sh $CONTRACT <transcript path>"
+trimws() { hook_jq -Rrs 'gsub("^\\s+|\\s+$"; "")' 2>/dev/null; }
 HISTORY="$STATE_DIR/goal-judge-history.tsv"
 
 TRANSCRIPT="$(json_get "$INPUT" '.transcript_path')"
@@ -311,6 +319,19 @@ MROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="M"' | wc -l | tr -d ' ')"
 [ "$MROWS" -gt 0 ] && add "$MROWS result(s) held more than one verdict block and count for none"
 
 USED_FAMILIES=""
+SCORES=""
+# Count launches, not verdicts, on every state: a judge stopped before its
+# verdict and launched again on one state is a re-roll, in any round.
+RELAUNCHED=""
+while IFS=' ' read -r j st k; do
+  [ -n "$j" ] || continue
+  add "$j was launched $k times on state $st (a stopped run still counts); change the work, then judge all again"
+  [ "$st" = "$TOKEN" ] && RELAUNCHED="$RELAUNCHED $j"
+done <<<"$(printf '%s\n' "$PROWS" | awk -F'\t' '$3 != "" { k = $3 " " $5; n[k]++ } END { for (k in n) if (n[k] > 1) print k, n[k] }')"
+# A judge call whose Judge-Id is not on the contract's Judges: line is
+# practice under another name.
+ODD="$(printf '%s\n' "$PROWS" | awk -F'\t' '$3 != "" {print $3}' | LC_ALL=C sort -u | { grep -vxF -f <(printf '%s\n' "$JUDGES") || true; } | tr '\n' ' ')"
+[ -z "${ODD// /}" ] || add "judge calls named ${ODD}which the contract's Judges: line does not list; judge only the contract's judges"
 RUNNER="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="T"{print $2; exit}')"
 RUNNER_JUDGES=0
 LOWEST=""
@@ -321,12 +342,7 @@ if [ -n "$TOKEN" ]; then
     cache="$JUDGE_DIR/$id.md"
     mine="$(printf '%s\n' "$VROWS" | awk -F'\t' -v j="$id" -v t="$TOKEN" '$3==j && $6==t')"
     n="$(printf '%s\n' "$mine" | sed '/^$/d' | wc -l | tr -d ' ')"
-    # Count launches, not verdicts: a judge stopped before its verdict and
-    # launched again on the same state is a re-roll too.
-    launches="$(printf '%s\n' "$PROWS" | awk -F'\t' -v j="$id" -v t="$TOKEN" '$3==j && $5==t' | wc -l | tr -d ' ')"
-    if [ "$launches" -gt 1 ]; then
-      add "$id was launched $launches times on one state (a stopped run still counts); change the work, then judge all again"; continue
-    fi
+    case " $RELAUNCHED " in *" $id "*) continue ;; esac
     if [ "$n" -eq 0 ]; then
       MISSING="$MISSING $id"; continue
     elif [ "$n" -gt 1 ]; then
@@ -339,8 +355,8 @@ if [ -n "$TOKEN" ]; then
     [ "$msg" = 1 ] && add "$id got a SendMessage after launch (a message can steer a judge); run it again with no messages"
     case "$score" in bad | "") add "$id's Score line is not N/10"; continue ;; esac
     if awk -v a="$score" 'BEGIN{exit !(a>10)}'; then add "$id score $score is out of range"; continue; fi
-    awk -v a="$score" -v m="$MIN" 'BEGIN{exit !(a<m)}' && add "$id scored $score/10"
-    if [ -z "$LOWEST" ] || awk -v a="$score" -v b="$LOWEST" 'BEGIN{exit !(a<b)}'; then LOWEST="$score"; fi
+    SCORES="$SCORES$id $score
+"
     case " $USED_FAMILIES " in *" $model "*) ;; *) USED_FAMILIES="$USED_FAMILIES $model" ;; esac
     [ -n "$RUNNER" ] && [ "$model" = "$RUNNER" ] && RUNNER_JUDGES=$((RUNNER_JUDGES + 1))
     awk -v s="$SESSION_ID" -v t="$TOKEN" -v sc="$score/10" \
@@ -349,10 +365,51 @@ if [ -n "$TOKEN" ]; then
   done <<<"$JUDGES"
   [ -n "$MISSING" ] && add "no verdict for the current state $TOKEN from:$MISSING"
   NF="$(printf '%s\n' $USED_FAMILIES | sed '/^$/d' | wc -l | tr -d ' ')"
-  [ -n "$LOWEST" ] && [ "$NF" -lt "$MODELS" ] &&
+  [ -n "$SCORES" ] && [ "$NF" -lt "$MODELS" ] &&
     add "judges used $NF model family(ies) ($USED_FAMILIES ); use at least $MODELS: give each judge a different Agent model (sonnet, haiku, fable, opus), none of them yours"
-  [ -n "$LOWEST" ] && [ "$RUNNER_JUDGES" -gt 0 ] &&
+  [ -n "$SCORES" ] && [ "$RUNNER_JUDGES" -gt 0 ] &&
     add "$RUNNER_JUDGES of $NJ judges ran on the runner's own model family ($RUNNER); set a different Agent model on each judge (no self-judging)"
+  # The overseer: one fresh agent per state, after every judge. Its prompt is
+  # rebuilt from the judges' own reports in the transcript, so the runner
+  # cannot trim them. Its ruling (at most 2 points from the judge's score) is
+  # the effective score; with no overseer the round cannot pass.
+  OID=""
+  if [ -z "$MISSING" ] && [ -n "$SCORES" ]; then
+    OROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' -v t="$TOKEN" '$1=="O" && $3==t')"
+    no="$(printf '%s\n' "$OROWS" | sed '/^$/d' | wc -l | tr -d ' ')"
+    if [ "$no" -eq 0 ]; then
+      add "no overseer ran on state $TOKEN; print its prompt with \`$OVERSEER_CMD\` and pass it unchanged as the prompt of one fresh Agent call on a model family that is not yours"
+    elif [ "$no" -gt 1 ]; then
+      add "the overseer was launched $no times on state $TOKEN (a re-roll); change the work, then judge all again"
+    else
+      IFS=$'\t' read -r _ OID _ omodel otype omsg oprompt <<<"$OROWS"
+      canon_o="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="J"' | GOAL_STATE_TOKEN="$TOKEN" GOAL_CONTRACT_SHA="$NOW_CONTRACT" \
+        RUN_GOAL_JUDGE_DIR="$JUDGE_DIR" bash "$__HOOK_LIB_DIR/goal-overseer-prompt.sh" "$CONTRACT" - 2>/dev/null || true)"
+      got="$(printf '%s' "$oprompt" | hook_jq -Rr '@base64d' 2>/dev/null || true)"
+      [ -n "$canon_o" ] && [ "$(printf '%s' "$got" | trimws)" = "$(printf '%s' "$canon_o" | trimws)" ] ||
+        add "the overseer's prompt is not the exact output of goal-overseer-prompt.sh for this state"
+      [ "$otype" = 1 ] || add "the overseer ran as a fork or a custom agent type; leave subagent_type out, or set it to general-purpose"
+      [ "$omsg" = 1 ] && add "the overseer got a SendMessage after launch (a message can steer it); change the work, then judge all again"
+      [ -n "$RUNNER" ] && [ "$omodel" = "$RUNNER" ] &&
+        add "the overseer ran on the runner's own model family ($RUNNER); set a different Agent model on it"
+    fi
+  fi
+  while read -r id score; do
+    [ -n "$id" ] || continue
+    eff="$score"
+    if [ -n "$OID" ]; then
+      r="$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" -v j="$id" '$1=="Q" && $2==o && $3==j {print $4; exit}')"
+      if [ -z "$r" ]; then
+        add "the overseer gave no Ruling line for $id"
+      else
+        eff="$(awk -v s="$score" -v r="$r" 'BEGIN { if (r > s + 2) r = s + 2; if (r < s - 2) r = s - 2; if (r < 0) r = 0; if (r > 10) r = 10; print r }')"
+      fi
+    fi
+    if awk -v a="$eff" -v m="$MIN" 'BEGIN{exit !(a<m)}'; then
+      if [ "$eff" = "$score" ]; then add "$id scored $score/10"; else add "$id scored $eff/10 after the overseer (judge: $score/10)"; fi
+    fi
+    if [ -z "$LOWEST" ] || awk -v a="$eff" -v b="$LOWEST" 'BEGIN{exit !(a<b)}'; then LOWEST="$eff"; fi
+  done <<<"$SCORES"
 fi
 PROBLEMS="${PROBLEMS#"$SEP"}"
 PLAIN="${PROBLEMS//$SEP/; }"
@@ -408,7 +465,7 @@ Next step: $NEXT
 Problems:
 $LIST
 Why: $WHY
-How to judge: for each contract judge, print its prompt with \`$PROMPT_CMD\` and pass it unchanged as the prompt of one fresh-context Agent call (no subagent_type, or general-purpose), each on a different model family that is not yours ($MODELS families at least). Then add a calibration line with session $SESSION_ID, the state, and the score to each judge's ## Calibration. Every judge needs $MIN/10 or more, within $ROUNDS rounds.
+How to judge: for each contract judge, print its prompt with \`$PROMPT_CMD\` and pass it unchanged as the prompt of one fresh-context Agent call (no subagent_type, or general-purpose), each on a different model family that is not yours ($MODELS families at least). Then add a calibration line with session $SESSION_ID, the state, and the score to each judge's ## Calibration. When every judge has reported, print the overseer prompt with \`$OVERSEER_CMD\` and pass it unchanged to one more fresh Agent call, on a model family that is not yours; it checks each judge and gives a Ruling per judge (at most 2 points from the judge's score). Every effective score needs $MIN/10 or more, within $ROUNDS rounds.
 Honest exit: write Goal result: partly met (<lowest score and why>) in $RETRO.${RATE:+
 Pass rate so far (score >= $MIN): $RATE.}
 Guide: run-goal references/goal-judges.md"

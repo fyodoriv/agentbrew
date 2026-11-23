@@ -73,6 +73,11 @@ Something breaks silently: nobody notices until a tool stops working.
   in draft handoffs and stops only proved setup-owned resources. Use
   `/offline --dry-run` to inventory first. Missing controls or incomplete
   evidence produce `NOT SAFE`, never a shutdown guarantee.
+- **Judged goals.** During a `/goal`, the Stop hook `goal-judges-before-stop`
+  ends the goal as met only after three fresh judge agents on three other
+  model families score the work 8/10 or more, and an overseer agent checks
+  each judge. Write `Goal result: not met (<why>)` to stop honestly instead.
+  How to run a round: [goal-judges.md](skill-plugins/workflow/run-goal/references/goal-judges.md).
 
 
 [Vercel]: https://github.com/vercel-labs/skills

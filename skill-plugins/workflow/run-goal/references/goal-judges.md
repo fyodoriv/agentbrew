@@ -65,6 +65,9 @@ about 3 to 6 minutes of wall time with the judges in parallel.
    judging round: the hook rejects a swapped judge, an edited rubric, or an
    edited contract later, even in a new round. Rubric changes go into `## Calibration` notes and are merged at the
    start of the next goal.
+   Put steps that can only happen after the judges pass (merge, install,
+   release) under a `## After judging` heading in the contract: the judge
+   and overseer prompts leave that section out, so no judge scores them.
    Keep each judged path until the goal's last Stop: a removed worktree
    fails the state check and forces partly met. Remove it after the goal ends.
    The prompt drops contract lines about judge scores (a `N/10` or a score
@@ -112,8 +115,10 @@ judged paths can get its judge line after the verdicts.
 
 1. For each judge, print its prompt:
    `bash ~/.claude/codeassist/hooks-scripts/lib/goal-judge-prompt.sh <contract path> <judge id>`
-   (the `/goal` context names the contract path; its file name is the
-   session id). The prompt holds the judge's rubric verbatim (its file up to
+   (that path exists after `agentbrew sync`; from an agentbrew checkout, use
+   `hooks/lib/goal-judge-prompt.sh`). The contract path is
+   `~/.cache/agentbrew/run-goal/<session id>.contract.md`; the `/goal`
+   context and every block message name it. The prompt holds the judge's rubric verbatim (its file up to
    `## Calibration`), the state token, the judged paths, the owner's own
    `/goal` words (from `<session>.owner.md`, which the hook rewrites from the
    transcript), the contract labelled as runner-written, and the verdict
@@ -156,6 +161,28 @@ through, at most 10 times, and rewrites a met `Goal result:` line to
 `in progress (waiting on N judge(s) ...)`: write the result again after the
 verdicts. Other background tasks, and a launch with any other prompt, never
 excuse a met claim.
+
+4. When every judge has reported, run the **overseer**: one more fresh
+   Agent call, on a model family that is not yours. Print its prompt with
+   `bash ~/.claude/codeassist/hooks-scripts/lib/goal-overseer-prompt.sh <contract path> <transcript path>`
+   (the transcript is `~/.claude/projects/<project>/<session id>.jsonl`; the
+   block message names it) and pass it unchanged. The script quotes each
+   judge's report from the transcript, so you cannot trim one. The overseer
+   checks every deduction (reproduced, in scope, not an after-judging step),
+   looks for misses, splits defects into blockers and follow-ups, and names
+   the smallest fix set that reaches the bar. It ends with:
+
+```
+GOAL-OVERSEER-VERDICT
+State: <state token>
+Ruling <judge id>: <0-10>/10 - <one-line reason>
+```
+
+   One Ruling line per judge. The hook uses each ruling as that judge's
+   effective score, moved at most 2 points from the judge's own score. A
+   round with no overseer, an edited overseer prompt, a second overseer on
+   one state, or an overseer on your own model family cannot pass. Fix the
+   overseer's blockers first: that is how a round stays short.
 
 ## 3. Iterate the work
 

@@ -337,7 +337,15 @@ or `Task` results and their background notifications (user, `attachment`,
 or `queue-operation` rows) count. A result with two verdict blocks counts
 for none; two launches of one judge on one state are a re-roll, even when
 the first run was stopped before its verdict. The prompt drops contract lines
-about judge scores, so a target cannot anchor a judge. Each score
+about judge scores and the contract's `## After judging` section, so a target
+cannot anchor a judge and no judge scores a step that can only follow its
+verdict. After the judges, one overseer Agent call per state must run, on a
+family other than the runner's, with the exact output of
+`goal-overseer-prompt.sh` (it quotes each judge's report from the
+transcript). Its `Ruling <judge>: N/10` lines set each effective score,
+clamped to 2 points from the judge's own; a second overseer on one state is
+a re-roll. The state token also covers file modes and ignored files (an
+ignored folder by name only). Each score
 is 0-10 and at least `RUN_GOAL_JUDGE_MIN` (8); the cache must be
 `<judge dir>/<id>.md`; the judges use at least `RUN_GOAL_JUDGE_MODELS` (3)
 model families, and none runs the runner's own model family (a call with no `model` or `model: inherit` counts as the

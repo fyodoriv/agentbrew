@@ -302,7 +302,7 @@
   - **Acceptance**: `agentbrew sync --dry-run` prints no "Instructions file is" warning on the owner's Mac; every moved rule is reachable by a link or a skill name from the short line that stays.
   - **Hypothesis**: the always-loaded instructions drop from ~9,333 to under 8,000 tokens with no rule lost, because detail moves to on-demand files.
   - **Measurement**: `agentbrew sync --dry-run 2>&1 | rg -c "Instructions file is"` (expect 0), and the token figure the same command prints before the change.
-  - **Success**: 0 warning lines, and under 8,000 tokens.
+  - **Success**: the command prints no such warning, and the figure is under 8,000 tokens.
   - **Pivot**: if the three largest sections cannot give 1,400 tokens without dropping a rule the owner wants always loaded, stop and ask the owner to raise the target instead.
   - **Anchor**: context-budget skill; Liu et al. 2023, "Lost in the Middle".
 

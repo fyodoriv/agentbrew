@@ -606,20 +606,20 @@
   - **Pivot**: if the runtime build is just stale, fix the runtime refresh (a doctor check that the runtime matches the checkout) instead of the drift check.
   - **Anchor**: Nielsen 1994, heuristic 9 (help users recognize, diagnose and recover from errors).
 
-- [ ] /goal deliver makes sessions it started review each diff before they merge
-  - **ID**: deliver-child-sessions-review-before-merge
-  - **Tags**: run-goal, deliver, review
-  - **Details**: Seen 2026-11-22. A `/goal deliver` run covered PRs that a session it started had merged on green CI (dotfiles#831/#832/#833, agentbrew#1260/#1262) with no fresh-context diff review first. A review after the merge found no defects, but the deliver criterion "a fresh-context reviewer reads each diff before merge" could not be met. Add to `references/goal-intake.md` (deliver step 2) and to the start-session brief guidance: a brief for a session that will merge PRs tells it to run a fresh-context diff review before each merge and to quote the verdict in its report; deliver then checks that verdict for each child PR before counting it.
-  - **Files**: `skill-plugins/workflow/run-goal/references/goal-intake.md`, `skill-plugins/workflow/run-goal/references/parallel-workers.md`, `skill-plugins/workflow/run-goal/evals/evals.json`
-  - **Output**: docs
-  - **Acceptance**: an eval where deliver finds a child PR merged without a review reports that criterion as partly met and names the PR, and the brief template asks for the review.
-  - **Hypothesis**: child-session PRs merged without a pre-merge review in deliver runs drop from 5 of 5 (this run) to 0.
-  - **Measurement**: `npm run eval:agent-artifacts` (the new eval) on hosted CI.
-  - **Success**: the new eval passes all expectations.
-  - **Pivot**: if briefs are ignored, add a merge-time hook that refuses `gh pr merge` without a recorded review verdict.
-  - **Anchor**: Bacchelli and Bird 2013, "Expectations, outcomes, and challenges of modern code review" (ICSE).
-
 ## P2
+
+- [ ] run-goal eval 384 lists one follow-up per line
+  - **ID**: run-goal-eval-384-one-follow-up-per-line
+  - **Tags**: run-goal, evals
+  - **Details**: Eval 384 (the `/goal ship follow ups` question-round case) joins three plans with "and" in one follow-up, so its "baseline 4" depends on how a reader counts. Rewrite the prompt with one follow-up per line and a baseline that matches the count. A fresh-context review of PR #1256 found it. Check first that the eval-mutation tests in `src/skills/run-goal-owner-and-proof.test.ts` allow an edit past the frozen first 245 evals; if they do not, add a replacement eval and mark 384 superseded.
+  - **Files**: `skill-plugins/workflow/run-goal/evals/evals.json`
+  - **Output**: docs
+  - **Acceptance**: the eval prompt lists each follow-up on its own line, and its expected baseline equals that count.
+  - **Hypothesis**: graders disagree less on eval 384: count disagreements across 3 grader runs drop from about 1 in 3 to 0.
+  - **Measurement**: `npm run eval:agent-artifacts` run 3 times on hosted CI, comparing the eval 384 verdicts.
+  - **Success**: 3 of 3 runs give the same verdict.
+  - **Pivot**: below 2 of 3 matching verdicts, split the eval into one case per expectation.
+  - **Anchor**: Cohen 1960, "A coefficient of agreement for nominal scales".
 
 - [ ] A goal retro knows which rule wins when a repo rule limits where skill updates go
   - **ID**: run-goal-retro-repo-rule-precedence

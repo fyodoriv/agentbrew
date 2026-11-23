@@ -66,6 +66,10 @@ contract with these criteria. Do not ask what "deliver" means.
 2. **Green and reviewed.** Every related PR passes its hosted checks at its
    current head. A fresh-context reviewer reads each diff before merge. Read
    the log of a failed check before you fix it.
+   This covers PRs that sessions you started will merge: their brief asks for
+   that review before each merge and for the verdict in their report. A PR
+   merged without one stays "partly met"; a review after the merge does not
+   count.
 3. **Merged.** Merge each PR the way the repo's delivery rules say, under a
    cited approval (repo `AGENTS.md`, the user's standing rules), with every
    required review approved. Never bypass a check, also on an outage. Without
@@ -84,6 +88,16 @@ contract with these criteria. Do not ask what "deliver" means.
    start a fresh agent session that sees the skill, open the live URL.
 6. **Shown and explained.** Publish a report with a before/after table, and
    explain in plain words what changed for the user.
+7. **Wrapped up.** Leave no open work from this session: every PR merged or
+   parked as a draft with its pending list, worktrees removed, branches
+   merged, the checkout clean (the `wrap-up` skill).
+8. **Learned.** Store the session's reusable lessons in memory: decisions,
+   errors with their fix, and the user's corrections.
+9. **Follow-ups filed.** Each item on the last **Follow-ups:** line becomes a
+   task in its repo's task backend, with the pre-registered fields. Owner-only
+   steps (sudo, a cable) are named in the report, not filed.
+10. **Archived.** Archive this session last, after the report is published
+    and the retro is saved. Never archive another session unless asked.
 
 The metric is the before/after number from step 5. Pick it and take its
 baseline before the first merge.

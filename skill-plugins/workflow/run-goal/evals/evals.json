@@ -4421,6 +4421,18 @@
         "Does not claim the criterion met with only 'no duplicates filed'",
         "Lists each running background job and monitor by id at the end and stops it or explains why it stays"
       ]
+    },
+    {
+      "id": 395,
+      "prompt": "/goal deliver  (this session merged 3 PRs, a session it started merged 2 more on green CI, one agentbrew worktree is still checked out, and the last message's Follow-ups line has 2 items)",
+      "expected_output": "Delivers and proves the PRs, reports the 2 child PRs merged without a pre-merge review as partly met, removes the worktree, stores lessons in memory, files both follow-ups as tasks with pre-registered fields, and archives this session last.",
+      "expectations": [
+        "Checks for a fresh-context review before merge on PRs merged by started sessions and does not count a post-merge review",
+        "Removes the leftover worktree and confirms the checkout is clean",
+        "Stores the session's lessons in memory",
+        "Files each Follow-ups item as a task with Hypothesis, Measurement, Success, Pivot and Anchor",
+        "Archives this session only after the report and retro, and no other session"
+      ]
     }
   ]
 }

@@ -4467,6 +4467,16 @@
         "Fixes every reviewer finding with a regression check before merge",
         "Fixes a privacy-scan hit by renaming the identifier, never printing the matched term"
       ]
+    },
+    {
+      "id": 397,
+      "prompt": "/goal resolve oven heat clashes automatically (the repo's local full gate takes about 15 minutes; the change is ready to ship)",
+      "expected_output": "The agent starts the fresh-context diff review in the same message as the first full gate run, so review fixes and gate fixes land before one rerun, instead of reviewing only after the gate passes.",
+      "expectations": [
+        "Starts the fresh-context review no later than the first full gate run",
+        "Does not wait for a green gate before requesting the review",
+        "Reruns the gate on the commit that holds the review fixes before merge"
+      ]
     }
   ]
 }

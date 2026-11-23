@@ -126,14 +126,19 @@ for form in "Goal result: partly met (2/3 met)" "Goal result: not met" "Goal res
   "Goal result: blocked on 2FA" "$(printf 'Notes.\nGoal result: partly met (lowest 6/10)')" \
   "Goal result: not yet met" "Goal result: unmet" "Goal result: partially met" "Goal result: blocked on CI (tests met)" \
   "Goal result: partly met: criteria 1 and 2 met, 3 blocked" "Goal result: failed (could not reproduce)" \
-  "Goal result: abandoned (owner cleared)" "Goal result: partially-met" "Goal result: blocked: 2 of 4 criteria met"; do
+  "Goal result: abandoned (owner cleared)" "Goal result: partially-met" "Goal result: blocked: 2 of 4 criteria met" \
+  "Goal result: in progress (waiting on 1 judge(s); write the result again after the verdicts)" \
+  "Goal result: partly met (lowest 6/10 (round 13))"; do
   goal nm "$form"; expect "retro '$form' needs no consensus" 0 "$(run nm)"
 done
 for form in "Goal result: met" "- Goal result: met" "**Goal result:** met" "GOAL RESULT: MET" "## Goal result: met" \
   "> Goal result: met" "1. Goal result: met" "$(printf 'Goal result:\tmet')" "Goal result - met" "Goal result: fully met" \
   "**Goal result: met**" "Goal result: done" "The goal results table is below." "Retro notes, no result line." \
   "$(printf 'Goal result: in progress\nGoal result: met')" "Goal result: unconditionally met" "Goal result: notably met" \
-  "Goal result: not only met" "Goal result: pending nothing, met" "Goal result: blocked? no, met"; do
+  "Goal result: not only met" "Goal result: pending nothing, met" "Goal result: blocked? no, met" \
+  "Goal result: partly met, ready to merge" "Goal result: partly met - everything works now" \
+  "Goal result: unmet; resolved" "Goal result: stopped; fixed" "Goal result: not met, but it works" \
+  "Goal result: failed, nothing left to do"; do
   i=$((${i:-0} + 1)); goal "fm$i" "$form"; expect "retro '$form' is gated" 2 "$(run "fm$i")"
 done
 
@@ -644,7 +649,15 @@ printf '%s\n' 'Success: lowest judge score >= 8' 'Pass mark: eight of ten from a
   '3. The overseer may correct each judge by at most 2 points with a reason.' >"$tc"
 check "every score-target phrasing is filtered and plain lines stay" bash -c \
   "out=\$(bash '$PROMPT_SH' --contract-text '$tc'); [ \$(grep -c 'judge scores removed' <<<\"\$out\") = 5 ] && grep -q 'Done when 3 tests pass' <<<\"\$out\" && grep -q 'at most 2 points' <<<\"\$out\""
+printf '%s\n' 'The README is done and the content is written; the judge reviewed it.' \
+  'Documented above the barrier section, judged by tone.' >"$tc"
+check "number words inside other words do not hide a criterion" bash -c \
+  "out=\$(bash '$PROMPT_SH' --contract-text '$tc'); ! grep -q 'judge scores removed' <<<\"\$out\" && grep -q 'content is written' <<<\"\$out\" && grep -q 'barrier section' <<<\"\$out\""
 rm -f "$tc"
+goal rsha "Goal result: met (3/3 met)"; judge rsha ja 9 sonnet; judge rsha jb 9 haiku; st="$(token rsha)"
+p="$(prompt rsha jc "$st" | sed -E 's/^Rubric-SHA: .*/Rubric-SHA: 0000000000000000/')"
+call rsha Agent rs1 fable "$p"; result rsha rs1 "$(block_text jc 9 "$st")"
+expect "a judge prompt with a changed Rubric-SHA header does not count" 2 "$(run rsha)"
 
 echo "goal-judges-before-stop: $PASS passed, $FAIL failed"
 for d in "${FAIL_DETAILS[@]+"${FAIL_DETAILS[@]}"}"; do echo "  FAIL: $d"; done

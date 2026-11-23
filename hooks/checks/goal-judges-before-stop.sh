@@ -144,13 +144,22 @@ function claim(l,  r) { l = norm(l)
   if (l !~ /^goal result([^a-z]|$)/) return 0
   r = substr(l, 12); sub(/^[^a-z]*/, "", r); gsub(/-/, " ", r)
   if (r ~ /^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)([^a-z]|$)/) {
-    sub(/^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)/, "", r); sub(/\(.*\)/, "", r)
-    gsub(/(criteria|criterion|items?|steps?|parts?)? *[0-9]+( *(,|and|&|or) *[0-9]+)* *(of *[0-9]+ *)?(are |is )?(met|done)/, "", r)
-    return success(r) }
+    sub(/^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)/, "", r); r = unparen(r)
+    gsub(/(criteria|criterion|items?|steps?|parts?)? *[0-9]+( *(,|and|&|or) *[0-9]+)* *(of *[0-9]+ *)?(are |is )?(not met|met|done|blocked|open|left)/, "", r)
+    return extra(r) }
   if (r !~ /^(in progress|blocked|impossible|pending)([^a-z]|$)/) return 1
-  sub(/^(in progress|blocked|impossible|pending)/, "", r); gsub(/\([^)]*\)/, "", r)
+  sub(/^(in progress|blocked|impossible|pending)/, "", r); r = unparen(r)
   gsub(/[0-9]+ *(of|\/) *[0-9]+( [a-z]+)? (met|done)/, "", r)
-  return success(r) }
+  sub(/^[^a-z0-9]*(on|by|until|for) [a-z0-9 ._\/-]+$/, "", r)
+  return extra(r) || success(r) }
+# Allow list: after a not-met or waiting form, only a bracketed reason, a
+# count ("3/5 met", "criteria 1 and 2 met, 3 blocked") or, when waiting,
+# "on|by|until|for <what>" may follow. Any other text reads as a claim:
+# "partly met, ready to merge", "unmet; resolved".
+# Strip bracketed reasons innermost first, so "(waiting on 1 judge(s); ...)"
+# goes whole and an unclosed "(" keeps its text.
+function unparen(r) { while (gsub(/\([^()]*\)/, "", r) > 0) ; return r }
+function extra(r) { return r ~ /[a-z0-9]/ }
 # After a not-met or waiting form, any success word or score still claims met:
 # "partly met -> fully achieved", "failed to find a gap; done", "9/10".
 function success(r) {

@@ -103,7 +103,7 @@ oversee() { # session, [model], [ruling a b c], [prompt suffix], [extra input js
   st="$(token "$s")"
   p="$(GOAL_STATE_TOKEN="$st" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/$s.contract.md" "$ROOT/$s.jsonl")" || return 1
   call "$s" Agent "$id" "$m" "$p${6:-}" "${7:-}"
-  result "$s" "$id" "$(printf 'Checked the three reports.\n\nGOAL-OVERSEER-VERDICT\nState: %s\nRuling ja: %s/10 - kept\nRuling jb: %s/10 - kept\nRuling jc: %s/10 - kept\n' \
+  result "$s" "$id" "$(printf 'Checked the three reports.\n\nGOAL-OVERSEER-VERDICT\nState: %s\nRuling ja: %s/10 - kept; the deduction was a follow-up\nRuling jb: %s/10 - kept; the deduction was a follow-up\nRuling jc: %s/10 - kept; the deduction was a follow-up\n' \
     "$st" "${3:-9}" "${4:-9}" "${5:-9}")"
 }
 run_out() { # session, [env] -> the hook's stdout and stderr
@@ -662,6 +662,10 @@ goal gwhy "Goal result: met (3/3 met)"; judge gwhy ja 6 sonnet; judge gwhy jb 9 
 oraw gwhy ow1 "" "$(printf 'Ruling ja: 8/10\nRuling jb: 9/10 - kept\nRuling jc: 9/10 - kept')"
 expect "an overseer raise with no reason blocks" 2 "$(run gwhy)"
 check "that block names the missing reason" grep -q "Ruling for ja has no reason" <(run_out gwhy)
+goal gok "Goal result: met (3/3 met)"; judge gok ja 6 sonnet; judge gok jb 9 haiku; judge gok jc 9 fable
+oraw gok ow4 "" "$(printf 'Ruling ja: 8/10 - ok\nRuling jb: 9/10 - kept\nRuling jc: 9/10 - kept')"
+expect "an overseer raise with a two-character reason blocks" 2 "$(run gok)"
+check "that block asks for a longer reason" grep -q "raised ja with a reason under 20 characters" <(run_out gok)
 goal gph "Goal result: met (3/3 met)"; judge gph ja 9 sonnet; judge gph jb 9 haiku; judge gph jc 9 fable
 oraw gph ow2 "" "$(printf 'Ruling ja: 9/10 - <one-line reason>\nRuling jb: 9/10 - kept\nRuling jc: 9/10 - kept')"
 expect "a placeholder reason counts as no reason" 2 "$(run gph)"

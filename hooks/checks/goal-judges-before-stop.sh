@@ -148,14 +148,19 @@ function claim(l,  r) { l = norm(l)
   if (l !~ /^goal result([^a-z]|$)/) return 0
   r = substr(l, 12); sub(/^[^a-z]*/, "", r); gsub(/-/, " ", r)
   if (r ~ /^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)([^a-z]|$)/) {
-    sub(/^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)/, "", r); r = unparen(r)
-    gsub(/(criteria|criterion|items?|steps?|parts?)? *[0-9]+( *(,|and|&|or) *[0-9]+)* *(of *[0-9]+ *)?(are |is )?(not met|met|done|blocked|open|left)/, "", r)
-    return extra(r) }
+    sub(/^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)/, "", r)
+    return rest(r) }
   if (r !~ /^(in progress|blocked|impossible|pending)([^a-z]|$)/) return 1
-  sub(/^(in progress|blocked|impossible|pending)/, "", r); r = unparen(r)
-  gsub(/[0-9]+ *(of|\/) *[0-9]+( [a-z]+)? (met|done)/, "", r)
+  sub(/^(in progress|blocked|impossible|pending)/, "", r)
+  return rest(r) }
+# What may follow a not-met or waiting word: counts go first ("3/5 met",
+# "3 of 5 criteria met"), then any success word left claims met ("blocked
+# on 2FA and done"), then one "on|by|until|for <what>" tail may stay.
+function rest(r,  n) { r = unparen(r); n = "(criteria|criterion|items?|steps?|parts?)"
+  gsub("(" n ")? *[0-9]+( *(,|and|&|or) *[0-9]+)* *((of|/) *[0-9]+ *)?(" n " *)?(are |is )?(not met|met|done|blocked|open|left)", "", r)
+  if (success(r)) return 1
   sub(/^[^a-z0-9]*(on|by|until|for) [a-z0-9 ._\/-]+$/, "", r)
-  return extra(r) || success(r) }
+  return extra(r) }
 # Allow list: after a not-met or waiting form, only a bracketed reason, a
 # count ("3/5 met", "criteria 1 and 2 met, 3 blocked") or, when waiting,
 # "on|by|until|for <what>" may follow. Any other text reads as a claim:
@@ -434,8 +439,11 @@ if [ -n "$TOKEN" ]; then
       read -r r why <<<"$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" -v j="$id" '$1=="Q" && $2==o && $3==j {print $4, $5; exit}')"
       if [ -z "$r" ]; then
         add "the overseer gave no Ruling line for $id"
-      elif [ "$why" != 1 ]; then
+      elif [ "${why:-0}" = 0 ]; then
         add "the overseer's Ruling for $id has no reason; each ruling needs a one-line reason"
+      elif [ "${why:-0}" -lt 20 ] && awk -v s="$score" -v r="$r" 'BEGIN{exit !(r>s)}'; then
+        # A raise needs a real reason ("ok" lifted a 6 to 8): name the follow-up deduction.
+        add "the overseer raised $id with a reason under 20 characters; name the follow-up deduction it lifts"
       else
         eff="$(awk -v s="$score" -v r="$r" 'BEGIN { if (r > s + 2) r = s + 2; if (r < s - 2) r = s - 2; if (r < 0) r = 0; if (r > 10) r = 10; print r }')"
       fi

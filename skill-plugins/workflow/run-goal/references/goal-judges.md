@@ -198,9 +198,14 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
   claim. A judge with a 10-minute budget cannot read a suite that takes
   longer. For this hook: `bash hooks/checks/goal-judge-claims.test.sh`.
 - Write a not-met result with its reason in brackets:
-  `Goal result: partly met (<why>)`. After the not-met word, only a bracket,
-  a count (`3/5 met`), or `on|by|until|for <what>` may follow; other text
-  reads as a claim.
+  `Goal result: partly met (<why>)`. After the not-met or waiting word, only
+  a bracket, a count (`3/5 met`, `3 of 5 criteria met`), or one
+  `on|by|until|for <what>` tail may follow. A success word in that tail
+  still claims met: `blocked on 2FA` allows, `blocked on 2FA and done`
+  blocks. Other text reads as a claim.
+- An overseer raise needs a reason of 20 or more characters that names the
+  follow-up deduction it lifts; `ok` blocks. A keep or a lower needs any
+  one-line reason.
 
 - Any judge under 8: fix **every** blocker the overseer listed, in one
   batch, each with a test that fails before the fix. File each follow-up as

@@ -421,19 +421,6 @@
   - **Pivot**: above 150 s after caching means the hook itself is the cost; profile `goal-state.sh` instead.
   - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (fast feedback loops).
 
-- [ ] The detached-start hook no longer flags an `&` inside quoted text
-  - **ID**: detached-start-quoted-ampersand
-  - **Tags**: hooks, reliability
-  - **Details**: Found 2026-11-22 while building goal-judges-before-stop. `detached-start-needs-watch` blocked a Bash call whose heredoc held a Python edit with the text "Q&A goal", and another whose heredoc held a shell `{ ...; } &&` test. Neither started a process. The agent had to move each edit into a script file. The hook should skip `&` inside quotes and heredoc bodies, and treat `&&` as a list operator.
-  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
-  - **Output**: code
-  - **Acceptance**: fixtures with "Q&A" inside a quoted heredoc and with `cmd1 && cmd2` allow; `cmd &` and `nohup cmd &` still block.
-  - **Hypothesis**: false blocks on heredoc and quoted `&` text drop from 2 in one real session to 0.
-  - **Measurement**: `bash hooks/checks/detached-start-needs-watch.test.sh`, plus `jq` over `~/.cache/agentbrew/hook-decisions.jsonl` for this hook's blocks in the next 7 days.
-  - **Success**: 0 false blocks in the fixtures and in a review of the next 7 days of blocks.
-  - **Pivot**: if a shell parser cannot run under bash 3.2 in under 50 ms, strip quoted and heredoc text with awk instead of parsing.
-  - **Anchor**: Claude Code hooks reference (PreToolUse), https://code.claude.com/docs/en/hooks; Nygard 2018, "Release It!" (false-positive stability patterns).
-
 - [ ] Remove the remaining node-server range for Alert 181
   - **ID**: development-node-server-advisory-181
   - **Blocked**: needs-compatible-upstream-parent — The locked Promptfoo 0.124.1 pins node-server 2.1.1. The published 0.126.0 manifest pins 2.1.6 and still conflicts with the protected watcher and Java keystore peers. On Nov 21 the local resolver still offered 0.125.1 with node-server 2.1.5. Require a compatible published parent and a normal resolution before changing the lock graph.

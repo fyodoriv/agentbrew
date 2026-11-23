@@ -51,6 +51,14 @@ CONTRACT_SHA="${GOAL_CONTRACT_SHA:-}"
 OWNER_FILE="${CONTRACT%.contract.md}.owner.md"
 OWNER_TEXT="(no owner file; judge against the contract only)"
 [ "$OWNER_FILE" != "$CONTRACT" ] && [ -f "$OWNER_FILE" ] && OWNER_TEXT="$(cat "$OWNER_FILE")"
+# A review role per judge, from the state token and the judge's place on the
+# Judges: line, so the three angles differ and the runner cannot pick them.
+ROLES=("Refuter: assume the work is wrong; try to break each claim by running it, and score only what survives."
+  "Spec auditor: check each owner word and each done-when criterion against the work, one by one, and score the gaps."
+  "First-time user: follow the docs as a newcomer would, run each step, and score every step that fails or confuses.")
+POS="$(grep -nxF -- "$ID" <<<"$JUDGES" | head -1 | cut -d: -f1)"
+OFF="$(printf '%s' "$TOKEN" | cksum | cut -d' ' -f1)"
+ROLE="${ROLES[$(((POS + OFF) % 3))]}"
 PATHS="$(sed -nE 's/^[-*_ ]*Judged paths:[*_ ]*(.*)$/\1/p' "$CONTRACT" | head -1 | tr ',' '\n' |
   sed -E 's/^[[:space:]`]+//; s/[[:space:]`]+$//' | sed '/^$/d' | sed "s|^~|$HOME|; s/^/- /")"
 
@@ -67,6 +75,8 @@ You are the judge below: a top expert in its field. Judge the work in the judged
 Your judge definition (verbatim from $FILE, up to its ## Calibration section):
 
 $(awk '/^## Calibration/{exit} {print}' "$FILE")
+
+Your role this round: $ROLE
 
 Rules:
 - Use only this prompt and the raw files in the judged paths. Do not read the judge file or the judge folder: its ## Calibration notes are written by the runner and are not evidence.

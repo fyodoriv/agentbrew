@@ -27,8 +27,7 @@ contract is back or the retro says not met.
 |---|---|---|
 | `RUN_GOAL_JUDGE_MIN` | 8 | the owner sets another bar for this machine |
 | `RUN_GOAL_JUDGE_COUNT` | 3 | never lower it to pass a goal |
-| `RUN_GOAL_JUDGE_MODELS` | 2 | model families needed (opus, sonnet, haiku); lower it only when one family can run (then say so in the report) |
-| `RUN_GOAL_JUDGE_VENDORS` | 1 | the owner wants a non-Anthropic judge too; then run one local judge (slow, loads the machine) |
+| `RUN_GOAL_JUDGE_MODELS` | 3 | model families needed (opus, sonnet, haiku, fable); lower it only when fewer families can run (then say so in the report) |
 | `RUN_GOAL_JUDGE_ROUNDS` | 3 | the owner approves more rounds for one goal |
 | `RUN_GOAL_JUDGE_DIR` | `~/.config/agentbrew/goal-judges` | the judge cache lives elsewhere |
 
@@ -124,21 +123,12 @@ judged paths can get its judge line after the verdicts.
    shares your context, and a custom agent type brings its own system prompt.
    Never message a running judge (SendMessage) and never run practice judges
    (judge markers without the header, or `claude -p` with a judge prompt):
-   the hook rejects both.
-   Use at least two model families, and give fewer than half the judges your
-   own model family: on Opus, run two judges on `sonnet` (or one `sonnet` and
-   one `haiku`) and one with no `model`. Only when the owner sets
-   `RUN_GOAL_JUDGE_VENDORS=2` (an Agent judge always runs a Claude model),
-   run one judge on a local model:
-   `bash <hook lib dir>/goal-judge-local.sh <contract path> <judge id> qwen3:14b`
-   in the foreground, exactly in that form (no env prefix, no pipe, no
-   `&`), and outside the sandbox (it blocks the Ollama port). The script
-   builds the same prompt plus an evidence section (the judged work trees'
-   diff against their merge base, non-test files first, cut at 90 KB),
-   sends it to Ollama at 127.0.0.1:11434, and prints a header with its
-   Prompt-SHA and the answer. The hook rebuilds that sha. Set `model` on one
-   Agent judge (for example `sonnet` when you run on Opus); an Agent call
-   with no `model`, or `model: inherit`, counts as your own model.
+   the hook counts both as a used round.
+   Give each judge a different model family, none of them your own (no
+   self-judging): on Opus, run `sonnet`, `haiku`, and `fable`. An Agent call
+   with no `model`, or `model: inherit`, counts as your own model. Each
+   prompt names the judge's role (refuter, spec auditor, or first-time
+   user); the script picks it from the state token, so you cannot choose it.
 3. The judge ends with this block, once:
 
 ```
@@ -149,19 +139,20 @@ Cache: <full path of the judge file>
 State: <state token>
 ```
 
-The hook counts only `Agent` or `Task` results, their background
-notifications, and the output of the exact local judge command (bold field
-names are fine). Your own text and other Bash output never count; a
-hand-run `ollama` judge, or a run or copy of `goal-judge-local.sh` in
-another form, counts as an unofficial run and blocks. So does an Agent prompt
-that holds a marker and asks for a 0-10 rating or grade, asks to end with the
-verdict block, or holds the `Judge:` ... `Score:` template, without the
-header. A model command counts only where a command starts, so reading,
-searching, syntax-checking (`bash -n`), staging, or linting the scripts, and
-a code review that only names a marker, are fine. The block message opens
-with `Next step:`, the first problem to fix. A result with two verdict blocks counts for none. While a judge
-runs in the background the hook lets Stop through, at most 10 times; other
-background tasks never excuse a met claim.
+The hook counts only `Agent` or `Task` results and their background
+notifications (bold field names are fine). Your own text and other Bash
+output never count. An Agent call without the header, or a `claude -p`,
+`codex exec`, or `ollama run` Bash call, whose result holds a filled-in
+verdict block, is an unofficial run: it uses up one round of
+`RUN_GOAL_JUDGE_ROUNDS`, so practice runs cannot farm scores. A code review
+that only quotes the template returns no verdict, so it is free. The block
+message lists `Next step:` (the first problem to fix), the numbered
+problems, the honest exit, and each judge's pass rate so far. A result with two verdict blocks counts for none. While a judge
+runs in the background with its exact official prompt, the hook lets Stop
+through, at most 10 times, and rewrites a met `Goal result:` line to
+`in progress (waiting on N judge(s) ...)`: write the result again after the
+verdicts. Other background tasks, and a launch with any other prompt, never
+excuse a met claim.
 
 ## 3. Iterate the work
 

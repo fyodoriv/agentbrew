@@ -314,27 +314,24 @@ runner-written calibration notes. A missing contract during an active goal
 (read from the transcript's last `/goal` command) blocks. The hook rewrites
 `<session>.owner.md` from that command, so the prompt carries the owner's
 own words. A judge that got a SendMessage, or any unofficial judge run
-(an Agent prompt with a marker that asks for a 0-10 rating or grade, asks to
-end with the verdict block, or holds the verdict template, but has no header;
-`claude -p`, `codex exec`, `ollama run`, `llm`, or an Ollama HTTP call in
-command position with a judge prompt; or a run or copy of
-`goal-judge-local.sh` in another form), blocks. Reading, searching,
-`bash -n`, staging, or linting the scripts, and a code review prompt that
-only names a marker, do not. The block message opens with `Next step:`. The judge
+(an Agent call without the header, or `claude -p`, `codex exec`, `ollama
+run`, `llm`, or an Ollama HTTP call in command position in Bash, whose
+result holds a filled-in verdict block), uses up one round of the cap. A
+review that only quotes the template returns no verdict, so it is free.
+The block message lists `Next step:`, the numbered problems, the honest
+exit, and each judge's pass rate from `<state dir>/goal-judge-history.tsv`
+(one line per counted verdict). Each judge prompt carries a review role
+(refuter, spec auditor, or first-time user) picked from the state token and
+the judge's place on the `Judges:` line. The judge
 set, rubric hashes, and the contract hash freeze at the goal's first round
 (read from earlier judge prompts after the last `/goal` command), only
 the latest round can pass, and a goal gets `RUN_GOAL_JUDGE_ROUNDS` (3) rounds. Only `Agent`
 or `Task` results and their background notifications (user, `attachment`,
-or `queue-operation` rows) count, plus the output of a local judge run:
-a foreground Bash call that is exactly `bash <lib>/goal-judge-local.sh
-<contract> <id> <ollama model>`, whose printed `Prompt-SHA` must equal the
-sha the hook rebuilds with `goal-judge-local.sh --prompt-sha`. A result with two verdict blocks counts
+or `queue-operation` rows) count. A result with two verdict blocks counts
 for none; two verdicts from one judge on one state is a re-roll. Each score
 is 0-10 and at least `RUN_GOAL_JUDGE_MIN` (8); the cache must be
-`<judge dir>/<id>.md`; the judges use at least `RUN_GOAL_JUDGE_MODELS` (2)
-model families and `RUN_GOAL_JUDGE_VENDORS` (1, opt-in) model vendors (an
-Agent judge is always Anthropic; a local judge's vendor comes from its model
-name), and fewer than half of them run the runner's own model family (a call with no `model` or `model: inherit` counts as the
+`<judge dir>/<id>.md`; the judges use at least `RUN_GOAL_JUDGE_MODELS` (3)
+model families, and none runs the runner's own model family (a call with no `model` or `model: inherit` counts as the
 runner's); each
 judge's `## Calibration` has a line with the session id, the token, and the
 score. Judge files must meet a rubric floor (`Field:`, `Applies:`,
@@ -342,8 +339,10 @@ score. Judge files must meet a rubric floor (`Field:`, `Applies:`,
 that steers the judge, and a `Rubric <sha>: <defect>` calibration line for
 the current rubric once the file has notes; after a scored round that line
 must cite the state token of an earlier score line). Each Stop parses the
-transcript once with jq (the `/goal` row comes from grep-selected lines). While a judge runs in the background it
-allows up to 10 times. After five blocks it rewrites the result to
+transcript once with jq (the `/goal` row comes from grep-selected lines). While a judge with its exact official prompt
+runs in the background it allows up to 10 times and rewrites a met result
+line to `in progress (waiting on N judge(s) ...)`; if it cannot rewrite it,
+it blocks. A failed counter write never turns a block into an allow. After five blocks it rewrites the result to
 `partly met (judge consensus not reached: ...)`, resets its counters, and
 allows. `goal-contract-before-edit` pre-approves Write and Edit of judge
 files and of `<session>.answer.md` while a contract exists.

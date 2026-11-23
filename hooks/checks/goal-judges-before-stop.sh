@@ -48,12 +48,11 @@
 # never reads the runner-written calibration notes. Leave `subagent_type`
 # out, or set it to `general-purpose`: a fork shares the runner's context and
 # a custom agent type brings its own system prompt. A judge that got a
-# SendMessage after launch does not count, and any unofficial judge run (an
-# Agent call with a judge marker and a rate/grade request or the verdict
-# template but no header, `claude -p`/`codex exec`/`ollama` in Bash with a
-# judge prompt, or a run or copy of goal-judge-local.sh in another form)
-# blocks: practice runs would let the runner tune the work to the judges
-# outside the round cap. Staging or linting the script does not count.
+# SendMessage after launch does not count. An unofficial judge run (an
+# Agent call without the header, or `claude -p`/`codex exec`/`ollama run` in
+# Bash, whose result holds a filled-in verdict block) uses up one round of
+# the cap: practice runs would let the runner tune the work to the judges.
+# A review that only quotes the template returns no verdict, so it is free.
 #
 # **Verdicts**: one block per judge subagent result (bold names allowed):
 #
@@ -63,18 +62,17 @@
 #     Cache: <judge dir>/<judge id>.md
 #     State: <token>
 #
-# Only results of `Agent` or `Task` calls and their background notifications,
-# and of local judge runs (`bash <lib>/goal-judge-local.sh <contract> <judge
-# id> <ollama model>`, in the foreground), after the last `/goal <condition>`
-# command count. A result with two or more blocks counts for none. Two
-# verdicts from one judge for one state is a re-roll and fails. Judges must
-# use at least `RUN_GOAL_JUDGE_MODELS` model families (opus, sonnet, haiku, or
-# a local model's name), and the runner's own model family (a call with no
-# `model` counts as the runner's) may not judge for half the panel or more.
-# `RUN_GOAL_JUDGE_VENDORS` (default 1) can also ask for judges from several
-# model vendors: an Agent judge is always Anthropic, a local judge's vendor
-# comes from its model name (qwen for Alibaba). Local judges are opt-in
-# because a local model is slow and loads the machine.
+# Only results of `Agent` or `Task` calls and their background notifications
+# after the last `/goal <condition>` command count. A result with two or more
+# blocks counts for none. Two verdicts from one judge for one state is a
+# re-roll and fails. Judges must use at least `RUN_GOAL_JUDGE_MODELS` (3)
+# model families (opus, sonnet, haiku, fable), and none may run the runner's
+# own family (a call with no `model` counts as the runner's): no self-judging.
+# Each judge gets a review role (refuter, spec auditor, first-time user) that
+# goal-judge-prompt.sh picks from the state token, so the runner cannot choose
+# it. Every counted verdict is appended to `<state dir>/goal-judge-history.tsv`
+# (date, session, judge, rubric, state, family, score), and the block message
+# shows each judge's pass rate from it: a base rate for the 8/10 bar.
 #
 # **Rounds**: the judge prompts in the transcript freeze the judge set, each
 # rubric hash, and the contract hash at the goal's first round; a goal gets
@@ -114,8 +112,7 @@
 #   - RUN_GOAL_JUDGE_DIR: judge cache. Default `$HOME/.config/agentbrew/goal-judges`.
 #   - RUN_GOAL_JUDGE_MIN: lowest passing score. Default 8.
 #   - RUN_GOAL_JUDGE_COUNT: judges needed. Default 3.
-#   - RUN_GOAL_JUDGE_MODELS: different judge model families needed. Default 2.
-#   - RUN_GOAL_JUDGE_VENDORS: different judge model vendors needed. Default 1.
+#   - RUN_GOAL_JUDGE_MODELS: different judge model families needed. Default 3.
 #   - RUN_GOAL_JUDGE_ROUNDS: judging rounds allowed per goal. Default 3.
 
 set -euo pipefail
@@ -157,13 +154,11 @@ STATE_DIR="${RUN_GOAL_STATE_DIR:-$HOME/.cache/agentbrew/run-goal}"
 JUDGE_DIR="${RUN_GOAL_JUDGE_DIR:-$HOME/.config/agentbrew/goal-judges}"
 MIN="${RUN_GOAL_JUDGE_MIN:-8}"
 NEED="${RUN_GOAL_JUDGE_COUNT:-3}"
-MODELS="${RUN_GOAL_JUDGE_MODELS:-2}"
-VENDORS="${RUN_GOAL_JUDGE_VENDORS:-1}"
+MODELS="${RUN_GOAL_JUDGE_MODELS:-3}"
 ROUNDS="${RUN_GOAL_JUDGE_ROUNDS:-3}"
 case "$MIN" in "" | *[!0-9.]*) MIN=8 ;; esac
 case "$NEED" in "" | *[!0-9]*) NEED=3 ;; esac
-case "$VENDORS" in "" | *[!0-9]*) VENDORS=1 ;; esac
-case "$MODELS" in "" | *[!0-9]*) MODELS=2 ;; esac
+case "$MODELS" in "" | *[!0-9]*) MODELS=3 ;; esac
 case "$ROUNDS" in "" | *[!0-9]*) ROUNDS=3 ;; esac
 CONTRACT="$STATE_DIR/$SESSION_ID.contract.md"
 RETRO="$STATE_DIR/$SESSION_ID.retro.md"
@@ -171,25 +166,23 @@ COUNTER="$STATE_DIR/$SESSION_ID.judgeblocks"
 WAITS="$STATE_DIR/$SESSION_ID.judgewaits"
 OWNER="$STATE_DIR/$SESSION_ID.owner.md"
 PROMPT_CMD="bash $LIB_REAL/goal-judge-prompt.sh $CONTRACT <judge id>"
-LOCAL_CMD="bash $LIB_REAL/goal-judge-local.sh $CONTRACT <judge id> <ollama model, e.g. qwen3:14b>"
+HISTORY="$STATE_DIR/goal-judge-history.tsv"
 
 TRANSCRIPT="$(json_get "$INPUT" '.transcript_path')"
 [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] || TRANSCRIPT=""
 ROWS=""
 VJQ="$__HOOK_LIB_DIR/goal-judge-verdicts.jq"
 # Two reads per Stop: one grep selects the /goal lines (is a goal active,
-# and the owner's words) and the lines that name the local judge, so a
-# session with no goal exits after that grep; then one full jq pass.
+# and the owner's words), so a session with no goal exits after that grep;
+# then one full jq pass.
 parse() { [ -z "$TRANSCRIPT" ] || ROWS="$(hook_jq -R -r -n --argjson canon "$1" --arg lib "$LIB_REAL" \
   --arg contract "$CONTRACT" --arg mode all -f "$VJQ" <"$TRANSCRIPT" 2>/dev/null || true)"; }
 G_ACTIVE=0
 G_ROW=""
-HAS_LOCAL=0
 SEL=""
 [ -z "$TRANSCRIPT" ] ||
-  SEL="$(grep -F -e '<command-name>/goal</command-name>' -e 'goal-judge-local.sh' "$TRANSCRIPT" 2>/dev/null || true)"
-grep -F -q 'goal-judge-local.sh' <<<"$SEL" && HAS_LOCAL=1
-if grep -F -q '<command-name>/goal</command-name>' <<<"$SEL"; then
+  SEL="$(grep -F '<command-name>/goal</command-name>' "$TRANSCRIPT" 2>/dev/null || true)"
+if [ -n "$SEL" ]; then
   G_ROW="$(hook_jq -R -r -n --argjson canon '{}' --arg lib "$LIB_REAL" --arg contract "$CONTRACT" --arg mode g -f "$VJQ" <<<"$SEL" 2>/dev/null || true)"
   G_ACTIVE="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G"{print $2; exit}')"
 fi
@@ -249,34 +242,37 @@ else
     p="$(GOAL_STATE_TOKEN="$TOKEN" GOAL_CONTRACT_SHA="$NOW_CONTRACT" GOAL_RUBRIC_SHA="$rs" \
       bash "$__HOOK_LIB_DIR/goal-judge-prompt.sh" "$CONTRACT" "$id" "$JUDGE_DIR" 2>/dev/null)" || continue
     CANON="$(hook_jq -c --arg k "$id" --arg v "$p" '. + {($k): $v}' <<<"$CANON")"
-    if [ "$HAS_LOCAL" = 1 ]; then
-      ls="$(GOAL_STATE_TOKEN="$TOKEN" GOAL_CONTRACT_SHA="$NOW_CONTRACT" GOAL_RUBRIC_SHA="$rs" \
-        bash "$__HOOK_LIB_DIR/goal-judge-local.sh" --prompt-sha "$CONTRACT" "$id" "$JUDGE_DIR" 2>/dev/null)" &&
-        CANON="$(hook_jq -c --arg k "local:$id" --arg v "$ls" '. + {($k): $v}' <<<"$CANON")"
-    fi
   done <<<"$JUDGES"
 fi
 
 parse "$CANON"
+# An unofficial judge run (practice) uses up one round of the cap, so a
+# false match costs a round, not the goal.
 UROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="U"' | wc -l | tr -d ' ')"
-[ "$UROWS" -gt 0 ] &&
-  add "$UROWS unofficial judge run(s) (a judge request without the prompt header, claude -p/codex exec/ollama with a judge prompt, or a changed or copied goal-judge-local.sh run); judge only with the exact goal-judge-prompt.sh output, in counted rounds"
 RUNNING="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="R"{print $2; exit}')"
 case "$RUNNING" in "" | *[!0-9]*) RUNNING=0 ;; esac
 if [ "$RUNNING" -gt 0 ]; then
   waits="$(count "$WAITS")"
   if [ "$waits" -lt "$MAX_WAITS" ]; then
-    echo $((waits + 1)) >"$WAITS"
+    { echo $((waits + 1)) >"$WAITS"; } 2>/dev/null || true
+    # Never let a met claim stand while judges run: rewrite it to in progress.
+    if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$RETRO"; then
+      tmp="$RETRO.tmp.$$"
+      awk -v n="$RUNNING" "$CLAIM_AWK"' claim($0) { print "Goal result: in progress (waiting on " n " judge(s); write the result again after the verdicts)"; next } { print }' \
+        "$RETRO" >"$tmp" 2>/dev/null && mv "$tmp" "$RETRO" 2>/dev/null ||
+        { rm -f "$tmp"; verdict_block "$HOOK_ID" "Next step: wait for the judges. The retro claims the goal is met while $RUNNING judge(s) still run, and the hook could not rewrite it; write Goal result: in progress (waiting on judges) in $RETRO."; }
+    fi
     verdict_allow "$HOOK_ID" "goal still waiting on $RUNNING judge(s) running in the background"
   fi
 fi
 
 # Rounds, frozen judge set, and frozen rubrics, from this goal's judge prompts.
 PROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="P"')"
+NR_ROUNDS="$(printf '%s\n' "$PROWS" | sed '/^$/d' | awk -F'\t' '!seen[$5]++' | wc -l | tr -d ' ')"
+NR_ROUNDS=$((NR_ROUNDS + UROWS))
+[ "$NR_ROUNDS" -gt "$ROUNDS" ] &&
+  add "this goal used $NR_ROUNDS judging rounds ($UROWS of them unofficial: a judge call without the prompt header, or claude -p/codex exec/ollama run in Bash, whose result holds a verdict); the cap is $ROUNDS (more rounds farm for a lucky score)"
 if [ -n "$PROWS" ]; then
-  NR_ROUNDS="$(printf '%s\n' "$PROWS" | awk -F'\t' '!seen[$5]++' | wc -l | tr -d ' ')"
-  [ "$NR_ROUNDS" -gt "$ROUNDS" ] &&
-    add "this goal used $NR_ROUNDS judging rounds; the cap is $ROUNDS (more rounds farm for a lucky score)"
   FIRST_STATE="$(printf '%s\n' "$PROWS" | awk -F'\t' 'NR==1{print $5}')"
   LAST_STATE="$(printf '%s\n' "$PROWS" | awk -F'\t' '{s=$5} END{print s}')"
   [ -z "$TOKEN" ] || [ "$LAST_STATE" = "$TOKEN" ] ||
@@ -301,7 +297,6 @@ VROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="V" && !seen[$2]++')"
 MROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="M"' | wc -l | tr -d ' ')"
 [ "$MROWS" -gt 0 ] && add "$MROWS result(s) held more than one verdict block and count for none"
 
-USED_VENDORS=""
 USED_FAMILIES=""
 RUNNER="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="T"{print $2; exit}')"
 RUNNER_JUDGES=0
@@ -318,7 +313,7 @@ if [ -n "$TOKEN" ]; then
     elif [ "$n" -gt 1 ]; then
       add "$id was judged $n times on one state (a re-roll); change the work, then judge all again"; continue
     fi
-    IFS=$'\t' read -r _ _ _ score vcache _ model ok typeok msg vendor <<<"$mine"
+    IFS=$'\t' read -r _ tid _ score vcache _ model ok typeok msg <<<"$mine"
     [ "${vcache/#\~/$HOME}" = "$cache" ] || add "$id cites cache $vcache, not $cache"
     [ "$ok" = 1 ] || add "$id's prompt is not the exact output of goal-judge-prompt.sh for this state"
     [ "$typeok" = 1 ] || add "$id ran as a fork or a custom agent type; leave subagent_type out, or set it to general-purpose"
@@ -327,7 +322,11 @@ if [ -n "$TOKEN" ]; then
     if awk -v a="$score" 'BEGIN{exit !(a>10)}'; then add "$id score $score is out of range"; continue; fi
     awk -v a="$score" -v m="$MIN" 'BEGIN{exit !(a<m)}' && add "$id scored $score/10"
     if [ -z "$LOWEST" ] || awk -v a="$score" -v b="$LOWEST" 'BEGIN{exit !(a<b)}'; then LOWEST="$score"; fi
-    case " $USED_VENDORS " in *" $vendor "*) ;; *) USED_VENDORS="$USED_VENDORS $vendor" ;; esac
+    # Score history (one line per verdict, keyed by tool_use id): a base rate.
+    if [ "$ok" = 1 ] && ! grep -qF -- "	$tid	" "$HISTORY" 2>/dev/null; then
+      rs="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$id" '$1==j{print $2; exit}')"
+      { printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%F)" "$tid" "$SESSION_ID" "$id" "$rs" "$TOKEN" "$model" "$score" >>"$HISTORY"; } 2>/dev/null || true
+    fi
     case " $USED_FAMILIES " in *" $model "*) ;; *) USED_FAMILIES="$USED_FAMILIES $model" ;; esac
     [ -n "$RUNNER" ] && [ "$model" = "$RUNNER" ] && RUNNER_JUDGES=$((RUNNER_JUDGES + 1))
     awk -v s="$SESSION_ID" -v t="$TOKEN" -v sc="$score/10" \
@@ -337,12 +336,9 @@ if [ -n "$TOKEN" ]; then
   [ -n "$MISSING" ] && add "no verdict for the current state $TOKEN from:$MISSING"
   NF="$(printf '%s\n' $USED_FAMILIES | sed '/^$/d' | wc -l | tr -d ' ')"
   [ -n "$LOWEST" ] && [ "$NF" -lt "$MODELS" ] &&
-    add "judges used $NF model family(ies) ($USED_FAMILIES ); use at least $MODELS: set a different Agent model (for example sonnet or haiku) on one judge"
-  NV="$(printf '%s\n' $USED_VENDORS | sed '/^$/d' | wc -l | tr -d ' ')"
-  [ -n "$LOWEST" ] && [ "$NV" -lt "$VENDORS" ] &&
-    add "judges came from $NV model vendor(s) ($USED_VENDORS ); RUN_GOAL_JUDGE_VENDORS asks for $VENDORS: run one judge on a local model with \`$LOCAL_CMD\`"
-  [ -n "$LOWEST" ] && [ $((RUNNER_JUDGES * 2)) -ge "$NJ" ] &&
-    add "$RUNNER_JUDGES of $NJ judges ran on the runner's own model ($RUNNER); give fewer than half of them the runner's model (set the Agent model on the others)"
+    add "judges used $NF model family(ies) ($USED_FAMILIES ); use at least $MODELS: give each judge a different Agent model (sonnet, haiku, fable, opus), none of them yours"
+  [ -n "$LOWEST" ] && [ "$RUNNER_JUDGES" -gt 0 ] &&
+    add "$RUNNER_JUDGES of $NJ judges ran on the runner's own model family ($RUNNER); set a different Agent model on each judge (no self-judging)"
 fi
 PROBLEMS="${PROBLEMS#; }"
 
@@ -362,12 +358,25 @@ if [ "$blocks" -ge "$MAX_BLOCKS" ]; then
   rm -f "$COUNTER" "$WAITS"
   verdict_allow "$HOOK_ID" "gave up after $MAX_BLOCKS blocks; retro downgraded to partly met: $PROBLEMS"
 fi
-echo $((blocks + 1)) >"$COUNTER"
+{ echo $((blocks + 1)) >"$COUNTER"; } 2>/dev/null || true
 
-if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$RETRO"; then
-  OPEN="The retro has a Goal result line that is not a known not-met phrase, so it counts as met, and there is no judge consensus yet: $PROBLEMS. If the goal is not met, start the result with one of: partly met, not met, unmet, failed, abandoned, in progress, blocked, impossible, pending."
-else
-  OPEN="No Goal result line says the goal is not met, so this Stop needs a judge consensus. Mid-goal (a question round, a wait), write Goal result: in progress (<why>) in $RETRO and stop again. Missing: $PROBLEMS."
-fi
 NEXT="$(printf '%s' "$PROBLEMS" | cut -d';' -f1 | sed -E 's/^ +//')"
-verdict_block "$HOOK_ID" "Next step: fix the first problem: $NEXT. $OPEN Follow run-goal references/goal-judges.md as the last step, after the retro and the report: for each contract judge, print its prompt with \`$PROMPT_CMD\` and pass that output unchanged as the prompt of one fresh-context Agent call (leave subagent_type out, or set it to general-purpose), or, only when RUN_GOAL_JUDGE_VENDORS asks for another vendor, run it on a local model with \`$LOCAL_CMD\` in the foreground. Use at least $MODELS model families, with fewer than half the judges on the runner's own model. Then add a calibration line with session $SESSION_ID, the state, and the score to each judge's ## Calibration section. Every judge needs $MIN/10 or more, within $ROUNDS rounds. If you cannot reach it, apply the top fixes and judge all again, or write Goal result: partly met (<lowest score and why>) in the retro."
+LIST="$(printf '%s' "$PROBLEMS" | tr ';' '\n' | sed -E 's/^ +//; /^$/d' | awk '{ printf "  %d. %s\n", NR, $0 }')"
+RATE=""
+[ -f "$HISTORY" ] && RATE="$(awk -F'\t' -v m="$MIN" '{ n[$4]++; if ($8 + 0 >= m + 0) p[$4]++ }
+  END { for (j in n) printf "%s %d/%d, ", j, p[j], n[j] }' "$HISTORY" 2>/dev/null | sed 's/, $//')"
+if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$RETRO"; then
+  WHY="The retro claims the goal is met, but there is no judge consensus yet."
+else
+  WHY="No Goal result line says the goal is not met, so this Stop needs a judge consensus. Mid-goal (a question round, a wait), write Goal result: in progress (<why>) and stop again."
+fi
+MSG="Goal cannot end as met yet (block $((blocks + 1)) of $MAX_BLOCKS).
+Next step: $NEXT
+Problems:
+$LIST
+Why: $WHY
+How to judge: for each contract judge, print its prompt with \`$PROMPT_CMD\` and pass it unchanged as the prompt of one fresh-context Agent call (no subagent_type, or general-purpose), each on a different model family that is not yours ($MODELS families at least). Then add a calibration line with session $SESSION_ID, the state, and the score to each judge's ## Calibration. Every judge needs $MIN/10 or more, within $ROUNDS rounds.
+Honest exit: write Goal result: partly met (<lowest score and why>) in $RETRO.${RATE:+
+Pass rate so far (score >= $MIN): $RATE.}
+Guide: run-goal references/goal-judges.md"
+verdict_block "$HOOK_ID" "$MSG"

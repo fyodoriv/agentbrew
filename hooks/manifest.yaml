@@ -538,7 +538,7 @@ hooks:
     agents: ["claude-code"]
 
   - id: goal-judges-before-stop
-    description: Success-gated - during an active /goal, hold Stop unless the retro says plainly it is not met or each contract judge has one verdict (a subagent, or an opt-in local judge) for the current state token in the latest round, each 8/10 or more, from two or more model families with the runner's model under half, and each cached judge logs this session
+    description: Success-gated - during an active /goal, hold Stop unless the retro says plainly it is not met or each contract judge has one subagent verdict for the current state token in the latest round, each 8/10 or more, from three or more model families and none on the runner's own, and each cached judge logs this session
     event: Stop
     script: checks/goal-judges-before-stop.sh
     tier: deterministic

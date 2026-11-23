@@ -621,6 +621,30 @@ st="$(token gq)"; oid=oq1; call gq Agent "$oid" sonnet "$(GOAL_STATE_TOKEN="$st"
 result gq "$oid" "$(printf 'Quoting ja:\n%s\n\nGOAL-OVERSEER-VERDICT\nState: %s\nRuling ja: 9/10 - ok\nRuling jb: 9/10 - ok\nRuling jc: 9/10 - ok\n' "$(block_text ja 3 "$st")" "$st")"
 expect "an overseer that quotes a judge block is not a practice run" 0 "$(run gq)"
 
+# Round 13: the overseer's verdict needs a reason per ruling and the right state.
+oraw() { # session, id, state line, ruling lines
+  local st; st="$(token "$1")"
+  call "$1" Agent "$2" sonnet "$(GOAL_STATE_TOKEN="$st" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/$1.contract.md" "$ROOT/$1.jsonl")"
+  result "$1" "$2" "$(printf 'Checked.\n\nGOAL-OVERSEER-VERDICT\nState: %s\n%s\n' "${3:-$st}" "$4")"
+}
+goal gwhy "Goal result: met (3/3 met)"; judge gwhy ja 6 sonnet; judge gwhy jb 9 haiku; judge gwhy jc 9 fable
+oraw gwhy ow1 "" "$(printf 'Ruling ja: 8/10\nRuling jb: 9/10 - kept\nRuling jc: 9/10 - kept')"
+expect "an overseer raise with no reason blocks" 2 "$(run gwhy)"
+check "that block names the missing reason" grep -q "Ruling for ja has no reason" <(run_out gwhy)
+goal gph "Goal result: met (3/3 met)"; judge gph ja 9 sonnet; judge gph jb 9 haiku; judge gph jc 9 fable
+oraw gph ow2 "" "$(printf 'Ruling ja: 9/10 - <one-line reason>\nRuling jb: 9/10 - kept\nRuling jc: 9/10 - kept')"
+expect "a placeholder reason counts as no reason" 2 "$(run gph)"
+goal gost "Goal result: met (3/3 met)"; judge gost ja 9 sonnet; judge gost jb 9 haiku; judge gost jc 9 fable
+oraw gost ow3 gs2-wrongstate "$(printf 'Ruling ja: 9/10 - kept\nRuling jb: 9/10 - kept\nRuling jc: 9/10 - kept')"
+expect "an overseer verdict on another state blocks" 2 "$(run gost)"
+check "that block names the wrong state" grep -q "State: gs2-wrongstate, not" <(run_out gost)
+tc="$TMPDIR/gjt-$$.md"
+printf '%s\n' 'Success: lowest judge score >= 8' 'Pass mark: eight of ten from all judges' 'Success: scores of 8 minimum' \
+  'Success: all judges 9 or better' 'Pivot: lowest effective score 5 or less' 'Done when 3 tests pass' >"$tc"
+check "every score-target phrasing is filtered and plain lines stay" bash -c \
+  "out=\$(bash '$PROMPT_SH' --contract-text '$tc'); [ \$(grep -c 'judge scores removed' <<<\"\$out\") = 5 ] && grep -q 'Done when 3 tests pass' <<<\"\$out\""
+rm -f "$tc"
+
 echo "goal-judges-before-stop: $PASS passed, $FAIL failed"
 for d in "${FAIL_DETAILS[@]+"${FAIL_DETAILS[@]}"}"; do echo "  FAIL: $d"; done
 [ "$FAIL" -eq 0 ]

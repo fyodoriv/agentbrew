@@ -26,6 +26,8 @@
 #               one per overseer call (GOAL-OVERSEER-PROMPT header)
 #   Q <tool_use_id> <judge> <score>
 #               a ruling from the overseer's last GOAL-OVERSEER-VERDICT block
+#               (Q: overseer id, judge, score, reason given 1/0;
+#                W: overseer id, the block's State: value)
 #   U <tool_use_id>   an unofficial judge run: an Agent/Task call without the
 #               header, or a Bash call that starts a model (`claude -p`,
 #               `codex exec`, `ollama run`, `llm`, or an Ollama HTTP call, in
@@ -139,8 +141,12 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
     | ($outs[$id] // "") as $out
     | (["O", $id, $call.state, $call.model, $call.typeok, (if $msg then "1" else "0" end), ($call.prompt | @base64)] | @tsv),
       ( ($out | [splits("GOAL-OVERSEER-VERDICT")] | if length > 1 then last else "" end)
-        | [ scan("(?m)^[ \t>*_-]*Ruling[ \t]+([A-Za-z0-9_.-]+)[*_]*:[*_ \t]*([0-9]+(?:\\.[0-9]+)?)[ \t]*/[ \t]*10") ][]
-        | ["Q", $id, (.[0] | ascii_downcase), .[1]] | @tsv ) ),
+        | ( [ scan("(?m)^[ \t>*_-]*Ruling[ \t]+([A-Za-z0-9_.-]+)[*_]*:[*_ \t]*([0-9]+(?:\\.[0-9]+)?)[ \t]*/[ \t]*10[*_ \t]*(?:[-:\u2013\u2014][ \t]*)?([^\n]*)") ][]
+            | (.[2] | gsub("^\\s+|\\s+$"; "")) as $why
+            | ["Q", $id, (.[0] | ascii_downcase), .[1],
+               (if ($why | length) >= 2 and ($why | startswith("<") | not) then "1" else "0" end)] | @tsv ),
+          ( [ scan("(?m)^[ \t>*_-]*State:[*_ \t]*([A-Za-z0-9_.-]+)") ][0][0] // ""
+            | ["W", $id, .] | @tsv ) ) ),
   ( ($results + $notes)[] | select($agents[.id] != null and ($agents[.id].overseer | not))
     | .id as $id | $agents[$id] as $call | .text as $text
     | [ .text | scan("[*_]*GOAL-JUDGE-VERDICT[*_]*[ \t]*\r?\n" + f("Judge") + f("Score") + f("Cache") + f("State")) ] as $raw

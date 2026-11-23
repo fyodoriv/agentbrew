@@ -28,15 +28,17 @@ set -uo pipefail
 
 # The contract as judges see it: the "After judging" section (steps that can
 # only happen once the judges pass, such as merge or install) is left out,
-# and a line that sets a score target (N/10, or a score with a number and
-# "or more", "at least", "target", ...) is replaced, so no target anchors a
+# and a line that sets a score target (N/10, "N of ten", or a score or judge
+# word with a number and "or more", ">=", "minimum", "or less", ...) is replaced, so no target anchors a
 # judge. The overseer prompt uses the same text.
 contract_text() {
   awk '{ l = tolower($0) }
     l ~ /^#+[ \t]*after judging/ { skip = 1; print "(the After judging section is left out: those steps happen after the judges pass; do not score them)"; next }
     /^#/ { skip = 0 }
     skip { next }
-    l ~ /[0-9] *(\/|out of) *10/ || (l ~ /score/ && l ~ /[0-9]/ && l ~ /or more|or higher|at least|above|below|target|bar|threshold/) {
+    l ~ /([0-9]|one|two|three|four|five|six|seven|eight|nine|ten) *(\/|out of|of) *(10|ten)/ ||
+    (l ~ /score|judge|grade|rating|pass mark/ && l ~ /[0-9]|one|two|three|four|five|six|seven|eight|nine|ten/ &&
+     l ~ /or more|or higher|or better|or above|or less|or lower|or below|at least|at most|minimum|maximum|above|below|target|bar|threshold|>=|<=|>|</) {
       print "(a line about judge scores removed: score the work, not a target)"; next }
     { print }' "$1"
 }

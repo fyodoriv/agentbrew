@@ -343,8 +343,10 @@ verdict. After the judges, one overseer Agent call per state must run, on a
 family other than the runner's, with the exact output of
 `goal-overseer-prompt.sh` (it quotes each judge's report from the
 transcript). Its `Ruling <judge>: N/10` lines set each effective score,
-clamped to 2 points from the judge's own; a second overseer on one state is
-a re-roll. The state token also covers file modes and ignored files (an
+clamped to 2 points from the judge's own; each ruling needs a one-line
+reason, and the verdict's `State:` must be the current token. A second
+overseer on one state is a re-roll. Judges and the overseer work to a
+budget stated in their prompts: about 10 minutes and about 20 tool calls. The state token also covers file modes and ignored files (an
 ignored folder by name only). Each score
 is 0-10 and at least `RUN_GOAL_JUDGE_MIN` (8); the cache must be
 `<judge dir>/<id>.md`; the judges use at least `RUN_GOAL_JUDGE_MODELS` (3)

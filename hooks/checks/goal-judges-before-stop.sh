@@ -390,6 +390,8 @@ if [ -n "$TOKEN" ]; then
         add "the overseer's prompt is not the exact output of goal-overseer-prompt.sh for this state"
       [ "$otype" = 1 ] || add "the overseer ran as a fork or a custom agent type; leave subagent_type out, or set it to general-purpose"
       [ "$omsg" = 1 ] && add "the overseer got a SendMessage after launch (a message can steer it); change the work, then judge all again"
+      ostate="$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" '$1=="W" && $2==o {print $3; exit}')"
+      [ "$ostate" = "$TOKEN" ] || add "the overseer's verdict says State: ${ostate:-none}, not $TOKEN"
       [ -n "$RUNNER" ] && [ "$omodel" = "$RUNNER" ] &&
         add "the overseer ran on the runner's own model family ($RUNNER); set a different Agent model on it"
     fi
@@ -398,9 +400,11 @@ if [ -n "$TOKEN" ]; then
     [ -n "$id" ] || continue
     eff="$score"
     if [ -n "$OID" ]; then
-      r="$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" -v j="$id" '$1=="Q" && $2==o && $3==j {print $4; exit}')"
+      read -r r why <<<"$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" -v j="$id" '$1=="Q" && $2==o && $3==j {print $4, $5; exit}')"
       if [ -z "$r" ]; then
         add "the overseer gave no Ruling line for $id"
+      elif [ "$why" != 1 ]; then
+        add "the overseer's Ruling for $id has no reason; each ruling needs a one-line reason"
       else
         eff="$(awk -v s="$score" -v r="$r" 'BEGIN { if (r > s + 2) r = s + 2; if (r < s - 2) r = s - 2; if (r < 0) r = 0; if (r > 10) r = 10; print r }')"
       fi

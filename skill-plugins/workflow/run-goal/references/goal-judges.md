@@ -33,7 +33,10 @@ contract is back or the retro says not met.
 
 **Cost**: one round is three fresh subagents reading the judged paths; a
 goal gets at most three rounds, so at most nine judge runs. A round takes
-about 3 to 6 minutes of wall time with the judges in parallel.
+about 3 to 6 minutes of wall time with the judges in parallel. Each judge
+and the overseer work to a budget stated in their prompts: about 10 minutes
+and about 20 tool calls, running a long test suite only when a defect
+depends on it.
 
 ## 1. Pick the judges (in the contract, before any work)
 
@@ -114,9 +117,10 @@ to a judged path after the verdicts makes them stale. A report outside the
 judged paths can get its judge line after the verdicts.
 
 1. For each judge, print its prompt:
-   `bash ~/.claude/codeassist/hooks-scripts/lib/goal-judge-prompt.sh <contract path> <judge id>`
-   (that path exists after `agentbrew sync`; from an agentbrew checkout, use
-   `hooks/lib/goal-judge-prompt.sh`). The contract path is
+   `bash hooks/lib/goal-judge-prompt.sh <contract path> <judge id>` from an
+   agentbrew checkout. Outside one, use the installed copy
+   `~/.claude/codeassist/hooks-scripts/lib/goal-judge-prompt.sh`; check it
+   exists first (`agentbrew sync` installs it with the hook). The contract path is
    `~/.cache/agentbrew/run-goal/<session id>.contract.md`; the `/goal`
    context and every block message name it. The prompt holds the judge's rubric verbatim (its file up to
    `## Calibration`), the state token, the judged paths, the owner's own
@@ -164,7 +168,8 @@ excuse a met claim.
 
 4. When every judge has reported, run the **overseer**: one more fresh
    Agent call, on a model family that is not yours. Print its prompt with
-   `bash ~/.claude/codeassist/hooks-scripts/lib/goal-overseer-prompt.sh <contract path> <transcript path>`
+   `bash hooks/lib/goal-overseer-prompt.sh <contract path> <transcript path>`
+   (outside a checkout, the installed copy next to `goal-judge-prompt.sh`)
    (the transcript is `~/.claude/projects/<project>/<session id>.jsonl`; the
    block message names it) and pass it unchanged. The script quotes each
    judge's report from the transcript, so you cannot trim one. The overseer
@@ -226,6 +231,8 @@ private data out.
 - **Codex, OpenCode, or no hook**: follow the same steps and check the rules
   yourself. Run each judge as a fresh process (`claude -p` or `codex exec`
   with the output of `goal-judge-prompt.sh`), never in your own context.
+  Then run the overseer the same way, once per state, with the output of
+  `goal-overseer-prompt.sh`, and use its rulings as the effective scores.
 - **No way to run an independent judge**: write `Goal result: partly met (no
   independent judges available)`. Never judge your own work.
 

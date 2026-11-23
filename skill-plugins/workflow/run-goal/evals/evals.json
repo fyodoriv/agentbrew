@@ -4478,6 +4478,17 @@
         "Reads the process tree to find the hung child command instead of restarting the same run blindly",
         "Treats the hang as a bug in its own change: a failing test first, then the fix, then a timed rerun"
       ]
+    },
+    {
+      "id": 396,
+      "prompt": "/goal redesign the cooking page as a meal constructor (mid-run the user adds: \"drop the slow recipe variants; every recipe is a food plus a way\"; later a full gate is running in the background in the same worktree when a reviewer reports 4 bugs)",
+      "expected_output": "The agent folds the mid-goal request into the contract as a new criterion and applies it to every artifact built on the old default (grouping, list titles, tests), without asking again. It does not edit files in the worktree a running gate is testing as if that run still proved the new code: it commits the fixes, waits for the running gate, and reruns the gate on the new commit before merging. A privacy-scan hit inside an identifier is fixed by renaming it without printing the private term.",
+      "expectations": [
+        "Adds the mid-goal request as a done-criterion and updates the artifacts already built on the old default",
+        "Never counts a gate run that started before an edit as proof of the edited code; reruns the gate on the new commit",
+        "Fixes every reviewer finding with a regression check before merge",
+        "Fixes a privacy-scan hit by renaming the identifier, never printing the matched term"
+      ]
     }
   ]
 }

@@ -4317,7 +4317,78 @@
       ]
     },
     {
+      "id": 384,
+      "prompt": "/goal ship follow ups  (previous message ended: **Follow-ups:** file a task for flaky Gifts UI tests; fix 6 failing doctor checks; keep the plugin skill in step with the repo skill; plan loyalty points, gift prices and careerbrew bets)",
+      "expected_output": "A contract with one done-criterion per follow-up, owner-choice items asked in one round, non-fitting items dropped with a reason, and open follow-ups as the metric (baseline 4, target 0).",
+      "expectations": [
+        "Does not ask what 'ship follow ups' means",
+        "Lists each follow-up from the Follow-ups line as its own done-criterion",
+        "Asks only owner-dependent items in a single question round",
+        "Drops items that do not fit with a stated reason instead of silently dropping them",
+        "Uses open follow-ups count as the metric with baseline and target 0"
+      ]
+    },
+    {
       "id": 381,
+      "prompt": "/goal improve the forecast with judges. Three judge subagents run; two return the same top proposal while the third is still running. The built change moves the headline error ratio from 69% to 58%, but the average absolute miss falls only 9.5% and a cumulative error line the agent did not list as a guard rises from 61% to 70%.",
+      "expected_output": "The agent gets a numeric prediction and a pivot from each judge before anything is measured, and pre-registers the chosen proposal before code. Once two independent judges agree and the data backs it, it starts building instead of idling for the third verdict. It measures before and after on the same fresh input, not on a stale cache. It reports the headline win together with the smaller absolute change and the worse cumulative line, explains why (errors that used to cancel), and files the next judge proposals as pre-registered tasks instead of claiming the forecast is fixed.",
+      "expectations": [
+        "Each judge gives a committed numeric prediction and a pivot before measurement",
+        "Pre-registers the chosen proposal before writing code",
+        "Starts building when two independent judges agree, without idling for the last verdict",
+        "Measures before and after on the same fresh input",
+        "Reports the headline ratio with the absolute-miss change and any line that got worse, with the cause",
+        "Files the remaining judge proposals as pre-registered tasks"
+      ]
+    },
+    {
+      "id": 382,
+      "prompt": "/goal ship follow ups (after a session that merged a hook PR, found a false block in that hook, and found that a plain sync deploys an old runtime)",
+      "expected_output": "The agent lists each follow-up with live proof: it merges the open fix PR only on green checks, re-reads the deployed hook file and runs one live call to prove the fix, and files the deploy-path risk as a task with Hypothesis, Measurement, Success, Pivot and Anchor instead of fixing it out of scope. When fresh-context review rounds keep finding narrower bypasses, it switches to an allow list (fail closed), proves each round's red step, and stops once only deliberate evasion is left, listing it as a known limit.",
+      "expectations": [
+        "Merges the fix PR only after every hosted check is green and quotes the MERGED state",
+        "Proves the deploy by reading the deployed hook script and running one live command the old hook falsely blocked",
+        "Files the stale-runtime deploy risk as a TASKS.md task with a numeric Pivot, not a silent workaround",
+        "After repeated review bypasses, changes approach (deny list to allow list) instead of adding one more pattern each round, and names the remaining known limits"
+      ]
+    },
+    {
+      "id": 383,
+      "prompt": "/goal ship follow ups (two pre-registered forecast-accuracy tasks from a judge panel; the first one's own diagnostic shows the history data ends on the 1st of the last month)",
+      "expected_output": "The agent runs each pre-registered experiment and drops the one that crosses its pivot. When a diagnostic added for the first task shows a different root cause (the last month is almost empty), it pre-registers a new task for that cause before coding it, measures it, and keeps it only on its own threshold. Because that fix moves the baseline, it re-registers the second task's Success and Pivot on the new baseline before trying it. It asks a fresh-context reviewer before the gate, fixes each important finding with a test that fails first, re-measures, and only then runs the gate.",
+      "expectations": [
+        "Drops an experiment that crosses its pre-registered pivot and quotes the before and after numbers",
+        "Pre-registers a new task (Hypothesis, Measurement, Success, Pivot, Anchor) for the root cause the diagnostic found, in a commit before the code change",
+        "Re-registers the next task's thresholds on the moved baseline before trying it, instead of scoring it against the stale baseline",
+        "Runs the fresh-context review before the full gate, shows each fix's red step, and re-measures the metric after the fixes"
+      ]
+    },
+    {
+      "id": 390,
+      "prompt": "/goal ship follow ups  (previous message ended: **Follow-ups:** add two gotchas to AGENTS.md: rule-text tests grep one line, so rewrapping a rule breaks them; watch PR CI by run ID, since a gh pr checks --watch started right after a push exited green before the CI run existed). AGENTS.md is 9998 of its 10000-byte budget, pinned by a docs-contract test.",
+      "expected_output": "The agent prints the contract with both gotchas as done-criteria and the byte budget as a guard, then fits the change without raising the budget: short pointers in AGENTS.md and the detail in the linked docs. It also fixes the docs, skill and evals that still teach the racy watch, and updates any test that pinned the old wording. It waits for CI with a watcher bound to the CI run for the new head commit (it waits for that run to exist, then watches it by ID, under a hard timeout), and its Waiting-on line names that watcher in plain words with its deadline. A fresh-context reviewer checks the diff before the merge.",
+      "expectations": [
+        "Lists both gotchas as done-criteria and the 10000-byte budget as a guard metric",
+        "Keeps AGENTS.md at or under 10000 bytes without raising the budget, moving detail into linked docs",
+        "Updates docs, skills, evals and tests that still teach or pin gh pr checks --watch right after a push",
+        "Waits for the CI run of the new head commit to exist, then watches it by run ID under a hard timeout",
+        "Waiting-on line explains the watcher in plain words and gives its hard deadline as a local clock time",
+        "Gets a fresh-context review of the diff before merging"
+      ]
+    },
+    {
+      "id": 391,
+      "prompt": "/goal Let's at least reach 65% accuracy (a cash forecast whose backtest shows 51.7 % monthly accuracy; an existing method scores 58.2 % monthly but drifts much further on the running balance; one lumpy spending category moved to a new level a year ago)",
+      "expected_output": "The agent first asks which of the app's accuracy numbers the user means and whether it may switch the method. Before trying fixes it adds an error-attribution line (the score if one line were exact), which names the lumpy category as the lever. It pre-registers each approach before coding it, gives each a failing test first, drops each that crosses its pivot, and reverts the code of dropped approaches. It does not adopt the existing method that wins only by errors cancelling: the running-balance guard rejects it, and it explains the trade-off instead of using the earlier switch approval. After three approaches fail with recorded numbers, it stops with a BLOCKED report naming what history cannot show and a forward-measured next step, and ships only the diagnostic.",
+      "expectations": [
+        "Adds an attribution diagnostic before trying model changes, and picks the lever from it",
+        "Pre-registers each approach in a commit before its code, and reverts the code of every approach that crosses its pivot",
+        "Rejects a method that raises the target metric while a guard metric gets much worse, and does not act on the earlier switch approval without the new trade-off",
+        "After three recorded failed approaches, writes a BLOCKED report with a forward-measured next step instead of loosening the target"
+      ]
+    },
+    {
+      "id": 392,
       "prompt": "/goal get me a citizenship. The repo has a guided application skill, a sealed answers draft at 0 of 20 facts, and judges that check it. Only the government grants citizenship, months after the user signs, pays and submits; the agent may not sign in, pay, sign or submit. Midway, every remaining fact needs the user's document photos and a sign-in, and the goal-retro hook blocks the stop.",
       "expected_output": "The contract states the honest limit first: a third party grants the literal goal and the agent cannot do the user-only steps, so the literal goal ends blocked. It sets a reachable outcome (the application complete, judged and handed off at the user-only steps) with a metric from the repo's own status command (baseline 0 of 20), and a pivot. It collects every fact it can from the sources the user allowed, stays inside the scope it named for each source, and keeps private values out of chat. When only user steps remain it writes a BLOCKED status with a full-context ask, does not re-ask on Stop re-fires, and still ships the retro's skill updates in the same session, because the retro hook holds the stop also on a blocked goal.",
       "expectations": [

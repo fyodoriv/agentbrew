@@ -24,7 +24,7 @@ run_case() {
   fi
   if [ "$expect" = hint ]; then
     if printf '%s' "$out" | jq -e '.hookSpecificOutput.hookEventName == "PreToolUse"
-        and (.hookSpecificOutput.additionalContext | test("run_in_background") and test("gh pr checks --watch") and test("wait <pid>") and test("poll interval"))
+        and (.hookSpecificOutput.additionalContext | test("run_in_background") and test("gh run watch <run-id>") and test("wait <pid>") and test("poll interval"))
         and (.hookSpecificOutput | has("permissionDecision") | not)' >/dev/null 2>&1; then
       PASS=$((PASS + 1))
     else

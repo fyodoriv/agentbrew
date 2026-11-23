@@ -46,8 +46,13 @@ Do not invent a goal-update tool, edit host storage, or spoof user origin.
    PID, queued task record, claimed auto-fix service or timer is not proof
    that this goal's evaluator will defer or receive a result.
 3. If needed, launch one native background shell with the available tool's
-   `run_in_background: true`. A GitHub CLI example is
-   `gh pr checks <PR> --repo <OWNER/REPO> --required --watch --interval 60`.
+   `run_in_background: true`. A GitHub CLI example: find the main workflow's
+   run for the full head SHA with
+   `gh run list --repo <OWNER/REPO> --workflow <name> --commit <full-sha>`
+   (empty means it does not exist yet: wait and list again), then
+   `timeout 1800 gh run watch <run-id> --repo <OWNER/REPO> --interval 60 --exit-status`.
+   A `gh pr checks <PR> --watch` started right after a push can exit green
+   while only a fast side check is listed and the main run has not started.
    Record the accepted task handle, exact target, bounded deadline and next
    check event. Use the repo's existing timeout/wait facility; the command
    example alone does not establish a deadline. For a watch script, print the

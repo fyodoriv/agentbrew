@@ -38,7 +38,6 @@ What you will see:
 2. It prints a goal contract: done-criteria, a metric, and a pivot.
 3. It asks at most one round of questions. You can skip it.
 4. It works alone and prints a `Goal check` line per criterion.
-   At the end, three expert judges score the result; it is met only at 8/10 or more from each.
 5. It ends with a published Artifact report, a retro, and updates to the skills it used.
 
 Tips: name an end state, not an activity. Add "and ship it" if a PR is approved. A filled-in example: [references/goal-contract.md](references/goal-contract.md).
@@ -64,11 +63,10 @@ Follow this order, even for a small goal:
    At creation and each milestone, request an independent review using the
    [plan artifact judge](references/plan-artifact-judge.md); on resume, review the existing artifact and its identity before continuing.
 5. Work, printing a `Goal check` line after each done-criterion (Phase 4).
-6. Verify with fresh evidence (Phase 5), then the retro and the final report (Phase 6).
-   Judge last: three judges from the contract must each score 8/10 or more (Phase 6 step 7).
+6. Verify with fresh evidence (Phase 5), then the retro, the final report, and the judges (Phase 6).
 
 A small goal gets a short contract, not none. Without it, the goal checker cannot verify done and the user cannot review your plan.
-**Research or choice goal** (pick between options, answer a question, no repo change): print a short contract (`Done when:` the pick and why, `Metric:` sources checked per option, `Pivot:` what means "no clear winner", plus `Judges:` and `Judged paths: <state dir>/<session id>.answer.md`; save it if the hook names a file). Check each option's own source, then answer in chat with the pick and one source link per claim. Save the same answer to the answer file, then judge it ([references/goal-judges.md](references/goal-judges.md)). Skip the plan Artifact, HTML report, and skill PR; keep a one-line retro.
+**Research or choice goal** (pick between options, answer a question, no repo change): print a 3-line contract (`Done when:` the pick and why, `Metric:` sources checked per option, `Pivot:` what means "no clear winner") plus `Judges:` and `Judged paths: <state dir>/<session id>.answer.md`; save it if the hook names a file. Check each option's own source, then answer in chat with the pick and one source link per claim. Save the same answer to the answer file, then judge it ([references/goal-judges.md](references/goal-judges.md)). Skip the plan Artifact, HTML report, and skill PR; keep a one-line retro.
 
 ## Why the transcript matters
 
@@ -136,7 +134,7 @@ Write the contract in the chat before you change anything. Fill in the template 
 
 - **Outcome**: one sentence. What is true when you are done?
 - **Done when**: two to five checkable criteria. Each one names a command, a
-  file, a URL, or a reviewable artifact. Read a check's code before you promise it passes ([reachable criteria](references/goal-contract.md#reachable-criteria)).
+  file, a URL, or a reviewable artifact. Read a check's code before you promise it passes ([reachable criteria](references/goal-contract.md#reachable-criteria)). Add `Judges: <id>, <id>, <id>` and `Judged paths:` lines ([goal judges](references/goal-judges.md) step 1).
 - **Metric**: the primary number (Goal → Question → Metric), with its baseline,
   target, and the exact command that measures it. Add guard metrics that must
   not get worse (tests, lint, build).
@@ -148,9 +146,6 @@ Write the contract in the chat before you change anything. Fill in the template 
   you cannot cite, such as "if the repo rules allow it", is not granted.
   When another team owns a required change, keep the original acceptance criteria blocked or unverified. Only explicit user approval may replace those criteria with a narrower goal.
   Name the owner, route and test path. An owner-ask draft or filed request is not evidence the original goal is complete; post only with authorization.
-- **Judges**: `Judges: <id>, <id>, <id>` and `Judged paths: <...>`, three
-  expert judges for the goal's fields from the judge cache
-  ([references/goal-judges.md](references/goal-judges.md) step 1).
 - **Budget**: retain elapsed time and known waits across resumes. At the budget,
   after a narrowing correction and at twice the budget, apply the [scope checkpoint](references/execution.md#budget-and-scope-checkpoint).
 - **Assumptions and risks**: what you believe without proof.
@@ -174,9 +169,6 @@ whether an action is allowed. Never ask about something that the code, the
 docs, memory, or a quick experiment can answer.
 
 - One round only, three questions at most. Put your recommended option first.
-  Before you ask (and before any other mid-goal Stop), write
-  `Goal result: in progress (<why>)` to the retro file the `/goal` context
-  names: the judge hook holds every Stop of an active goal without it.
 - Give each question its full context. Say what the thing is in plain
   words, why it needs the user, what each option does, what changes for the
   user, and where to do it. Never ask about a hook, flag, file, domain term,
@@ -387,20 +379,9 @@ with actuals and update the estimation method as described in
    writable change in this session (gate, PR, merge, cite the PR); when a
    tried write is refused, cite the task with its error; never bypass it.
 6. **Remember**: store reusable lessons in memory, if the agent has memory.
-7. **Judge consensus** (every goal, last, after the retro edits and the final
-   report): the goal is met only when the three contract judges (`Judges:`
-   line, picked in Phase 2), run as fresh-context subagents on the final
-   state with the exact prompt from `goal-judge-prompt.sh`, each score it
-   8/10 or more, within three rounds. The final report shows each score; when
-   the report is a judged file, add the scores before judging as `pending`
-   and fill them in only in chat. Higher is better; you improve each
-   cached judge after use. Follow [references/goal-judges.md](references/goal-judges.md).
-   The `goal-judges-before-stop` hook holds every Stop while a contract
-   exists until they agree or the retro says `Goal result: in progress` or
-   `partly met` (with why).
-8. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)`
-   in the retro file, run `scripts/export-goals.py`, and refresh the one
-   Goals dashboard: [references/dashboard.md](references/dashboard.md).
+7. **Judge consensus** (every goal, last): met only when each contract judge, run fresh on the final state with the exact `goal-judge-prompt.sh` or `goal-judge-local.sh` prompt, scores 8/10 or more within three rounds; the `goal-judges-before-stop` hook holds every Stop until then, and mid-goal Stops (a question, a wait) need `Goal result: in progress (<why>)` in the retro file first. Steps: [references/goal-judges.md](references/goal-judges.md).
+8. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)` in the retro file,
+   run `scripts/export-goals.py`, and refresh the one Goals dashboard: [references/dashboard.md](references/dashboard.md).
 
 ## Final report
 

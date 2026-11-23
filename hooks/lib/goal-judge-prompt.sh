@@ -41,8 +41,13 @@ grep -qxF -- "$ID" <<<"$JUDGES" ||
   { echo "goal-judge-prompt: '$ID' is not on the contract's Judges: line" >&2; exit 2; }
 
 FILE="$JUDGE_DIR/$ID.md"
-RUBRIC="$(bash "$LIB/goal-state.sh" --rubric-sha "$FILE")" || exit 2
-CONTRACT_SHA="$(bash "$LIB/goal-state.sh" --file-sha "$CONTRACT")" || exit 2
+# The hook passes the shas it already computed (GOAL_RUBRIC_SHA,
+# GOAL_CONTRACT_SHA) to save two processes per judge; a wrong sha only
+# yields a prompt the hook will not match.
+RUBRIC="${GOAL_RUBRIC_SHA:-}"
+[ -n "$RUBRIC" ] || RUBRIC="$(bash "$LIB/goal-state.sh" --rubric-sha "$FILE")" || exit 2
+CONTRACT_SHA="${GOAL_CONTRACT_SHA:-}"
+[ -n "$CONTRACT_SHA" ] || CONTRACT_SHA="$(bash "$LIB/goal-state.sh" --file-sha "$CONTRACT")" || exit 2
 OWNER_FILE="${CONTRACT%.contract.md}.owner.md"
 OWNER_TEXT="(no owner file; judge against the contract only)"
 [ "$OWNER_FILE" != "$CONTRACT" ] && [ -f "$OWNER_FILE" ] && OWNER_TEXT="$(cat "$OWNER_FILE")"

@@ -302,8 +302,10 @@ contract's `Judges:` line has exactly one `GOAL-JUDGE-VERDICT` block (Judge,
 Score N/10, Cache, State) whose `State:` equals the token
 `hooks/lib/goal-state.sh <contract>` prints now. The token hashes the
 contract, each judge's rubric (its file up to `## Calibration`), and the
-`Judged paths:` (git HEAD, status, diff, untracked files), so any edit by
-any tool makes the verdicts stale. Each judge call's prompt must equal the
+`Judged paths:` (each tracked and untracked file's path and content with
+whitespace removed), so any edit beyond whitespace by any tool makes the
+verdicts stale, while a whitespace-only edit or a commit keeps the state
+(judging it again is a re-roll). Each judge call's prompt must equal the
 output of `hooks/lib/goal-judge-prompt.sh <contract> <id>` (no added text)
 and must leave `subagent_type` out or set it to `general-purpose` (no
 fork, no custom agent type); the prompt embeds the rubric, so judges never read the
@@ -311,20 +313,29 @@ runner-written calibration notes. A missing contract during an active goal
 (read from the transcript's last `/goal` command) blocks. The hook rewrites
 `<session>.owner.md` from that command, so the prompt carries the owner's
 own words. A judge that got a SendMessage, or any unofficial judge run
-(markers without the header, or `claude -p`/`codex exec`), blocks. The judge
+(markers without the header, `claude -p`/`codex exec`/`ollama` with a
+judge prompt, or a changed `goal-judge-local.sh` command), blocks. The judge
 set, rubric hashes, and the contract hash freeze at the goal's first round
 (read from earlier judge prompts after the last `/goal` command), only
 the latest round can pass, and a goal gets `RUN_GOAL_JUDGE_ROUNDS` (3) rounds. Only `Agent`
 or `Task` results and their background notifications (user, `attachment`,
-or `queue-operation` rows) count. A result with two verdict blocks counts
+or `queue-operation` rows) count, plus the output of a local judge run:
+a foreground Bash call that is exactly `bash <lib>/goal-judge-local.sh
+<contract> <id> <ollama model>`, whose printed `Prompt-SHA` must equal the
+sha the hook rebuilds with `goal-judge-local.sh --prompt-sha`. A result with two verdict blocks counts
 for none; two verdicts from one judge on one state is a re-roll. Each score
 is 0-10 and at least `RUN_GOAL_JUDGE_MIN` (8); the cache must be
-`<judge dir>/<id>.md`; the judges use at least `RUN_GOAL_JUDGE_MODELS` (2)
-model families (a call with no `model` or `model: inherit` counts as the
+`<judge dir>/<id>.md`; the judges come from at least `RUN_GOAL_JUDGE_MODELS`
+(2) model vendors (an Agent judge is always Anthropic; a local judge's vendor
+comes from its model name), and fewer than half of them run the runner's own
+model family (a call with no `model` or `model: inherit` counts as the
 runner's); each
 judge's `## Calibration` has a line with the session id, the token, and the
 score. Judge files must meet a rubric floor (`Field:`, `Applies:`,
-`Scale:`, three "capped at" lines). While a judge runs in the background it
+`Scale:`, three "capped at" lines, every cap below the passing bar, no line
+that steers the judge, and a `Rubric <sha>: <defect>` calibration line for
+the current rubric once the file has notes). Each Stop parses the
+transcript once with jq (the `/goal` row comes from grep-selected lines). While a judge runs in the background it
 allows up to 10 times. After five blocks it rewrites the result to
 `partly met (judge consensus not reached: ...)`, resets its counters, and
 allows. `goal-contract-before-edit` pre-approves Write and Edit of judge

@@ -13,6 +13,8 @@ HERE="$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0")")"
 SCRIPT="$HERE/goal-judges-before-stop.sh"
 STATE_SH="$HERE/../lib/goal-state.sh"
 PROMPT_SH="$HERE/../lib/goal-judge-prompt.sh"
+LIB_REAL="$(cd "$HERE/../lib" && pwd -P)"
+LOCAL_SH="$LIB_REAL/goal-judge-local.sh"
 PASS=0
 FAIL=0
 FAIL_DETAILS=()
@@ -41,8 +43,9 @@ run() {
   echo $?
 }
 judge_file() { # id
-  [ -f "$RUN_GOAL_JUDGE_DIR/$1.md" ] ||
-    printf '# %s\n\nField: testing\nApplies: a standard\nRubric:\n- Correct: strict; capped at 6 on a gap.\n- Safe: strict; capped at 5 on a hole.\n- Clear: strict; capped at 7 on a mismatch.\nScale: lowest line after caps.\n\n## Calibration\n' "$1" >"$RUN_GOAL_JUDGE_DIR/$1.md"
+  [ -f "$RUN_GOAL_JUDGE_DIR/$1.md" ] && return 0
+  printf '# %s\n\nField: testing\nApplies: a standard\nRubric:\n- Correct: strict; capped at 6 on a gap.\n- Safe: strict; capped at 5 on a hole.\n- Clear: strict; capped at 6 on a mismatch.\nScale: lowest line after caps.\n\n## Calibration\n' "$1" >"$RUN_GOAL_JUDGE_DIR/$1.md"
+  printf -- '- Rubric %s: first rubric; no missed defect yet.\n' "$(bash "$STATE_SH" --rubric-sha "$RUN_GOAL_JUDGE_DIR/$1.md")" >>"$RUN_GOAL_JUDGE_DIR/$1.md"
 }
 goal() { # session, result line, [judges line]
   mkdir -p "$ROOT/work-$1"
@@ -77,8 +80,22 @@ judge() { # session, judge, score, [model], [tool], [prompt suffix]
   result "$s" "$id" "$(block_text "$j" "$sc" "$st")"
   [ -n "${NOCAL:-}" ] || calibrate "$s" "$j" "$sc"
 }
-panel() { # session, a, b, c scores
-  judge "$1" ja "$2" sonnet; judge "$1" jb "$3"; judge "$1" jc "$4"
+bash_call() { # session, id, command, [extra input json]
+  local x="${4:-}"; [ -n "$x" ] || x='{}'
+  jq -cn --arg id "$2" --arg c "$3" --argjson x "$x" \
+    '{type:"assistant",message:{model:"claude-opus-5-5",content:[{type:"tool_use",id:$id,name:"Bash",input:({command:$c} + $x)}]}}' >>"$ROOT/$1.jsonl"
+}
+local_judge() { # session, judge, score, [model], [command], [prompt sha], [extra input json], [header judge]
+  local s="$1" j="$2" sc="$3" m="${4:-qwen3:14b}" st id="l$RANDOM$RANDOM" c ps
+  st="$(token "$s")"; c="$RUN_GOAL_STATE_DIR/$s.contract.md"
+  ps="${6:-$(GOAL_STATE_TOKEN="$st" bash "$LOCAL_SH" --prompt-sha "$c" "$j")}"
+  bash_call "$s" "$id" "${5:-bash $LOCAL_SH $c $j $m}" "${7:-}"
+  result "$s" "$id" "$(printf 'GOAL-JUDGE-LOCAL v1\nJudge-Id: %s\nRubric-SHA: %s\nContract-SHA: %s\nState: %s\nPrompt-SHA: %s\nModel: %s\n\n' \
+    "${8:-$j}" "$(bash "$STATE_SH" --rubric-sha "$RUN_GOAL_JUDGE_DIR/$j.md")" "$(bash "$STATE_SH" --file-sha "$c")" "$st" "$ps" "$m")$(block_text "$j" "$sc" "$st")"
+  [ -n "${NOCAL:-}" ] || calibrate "$s" "$j" "$sc"
+}
+panel() { # session, a, b, c scores: sonnet, the runner's model, and a local judge
+  judge "$1" ja "$2" sonnet; judge "$1" jb "$3"; local_judge "$1" jc "$4"
 }
 run_out() { # session -> the hook's stdout and stderr
   jq -cn --arg s "$1" --arg p "$ROOT/$1.jsonl" '{hook_event_name:"Stop",session_id:$s,transcript_path:$p}' |
@@ -191,19 +208,23 @@ st="$(token ctype)"; call ctype Agent c3 "" "$(prompt ctype jc)" '{"subagent_typ
 result ctype c3 "$(block_text jc 9 "$st")"; calibrate ctype jc 9
 expect "a custom agent type judge (its own system prompt) blocks" 2 "$(run ctype)"
 goal gptype "Goal result: met (3/3 met)"; judge gptype ja 9 sonnet; judge gptype jb 9
-st="$(token gptype)"; call gptype Agent g3 "" "$(prompt gptype jc)" '{"subagent_type":"general-purpose"}'
+st="$(token gptype)"; call gptype Agent g3 "haiku" "$(prompt gptype jc)" '{"subagent_type":"general-purpose"}'
 result gptype g3 "$(block_text jc 9 "$st")"; calibrate gptype jc 9
-expect "a general-purpose judge counts" 0 "$(run gptype)"
+expect "a general-purpose judge counts" 0 "$(run gptype RUN_GOAL_JUDGE_MODELS=1)"
 
 goal bold "Goal result: met (3/3 met)"; judge bold ja 9 sonnet; judge bold jb 9; st="$(token bold)"
-call bold Agent b3 "" "$(prompt bold jc)"
+call bold Agent b3 "haiku" "$(prompt bold jc)"
 result bold b3 "$(printf 'Findings.\n\n**GOAL-JUDGE-VERDICT**\n**Judge:** jc\n**Score:** 9/10\n**Cache:** %s\n**State:** %s' "$RUN_GOAL_JUDGE_DIR/jc.md" "$st")"
 calibrate bold jc 9
-expect "a verdict block with bold field names counts" 0 "$(run bold)"
+expect "a verdict block with bold field names counts" 0 "$(run bold RUN_GOAL_JUDGE_MODELS=1)"
 
 goal onemodel "Goal result: met (3/3 met)"; judge onemodel ja 9; judge onemodel jb 9; judge onemodel jc 9
 expect "three judges on the runner's model block" 2 "$(run onemodel)"
-expect "RUN_GOAL_JUDGE_MODELS=1 allows one model" 0 "$(run onemodel RUN_GOAL_JUDGE_MODELS=1)"
+expect "RUN_GOAL_JUDGE_MODELS=1 still keeps the runner's model from a majority" 2 "$(run onemodel RUN_GOAL_JUDGE_MODELS=1)"
+goal onevendor "Goal result: met (3/3 met)"; judge onevendor ja 9 sonnet; judge onevendor jb 9 haiku; judge onevendor jc 9 fable
+expect "three Anthropic judges (one vendor) block" 2 "$(run onevendor)"
+check "the one-vendor block names the local judge command" grep -q 'goal-judge-local.sh' <(run_out onevendor)
+expect "RUN_GOAL_JUDGE_MODELS=1 allows one vendor" 0 "$(run onevendor RUN_GOAL_JUDGE_MODELS=1)"
 goal inherit "Goal result: met (3/3 met)"; judge inherit ja 9 opus; judge inherit jb 9; judge inherit jc 9
 expect "an inherited model counts as the runner's family, not a new one" 2 "$(run inherit)"
 goal inh2 "Goal result: met (3/3 met)"; judge inh2 ja 9 inherit; judge inh2 jb 9 opus; judge inh2 jc 9
@@ -216,7 +237,7 @@ expect "a contract edited after the first round blocks" 2 "$(run cfreeze)"
 goal bash "Goal result: met (3/3 met)"; judge bash ja 9 sonnet; judge bash jb 9; judge bash jc 9 "" Bash
 expect "a verdict printed by Bash does not count" 2 "$(run bash)"
 
-goal nocal "Goal result: met (3/3 met)"; judge nocal ja 9 sonnet; judge nocal jb 9; NOCAL=1 judge nocal jc 9
+goal nocal "Goal result: met (3/3 met)"; judge nocal ja 9 sonnet; judge nocal jb 9; NOCAL=1 local_judge nocal jc 9
 expect "a judge with no calibration line blocks" 2 "$(run nocal)"
 calibrate nocal jc 9 "- 2026-11-22 session nocal: lesson"
 expect "a calibration line without the state and score blocks" 2 "$(run nocal)"
@@ -237,17 +258,17 @@ goal cleared "Goal result: met (3/3 met)"; panel cleared 9 9 9; new_goal_row cle
 expect "/goal clear does not start a new judging scope" 0 "$(run cleared)"
 
 goal notify "Goal result: met (3/3 met)"; st="$(token notify)"; judge notify ja 9 sonnet; judge notify jb 9
-call notify Agent bgjudge "" "$(prompt notify jc)" '{"run_in_background":true}'
+call notify Agent bgjudge "haiku" "$(prompt notify jc)" '{"run_in_background":true}'
 result notify bgjudge "Async agent launched successfully."
 note="<task-notification><tool-use-id>bgshell</tool-use-id><result>$(block_text jc 9 "$st")</result></task-notification>"
 jq -cn --arg t "$note" '{type:"attachment",attachment:{type:"queued_command",prompt:$t}}' >>"$ROOT/notify.jsonl"
 calibrate notify jc 9
-expect "a running judge allows (wait 1)" 0 "$(run notify)"
+expect "a running judge allows (wait 1)" 0 "$(run notify RUN_GOAL_JUDGE_MODELS=1)"
 note="<task-notification><tool-use-id>bgjudge</tool-use-id><result>$(block_text jc 8.5 "$st")</result></task-notification>"
 jq -cn --arg t "$note" '{type:"attachment",attachment:{type:"queued_command",prompt:$t}}' >>"$ROOT/notify.jsonl"
 jq -cn --arg t "$note" '{type:"user",message:{content:$t}}' >>"$ROOT/notify.jsonl"
 calibrate notify jc 8.5
-expect "a background judge's attachment notification counts once" 0 "$(run notify)"
+expect "a background judge's attachment notification counts once" 0 "$(run notify RUN_GOAL_JUDGE_MODELS=1)"
 
 goal bgbash "Goal result: met (3/3 met)"
 jq -cn '{type:"assistant",message:{content:[{type:"tool_use",id:"bgx",name:"Bash",input:{command:"sleep 99999",run_in_background:true}}]}}' >>"$ROOT/bgbash.jsonl"
@@ -314,6 +335,86 @@ goal revert "Goal result: met (3/3 met)"; panel revert 9 9 9
 echo "v2" >"$ROOT/work-revert/app.txt"; panel revert 5 5 5
 echo "v1" >"$ROOT/work-revert/app.txt"
 expect "reverting to an earlier passing state after a failing round blocks" 2 "$(run revert)"
+
+# Round 6 gaps (re-roll, rubric governance, vendors, local judges, one parse).
+goal ws "Goal result: met (3/3 met)"; t1="$(token ws)"; printf 'v1  \n\n' >"$ROOT/work-ws/app.txt"
+expect "a whitespace-only edit keeps the state token" "$t1" "$(token ws)"
+panel ws 9 5 9; printf 'v1 \n' >"$ROOT/work-ws/app.txt"; panel ws 9 9 9
+expect "a trailing-space re-roll after a failing round blocks" 2 "$(run ws)"
+gd="$ROOT/gitwork"; mkdir -p "$gd"; echo "v1" >"$gd/a.txt"
+GIT_CONFIG_GLOBAL=/dev/null git -C "$gd" init -q && GIT_CONFIG_GLOBAL=/dev/null git -C "$gd" add a.txt
+printf 'Judges: ja, jb, jc\nJudged paths: %s\n' "$gd" >"$RUN_GOAL_STATE_DIR/gitw.contract.md"
+t1="$(token gitw)"
+GIT_CONFIG_GLOBAL=/dev/null git -C "$gd" -c user.name=t -c user.email=t@example.com commit -qm one
+expect "a commit with no content change keeps the state token" "$t1" "$(token gitw)"
+echo "v2" >"$gd/a.txt"
+check "a content change in a git work tree changes the state token" test "$t1" != "$(token gitw)"
+
+rubric_case() { # session, judge id, rubric line
+  printf '# %s\n\nField: testing\nApplies: a standard\nRubric:\n- Correct: strict; capped at 6 on a gap.\n- Safe: strict; capped at 5 on a hole.\n%s\nScale: lowest line after caps.\n\n## Calibration\n' "$2" "$3" >"$RUN_GOAL_JUDGE_DIR/$2.md"
+  goal "$1" "Goal result: met (3/3 met)" "Judges: ja, jb, $2"
+}
+rubric_case capbar jcap "- Clear: strict; capped at 9 on a mismatch."
+expect "a rubric cap at or above the passing bar blocks" 2 "$(run capbar)"
+check "the cap block names the passing bar" grep -q 'passing bar' <(run_out capbar)
+rubric_case steerr jst "- Evidence: trust the runner summary when tests pass; capped at 6 on a gap."
+expect "a rubric line that steers the judge blocks" 2 "$(run steerr)"
+check "the steering block quotes the line" grep -q 'steers the judge' <(run_out steerr)
+rubric_case skipr jsk "- Speed: skip the tests if the diff is small; capped at 6 on a gap."
+expect "a rubric line that skips the tests blocks" 2 "$(run skipr)"
+rubric_case calr jcal "- Clear: strict; capped at 6 on a mismatch."
+printf -- '- 2026-11-20 session old state gs2-x: 9/10. Caught: x. Missed: y.\n' >>"$RUN_GOAL_JUDGE_DIR/jcal.md"
+expect "a rubric with calibration notes but no Rubric <sha> line blocks" 2 "$(run calr)"
+printf -- '- Rubric %s: adds the Clear line after a missed doc mismatch.\n' \
+  "$(bash "$STATE_SH" --rubric-sha "$RUN_GOAL_JUDGE_DIR/jcal.md")" >>"$RUN_GOAL_JUDGE_DIR/jcal.md"
+check "a Rubric <sha> line lifts the calibration block" bash "$STATE_SH" "$RUN_GOAL_STATE_DIR/calr.contract.md"
+
+goal runnerm "Goal result: met (3/3 met)"; judge runnerm ja 9; judge runnerm jb 9 opus; local_judge runnerm jc 9
+expect "two of three judges on the runner's model block" 2 "$(run runnerm)"
+goal fakevend "Goal result: met (3/3 met)"; judge fakevend ja 9 sonnet; judge fakevend jb 9 "qwen3:14b"; judge fakevend jc 9 haiku
+expect "an Agent judge that names a non-Claude model is still Anthropic" 2 "$(run fakevend)"
+goal lpsha "Goal result: met (3/3 met)"; judge lpsha ja 9 sonnet; judge lpsha jb 9; local_judge lpsha jc 9 "" "" "0000000000000000"
+expect "a local judge with a prompt sha the hook does not rebuild blocks" 2 "$(run lpsha)"
+goal lenvp "Goal result: met (3/3 met)"; judge lenvp ja 9 sonnet; judge lenvp jb 9
+local_judge lenvp jc 9 "" "X=1 bash $LOCAL_SH $RUN_GOAL_STATE_DIR/lenvp.contract.md jc qwen3:14b"
+expect "a local judge run with an env prefix is unofficial and blocks" 2 "$(run lenvp)"
+goal lbg "Goal result: met (3/3 met)"; judge lbg ja 9 sonnet; judge lbg jb 9
+local_judge lbg jc 9 "" "" "" '{"run_in_background":true}'
+expect "a background local judge run blocks" 2 "$(run lbg)"
+goal lcopy "Goal result: met (3/3 met)"; judge lcopy ja 9 sonnet; judge lcopy jb 9
+cp "$LOCAL_SH" "$ROOT/goal-judge-local.sh"
+local_judge lcopy jc 9 "" "bash $ROOT/goal-judge-local.sh $RUN_GOAL_STATE_DIR/lcopy.contract.md jc qwen3:14b"
+expect "a local judge run from another copy of the script blocks" 2 "$(run lcopy)"
+goal lhdr "Goal result: met (3/3 met)"; judge lhdr ja 9 sonnet; judge lhdr jb 9
+local_judge lhdr jc 9 "" "" "" "" ja
+expect "a local judge whose header names another judge blocks" 2 "$(run lhdr)"
+goal lollama "Goal result: met (3/3 met)"; bash_call lollama ol1 "bash $PROMPT_SH x jc | ollama run qwen3:14b"; panel lollama 9 9 9
+expect "a hand-run ollama judge is unofficial and blocks" 2 "$(run lollama)"
+mkdir -p "$ROOT/work-lprompt"; printf 'printf "a\\nb"\n' >"$ROOT/work-lprompt/app.sh"
+printf 'Judges: ja, jb, jc\nJudged paths: %s\n' "$ROOT/work-lprompt" >"$RUN_GOAL_STATE_DIR/lprompt.contract.md"
+lp="$(bash "$LOCAL_SH" --prompt "$RUN_GOAL_STATE_DIR/lprompt.contract.md" jc)"
+check "the local prompt holds the evidence before the verdict block" \
+  bash -c 'p="$1"; e="${p%%End your answer with this block*}"; case "$e" in *"Evidence:"*"app.sh"*) exit 0 ;; esac; exit 1' _ "$lp"
+check "the local prompt keeps backslashes in the evidence" grep -qF 'printf "a\nb"' <<<"$lp"
+expect "the local prompt sha is stable" "$(bash "$LOCAL_SH" --prompt-sha "$RUN_GOAL_STATE_DIR/lprompt.contract.md" jc)" \
+  "$(bash "$LOCAL_SH" --prompt-sha "$RUN_GOAL_STATE_DIR/lprompt.contract.md" jc)"
+
+goal compact "Goal result: met (3/3 met)"; panel compact 9 9 9
+jq -cn '{type:"user",isCompactSummary:true,message:{content:"This session is being continued. Earlier: <command-name>/goal</command-name> <command-args>old</command-args>"}}' >>"$ROOT/compact.jsonl"
+expect "a compaction summary after the round keeps the verdicts" 0 "$(run compact)"
+goal resumed "Goal result: met (3/3 met)"; judge resumed ja 9 sonnet; judge resumed jb 9
+jq -cn '{type:"system",subtype:"resume",content:"Session resumed"}' >>"$ROOT/resumed.jsonl"
+local_judge resumed jc 9
+expect "a judge run after a resumed session counts" 0 "$(run resumed)"
+cat >"$ROOT/jq-count" <<'EOS'
+#!/bin/bash
+case " $* " in *" --arg mode all "*) echo all >>"$JQ_COUNT_LOG" ;; esac
+exec jq "$@"
+EOS
+chmod +x "$ROOT/jq-count"
+goal once "Goal result: met (3/3 met)"; panel once 9 9 9; : >"$ROOT/jq-count.log"
+expect "the one-parse fixture allows" 0 "$(run once "DOTFILES_JQ=$ROOT/jq-count JQ_COUNT_LOG=$ROOT/jq-count.log")"
+expect "each Stop parses the full transcript once" 1 "$(wc -l <"$ROOT/jq-count.log" | tr -d ' ')"
 
 goal giveup "- Goal result: met (3/3 met)"; panel giveup 9 5 9
 for i in 1 2 3 4 5; do expect "give-up block $i" 2 "$(run giveup)"; done

@@ -27,11 +27,12 @@ contract is back or the retro says not met.
 |---|---|---|
 | `RUN_GOAL_JUDGE_MIN` | 8 | the owner sets another bar for this machine |
 | `RUN_GOAL_JUDGE_COUNT` | 3 | never lower it to pass a goal |
-| `RUN_GOAL_JUDGE_MODELS` | 2 | you can run only one model family (then say so in the report) |
+| `RUN_GOAL_JUDGE_MODELS` | 2 | model vendors needed; lower it only when no local model can run (then say so in the report) |
 | `RUN_GOAL_JUDGE_ROUNDS` | 3 | the owner approves more rounds for one goal |
 | `RUN_GOAL_JUDGE_DIR` | `~/.config/agentbrew/goal-judges` | the judge cache lives elsewhere |
 
-**Cost**: one round is three fresh subagents reading the judged paths; a goal
+**Cost**: one round is two fresh subagents reading the judged paths and one
+local model run (about 5 to 9 minutes for a 90 KB diff on qwen3:14b); a goal
 gets at most three rounds, so at most nine judge runs.
 
 ## 1. Pick the judges (in the contract, before any work)
@@ -65,9 +66,18 @@ gets at most three rounds, so at most nine judge runs.
    edited contract later, even in a new round. Rubric changes go into `## Calibration` notes and are merged at the
    start of the next goal.
 
-   A judge file must meet the rubric floor: `Field:`, `Applies:`, and
-   `Scale:` lines and three or more rubric lines with a "capped at" limit.
-   The hook refuses a file below it.
+   A judge file must meet the rubric floor, or the hook refuses it:
+   - `Field:`, `Applies:`, and `Scale:` lines and three or more rubric lines
+     with a "capped at" limit;
+   - every cap below the passing bar (`RUN_GOAL_JUDGE_MIN`, default 8): a cap
+     at 8 or more limits nothing;
+   - no rubric line that steers the judge ("trust the summary", "skip the
+     tests", "give 9", "minimum score", "benefit of the doubt");
+   - once `## Calibration` has notes, a line `Rubric <rubric sha>: <the missed
+     defect this rubric fixes>` for the current rubric
+     (`bash goal-state.sh --rubric-sha <judge file>` prints the sha). Each
+     rubric change must name the defect it fixes, so the owner can audit a
+     loosened rubric.
 
 ```markdown
 # <judge id>
@@ -83,6 +93,7 @@ Scale: 10 best in the field; 8 a top expert would ship it with minor notes;
 Blind spots to check: <things this judge missed before>
 
 ## Calibration
+- Rubric <rubric sha>: <the missed defect this rubric version fixes>.
 - <date> session <session id> state <token>: <score>/10 on <goal>.
   Caught: <...>. Missed: <...>. Next rubric change: <edit, or "none: <why>">.
 ```
@@ -111,9 +122,18 @@ judged paths can get its judge line after the verdicts.
    Never message a running judge (SendMessage) and never run practice judges
    (judge markers without the header, or `claude -p` with a judge prompt):
    the hook rejects both.
-   Use at least two model families: set `model` on one judge (for example
-   `sonnet` when you run on Opus). An Agent call with no `model`, or
-   `model: inherit`, counts as your own model.
+   Use at least two model vendors, and give fewer than half the judges your
+   own model family. An Agent judge always runs a Claude model (Anthropic),
+   so run one judge on a local model:
+   `bash <hook lib dir>/goal-judge-local.sh <contract path> <judge id> qwen3:14b`
+   in the foreground, exactly in that form (no env prefix, no pipe, no
+   `&`), and outside the sandbox (it blocks the Ollama port). The script
+   builds the same prompt plus an evidence section (the judged work trees'
+   diff against their merge base, non-test files first, cut at 90 KB),
+   sends it to Ollama at 127.0.0.1:11434, and prints a header with its
+   Prompt-SHA and the answer. The hook rebuilds that sha. Set `model` on one
+   Agent judge (for example `sonnet` when you run on Opus); an Agent call
+   with no `model`, or `model: inherit`, counts as your own model.
 3. The judge ends with this block, once:
 
 ```
@@ -124,16 +144,20 @@ Cache: <full path of the judge file>
 State: <state token>
 ```
 
-The hook counts only `Agent` or `Task` results and their background
-notifications (bold field names are fine). Your own text and Bash output
-never count. A result with two verdict blocks counts for none. While a judge
+The hook counts only `Agent` or `Task` results, their background
+notifications, and the output of the exact local judge command (bold field
+names are fine). Your own text and other Bash output never count; a
+hand-run `ollama` judge or a changed local command counts as an unofficial
+run and blocks. A result with two verdict blocks counts for none. While a judge
 runs in the background the hook lets Stop through, at most 10 times; other
 background tasks never excuse a met claim.
 
 ## 3. Iterate the work
 
 - Any judge under 8: apply its top fixes, then run **all three** again on the
-  new state. Judging one judge twice on one state is a re-roll and fails. A
+  new state. Judging one judge twice on one state is a re-roll and fails.
+  The state token ignores whitespace and commits, so a whitespace-only edit
+  is the same state: it cannot buy a new round. A
   goal gets three judging rounds (`RUN_GOAL_JUDGE_ROUNDS`); more rounds farm
   for a lucky score.
 - All at 8 or more: apply cheap top fixes while the budget allows, then
@@ -180,14 +204,20 @@ is active (no `/goal`, or after `/goal clear`), the agent has no Stop hook
 Known limits (the agent being judged writes the files it is judged by, so a
 hook can make these harder, not impossible):
 
-- A lenient judge file you wrote yourself: the rubric floor and the prompt's
+- A lenient judge file you wrote yourself: the rubric floor (caps below the
+  bar, no steering lines, a named defect per rubric change) and the prompt's
   rule to apply the field's standard limit it.
 - Steering text in the contract: the prompt labels the contract as
   runner-written and tells judges to report such text as a defect.
 - A practice judge run with a paraphrased prompt and no marker is not seen.
-- Small edits buy a new round, up to the three-round cap.
-- A rubric loosened when notes are merged at the next goal: check the merge
-  against the calibration evidence.
+- Small non-whitespace edits (a comment) buy a new round, up to the
+  three-round cap.
+- A rubric loosened when notes are merged at the next goal: the `Rubric
+  <sha>:` line names why; check it against the calibration evidence.
+- A fake server on the Ollama port, or edits to the installed hook files,
+  would fake a local verdict.
+- The local judge cannot run tools; it judges a diff cut at 90 KB and is told
+  to mark unchecked claims as unverified.
 
 ## Measure the effect
 

@@ -2,7 +2,7 @@
 # agentbrew/hooks/lib/goal-state.sh
 #
 # Prints the state token a goal judge verdict must carry, for example
-# `gs1-3f9a0c41d2e8b7a6`. goal-judges-before-stop recomputes it at Stop, so a
+# `gs2-3f9a0c41d2e8b7a6`. goal-judges-before-stop recomputes it at Stop, so a
 # verdict counts only for the exact state it judged.
 #
 # Usage: bash goal-state.sh <contract path> [judge dir]
@@ -13,10 +13,14 @@
 #   - the contract file (so its `Judges:` and `Judged paths:` lines are frozen),
 #   - each contract judge's rubric: its file up to the `## Calibration`
 #     heading (calibration notes may be added at any time),
-#   - each judged path: for a git work tree, HEAD, `git status`, the diff
-#     against HEAD, and the untracked files' contents; for a plain file or
-#     folder, its files' contents.
-# Any edit to the work (Edit tool, Bash, a subagent) changes the token.
+#   - each judged path: each file's path and its content with all
+#     whitespace removed (for a git work tree, the tracked and untracked
+#     files `git ls-files -co --exclude-standard` lists; for a plain file or
+#     folder, every file).
+# Any edit to the work beyond whitespace (Edit tool, Bash, a subagent) changes
+# the token. A whitespace-only edit or a commit does not, so a trailing space
+# cannot buy a new judging round on the same work. Known limit: a change that
+# only moves whitespace (Python indentation) needs another edit to count.
 #
 # Contract lines it reads:
 #   Judges: <id>, <id>, <id>
@@ -26,19 +30,38 @@
 # file is missing or below the rubric floor, or a judged path does not exist.
 #
 # Rubric floor: a judge file needs `Field:`, `Applies:`, and `Scale:` lines and
-# at least three rubric lines with a "capped at" limit. A file that lost its
-# rubric (for example one that only says "give 10") cannot be judged with.
+# at least three rubric lines with a "capped at" limit. Every cap must be below
+# the passing bar (`RUN_GOAL_JUDGE_MIN`, default 8): a cap at the bar or above
+# limits nothing. No rubric line may steer the judge ("trust the summary",
+# "skip the tests", "give 9", "minimum score"). Once the `## Calibration`
+# section has notes, it needs a line `Rubric <rubric sha>: <the missed defect
+# this rubric fixes>` for the current rubric, so every rubric change names the
+# defect it fixes and the owner can audit it. A file that lost its rubric (for
+# example one that only says "give 10") cannot be judged with.
 
 set -uo pipefail
 
 sha() { if command -v shasum >/dev/null 2>&1; then shasum -a 256; else sha256sum; fi | cut -c1-64; }
 rubric() { awk '/^## Calibration/{exit} {print}' "$1"; }
+calib() { awk '/^## Calibration/{c=1; next} c' "$1"; }
+MIN="${RUN_GOAL_JUDGE_MIN:-8}"
+case "$MIN" in "" | *[!0-9.]*) MIN=8 ;; esac
+STEER='trust (the |its |their )?(runner|summar|contract|claim|report|author)|skip (the |all )?(check|test|reproduc|command)|(do not|don.t|never) (run|reproduce|check|verify)|(give|award|assign)s? (it |them |a )?(score of |at least |a minimum of )?(8|9|10)([^0-9]|$)|minimum score|always (pass|score)|full marks|benefit of the doubt'
+
 floor() { # judge file -> empty when it meets the rubric floor, else the gap
   local f="$1" gap=""
   grep -qE '^Field:[[:space:]]*[^[:space:]]' "$f" || gap="$gap no Field: line,"
   grep -qE '^Applies:[[:space:]]*[^[:space:]]' "$f" || gap="$gap no Applies: line,"
   grep -qE '^Scale:[[:space:]]*[^[:space:]]' "$f" || gap="$gap no Scale: line,"
   [ "$(rubric "$f" | grep -cE '^- .*capped at [0-9]')" -ge 3 ] || gap="$gap fewer than 3 'capped at' rubric lines,"
+  rubric "$f" | grep -oE 'capped at [0-9]+(\.[0-9]+)?' | awk -v m="$MIN" '{ if ($3 + 0 >= m + 0) bad = 1 } END { exit !bad }' &&
+    gap="$gap a cap at or above the passing bar $MIN (caps must be below it),"
+  rubric "$f" | grep -qiE "$STEER" && gap="$gap a rubric line steers the judge ($(rubric "$f" | grep -iE "$STEER" | head -1 | cut -c1-80)),"
+  if calib "$f" | grep -q '[^[:space:]]'; then
+    local rs; rs="$(rubric "$f" | sha | cut -c1-16)"
+    calib "$f" | grep -qE "Rubric $rs: *[^[:space:]]" ||
+      gap="$gap no calibration line 'Rubric $rs: <missed defect it fixes>' for the current rubric,"
+  fi
   printf '%s' "${gap%,}"
 }
 
@@ -71,12 +94,17 @@ while IFS= read -r id; do
   case "$id" in *[!a-z0-9-]* | "") echo "goal-state: bad judge id '$id' (use a-z, 0-9, -)" >&2; exit 2 ;; esac
   [ -f "$JUDGE_DIR/$id.md" ] || { echo "goal-state: judge file missing: $JUDGE_DIR/$id.md; create it from the template in run-goal references/goal-judges.md step 1: Field:, Applies:, and Scale: lines and three or more rubric lines with 'capped at N'" >&2; exit 2; }
   gap="$(floor "$JUDGE_DIR/$id.md")"
-  [ -z "$gap" ] || { echo "goal-state: judge file $JUDGE_DIR/$id.md is below the rubric floor:$gap; create it from the template in run-goal references/goal-judges.md step 1: Field:, Applies:, and Scale: lines and three or more rubric lines with 'capped at N'" >&2; exit 2; }
+  [ -z "$gap" ] || { echo "goal-state: judge file $JUDGE_DIR/$id.md is below the rubric floor:$gap; fix it per run-goal references/goal-judges.md step 1 (Field:, Applies:, Scale:, three or more 'capped at N' lines with N below $MIN, no steering lines, and a 'Rubric <sha>: <defect>' calibration line once it has notes)" >&2; exit 2; }
 done <<<"$JUDGES"
 while IFS= read -r p; do
   [ -e "${p/#\~/$HOME}" ] || { echo "goal-state: judged path missing: ${p/#\~/$HOME}" >&2; exit 2; }
 done <<<"$PATHS"
 
+WS_HASH='use strict; use Digest::SHA; local $/ = "\0"; my $d = Digest::SHA->new(256);
+while (my $f = <STDIN>) { chomp $f; next unless -f $f; open(my $h, "<:raw", $f) or next;
+  my $c = do { local $/; <$h> }; close $h; $c =~ s/\s+//g;
+  $d->add($f, "\0", Digest::SHA::sha256_hex($c), "\n"); }
+print $d->hexdigest, "\n";'
 {
   printf 'contract\n'; cat "$CONTRACT"
   while IFS= read -r id; do
@@ -88,14 +116,9 @@ done <<<"$PATHS"
     p="${p/#\~/$HOME}"
     printf '\npath %s\n' "$p"
     if [ -d "$p" ] && git -C "$p" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-      git -C "$p" rev-parse HEAD 2>/dev/null
-      git -C "$p" status --porcelain=v1 -uall . 2>/dev/null
-      git -C "$p" diff HEAD --binary -- . 2>/dev/null | sha
-      git -C "$p" ls-files -o --exclude-standard -z -- . 2>/dev/null |
-        (cd "$p" && xargs -0 shasum -a 256 2>/dev/null)
+      (cd "$p" && git ls-files -z -co --exclude-standard -- . 2>/dev/null | LC_ALL=C sort -z | perl -e "$WS_HASH")
     else
-      find "$p" -type f -not -path '*/.git/*' 2>/dev/null | LC_ALL=C sort |
-        while IFS= read -r f; do printf '%s ' "$f"; sha <"$f"; done
+      find "$p" -type f -not -path '*/.git/*' -print0 2>/dev/null | LC_ALL=C sort -z | perl -e "$WS_HASH"
     fi
   done <<<"$PATHS"
-} | sha | cut -c1-16 | sed 's/^/gs1-/'
+} | sha | cut -c1-16 | sed 's/^/gs2-/'

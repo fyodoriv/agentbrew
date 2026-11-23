@@ -367,7 +367,7 @@
   - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
   - **Success**: all new cases pass with 0 failed.
   - **Pivot**: if precise matching misses more than 1 of the 5 target phrasings, refuse score targets in the contract instead of filtering them.
-  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (anchoring bias).
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge", arXiv:2306.05685 (anchoring bias).
 
 - [ ] Judge reports that skip the Blocker or Follow-up labels are caught
   - **ID**: goal-judge-label-check
@@ -380,7 +380,7 @@
   - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
   - **Success**: the new cases pass with 0 failed.
   - **Pivot**: if label checks reject more than 1 honest report in the 5 largest local transcripts, keep them as warnings only.
-  - **Anchor**: Krippendorff, "Content Analysis" (coding reliability).
+  - **Anchor**: Krippendorff 2018, "Content Analysis", 4th ed. (coding reliability).
 
 - [ ] Agents can run one named case of the goal-judge hook suite
   - **ID**: goal-judge-suite-one-case

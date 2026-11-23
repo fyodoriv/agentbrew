@@ -356,6 +356,32 @@
 
 ## P1
 
+- [ ] A goal retro that says "not met" cannot hide a success claim after it
+  - **ID**: goal-retro-claim-allowlist
+  - **Tags**: hooks, run-goal, reliability
+  - **Details**: Found 2026-11-23, PR #1253 round 13 (overseer blocker, merged as is by the owner). After a not-met prefix, `CLAIM_AWK` in `hooks/checks/goal-judges-before-stop.sh` rejects only a fixed list of success words. "partly met, ready to merge", "partly met - everything works now", "unmet; resolved" and "stopped; fixed" still read as not met, so Stop is allowed with no judge consensus. Allow only a bracketed reason or a known suffix after the prefix; treat any other trailing text as a claim.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture per phrasing above blocks; the existing not-met forms still allow.
+  - **Hypothesis**: claim lines that slip past the gate drop from 6 reproduced phrasings to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: all 6 new fixtures block and every other case passes.
+  - **Pivot**: if more than 2 honest not-met retro lines from the 5 largest local transcripts start to block, keep the denylist and widen it instead.
+  - **Anchor**: Google SRE book, fail-safe defaults; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] The judge contract filter never hides a real criterion
+  - **ID**: goal-judge-filter-word-boundaries
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, PR #1253 round 13 (overseer blocker). `contract_text` in `hooks/lib/goal-judge-prompt.sh` matches number words as substrings ("done" contains "one", "content" and "written" contain "ten"), so lines with no score target were replaced and hidden from judges. Match number words on word boundaries, and add a test for a changed `Rubric-SHA` header in a judge prompt (no named test yet).
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: "The README is done and the content is written" and "documented above the barrier section" stay in the prompt; the five score-target phrasings still get removed; a changed Rubric-SHA header blocks.
+  - **Hypothesis**: real criteria hidden by the filter drop from 2 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: all new cases pass with 0 failed.
+  - **Pivot**: if word boundaries miss more than 1 of the 5 score-target phrasings, drop number words and filter only digits.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (anchoring and steering bias).
+
 - [ ] goal-retro-before-stop counts quoted launch text as a running task
   - **ID**: goal-retro-launch-false-positive
   - **Tags**: hooks, run-goal, reliability

@@ -75,11 +75,12 @@ floor() { # judge file -> empty when it meets the rubric floor, else the gap
           $0 = substr($0, RSTART + RLENGTH) } }
       END { exit !(found == 0 || ok) }' <<<"$ctext" ||
       gap="$gap the 'Rubric $rs:' line cites no state token of an earlier calibration line (name the round whose missed defect it fixes),"
-    local hist id old
+    local hist id old rlines
     hist="${RUN_GOAL_STATE_DIR:-$HOME/.cache/agentbrew/run-goal}/goal-judge-history.tsv"
     id="$(basename "$f" .md)"
     old="$(awk -F'\t' -v j="$id" -v r="$rs" '$4 == j && $5 != r && $5 != "" { print $6 }' "$hist" 2>/dev/null | sort -u)"
-    if [ -n "$old" ] && ! grep -E "Rubric $rs:" <<<"$ctext" | grep -qF -f <(printf '%s\n' "$old"); then
+    rlines="$(grep -E "Rubric $rs:" <<<"$ctext" || true)"
+    if [ -n "$old" ] && ! grep -qF -f <(printf '%s\n' "$old") <<<"$rlines"; then
       gap="$gap the rubric changed after scored rounds in goal-judge-history.tsv, and its 'Rubric $rs:' line cites none of their states (name the round whose missed defect it fixes),"
     fi
   fi

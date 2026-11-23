@@ -13,7 +13,6 @@ HERE="$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0")")"
 SCRIPT="$HERE/goal-judges-before-stop.sh"
 STATE_SH="$HERE/../lib/goal-state.sh"
 PROMPT_SH="$HERE/../lib/goal-judge-prompt.sh"
-LIB_REAL="$(cd "$HERE/../lib" && pwd -P)"
 PASS=0
 FAIL=0
 FAIL_DETAILS=()

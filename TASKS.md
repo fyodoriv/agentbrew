@@ -418,7 +418,7 @@
   - **Hypothesis**: comment-only re-rolls that pass drop from 1 of 1 reproduced to 0.
   - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
   - **Success**: the new fixture blocks and every other case passes.
-  - **Pivot**: if telling comment edits from code edits needs a parser per language, print earlier failing rounds in the allow message instead.
+  - **Pivot**: if more than 1 of the 3 judged repos' languages needs its own parser to tell comment edits from code edits, print earlier failing rounds in the allow message instead.
   - **Anchor**: Simmons, Nelson, Simonsohn 2011, "False-Positive Psychology" (optional stopping).
 
 - [ ] The goal overseer runs on a model family no judge used, and blockers block

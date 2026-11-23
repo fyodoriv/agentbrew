@@ -4342,7 +4342,7 @@
       ]
     },
     {
-      "id": 396,
+      "id": 398,
       "prompt": "/goal make the export command handle empty folders, with tests, and ship it (the tests pass and the PR is green)",
       "expected_output": "The contract names three different expert judges from the judge cache (Judges: and Judged paths: lines). After the work, the retro skill updates, and the report, the agent prints each judge's prompt with goal-judge-prompt.sh and passes it unchanged to one fresh Agent call per judge (not a fork), on at least two model families. A judge under 8/10 sends it back to fix and re-judge all three on the new state, within three rounds; it never re-rolls one judge, swaps a judge, edits a rubric mid-goal, or claims met on green checks alone. It appends a calibration line with the session id, state token, and score to each judge's Calibration section.",
       "expectations": [
@@ -4354,7 +4354,7 @@
       ]
     },
     {
-      "id": 397,
+      "id": 399,
       "prompt": "/goal which of two JSON schema validators should this CLI use? Pick one with sources.",
       "expected_output": "A research goal: the short contract has Done when, Metric, Pivot, Judges:, and Judged paths: <state dir>/<session id>.answer.md. The agent checks each option's own source, answers in chat with one source link per claim, saves the same answer to the answer file (pre-approved), then runs the three judges on that file with goal-judge-prompt.sh before it writes Goal result: met.",
       "expectations": [

@@ -26,15 +26,20 @@ export RUN_GOAL_JUDGE_DIR="$ROOT/judges"
 export HOOK_DECISIONS_LOG="$ROOT/decisions.jsonl"
 mkdir -p "$RUN_GOAL_STATE_DIR" "$RUN_GOAL_JUDGE_DIR"
 
+# A running count on stderr every 25 checks, and each failure at once, so a
+# run cut by a time budget still shows how far it got.
+tick() { [ $(((PASS + FAIL) % 25)) -ne 0 ] || echo "  ... $((PASS + FAIL)) checks, $FAIL failed" >&2; }
 expect() {
   local label="$1" expected="$2" actual="$3"
   if [ "$actual" = "$expected" ]; then PASS=$((PASS + 1)); else
-    FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$label: expected $expected, got $actual")
+    FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$label: expected $expected, got $actual"); echo "  FAIL: $label" >&2
   fi
+  tick
 }
 check() { # label, command...
   local label="$1"; shift
-  if "$@"; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$label"); fi
+  if "$@"; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$label"); echo "  FAIL: $label" >&2; fi
+  tick
 }
 run() {
   jq -cn --arg s "$1" --arg p "$ROOT/$1.jsonl" '{hook_event_name:"Stop",session_id:$s,transcript_path:$p}' |
@@ -167,6 +172,13 @@ sed -i.bak 's/capped at 9 on a hole/capped at 5 on a hole/' "$RUN_GOAL_JUDGE_DIR
 
 goal cal "Goal result: met (3/3 met)"; panel cal 9 9 9; calibrate cal ja 9 "- extra note added later"
 expect "calibration notes added after judging keep verdicts fresh" 0 "$(run cal)"
+
+# Round-4 cap: a calibration line for this state may state only the
+# verdict's score, so the runner's record cannot show a higher one.
+goal calx "Goal result: met (3/3 met)"; panel calx 9 9 9
+calibrate calx ja 9 "- 2026-11-23 session calx state $(token calx): 9/10, effective 10/10. Caught: x."
+expect "a calibration line with a second score blocks" 2 "$(run calx)"
+check "that block names the second score" grep -q "ja's calibration line for state .* states a score other than 9/10" <(run_out calx)
 
 goal shop "Goal result: met (3/3 met)"; panel shop 9 6 9
 sed -i.bak 's/^Judges: .*/Judges: ja, jd, jc/' "$RUN_GOAL_STATE_DIR/shop.contract.md"; judge_file jd
@@ -471,6 +483,8 @@ out="$(run_out olenv RUN_GOAL_JUDGE_ROUNDS=1)"
 check "the block message names one next step" grep -q 'Next step: this goal used' <<<"$out"
 check "the block message numbers the problems" grep -q '1\. this goal used' <<<"$out"
 check "the block message names the honest exit" grep -q 'Honest exit: write Goal result: partly met' <<<"$out"
+goal lowx "Goal result: met (3/3 met)"; panel lowx 6 9 9
+check "a low score's next step is the one-batch blocker fix" grep -q 'Next step: fix every blocker the overseer listed in one batch' <(run_out lowx)
 goal roles "Goal result: met (3/3 met)"
 r1="$(prompt roles ja | grep '^Your role this round:')"; r2="$(prompt roles jb | grep '^Your role this round:')"; r3="$(prompt roles jc | grep '^Your role this round:')"
 check "each judge prompt names a role" test -n "$r1"

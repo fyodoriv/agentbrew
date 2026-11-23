@@ -209,7 +209,13 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
 
 - Any judge under 8: fix **every** blocker the overseer listed, in one
   batch, each with a test that fails before the fix. File each follow-up as
-  a task before the next round, and do not fix follow-ups in this goal.
+  a task before the next round, and do not fix follow-ups in this goal
+  unless the owner asks for them.
+- Where and when to file follow-ups: in the task backend of the repo the
+  follow-up is about (`TASKS.md` or the repo's declared backend), or in the
+  retro for a goal with no repo. File them **before** the judges run: a task
+  added to a judged repo changes the state token, so filing after a passing
+  round makes its verdicts stale and spends a round.
   Judges label each defect Blocker or Follow-up, and only blockers cap a
   score; the overseer raises a score lowered by a follow-up. This keeps each
   round's new findings from moving the bar.
@@ -235,7 +241,12 @@ Print one goal-check line, for example
 
 After each use, append a calibration line to each judge's `## Calibration`
 section with the session id, the state token, and the score as `N/10` (the
-hook checks all three; notes there do not change the state token). Compare the verdict with later evidence:
+hook checks all three; notes there do not change the state token). That
+line may state only the judge's own verdict score: the hook blocks a line
+for the current state with any other `N/10` ("9/10, effective 10/10"), so
+the runner-written notes cannot record a score no judge gave. The score
+record is `goal-judge-history.tsv`, which only the hook writes; judges never
+read the notes. Compare the verdict with later evidence:
 
 - A defect another judge, a reviewer, or a check found that this judge
   missed: add it as a blind spot in the next rubric change.

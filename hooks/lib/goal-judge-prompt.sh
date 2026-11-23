@@ -29,16 +29,22 @@ set -uo pipefail
 # The contract as judges see it: the "After judging" section (steps that can
 # only happen once the judges pass, such as merge or install) is left out,
 # and a line that sets a score target (N/10, "N of ten", or a score or judge
-# word with a number and "or more", ">=", "minimum", "or less", ...) is replaced, so no target anchors a
-# judge. The overseer prompt uses the same text.
+# word with a number and "or more", ">=", "8+", "no less than", "minimum",
+# or "above|target|bar|exceed|reach 8", ...) is replaced, so no target
+# anchors a judge. Words match whole ("sidebar" and "on target" stay), and
+# the Judges: and Judged paths: lines always stay. The overseer prompt uses
+# the same text.
 contract_text() {
   awk '{ l = tolower($0) }
     l ~ /^#+[ \t]*after judging/ { skip = 1; print "(the After judging section is left out: those steps happen after the judges pass; do not score them)"; next }
     /^#/ { skip = 0 }
     skip { next }
+    l ~ /^[-*_ ]*judge(s|d paths):/ { print; next }
     l ~ /([0-9]|(^|[^a-z])(one|two|three|four|five|six|seven|eight|nine|ten)) *(\/|out of|of) *(10|ten)([^a-z]|$)/ ||
     (l ~ /score|judge|grade|rating|pass mark/ && l ~ /[0-9]|(^|[^a-z])(one|two|three|four|five|six|seven|eight|nine|ten)([^a-z]|$)/ &&
-     l ~ /or more|or higher|or better|or above|or less|or lower|or below|at least|minimum|above|below|target|bar|threshold|>=|<=|>|</) {
+     (l ~ /(^|[^a-z])(or more|or higher|or better|or above|or less|or lower|or below|at least|no less than|no lower than|no fewer than|minimum|passing grade|pass mark)([^a-z]|$)/ ||
+      l ~ /(^|[^a-z])(above|below|over|under|exceeds?|exceeding|reach(es|ing)?|raised?|target|bar|threshold)([^a-z][^.;]*)?([0-9]|(^|[^a-z])(one|two|three|four|five|six|seven|eight|nine|ten)([^a-z]|$))/ ||
+      l ~ /[0-9] *\+|>=|<=|≥|≤|(^|[^-])>|</)) {
       print "(a line about judge scores removed: score the work, not a target)"; next }
     { print }' "$1"
 }

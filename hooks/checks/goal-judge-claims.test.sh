@@ -31,6 +31,17 @@ for l in "Goal result: partly met (lowest 6/10)" "Goal result: not met" "Goal re
   "Goal result: partly met (lowest 6/10 (round 13))" "Goal result: failed (could not reproduce)"; do
   want ok "$l"
 done
+# Round-2 blockers: a success word after "on|by|until|for" still claims;
+# the documented count forms and a not-met reason tail still allow.
+for l in "Goal result: blocked on 2FA and done" "Goal result: in progress on the merge and it is met" \
+  "Goal result: blocked on everything is complete" "Goal result: stopped by the owner, all shipped"; do
+  want claim "$l"
+done
+for l in "Goal result: partly met: 3/5 met" "Goal result: partly met 3/5 met" "Goal result: not met: 3/5 met" \
+  "Goal result: partly met: 3 of 5 criteria met" "Goal result: stopped by the owner" \
+  "Goal result: failed for lack of budget"; do
+  want ok "$l"
+done
 # The hook's give-up line strips brackets from its cut reason, so a cut
 # inside "family(ies) ( sonnet h" still reads as not met.
 reason="$(printf '%s' 'judges used 2 model family(ies) ( sonnet h' | tr -d '\n()')"

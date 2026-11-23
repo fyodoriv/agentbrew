@@ -74,7 +74,7 @@ Read the judge reports below, the owner request, the goal contract, and the raw 
 For each judge:
 - Check each deduction. It stands only if the judge reproduced the defect, it is in scope of the owner request and the contract's Done when, and it is not about a step that can only happen after judging (merge, install, release).
 - Check for misses: a defect you reproduce that the judge missed, and that its rubric covers.
-- Correct the score by at most 2 points, up or down, with one reason. Lower it for a reproduced miss; raise it only for a deduction that fails the checks above; keep it when the judge was right.
+- Correct the score by at most 2 points, up or down, with one reason. Lower it for a reproduced miss; raise it only for a deduction that fails the checks above, with a reason of 20 or more characters that names that deduction; keep it when the judge was right.
 
 Pace:
 - Split every defect into blockers (break a done-when criterion, the owner request, or a safety standard: must be fixed before merge) and follow-ups (any other improvement: file as tasks). A deduction for a follow-up fails the scope check; raise that score.

@@ -298,8 +298,11 @@ exists, Stop passes only with a judge consensus or a retro whose every
 `Goal result` line (after list, heading, quote, or bold marks) says partly
 met, not met, in progress, blocked, impossible, or pending. No retro, no
 result line, or any other form is a claim. After that word, only a
-bracketed reason, a count (`3/5 met`), or, for a wait, `on|by|until|for
-<what>` may follow: `partly met, ready to merge` is a claim. The hook blocks Stop until each judge on the
+bracketed reason, a count (`3/5 met`, `3 of 5 criteria met`), or one
+`on|by|until|for <what>` tail may follow, and a success word in that tail
+is a claim: `partly met, ready to merge` and `blocked on 2FA and done` are
+claims. An overseer ruling that raises a score needs a reason of 20 or
+more characters. The hook blocks Stop until each judge on the
 contract's `Judges:` line has exactly one `GOAL-JUDGE-VERDICT` block (Judge,
 Score N/10, Cache, State) whose `State:` equals the token
 `hooks/lib/goal-state.sh <contract>` prints now. The token hashes the

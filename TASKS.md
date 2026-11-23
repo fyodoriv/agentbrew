@@ -382,6 +382,32 @@
   - **Pivot**: if label checks reject more than 1 honest report in the 5 largest local transcripts, keep them as warnings only.
   - **Anchor**: Krippendorff 2018, "Content Analysis", 4th ed. (coding reliability).
 
+- [ ] Judged paths in a goal contract are checked against the change
+  - **ID**: goal-judge-scope-check
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, judge round 2 of the blocker-loop goal (llm-evaluation-methodology). The runner writes the contract's `Judged paths:` line and nothing compares it with the files the goal changed, so a runner can leave a changed file out of judging. Accepted as an exception for that goal: the runner always writes its own contract. Fix: the hook compares the judged paths with the goal's diff and blocks when a changed file is missing.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-state.sh`, `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: a contract whose judged paths omit a changed file blocks Stop with the file named.
+  - **Hypothesis**: changed files left out of judging drop from undetected to 0 in the suite fixture.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: the new case passes with 0 failed.
+  - **Pivot**: if the diff cannot be found for more than 1 in 5 real goals, list unjudged files in the block message instead of blocking.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge", arXiv:2306.05685.
+
+- [ ] The judge measure command shows rounds per goal
+  - **ID**: goal-judge-rounds-metric
+  - **Tags**: hooks, run-goal, metrics
+  - **Details**: Found 2026-11-23, judge round 2 of the blocker-loop goal (devex-workflow-design). The "Measure the effect" command in `goal-judges.md` prints goal counts but not judging rounds per goal or blockers per round, the numbers that show the one-batch iteration rule works. `goal-judge-history.tsv` already holds the data.
+  - **Files**: `skill-plugins/workflow/run-goal/references/goal-judges.md`, `hooks/checks/goal-judges-before-stop.sh`.
+  - **Output**: code
+  - **Acceptance**: the measure command prints median rounds per goal.
+  - **Hypothesis**: median judging rounds per goal becomes visible, and drops below 3 after the one-batch rule.
+  - **Measurement**: the measure command in `goal-judges.md`.
+  - **Success**: it prints a rounds-per-goal number for every goal in the history file.
+  - **Pivot**: if the history file lacks a round key for more than half the rows, add the key to the hook first.
+  - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (lead time).
+
 - [ ] Agents can run one named case of the goal-judge hook suite
   - **ID**: goal-judge-suite-one-case
   - **Tags**: hooks, run-goal, speed

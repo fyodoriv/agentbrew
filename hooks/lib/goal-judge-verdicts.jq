@@ -144,7 +144,7 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
         | ( [ scan("(?m)^[ \t>*_-]*Ruling[ \t]+([A-Za-z0-9_.-]+)[*_]*:[*_ \t]*([0-9]+(?:\\.[0-9]+)?)[ \t]*/[ \t]*10[*_ \t]*(?:[-:\u2013\u2014][ \t]*)?([^\n]*)") ][]
             | (.[2] | gsub("^\\s+|\\s+$"; "")) as $why
             | ["Q", $id, (.[0] | ascii_downcase), .[1],
-               (if ($why | length) >= 2 and ($why | startswith("<") | not) then "1" else "0" end)] | @tsv ),
+               (if ($why | length) >= 2 and ($why | startswith("<") | not) then ($why | length | tostring) else "0" end)] | @tsv ),
           ( [ scan("(?m)^[ \t>*_-]*State:[*_ \t]*([A-Za-z0-9_.-]+)") ][0][0] // ""
             | ["W", $id, .] | @tsv ) ) ),
   ( ($results + $notes)[] | select($agents[.id] != null and ($agents[.id].overseer | not))

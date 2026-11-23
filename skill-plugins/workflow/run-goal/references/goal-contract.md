@@ -49,6 +49,14 @@ Judged paths: <worktrees and output files the judges grade>
 - **Subjective goals get a proxy plus a review.** For "make the page nicer",
   use concrete proxies (zero console errors, Lighthouse score, a screenshot)
   and list "user review of the screenshot" as the last criterion.
+- **A "file it as a task" criterion names both ways to meet it.** Write "has a
+  task on the default branch, new or existing". Before you promise it, search
+  the task queue. For an existing task, quote its line with `git grep` on
+  `origin/<default>`. For a finding that no longer reproduces, quote the live
+  check that shows it is gone. "I filed no duplicates" alone reads as unmet.
+- **End-of-goal background work is accounted for.** List every background job
+  and monitor that still runs (a published page arms a live-update monitor on
+  its own). Stop each one or say why it stays, by its id.
 
 ## Reachable criteria
 

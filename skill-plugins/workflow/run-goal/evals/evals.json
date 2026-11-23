@@ -4421,6 +4421,28 @@
         "On a blocked stop, ships the retro skill updates as PRs in the same session instead of leaving the retro for later",
         "Never writes Goal status as met; ends with Goal status: impossible without the named user and third-party steps"
       ]
+    },
+    {
+      "id": 393,
+      "prompt": "/goal deliver  (this session merged a PR that edits a skill in fyodoriv/agentbrew; the installed copy under ~/.config/agentbrew/installed-skills comes from the fetched GitHub source)",
+      "expected_output": "After the merge, runs `agentbrew sync --pull` (preview with --dry-run first), then proves the installed skill file is byte-equal to the merged source before claiming it is live.",
+      "expectations": [
+        "Uses `agentbrew sync --pull`, not plain `agentbrew sync`, to refresh a skill from a fetched source",
+        "Previews the sync with --dry-run before applying it",
+        "Proves live state by comparing the installed file with the merged source (cmp or grep), not by the sync's own success line"
+      ]
+    },
+    {
+      "id": 394,
+      "prompt": "/goal ship follow ups (two tooling findings must be filed as tasks: an oversized rules file and two skill-drift issues. The task queue already has a task for a related rules cleanup; the skill-drift issues no longer show in a live status check. The session also published two report pages, each with a live-update monitor still running)",
+      "expected_output": "The agent searches the task queue before promising the criterion and writes it as 'has a task on the default branch, new or existing'. For the rules file it files a distinct task or quotes the existing task line from origin/main with git grep. For the drift issues it quotes the live check that shows none remain and files no invented task. Before the final message it lists the running monitors by id and stops each one or says why it stays.",
+      "expectations": [
+        "Writes the filing criterion so that an existing task or a new task both meet it, before any work",
+        "Quotes the existing task line from the default branch with git grep, not from memory",
+        "Does not file a task for a finding that a live check shows is gone, and quotes that check",
+        "Does not claim the criterion met with only 'no duplicates filed'",
+        "Lists each running background job and monitor by id at the end and stops it or explains why it stays"
+      ]
     }
   ]
 }

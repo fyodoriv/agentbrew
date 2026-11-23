@@ -73,7 +73,8 @@ contract with these criteria. Do not ask what "deliver" means.
    left, write the BLOCKED report.
 4. **Live in the final environment.** Find where users meet the work from the
    repo docs (install, deploy, or sync sections). A local install step those
-   docs name runs as part of delivery: `agentbrew sync` for skills and rules,
+   docs name runs as part of delivery: `agentbrew sync` with `--pull` for
+   skills and rules (without it, sync skips a skill from a fetched GitHub source),
    `dotfiles apply` for machine config. A deploy to a shared or production
    target, a publish, or a release needs a cited approval; without one, park
    it. Then read the live state back: installed files byte-equal to the
@@ -108,6 +109,14 @@ The metric is open follow-ups: baseline the count on that line, target 0.
 
 ## Special cases
 
+- **A judged score on data quality** ("judges rate it 8/10"): in intake, list
+  which rubric axes depend on the data sources. Examples: a store with no
+  ratings of its own, a page that never states a field, links that refuse
+  automated checks. Also list the profile inputs the judges need, such as the
+  recipient's preferences. Name each source ceiling in the contract. Ask in
+  the first question round for the inputs only the user has. In one run,
+  cleanup took the score from 4.9 to 7.5, and three later approaches
+  stayed at 6.8 to 7.5 because of these ceilings.
 - **The goal is only the user's own work** (no agent work in it): do not arm
   the goal checker. Offer to put the chunks in their task tracker instead.
 - **"Revert to what it used to be"**: read the backup or snapshot from before

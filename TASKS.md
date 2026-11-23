@@ -356,6 +356,84 @@
 
 ## P1
 
+- [ ] goal-retro-before-stop counts quoted launch text as a running task
+  - **ID**: goal-retro-launch-false-positive
+  - **Tags**: hooks, run-goal, reliability
+  - **Details**: Found 2026-11-22 while building goal-judges-before-stop. goal-retro-before-stop treats any tool result whose text matches "Async agent launched|running in background with ID" as a background launch. A Bash command that prints hook source (or a log) matches, so the hook thinks a task is still running and allows Stop without the retro, every time. On one real session 3 such false launches kept it open. goal-judges-before-stop now counts only calls with `run_in_background: true` and Agent/Task results that start with the launch line (`hooks/lib/goal-judge-verdicts.jq`); reuse that logic here.
+  - **Files**: `hooks/checks/goal-retro-before-stop.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture where Bash output quotes the launch text still blocks a missing retro; real Agent and run_in_background launches still allow.
+  - **Hypothesis**: false "still running" allows drop from at least 3 in one real session to 0.
+  - **Measurement**: `bash hooks/checks/goal-retro-before-stop.test.sh` plus the launch count from the new jq over the 5 largest local transcripts.
+  - **Success**: 0 false launches in the fixture and in the 5 transcripts.
+  - **Pivot**: if more than 1 real launch is missed in the 5 transcripts, match the harness launch line by tool name instead.
+  - **Anchor**: Claude Code hooks reference (transcript_path), https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Goal judges can include one free hosted non-Claude model
+  - **ID**: goal-judges-hosted-outside-judge
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-22, PR #1253 rounds 7-8. The llm-evaluation-methodology judge caps bias controls at 6 while every judge is a Claude model (Zheng et al. 2023, self-enhancement bias). The owner ruled out local models (slow, hot). A free hosted model with no Musk ties (Google Gemini free tier, Cloudflare Workers AI) could run one judge without local heat. Needs the owner's yes: it sends the judged diff to an outside service.
+  - **Files**: `hooks/lib/goal-judge-local.sh` (or a new hosted sibling), `hooks/checks/goal-judges-before-stop.sh`, docs.
+  - **Output**: code
+  - **Acceptance**: with the owner's opt-in, one judge runs on a hosted non-Anthropic model through a hook-checked script, counts as a second vendor, and returns in under 5 minutes.
+  - **Hypothesis**: the evaluation judge's bias line rises from 6 to 8 or more on a panel with one outside-vendor judge.
+  - **Measurement**: one judged goal with `RUN_GOAL_JUDGE_VENDORS=2` and the hosted judge; read the evaluation judge's bias line.
+  - **Success**: bias line 8 or more, hosted judge answers in under 5 minutes.
+  - **Pivot**: if the hosted judge scores erratically (spread over 3 points from the Claude judges on the same state) in 2 goals, drop it.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge"; Verga et al. 2024, "Replacing Judges with Juries".
+
+- [ ] A goal's Stop check finishes in under 1 second on a large transcript
+  - **ID**: goal-judges-stop-cache
+  - **Tags**: hooks, speed
+  - **Details**: Found 2026-11-22 in PR #1253 round 6. Parse-once landed (one full jq pass per Stop), but round 8 measured about 6 s per Stop on a 24 MB transcript: `goal-judge-local.sh --prompt-sha` runs for every judge whenever the transcript only mentions the script (about 3.2 s), and the state token hashes the whole repo (about 1.1 s). Earlier, Stop time on a 16.7 MB transcript copy stayed at 1.81-2.02 s (baseline 1.41-1.99 s): the whitespace-blind state hash costs about 0.65 s (was 0.3 s), using up the jq saving. The parse-once Pivot applies: cache.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-state.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: verdict rows cached per session, keyed by transcript size and mtime; the state token cached per file list with sizes and mtimes; a fixture proves an edit or a transcript append invalidates each cache.
+  - **Hypothesis**: Stop time on the 16.7 MB transcript drops from about 1.9 s to under 1 s.
+  - **Measurement**: `/usr/bin/time -p` of `bash hooks/checks/goal-judges-before-stop.sh` on a transcript copy, 3 full-path runs, plus the hook test suite.
+  - **Success**: median under 1 s and all fixtures pass.
+  - **Pivot**: above 1.5 s with both caches means the shell startup is the cost; move the hook to one compiled or Node step.
+  - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (fast feedback loops).
+
+- [ ] The goal-judges hook test suite finishes in under 90 seconds
+  - **ID**: goal-judges-test-speed
+  - **Tags**: hooks, speed
+  - **Details**: Found 2026-11-22 while iterating PR #1253. `hooks/checks/goal-judges-before-stop.test.sh` ran 4m09s, then 3m20s after the prompt helper reused the state token, then 7m31s (139 cases) after round 6 added the vendor and local-judge fixtures. Each fixture still hashes the judged paths with `goal-state.sh` several times, and the hook hashes again per Stop. Every judge redesign round reruns it.
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`, `hooks/lib/goal-state.sh`.
+  - **Output**: code
+  - **Acceptance**: the suite keeps every case and passes in under 90 s on this Mac.
+  - **Hypothesis**: caching one token per session state in the test helpers cuts the suite from 451 s to under 90 s.
+  - **Measurement**: `time /bin/bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: under 90 s with all cases passing.
+  - **Pivot**: above 150 s after caching means the hook itself is the cost; profile `goal-state.sh` instead.
+  - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (fast feedback loops).
+
+- [ ] A comment-only edit no longer buys a fresh goal-judge round
+  - **ID**: goal-judges-optional-stopping
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, PR #1253 round 12 (overseer follow-up). The latest round wins, so a runner can add one comment line and re-roll the judges up to the round cap. The llm-evaluation-methodology judge reproduced 3,3,3 then 9,9,9 after a `# note` edit. Carry the earlier failing round's lowest score into the decision unless the diff since that round changes code, not only comments or whitespace.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-state.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture with a failing round, then a comment-only edit and a passing round, still blocks; a real code change allows.
+  - **Hypothesis**: comment-only re-rolls that pass drop from 1 of 1 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: the new fixture blocks and every other case passes.
+  - **Pivot**: if more than 1 of the 3 judged repos' languages needs its own parser to tell comment edits from code edits, print earlier failing rounds in the allow message instead.
+  - **Anchor**: Simmons, Nelson, Simonsohn 2011, "False-Positive Psychology" (optional stopping).
+
+- [ ] The goal overseer runs on a model family no judge used, and blockers block
+  - **ID**: goal-overseer-independence
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, PR #1253 round 12 (overseer follow-ups). The overseer may share a family with a judge it corrects, and the hook reads only its Ruling scores, not its blockers list. Require a family no judge used when one is free, and a `Blockers: N` line where N above 0 blocks a pass.
+  - **Files**: `hooks/lib/goal-overseer-prompt.sh`, `hooks/lib/goal-judge-verdicts.jq`, `hooks/checks/goal-judges-before-stop.sh`, its test, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: fixtures: an overseer on a judge's family blocks when a free family exists; `Blockers: 2` with all rulings 8 blocks.
+  - **Hypothesis**: overseer passes with open blockers drop from possible to 0 in the fixtures.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: both fixtures block and every other case passes.
+  - **Pivot**: if fewer than 4 families can run here, keep the runner-only family rule and document the limit.
+  - **Anchor**: Verga et al. 2024, "Replacing Judges with Juries".
+
 - [ ] Parallel skill-eval PRs merge without conflicts
   - **ID**: evals-append-conflicts
   - **Tags**: evals, delivery, retro

@@ -537,6 +537,16 @@ hooks:
     sourceRule: 'skill-plugins/workflow/run-goal/SKILL.md Phase 6 (live retros skipped run-goal 1 of 2 times)'
     agents: ["claude-code"]
 
+  - id: goal-judges-before-stop
+    description: Success-gated - during an active /goal, hold Stop unless the retro says plainly it is not met or each contract judge has one subagent verdict for the current state token in the latest round, each 8/10 or more, from three or more model families and none on the runner's own, then one overseer per state whose rulings (at most 2 points from each judge) set the effective scores, and each cached judge logs this session
+    event: Stop
+    script: checks/goal-judges-before-stop.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: HOOK_BYPASS_GOAL_JUDGES_BEFORE_STOP
+    sourceRule: 'skill-plugins/workflow/run-goal/references/goal-judges.md (owner request 2026-11-22: a goal succeeds only with a 3-judge consensus of 8/10 or more)'
+    agents: ["claude-code"]
+
   - id: memory-sync-projects-session-end
     description: Schedule a successful-run-debounced shared-memory ingest when a Claude Code session ends
     event: SessionEnd

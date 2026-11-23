@@ -21,6 +21,9 @@ every turn.
 - Guards (must not get worse): <tests, lint, build, latency, ...>
 - Success: <keep threshold> · Pivot: <change-approach threshold>
 
+Judges: <id>, <id>, <id>  (three expert judges from ~/.config/agentbrew/goal-judges; see goal-judges.md)
+Judged paths: <worktrees and output files the judges grade>
+
 **Scope**: in — <...>, plus the retro's updates to every skill used · out — <...>
 **Approvals already granted**: <each with its source: rule file line or user answer>
 **Human-only steps**: <secrets, 2FA, payments, uncited approvals; when they happen>
@@ -86,6 +89,9 @@ Raw goal: "fix the flaky checkout tests"
 - Primary: failure rate over 20 runs, baseline 4/20, target 0/20
 - Guards: full `npm test` green; suite runtime within +10%
 - Success: 0/20 · Pivot: still ≥2/20 after two root-cause fixes → re-investigate
+
+Judges: test-reliability, checkout-domain, ci-gate-skeptic
+Judged paths: ~/apps/shop/wt/fix-checkout-flake
 
 **Scope**: in — `src/checkout/**` and its fixtures · out — product code changes beyond the race fix
 **Approvals already granted**: merge own PRs when green — AGENTS.md "Delivery" step 6

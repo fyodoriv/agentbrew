@@ -293,6 +293,80 @@ when it has "Done when", "Metric", and "Pivot", and blocks other file edits
 until it exists. A valid contract file, `/goal clear`, or a marker older
 than one day ends the block.
 
+`goal-judges-before-stop` (Stop) is success-gated. While a goal contract
+exists, Stop passes only with a judge consensus or a retro whose every
+`Goal result` line (after list, heading, quote, or bold marks) says partly
+met, not met, in progress, blocked, impossible, or pending. No retro, no
+result line, or any other form is a claim. The hook blocks Stop until each judge on the
+contract's `Judges:` line has exactly one `GOAL-JUDGE-VERDICT` block (Judge,
+Score N/10, Cache, State) whose `State:` equals the token
+`hooks/lib/goal-state.sh <contract>` prints now. The token hashes the
+contract, each judge's rubric (its file up to `## Calibration`), and the
+`Judged paths:` (each tracked and untracked file's path and content, with
+LF line endings and trailing spaces and end-of-file blank lines cut), so any
+other edit by any tool, a space inside a line included, makes the verdicts
+stale, while a trailing-space edit or a commit keeps the state (judging it
+again is a re-roll). Each judge call's prompt must equal the
+output of `hooks/lib/goal-judge-prompt.sh <contract> <id>` (no added text)
+and must leave `subagent_type` out or set it to `general-purpose` (no
+fork, no custom agent type); the prompt embeds the rubric, so judges never read the
+runner-written calibration notes. A missing contract during an active goal
+(read from the transcript's last `/goal` command) blocks. The hook rewrites
+`<session>.owner.md` from that command, so the prompt carries the owner's
+own words. A judge that got a SendMessage does not count. Any unofficial
+judge run (an Agent call without the header, or `claude -p`, `codex exec`,
+`ollama run`, `llm`, or an Ollama HTTP call in command position in Bash,
+whose result holds a filled-in verdict block) uses up one round of the cap. A
+review that only quotes the template returns no verdict, so it is free.
+The block message lists `Next step:`, the numbered problems, the honest
+exit, and each judge's pass rate from `<state dir>/goal-judge-history.tsv`
+(one line per counted verdict). Each judge prompt carries a review role
+(refuter, spec auditor, or first-time user) picked from the state token and
+the judge's place on the `Judges:` line. The history keeps every official
+verdict of the goal, failing rounds included. `goal-state.sh` refuses a
+contract that steers the judges or quotes earlier scores, and a rubric changed
+after scored rounds whose `Rubric <sha>:` line cites none of their states. A
+block counter that cannot be written falls back to `$TMPDIR`, then gives up
+at once (partly met); a wait counter that cannot be written never excuses a
+met claim. A give-up that cannot rewrite a met retro blocks instead of
+allowing. The judge
+set, rubric hashes, and the contract hash freeze at the goal's first round
+(read from earlier judge prompts after the last `/goal` command), only
+the latest round can pass, and a goal gets `RUN_GOAL_JUDGE_ROUNDS` (3) rounds. Only `Agent`
+or `Task` results and their background notifications (user, `attachment`,
+or `queue-operation` rows) count. A result with two verdict blocks counts
+for none; two launches of one judge on one state are a re-roll, even when
+the first run was stopped before its verdict. The prompt drops contract lines
+about judge scores and the contract's `## After judging` section, so a target
+cannot anchor a judge and no judge scores a step that can only follow its
+verdict. After the judges, one overseer Agent call per state must run, on a
+family other than the runner's, with the exact output of
+`goal-overseer-prompt.sh` (it quotes each judge's report from the
+transcript). Its `Ruling <judge>: N/10` lines set each effective score,
+clamped to 2 points from the judge's own; each ruling needs a one-line
+reason, and the verdict's `State:` must be the current token. A second
+overseer on one state is a re-roll. Judges and the overseer work to a
+budget stated in their prompts: about 10 minutes and about 20 tool calls. The state token also covers file modes and ignored files (an
+ignored folder by name only). Each score
+is 0-10 and at least `RUN_GOAL_JUDGE_MIN` (8); the cache must be
+`<judge dir>/<id>.md`; the judges use at least `RUN_GOAL_JUDGE_MODELS` (3)
+model families, and none runs the runner's own model family (a call with no `model` or `model: inherit` counts as the
+runner's); each
+judge's `## Calibration` has a line with the session id, the token, and the
+score. Judge files must meet a rubric floor (`Field:`, `Applies:`,
+`Scale:`, three "capped at" lines, every cap below the passing bar, no line
+that steers the judge, and a `Rubric <sha>: <defect>` calibration line for
+the current rubric once the file has notes; after a scored round that line
+must cite the state token of an earlier score line). Each Stop parses the
+transcript once with jq (the `/goal` row comes from grep-selected lines). While a judge with its exact official prompt
+runs in the background it allows up to 10 times and rewrites a met result
+line to `in progress (waiting on N judge(s) ...)`; if it cannot rewrite it,
+it blocks. A failed counter write never turns a block into an allow. After five blocks it rewrites the result to
+`partly met (judge consensus not reached: ...)`, resets its counters, and
+allows. `goal-contract-before-edit` pre-approves Write and Edit of judge
+files and of `<session>.answer.md` while a contract exists.
+Procedure: `skill-plugins/workflow/run-goal/references/goal-judges.md`.
+
 `goal-retro-before-stop` (Stop) closes the goal. While the session's
 contract file exists, it blocks Stop until `<session_id>.retro.md` has one
 line per skill used (each `Skill` call, plus each `skills/<name>/SKILL.md`

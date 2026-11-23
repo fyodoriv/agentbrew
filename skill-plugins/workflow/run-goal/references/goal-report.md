@@ -9,6 +9,8 @@ same private report at every milestone and reuse it on resume.
 
 ```markdown
 ## Goal result: met | partly met | blocked
+
+Judges: <id> N/10, <id> N/10, <id> N/10 (state <token>), or `pending`.
 **Goal**: <raw goal text, shortened if long>
 **Outcome**: <one sentence>
 

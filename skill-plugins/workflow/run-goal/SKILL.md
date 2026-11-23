@@ -63,10 +63,10 @@ Follow this order, even for a small goal:
    At creation and each milestone, request an independent review using the
    [plan artifact judge](references/plan-artifact-judge.md); on resume, review the existing artifact and its identity before continuing.
 5. Work, printing a `Goal check` line after each done-criterion (Phase 4).
-6. Verify with fresh evidence (Phase 5), then the retro and the final report (Phase 6).
+6. Verify with fresh evidence (Phase 5), then the retro, the final report, and the judges (Phase 6).
 
 A small goal gets a short contract, not none. Without it, the goal checker cannot verify done and the user cannot review your plan.
-**Research or choice goal** (pick between options, answer a question, no repo change): print a 3-line contract (`Done when:` the pick and why, `Metric:` sources checked per option, `Pivot:` what means "no clear winner"; save it if the hook names a file). Check each option's own source, then answer in chat with the pick and one source link per claim. Skip the plan Artifact, HTML report, and skill PR; keep a one-line retro.
+**Research or choice goal** (pick between options, answer a question, no repo change): print a 3-line contract (`Done when:` the pick and why, `Metric:` sources checked per option, `Pivot:` what means "no clear winner") plus `Judges:` and `Judged paths: <state dir>/<session id>.answer.md`; save it if the hook names a file. Check each option's own source, then answer in chat with the pick and one source link per claim. Save the same answer to the answer file, then judge it ([references/goal-judges.md](references/goal-judges.md)). Skip the plan Artifact, HTML report, and skill PR; keep a one-line retro.
 
 ## Why the transcript matters
 
@@ -134,7 +134,7 @@ Write the contract in the chat before you change anything. Fill in the template 
 
 - **Outcome**: one sentence. What is true when you are done?
 - **Done when**: two to five checkable criteria. Each one names a command, a
-  file, a URL, or a reviewable artifact. Read a check's code before you promise it passes ([reachable criteria](references/goal-contract.md#reachable-criteria)).
+  file, a URL, or a reviewable artifact. Read a check's code before you promise it passes ([reachable criteria](references/goal-contract.md#reachable-criteria)). Add `Judges: <id>, <id>, <id>` and `Judged paths:` lines ([goal judges](references/goal-judges.md) step 1).
 - **Metric**: the primary number (Goal → Question → Metric), with its baseline,
   target, and the exact command that measures it. Add guard metrics that must
   not get worse (tests, lint, build).
@@ -379,9 +379,9 @@ with actuals and update the estimation method as described in
    writable change in this session (gate, PR, merge, cite the PR); when a
    tried write is refused, cite the task with its error; never bypass it.
 6. **Remember**: store reusable lessons in memory, if the agent has memory.
-7. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)`
-   in the retro file, run `scripts/export-goals.py`, and refresh the one
-   Goals dashboard: [references/dashboard.md](references/dashboard.md).
+7. **Judge consensus** (every goal, last): met only when each contract judge, run fresh on the final state with the exact `goal-judge-prompt.sh` prompt on a model family other than yours, scores 8/10 or more within three rounds; the `goal-judges-before-stop` hook holds every Stop until then, and mid-goal Stops (a question, a wait) need `Goal result: in progress (<why>)` in the retro file first. Steps: [references/goal-judges.md](references/goal-judges.md).
+8. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)` in the retro file,
+   run `scripts/export-goals.py`, and refresh the one Goals dashboard: [references/dashboard.md](references/dashboard.md).
 
 ## Final report
 

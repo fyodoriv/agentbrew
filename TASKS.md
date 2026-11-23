@@ -366,7 +366,7 @@
   - **Hypothesis**: claim lines that slip past the gate drop from 6 reproduced phrasings to 0.
   - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
   - **Success**: all 6 new fixtures block and every other case passes.
-  - **Pivot**: if more than 2 honest not-met retro lines from the 5 largest local transcripts start to block, keep the denylist and widen it instead.
+  - **Pivot**: if the allowlist blocks more than two honest not-met retro lines from the 5 largest local transcripts, keep the denylist and widen it instead.
   - **Anchor**: Google SRE book, fail-safe defaults; Basili, Caldiera, Rombach 1994 (GQM).
 
 - [ ] The judge contract filter never hides a real criterion

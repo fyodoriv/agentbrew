@@ -109,6 +109,14 @@ The metric is open follow-ups: baseline the count on that line, target 0.
 
 ## Special cases
 
+- **A judged score on data quality** ("judges rate it 8/10"): in intake, list
+  which rubric axes depend on the data sources. Examples: a store with no
+  ratings of its own, a page that never states a field, links that refuse
+  automated checks. Also list the profile inputs the judges need, such as the
+  recipient's preferences. Name each source ceiling in the contract. Ask in
+  the first question round for the inputs only the user has. In one run,
+  cleanup took the score from 4.9 to 7.5, and three later approaches
+  stayed at 6.8 to 7.5 because of these ceilings.
 - **The goal is only the user's own work** (no agent work in it): do not arm
   the goal checker. Offer to put the chunks in their task tracker instead.
 - **"Revert to what it used to be"**: read the backup or snapshot from before

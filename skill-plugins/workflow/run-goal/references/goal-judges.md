@@ -32,7 +32,7 @@ contract is back or the retro says not met.
 | `RUN_GOAL_JUDGE_DIR` | `~/.config/agentbrew/goal-judges` | the judge cache lives elsewhere |
 
 **Cost**: one round is three fresh subagents reading the judged paths; a
-goal gets at most four rounds, so at most twelve judge runs. A round takes
+goal gets at most three rounds, so at most nine judge runs, unless the owner types a message that starts with "approve round N" or "approve N more rounds": then the cap is N. When rounds run out with a judge below 8, ask the owner in one line whether to approve another round; never ask them to edit settings. A round takes
 about 3 to 6 minutes of wall time with the judges in parallel. Each judge
 and the overseer work to a budget stated in their prompts: about 10 minutes
 and a capped number of tool calls (see `goal-judge-prompt.sh`), running a long test suite only when a defect

@@ -117,7 +117,11 @@
 #   - RUN_GOAL_JUDGE_MIN: lowest passing score. Default 8.
 #   - RUN_GOAL_JUDGE_COUNT: judges needed. Default 3.
 #   - RUN_GOAL_JUDGE_MODELS: different judge model families needed. Default 3.
-#   - RUN_GOAL_JUDGE_ROUNDS: judging rounds allowed per goal. Default 4.
+#   - RUN_GOAL_JUDGE_ROUNDS: judging rounds allowed per goal. Default 3.
+#     The owner can raise it for one goal from chat: a message of their own,
+#     after the /goal line, that starts with "approve round N" (cap N) or
+#     "approve N more rounds" (cap +N). Tool results, hook feedback, meta and
+#     summary lines never count, so the runner cannot approve itself.
 
 set -euo pipefail
 
@@ -176,7 +180,7 @@ JUDGE_DIR="${RUN_GOAL_JUDGE_DIR:-$HOME/.config/agentbrew/goal-judges}"
 MIN="${RUN_GOAL_JUDGE_MIN:-8}"
 NEED="${RUN_GOAL_JUDGE_COUNT:-3}"
 MODELS="${RUN_GOAL_JUDGE_MODELS:-3}"
-ROUNDS="${RUN_GOAL_JUDGE_ROUNDS:-4}"
+ROUNDS="${RUN_GOAL_JUDGE_ROUNDS:-3}"
 case "$MIN" in "" | *[!0-9.]*) MIN=8 ;; esac
 case "$NEED" in "" | *[!0-9]*) NEED=3 ;; esac
 case "$MODELS" in "" | *[!0-9]*) MODELS=3 ;; esac
@@ -293,12 +297,30 @@ if [ "$RUNNING" -gt 0 ]; then
   fi
 fi
 
+# Owner approvals of more rounds: only the owner's own typed messages after
+# the last /goal line. One grep first, so a session with none runs no jq.
+if [ -n "$TRANSCRIPT" ] && grep -qi 'approve' "$TRANSCRIPT" 2>/dev/null; then
+  GL="$(grep -nF '<command-name>/goal</command-name>' "$TRANSCRIPT" 2>/dev/null | tail -1 | cut -d: -f1 || true)"
+  APPROVED="$(tail -n +"${GL:-1}" "$TRANSCRIPT" | grep -i 'approve' | hook_jq -R -r --argjson base "$ROUNDS" '
+    (try fromjson catch null) | select(type == "object" and .type == "user")
+    | select((.isMeta // false) == false and (.isCompactSummary // false) == false and .toolUseResult == null)
+    | .message.content
+    | if type == "string" then . elif type == "array" then
+        (if any(.[]; .type == "tool_result") then "" else (map(select(.type == "text") | .text) | join(" ")) end)
+      else "" end
+    | ascii_downcase | sub("^\\s+"; "")
+    | (capture("^approve (judge )?rounds? (?<n>[0-9]+)") | (.n | tonumber)),
+      (capture("^approve (?<n>[0-9]+) more (judge )?rounds?") | ($base + (.n | tonumber)))
+  ' 2>/dev/null | sort -n | tail -1 || true)"
+  case "$APPROVED" in "" | *[!0-9]*) ;; *) [ "$APPROVED" -gt "$ROUNDS" ] && ROUNDS="$APPROVED" ;; esac
+fi
+
 # Rounds, frozen judge set, and frozen rubrics, from this goal's judge prompts.
 PROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="P"')"
 NR_ROUNDS="$(printf '%s\n' "$PROWS" | sed '/^$/d' | awk -F'\t' '!seen[$5]++' | wc -l | tr -d ' ')"
 NR_ROUNDS=$((NR_ROUNDS + UROWS))
 [ "$NR_ROUNDS" -gt "$ROUNDS" ] &&
-  add "this goal used $NR_ROUNDS judging rounds ($UROWS of them unofficial: a judge call without the prompt header, or claude -p/codex exec/ollama run in Bash, whose result holds a verdict); the cap is $ROUNDS (more rounds farm for a lucky score)"
+  add "this goal used $NR_ROUNDS judging rounds ($UROWS of them unofficial: a judge call without the prompt header, or claude -p/codex exec/ollama run in Bash, whose result holds a verdict); the cap is $ROUNDS (more rounds farm for a lucky score; only the owner can raise it, by typing a message that starts with: approve round $((NR_ROUNDS)))"
 if [ -n "$PROWS" ]; then
   FIRST_STATE="$(printf '%s\n' "$PROWS" | awk -F'\t' 'NR==1{print $5}')"
   LAST_STATE="$(printf '%s\n' "$PROWS" | awk -F'\t' '{s=$5} END{print s}')"

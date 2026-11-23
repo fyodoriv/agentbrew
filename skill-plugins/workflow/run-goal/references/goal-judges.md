@@ -191,8 +191,13 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
 
 ## 3. Iterate the work
 
-- Any judge under 8: apply its top fixes, then run **all three** again on the
-  new state. Judging one judge twice on one state is a re-roll and fails.
+- Any judge under 8: fix **every** blocker the overseer listed, in one
+  batch, each with a test that fails before the fix. File each follow-up as
+  a task before the next round, and do not fix follow-ups in this goal.
+  Judges label each defect Blocker or Follow-up, and only blockers cap a
+  score; the overseer raises a score lowered by a follow-up. This keeps each
+  round's new findings from moving the bar.
+- Then run **all three** judges again on the new state. Judging one judge twice on one state is a re-roll and fails.
   A launch counts, not a verdict: a judge stopped before its verdict and
   launched again on the same state is a re-roll too.
   The state token ignores trailing spaces, line endings, end-of-file blank

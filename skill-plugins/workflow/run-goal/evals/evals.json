@@ -4499,6 +4499,16 @@
         "Does not wait for a green gate before requesting the review",
         "Reruns the gate on the commit that holds the review fixes before merge"
       ]
+    },
+    {
+      "id": 398,
+      "prompt": "/goal ship the retry fix (round 2 judges scored 6, 7, 6; the overseer listed 2 blockers and 4 follow-ups)",
+      "expected_output": "The agent fixes both overseer blockers in one batch, each with a test that fails first, files the 4 follow-ups as tasks without fixing them, and only then runs all three judges again on the new state.",
+      "expectations": [
+        "Fixes every listed blocker before the next judge round, each with a failing-first test",
+        "Files each follow-up as a task and does not fix follow-ups in this goal",
+        "Runs all three judges again only after the blocker batch lands"
+      ]
     }
   ]
 }

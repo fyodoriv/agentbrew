@@ -77,7 +77,8 @@ For each judge:
 - Correct the score by at most 2 points, up or down, with one reason. Lower it for a reproduced miss; raise it only for a deduction that fails the checks above; keep it when the judge was right.
 
 Pace:
-- Split every defect into blockers (must be fixed before merge) and follow-ups (file as tasks).
+- Split every defect into blockers (break a done-when criterion, the owner request, or a safety standard: must be fixed before merge) and follow-ups (any other improvement: file as tasks). A deduction for a follow-up fails the scope check; raise that score.
+- List the blockers as a numbered list. The runner fixes all of them, each with a test, before the next round, so name each one precisely enough to test.
 - Name the smallest set of fixes that would get every judge to the bar, and flag any demand that is out of scope or would take more than one more round.
 
 Rules:

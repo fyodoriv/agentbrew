@@ -177,17 +177,23 @@ TRANSCRIPT="$(json_get "$INPUT" '.transcript_path')"
 [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] || TRANSCRIPT=""
 ROWS=""
 VJQ="$__HOOK_LIB_DIR/goal-judge-verdicts.jq"
-# One full pass over the transcript per Stop. The G row (is a goal active,
-# and the owner's words) comes from the few grep-selected /goal lines.
+# Two reads per Stop: one grep selects the /goal lines (is a goal active,
+# and the owner's words) and the lines that name the local judge, so a
+# session with no goal exits after that grep; then one full jq pass.
 parse() { [ -z "$TRANSCRIPT" ] || ROWS="$(hook_jq -R -r -n --argjson canon "$1" --arg lib "$LIB_REAL" \
   --arg contract "$CONTRACT" --arg mode all -f "$VJQ" <"$TRANSCRIPT" 2>/dev/null || true)"; }
 G_ACTIVE=0
 G_ROW=""
-if [ -n "$TRANSCRIPT" ] && grep -F -q '<command-name>/goal</command-name>' "$TRANSCRIPT" 2>/dev/null; then
-  G_ROW="$(grep -F '<command-name>/goal</command-name>' "$TRANSCRIPT" 2>/dev/null |
-    hook_jq -R -r -n --argjson canon '{}' --arg lib "$LIB_REAL" --arg contract "$CONTRACT" --arg mode g -f "$VJQ" 2>/dev/null || true)"
+HAS_LOCAL=0
+SEL=""
+[ -z "$TRANSCRIPT" ] ||
+  SEL="$(grep -F -e '<command-name>/goal</command-name>' -e 'goal-judge-local.sh' "$TRANSCRIPT" 2>/dev/null || true)"
+grep -F -q 'goal-judge-local.sh' <<<"$SEL" && HAS_LOCAL=1
+if grep -F -q '<command-name>/goal</command-name>' <<<"$SEL"; then
+  G_ROW="$(hook_jq -R -r -n --argjson canon '{}' --arg lib "$LIB_REAL" --arg contract "$CONTRACT" --arg mode g -f "$VJQ" <<<"$SEL" 2>/dev/null || true)"
   G_ACTIVE="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G"{print $2; exit}')"
 fi
+SEL=""
 # No contract and no active goal: nothing to judge. A contract with no
 # readable transcript still gates (fail closed).
 [ -f "$CONTRACT" ] || [ "$G_ACTIVE" = 1 ] || verdict_allow "$HOOK_ID" "no active goal contract"
@@ -236,8 +242,6 @@ elif ! TOKEN="$(RUN_GOAL_JUDGE_DIR="$JUDGE_DIR" bash "$__HOOK_LIB_DIR/goal-state
   TOKEN=""
 else
   NOW_CONTRACT="$(bash "$__HOOK_LIB_DIR/goal-state.sh" --file-sha "$CONTRACT" 2>/dev/null || true)"
-  HAS_LOCAL=0
-  [ -n "$TRANSCRIPT" ] && grep -F -q 'goal-judge-local.sh' "$TRANSCRIPT" 2>/dev/null && HAS_LOCAL=1
   while IFS= read -r id; do
     rs="$(bash "$__HOOK_LIB_DIR/goal-state.sh" --rubric-sha "$JUDGE_DIR/$id.md" 2>/dev/null)" || continue
     RUBRIC_SHAS="$RUBRIC_SHAS$id $rs
@@ -365,4 +369,5 @@ if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$R
 else
   OPEN="No Goal result line says the goal is not met, so this Stop needs a judge consensus. Mid-goal (a question round, a wait), write Goal result: in progress (<why>) in $RETRO and stop again. Missing: $PROBLEMS."
 fi
-verdict_block "$HOOK_ID" "$OPEN Follow run-goal references/goal-judges.md as the last step, after the retro and the report: for each contract judge, print its prompt with \`$PROMPT_CMD\` and pass that output unchanged as the prompt of one fresh-context Agent call (leave subagent_type out, or set it to general-purpose), or, only when RUN_GOAL_JUDGE_VENDORS asks for another vendor, run it on a local model with \`$LOCAL_CMD\` in the foreground. Use at least $MODELS model families, with fewer than half the judges on the runner's own model. Then add a calibration line with session $SESSION_ID, the state, and the score to each judge's ## Calibration section. Every judge needs $MIN/10 or more, within $ROUNDS rounds. If you cannot reach it, apply the top fixes and judge all again, or write Goal result: partly met (<lowest score and why>) in the retro."
+NEXT="$(printf '%s' "$PROBLEMS" | cut -d';' -f1 | sed -E 's/^ +//')"
+verdict_block "$HOOK_ID" "Next step: fix the first problem: $NEXT. $OPEN Follow run-goal references/goal-judges.md as the last step, after the retro and the report: for each contract judge, print its prompt with \`$PROMPT_CMD\` and pass that output unchanged as the prompt of one fresh-context Agent call (leave subagent_type out, or set it to general-purpose), or, only when RUN_GOAL_JUDGE_VENDORS asks for another vendor, run it on a local model with \`$LOCAL_CMD\` in the foreground. Use at least $MODELS model families, with fewer than half the judges on the runner's own model. Then add a calibration line with session $SESSION_ID, the state, and the score to each judge's ## Calibration section. Every judge needs $MIN/10 or more, within $ROUNDS rounds. If you cannot reach it, apply the top fixes and judge all again, or write Goal result: partly met (<lowest score and why>) in the retro."

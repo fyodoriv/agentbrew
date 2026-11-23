@@ -23,12 +23,15 @@
 #   U <tool_use_id>   an unofficial judge run: an Agent/Task call without the
 #               header, or a `claude -p`/`codex exec` Bash call, whose text
 #               holds the GOAL-JUDGE-PROMPT or GOAL-JUDGE-VERDICT marker, an
-#               `ollama`/`llm`/port 11434 Bash call that builds a judge
+#               `ollama run`/`llm`/Ollama HTTP call that builds a judge
 #               prompt, or a run or copy of goal-judge-local.sh not in the
-#               official form (reading or staging the file, such as `git add`
-#               or `shellcheck`, is not a run). An Agent prompt counts as a
-#               practice judge only when it holds a marker and asks to rate or
-#               grade, or holds the `Judge:` ... `Score:` template.
+#               official form. A model command counts only where a command
+#               starts (line start, after ; & | ( or $( , after env/timeout
+#               style prefixes), so `rg ollama`, `git log --grep llm`,
+#               `bash -n <file>`, `git add`, and `shellcheck` are not runs. An
+#               Agent prompt counts as a practice judge only when it holds a
+#               marker and asks for a 0-10 rating or grade, asks to end with the
+#               verdict block, or holds the `Judge:` ... `Score:` template.
 #
 # Local judges: a Bash call that is exactly `bash <lib>/goal-judge-local.sh
 # <contract> <judge id> <model>` (foreground, no other shell syntax) is a
@@ -59,6 +62,8 @@ def vendor: ascii_downcase as $m
     elif ($m | test("deepseek")) then "deepseek" elif ($m | test("^phi")) then "microsoft" else $m end;
 def family: ascii_downcase as $m
   | first(("opus", "sonnet", "haiku", "fable") as $f | select($m | contains($f)) | $f) // $m;
+# Drop `sh -n <file>` / `bash -n <file>` segments: a syntax check runs nothing.
+def nocheck: gsub("(?<s>^|[;&|\n])[ \t]*(ba|z)?sh[ \t]+-n[ \t][^;&|\n]*"; "\(.s)");
 def header($k): (capture("(?m)^" + $k + ":[ \t]*(?<v>[^\r\n]*)").v // "") | trim;
 # A field line in a verdict block; tolerates list, quote, and bold marks.
 def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\r?\n|(?=<)|$)";
@@ -118,12 +123,15 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
          ((.name == "Agent" or .name == "Task")
            and (((.input.prompt // "") | tostring) | test("^\\s*GOAL-JUDGE-PROMPT v[0-9]") | not)
            and (((.input.prompt // "") | tostring) | test("GOAL-JUDGE-(PROMPT|VERDICT)"))
-           and (((.input.prompt // "") | tostring | gsub("GOAL-JUDGE-(PROMPT|VERDICT)"; ""))
-                | test("(?i)(^|[^a-z])(rate|rating|grade|grading)([^a-z]|$)") or test("(?s)Judge:.*Score:")))
+           and ((((.input.prompt // "") | tostring)
+                 | test("(?i)(end|finish|close|reply|answer|respond)[^.\n]{0,40}(with|in|using)[^.\n]{0,20}GOAL-JUDGE-VERDICT"))
+             or (((.input.prompt // "") | tostring | gsub("GOAL-JUDGE-(PROMPT|VERDICT)"; ""))
+                | test("(?i)(^|[^a-z])(rate|rating|grade|grading|score)([^a-z]|$)[^\n]{0,80}(/ ?10|out of (10|ten)|0 ?(-|to) ?10)") or test("(?s)Judge:.*Score:"))))
          or (.name == "Bash"
-           and (((.input.command // "") | tostring) | test("(^|[^A-Za-z0-9_-])(claude[ \t]+(-p|--print)|codex[ \t]+exec|ollama|llm)([^A-Za-z0-9_-]|$)|11434"))
+           and (((.input.command // "") | tostring) | nocheck
+                | test("(^|[;&|(`{\n]|\\$\\()[ \t]*(([A-Za-z_][A-Za-z0-9_]*=[^ \t]*|env|nohup|exec|time|command|sudo|timeout[ \t]+[^ \t]+)[ \t]+)*(claude[ \t]+([^;&|]*[ \t])?(-p|--print)|codex[ \t]+exec|ollama[ \t]+(run|generate)|llm)([^A-Za-z0-9_-]|$)|(curl|xh|http|wget)[^;&|]*(11434|/api/(generate|chat))"))
            and (((.input.command // "") | tostring) | test("GOAL-JUDGE-(PROMPT|VERDICT)|goal-judge-(prompt|local)")))
-         or (.name == "Bash" and (((.input.command // "") | tostring)
+         or (.name == "Bash" and (((.input.command // "") | tostring) | nocheck
                | test("(^|[;&|(`{]|\\$\\()[ \t]*(([A-Za-z_][A-Za-z0-9_]*=[^ \t]*|env|nohup|exec|time|command|sudo|timeout[ \t]+[^ \t]+)[ \t]+)*((bash|sh|zsh|source|\\.)[ \t]+[^;&|]*)?[^;&| \t]*goal-judge-local\\.sh")
                  or test("(^|[;&|( \t])(cp|ln|install|rsync|mv|tee)[ \t][^;&|]*goal-judge-local\\.sh")
                  or test("(^|[;&|( \t])cat[ \t][^;&|]*goal-judge-local\\.sh[^;&|]*>"))

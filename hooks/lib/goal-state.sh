@@ -49,7 +49,7 @@ rubric() { awk '/^## Calibration/{exit} {print}' "$1"; }
 calib() { awk '/^## Calibration/{c=1; next} c' "$1"; }
 MIN="${RUN_GOAL_JUDGE_MIN:-8}"
 case "$MIN" in "" | *[!0-9.]*) MIN=8 ;; esac
-STEER='trust (the |its |their )?(runner|summar|contract|claim|report|author)|skip (the |all )?(check|test|reproduc|command)|(do not|don.t|never) (run|reproduce|check|verify)|(give|award|assign)s? (it |them |a )?(score of |at least |a minimum of )?(8|9|10)([^0-9]|$)|minimum score|always (pass|score)|full marks|benefit of the doubt'
+STEER='trust (the |its |their )?(runner|summar|contract|claim|report|author)|skip (the |all )?(check|test|reproduc|command)|(do not|don.t|never) (run|reproduce|check|verify)|(give|award|assign)s? (it |them |a )?(score of |at least |a minimum of )?(8|9|10)([^0-9]|$)|minimum score|always (pass|score)|full marks|benefit of the doubt|(be|stay|err on the side of being) (generous|lenient|kind|charitable)|lean(ing)? (toward|towards) (passing|a pass|high)|round (the score )?up|(ignore|overlook|forgive) (minor |small )?(defects|issues|bugs|gaps)'
 
 floor() { # judge file -> empty when it meets the rubric floor, else the gap
   local f="$1" gap=""

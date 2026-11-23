@@ -314,11 +314,13 @@ runner-written calibration notes. A missing contract during an active goal
 (read from the transcript's last `/goal` command) blocks. The hook rewrites
 `<session>.owner.md` from that command, so the prompt carries the owner's
 own words. A judge that got a SendMessage, or any unofficial judge run
-(an Agent prompt with a marker that asks to rate or grade or holds the
-verdict template but has no header, `claude -p`/`codex exec`/`ollama` with
-a judge prompt, or a run or copy of `goal-judge-local.sh` in another form),
-blocks. Reading or staging the script (`git add`, `shellcheck`) and a code
-review prompt that only names a marker do not. The judge
+(an Agent prompt with a marker that asks for a 0-10 rating or grade, asks to
+end with the verdict block, or holds the verdict template, but has no header;
+`claude -p`, `codex exec`, `ollama run`, `llm`, or an Ollama HTTP call in
+command position with a judge prompt; or a run or copy of
+`goal-judge-local.sh` in another form), blocks. Reading, searching,
+`bash -n`, staging, or linting the scripts, and a code review prompt that
+only names a marker, do not. The block message opens with `Next step:`. The judge
 set, rubric hashes, and the contract hash freeze at the goal's first round
 (read from earlier judge prompts after the last `/goal` command), only
 the latest round can pass, and a goal gets `RUN_GOAL_JUDGE_ROUNDS` (3) rounds. Only `Agent`

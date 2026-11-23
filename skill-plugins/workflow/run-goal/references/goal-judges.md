@@ -154,9 +154,12 @@ notifications, and the output of the exact local judge command (bold field
 names are fine). Your own text and other Bash output never count; a
 hand-run `ollama` judge, or a run or copy of `goal-judge-local.sh` in
 another form, counts as an unofficial run and blocks. So does an Agent prompt
-that holds a marker and asks to rate or grade (or holds the `Judge:` ...
-`Score:` template) without the header. Staging or linting the script, and a
-code review that only names a marker, are fine. A result with two verdict blocks counts for none. While a judge
+that holds a marker and asks for a 0-10 rating or grade, asks to end with the
+verdict block, or holds the `Judge:` ... `Score:` template, without the
+header. A model command counts only where a command starts, so reading,
+searching, syntax-checking (`bash -n`), staging, or linting the scripts, and
+a code review that only names a marker, are fine. The block message opens
+with `Next step:`, the first problem to fix. A result with two verdict blocks counts for none. While a judge
 runs in the background the hook lets Stop through, at most 10 times; other
 background tasks never excuse a met claim.
 

@@ -554,6 +554,19 @@
   - **Pivot**: if the runtime build is just stale, fix the runtime refresh (a doctor check that the runtime matches the checkout) instead of the drift check.
   - **Anchor**: Nielsen 1994, heuristic 9 (help users recognize, diagnose and recover from errors).
 
+- [ ] /goal deliver makes sessions it started review each diff before they merge
+  - **ID**: deliver-child-sessions-review-before-merge
+  - **Tags**: run-goal, deliver, review
+  - **Details**: Seen 2026-11-22. A `/goal deliver` run covered PRs that a session it started had merged on green CI (dotfiles#831/#832/#833, agentbrew#1260/#1262) with no fresh-context diff review first. A review after the merge found no defects, but the deliver criterion "a fresh-context reviewer reads each diff before merge" could not be met. Add to `references/goal-intake.md` (deliver step 2) and to the start-session brief guidance: a brief for a session that will merge PRs tells it to run a fresh-context diff review before each merge and to quote the verdict in its report; deliver then checks that verdict for each child PR before counting it.
+  - **Files**: `skill-plugins/workflow/run-goal/references/goal-intake.md`, `skill-plugins/workflow/run-goal/references/parallel-workers.md`, `skill-plugins/workflow/run-goal/evals/evals.json`
+  - **Output**: docs
+  - **Acceptance**: an eval where deliver finds a child PR merged without a review reports that criterion as partly met and names the PR, and the brief template asks for the review.
+  - **Hypothesis**: child-session PRs merged without a pre-merge review in deliver runs drop from 5 of 5 (this run) to 0.
+  - **Measurement**: `npm run eval:agent-artifacts` (the new eval) on hosted CI.
+  - **Success**: the new eval passes all expectations.
+  - **Pivot**: if briefs are ignored, add a merge-time hook that refuses `gh pr merge` without a recorded review verdict.
+  - **Anchor**: Bacchelli and Bird 2013, "Expectations, outcomes, and challenges of modern code review" (ICSE).
+
 ## P2
 
 - [ ] A goal retro knows which rule wins when a repo rule limits where skill updates go

@@ -408,6 +408,46 @@
   - **Pivot**: above 150 s after caching means the hook itself is the cost; profile `goal-state.sh` instead.
   - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (fast feedback loops).
 
+- [ ] A comment-only edit no longer buys a fresh goal-judge round
+  - **ID**: goal-judges-optional-stopping
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, PR #1253 round 12 (overseer follow-up). The latest round wins, so a runner can add one comment line and re-roll the judges up to the round cap. The llm-evaluation-methodology judge reproduced 3,3,3 then 9,9,9 after a `# note` edit. Carry the earlier failing round's lowest score into the decision unless the diff since that round changes code, not only comments or whitespace.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-state.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture with a failing round, then a comment-only edit and a passing round, still blocks; a real code change allows.
+  - **Hypothesis**: comment-only re-rolls that pass drop from 1 of 1 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: the new fixture blocks and every other case passes.
+  - **Pivot**: if telling comment edits from code edits needs a parser per language, print earlier failing rounds in the allow message instead.
+  - **Anchor**: Simmons, Nelson, Simonsohn 2011, "False-Positive Psychology" (optional stopping).
+
+- [ ] The goal overseer runs on a model family no judge used, and blockers block
+  - **ID**: goal-overseer-independence
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, PR #1253 round 12 (overseer follow-ups). The overseer may share a family with a judge it corrects, and the hook reads only its Ruling scores, not its blockers list. Require a family no judge used when one is free, and a `Blockers: N` line where N above 0 blocks a pass.
+  - **Files**: `hooks/lib/goal-overseer-prompt.sh`, `hooks/lib/goal-judge-verdicts.jq`, `hooks/checks/goal-judges-before-stop.sh`, its test, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: fixtures: an overseer on a judge's family blocks when a free family exists; `Blockers: 2` with all rulings 8 blocks.
+  - **Hypothesis**: overseer passes with open blockers drop from possible to 0 in the fixtures.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: both fixtures block and every other case passes.
+  - **Pivot**: if fewer than 4 families can run here, keep the runner-only family rule and document the limit.
+  - **Anchor**: Verga et al. 2024, "Replacing Judges with Juries".
+
+- [ ] Parallel skill-eval PRs merge without conflicts
+  - **ID**: evals-append-conflicts
+  - **Tags**: evals, delivery, retro
+  - **Details**: From the 2026-11-22 cashcast session. Retro PRs from parallel sessions each append one eval to the end of `skill-plugins/workflow/run-goal/evals/evals.json`, so whichever merges second conflicts. agentbrew#1255 went green and then conflicted 3 times in one evening (after #1258, #1263 and #1264 merged), and each round cost a rebase plus a full CI run. Inserting mid-file is not a fix: the frozen-prefix hash test pins the first 245 evals. Make an eval addition touch a file no other PR touches, for example one file per eval under `evals/cases/<id>.json` that the loader merges, or a merge driver for `evals.json`. Keep the frozen-prefix guard working for the existing evals.
+  - **Files**: the eval loader and its tests (`src/skills/*evals*.test.ts`), `skill-plugins/workflow/run-goal/evals/`, `docs/` for the eval layout.
+  - **Output**: code
+  - **Acceptance**: two branches off the same main, each adding one eval, merge in either order with no conflict; the frozen-prefix test still fails when an old eval changes.
+  - **Hypothesis**: eval-only PRs that hit a merge conflict before merging drop from 3 of 4 this evening to 0 of the next 10, because each eval lands in its own file.
+  - **Measurement**: for each merged PR that touches only `evals/`: `gh pr view <n> --repo fyodoriv/agentbrew --json timelineItems` and count `HEAD_REF_FORCE_PUSHED` events after the first green check; plus a vitest case that merges two eval branches in both orders.
+  - **Success**: 0 conflicted eval-only PRs out of the next 10, and the merge test passes.
+  - **Pivot**: if 2 or more of the next 10 eval-only PRs still conflict, or per-eval files break the frozen-prefix hash, use a git merge driver for `evals.json` instead.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (lead time for changes); Basili, Caldiera, Rombach 1994 (GQM).
+
+
 - [ ] A plain `agentbrew sync` deploys the hooks on current `main`, not an old pinned runtime
   - **ID**: sync-uses-current-hooks
   - **Tags**: hooks, sync, upgrade

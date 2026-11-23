@@ -205,7 +205,13 @@ uses local Git refs.
 
 ## Merge rule
 
-Merge only when every hosted check on the pull request is green. Never merge on a pending or red check. Wait with `gh pr checks <n> --watch`.
+Merge only when every hosted check on the pull request is green. Never merge on a pending or red check. Wait on the `CI` run for your head commit by its ID:
+`gh run list --repo fyodoriv/agentbrew --workflow CI --commit "$(git rev-parse HEAD)"`, then
+`gh run watch <run-id> --repo fyodoriv/agentbrew --exit-status`. `--commit` needs the full
+SHA. If the list is empty, the run does not exist yet: wait and list again. Do not start
+`gh pr checks <n> --watch` right after a push: it can exit green while only the fast
+`OSS Readiness` check is listed and `CI` has not started. Before you merge, confirm with
+one `gh pr checks <n>` that no check is pending.
 
 ## When a hosted check fails
 

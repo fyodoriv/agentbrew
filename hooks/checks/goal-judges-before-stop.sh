@@ -142,7 +142,9 @@ function result(l) { return norm(l) ~ /^goal result([^a-z]|$)/ }
 function claim(l,  r) { l = norm(l)
   if (l !~ /^goal result([^a-z]|$)/) return 0
   r = substr(l, 12); sub(/^[^a-z]*/, "", r); gsub(/-/, " ", r)
-  if (r ~ /^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)([^a-z]|$)/) return 0
+  if (r ~ /^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)([^a-z]|$)/) {
+    sub(/^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)/, "", r); gsub(/\([^)]*\)/, "", r)
+    return r ~ /(^|[^a-z])(but|yet|however|actually|now|fully|is|are|all) +met([^a-z]|$)/ }
   if (r !~ /^(in progress|blocked|impossible|pending)([^a-z]|$)/) return 1
   sub(/^(in progress|blocked|impossible|pending)/, "", r); gsub(/\([^)]*\)/, "", r)
   gsub(/[0-9]+ *(of|\/) *[0-9]+( [a-z]+)? met/, "", r)
@@ -219,7 +221,8 @@ fi
 count() { local n=0; [ -f "$1" ] && n="$(cat "$1" 2>/dev/null || echo 0)"; case "$n" in "" | *[!0-9]*) n=0 ;; esac; echo "$n"; }
 
 PROBLEMS=""
-add() { PROBLEMS="$PROBLEMS; $1"; }
+SEP=$'\036'
+add() { PROBLEMS="$PROBLEMS$SEP$1"; }
 
 if [ -f "$CONTRACT" ]; then
   JUDGES="$(sed -nE 's/^[-*_ ]*Judges:[*_ ]*(.*)$/\1/p' "$CONTRACT" | head -1 | tr ',' '\n' |
@@ -318,6 +321,12 @@ if [ -n "$TOKEN" ]; then
     cache="$JUDGE_DIR/$id.md"
     mine="$(printf '%s\n' "$VROWS" | awk -F'\t' -v j="$id" -v t="$TOKEN" '$3==j && $6==t')"
     n="$(printf '%s\n' "$mine" | sed '/^$/d' | wc -l | tr -d ' ')"
+    # Count launches, not verdicts: a judge stopped before its verdict and
+    # launched again on the same state is a re-roll too.
+    launches="$(printf '%s\n' "$PROWS" | awk -F'\t' -v j="$id" -v t="$TOKEN" '$3==j && $5==t' | wc -l | tr -d ' ')"
+    if [ "$launches" -gt 1 ]; then
+      add "$id was launched $launches times on one state (a stopped run still counts); change the work, then judge all again"; continue
+    fi
     if [ "$n" -eq 0 ]; then
       MISSING="$MISSING $id"; continue
     elif [ "$n" -gt 1 ]; then
@@ -345,7 +354,8 @@ if [ -n "$TOKEN" ]; then
   [ -n "$LOWEST" ] && [ "$RUNNER_JUDGES" -gt 0 ] &&
     add "$RUNNER_JUDGES of $NJ judges ran on the runner's own model family ($RUNNER); set a different Agent model on each judge (no self-judging)"
 fi
-PROBLEMS="${PROBLEMS#; }"
+PROBLEMS="${PROBLEMS#"$SEP"}"
+PLAIN="${PROBLEMS//$SEP/; }"
 
 # Score history: every official verdict of this goal, failing rounds and older
 # states included, one line per tool_use id, so the pass rate is a fair base rate.
@@ -367,8 +377,8 @@ WROTE=0
 [ "$WROTE" = 1 ] || { { echo $((blocks + 1)) >"$FALLBACK"; } 2>/dev/null && WROTE=1; }
 if [ "$blocks" -ge "$MAX_BLOCKS" ] || [ "$WROTE" = 0 ]; then
   # Bounded: a counter that cannot be written ends the loop now, as a give-up.
-  [ "$WROTE" = 0 ] && PROBLEMS="the block counter cannot be written ($COUNTER); $PROBLEMS"
-  reason="$(printf '%s' "$PROBLEMS" | tr -d '\n' | cut -c1-300)"
+  [ "$WROTE" = 0 ] && PLAIN="the block counter cannot be written ($COUNTER); $PLAIN"
+  reason="$(printf '%s' "$PLAIN" | tr -d '\n' | cut -c1-300)"
   src="$RETRO"; [ -f "$src" ] || src=/dev/null
   # Rewrite in place from memory (no temp file), so a read-only state folder
   # or a missing $TMPDIR still gets the downgrade.
@@ -377,14 +387,14 @@ if [ "$blocks" -ge "$MAX_BLOCKS" ] || [ "$WROTE" = 0 ]; then
     { printf '%s\n' "$new" >"$RETRO"; } 2>/dev/null || true
   # Never allow while the retro still claims met: that would end as met.
   if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$RETRO"; then
-    verdict_block "$HOOK_ID" "Goal cannot end as met: the judge consensus was not reached after $blocks block(s), and the hook cannot downgrade the retro ($RETRO is not writable). Make it writable, or write Goal result: partly met (<why>) in it yourself. Problems: $PROBLEMS"
+    verdict_block "$HOOK_ID" "Goal cannot end as met: the judge consensus was not reached after $blocks block(s), and the hook cannot downgrade the retro ($RETRO is not writable). Make it writable, or write Goal result: partly met (<why>) in it yourself. Problems: $PLAIN"
   fi
   rm -f "$COUNTER" "$WAITS" "$FALLBACK" 2>/dev/null || true
-  verdict_allow "$HOOK_ID" "gave up after $blocks block(s); the goal is NOT met; retro downgraded to partly met: $PROBLEMS"
+  verdict_allow "$HOOK_ID" "gave up after $blocks block(s); the goal is NOT met; retro downgraded to partly met: $PLAIN"
 fi
 
-NEXT="$(printf '%s' "$PROBLEMS" | cut -d';' -f1 | sed -E 's/^ +//')"
-LIST="$(printf '%s' "$PROBLEMS" | tr ';' '\n' | sed -E 's/^ +//; /^$/d' | awk '{ printf "  %d. %s\n", NR, $0 }')"
+NEXT="${PROBLEMS%%"$SEP"*}"
+LIST="$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed -E 's/^ +//; /^$/d' | awk '{ printf "  %d. %s\n", NR, $0 }')"
 RATE=""
 [ -f "$HISTORY" ] && RATE="$(awk -F'\t' -v m="$MIN" '{ n[$4]++; if ($8 + 0 >= m + 0) p[$4]++ }
   END { for (j in n) printf "%s %d/%d, ", j, p[j], n[j] }' "$HISTORY" 2>/dev/null | sed 's/, $//')"

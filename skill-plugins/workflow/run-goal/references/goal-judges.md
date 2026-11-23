@@ -65,6 +65,10 @@ about 3 to 6 minutes of wall time with the judges in parallel.
    judging round: the hook rejects a swapped judge, an edited rubric, or an
    edited contract later, even in a new round. Rubric changes go into `## Calibration` notes and are merged at the
    start of the next goal.
+   Keep each judged path until the goal's last Stop: a removed worktree
+   fails the state check and forces partly met. Remove it after the goal ends.
+   The prompt drops contract lines about judge scores (a `N/10` or a score
+   with a number), so put targets on their own lines.
 
    A judge file must meet the rubric floor, or the hook refuses it:
    - `Field:`, `Applies:`, and `Scale:` lines and three or more rubric lines
@@ -157,6 +161,8 @@ excuse a met claim.
 
 - Any judge under 8: apply its top fixes, then run **all three** again on the
   new state. Judging one judge twice on one state is a re-roll and fails.
+  A launch counts, not a verdict: a judge stopped before its verdict and
+  launched again on the same state is a re-roll too.
   The state token ignores trailing spaces, line endings, end-of-file blank
   lines, and commits, so such an edit is the same state: it cannot buy a new
   round. A space added or removed inside a line is a real change. A

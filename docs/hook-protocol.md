@@ -335,7 +335,9 @@ set, rubric hashes, and the contract hash freeze at the goal's first round
 the latest round can pass, and a goal gets `RUN_GOAL_JUDGE_ROUNDS` (3) rounds. Only `Agent`
 or `Task` results and their background notifications (user, `attachment`,
 or `queue-operation` rows) count. A result with two verdict blocks counts
-for none; two verdicts from one judge on one state is a re-roll. Each score
+for none; two launches of one judge on one state are a re-roll, even when
+the first run was stopped before its verdict. The prompt drops contract lines
+about judge scores, so a target cannot anchor a judge. Each score
 is 0-10 and at least `RUN_GOAL_JUDGE_MIN` (8); the cache must be
 `<judge dir>/<id>.md`; the judges use at least `RUN_GOAL_JUDGE_MODELS` (3)
 model families, and none runs the runner's own model family (a call with no `model` or `model: inherit` counts as the

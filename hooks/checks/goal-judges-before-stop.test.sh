@@ -546,6 +546,18 @@ expect "with no result line, the sixth Stop allows" 0 "$(run gnoline)"
 check "give-up appends the partly met line and keeps the notes" \
   bash -c "grep -q '^Retro notes only.' '$RUN_GOAL_STATE_DIR/gnoline.retro.md' && grep -q '^Goal result: partly met' '$RUN_GOAL_STATE_DIR/gnoline.retro.md'"
 
+# Round 10 gaps.
+goal grel "Goal result: met (3/3 met)"; call grel Agent tkill haiku "$(prompt grel jb "$(token grel)")"; panel grel 9 9 9
+expect "a killed judge relaunched on the same state blocks (launches count, not verdicts)" 2 "$(run grel)"
+check "that block names the relaunch" grep -q 'launched 2 times' <(run_out grel)
+goal gbut "Goal result: not met, but the work is fully met"
+expect "a not-met line that still says met needs judges" 2 "$(run gbut)"
+goal gsemi "Goal result: met (3/3 met)"; judge gsemi ja 9 sonnet; judge gsemi jb 9 sonnet; judge gsemi jc 9 sonnet
+expect "a problem with a ; in it stays one numbered item" 0 "$(run_out gsemi | grep -c '^  2\. ')"
+goal gtgt "Goal result: met (3/3 met)"; printf 'Metric: lowest judge score, baseline 5, target 8/10\nSuccess: every judge scores 8 or more\n' >>"$RUN_GOAL_STATE_DIR/gtgt.contract.md"
+check "score targets in the contract stay out of the judge prompt" bash -c "! GOAL_STATE_TOKEN='$(token gtgt)' bash '$PROMPT_SH' '$RUN_GOAL_STATE_DIR/gtgt.contract.md' ja | grep -qE '8/10|scores 8 or more'"
+check "the prompt says a score line was removed" bash -c "GOAL_STATE_TOKEN='$(token gtgt)' bash '$PROMPT_SH' '$RUN_GOAL_STATE_DIR/gtgt.contract.md' ja | grep -q 'line about judge scores removed'"
+
 echo "goal-judges-before-stop: $PASS passed, $FAIL failed"
 for d in "${FAIL_DETAILS[@]+"${FAIL_DETAILS[@]}"}"; do echo "  FAIL: $d"; done
 [ "$FAIL" -eq 0 ]

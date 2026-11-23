@@ -99,7 +99,7 @@ $OWNER_TEXT
 
 Goal contract (verbatim, written by the runner):
 
-$(cat "$CONTRACT")
+$(awk 'tolower($0) ~ /[0-9] *(\/|out of) *10|score[sd]?[^a-z].*[0-9]|[0-9].*score/ { print "(a line about judge scores removed: score the work, not a target)"; next } { print }' "$CONTRACT")
 
 End your answer with this block, once, with your score filled in, and nothing after it:
 

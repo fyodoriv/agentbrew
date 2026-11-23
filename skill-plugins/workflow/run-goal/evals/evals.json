@@ -4350,6 +4350,19 @@
         "Re-registers the next task's thresholds on the moved baseline before trying it, instead of scoring it against the stale baseline",
         "Runs the fresh-context review before the full gate, shows each fix's red step, and re-measures the metric after the fixes"
       ]
+    },
+    {
+      "id": 390,
+      "prompt": "/goal ship follow ups  (previous message ended: **Follow-ups:** add two gotchas to AGENTS.md: rule-text tests grep one line, so rewrapping a rule breaks them; watch PR CI by run ID, since a gh pr checks --watch started right after a push exited green before the CI run existed). AGENTS.md is 9998 of its 10000-byte budget, pinned by a docs-contract test.",
+      "expected_output": "The agent prints the contract with both gotchas as done-criteria and the byte budget as a guard, then fits the change without raising the budget: short pointers in AGENTS.md and the detail in the linked docs. It also fixes the docs, skill and evals that still teach the racy watch, and updates any test that pinned the old wording. It waits for CI with a watcher bound to the CI run for the new head commit (it waits for that run to exist, then watches it by ID, under a hard timeout), and its Waiting-on line names that watcher in plain words with its deadline. A fresh-context reviewer checks the diff before the merge.",
+      "expectations": [
+        "Lists both gotchas as done-criteria and the 10000-byte budget as a guard metric",
+        "Keeps AGENTS.md at or under 10000 bytes without raising the budget, moving detail into linked docs",
+        "Updates docs, skills, evals and tests that still teach or pin gh pr checks --watch right after a push",
+        "Waits for the CI run of the new head commit to exist, then watches it by run ID under a hard timeout",
+        "Waiting-on line explains the watcher in plain words and gives its hard deadline as a local clock time",
+        "Gets a fresh-context review of the diff before merging"
+      ]
     }
   ]
 }

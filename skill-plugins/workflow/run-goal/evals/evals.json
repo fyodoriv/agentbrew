@@ -4501,7 +4501,7 @@
       ]
     },
     {
-      "id": 398,
+      "id": 400,
       "prompt": "/goal ship the retry fix (round 2 judges scored 6, 7, 6; the overseer listed 2 blockers and 4 follow-ups)",
       "expected_output": "The agent fixes both overseer blockers in one batch, each with a test that fails first, files the 4 follow-ups as tasks without fixing them, and only then runs all three judges again on the new state.",
       "expectations": [

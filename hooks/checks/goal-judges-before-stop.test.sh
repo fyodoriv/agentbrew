@@ -183,14 +183,42 @@ echo "v2" >"$ROOT/work-fc/app.txt"; judge fc jb 6 haiku
 nx="$(run_out fc RUN_GOAL_JUDGE_SLACK=1 | grep '^Next step:')"
 check "a failed focused re-judge names that judge in the next step" grep -q 'jb' <<<"$nx"
 check "a failed focused re-judge does not lead with the missing verdicts" bash -c "! grep -q '^Next step: no verdict' <<<\"\$1\"" _ "$nx"
+# Round-7 blocker 2: after a full round with one judge under the bar, the next
+# step is a focused re-judge of that judge; with two or more, a full round.
+goal one1 "Goal result: met (3/3 met)"; panel one1 9 9 6
+nx="$(run_out one1 RUN_GOAL_JUDGE_SLACK=1 | grep '^Next step:')"
+check "one low judge after a full round: re-judge only that judge" grep -q 're-judge only jc' <<<"$nx"
+check "one low judge after a full round: not every judge again" bash -c "! grep -q 'judge every judge again' <<<\"\$1\"" _ "$nx"
+goal two2 "Goal result: met (3/3 met)"; panel two2 8 7 7
+nx="$(run_out two2 RUN_GOAL_JUDGE_SLACK=1 | grep '^Next step:')"
+check "two low judges after a full round: judge every judge again" grep -q 'judge every judge again' <<<"$nx"
 # Path to 8: a judge under 8 must promise the fixes; the overseer gets the promise next round.
 goal prom "Goal result: met (3/3 met)"
 check "the judge prompt asks for a Path to 8 promise" grep -q 'Path to 8:' <(prompt prom ja)
+# Helpful judges: worst bugs first, all in one round; only high-severity
+# blockers cap; an unfinished check is unverified, not a deduction.
+check "the judge prompt asks for the worst bugs first, all in this round" grep -q 'Find the worst bugs first and list every fix now' <(prompt prom ja)
+check "only a high-severity blocker caps a rubric line" grep -q 'Only a high-severity blocker caps a rubric line' <(prompt prom ja)
+check "an unfinished check is unverified, not a deduction" grep -q 'is unverified, not a deduction' <(prompt prom ja)
 REPORT=$'Findings.\n\nPath to 8:\n1. fix the parser; check: run x, shows 0 failed' panel prom 9 6 9
 echo "v2" >"$ROOT/work-prom/app.txt"; judge prom ja 9; judge prom jb 8; judge prom jc 9
 op="$(GOAL_STATE_TOKEN="$(token prom)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom.contract.md" "$ROOT/prom.jsonl")"
 check "the overseer prompt quotes the earlier promise" grep -q '1. fix the parser; check: run x' <<<"$op"
 check "the overseer prompt holds judges to the promise" grep -q 'Hold each judge to its earlier Path to 8' <<<"$op"
+# Round 7: bold sub-labels stay in the promise, and an earlier inline mention
+# does not hide the real section.
+goal prom2 "Goal result: met (3/3 met)"
+REPORT=$'Findings.\n\n## Path to 8:\n1. Fix the parser.\n**Check:** run x\n2. Fix the doc' panel prom2 9 6 9
+echo "v2" >"$ROOT/work-prom2/app.txt"; judge prom2 ja 9; judge prom2 jb 8; judge prom2 jc 9
+op="$(GOAL_STATE_TOKEN="$(token prom2)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom2.contract.md" "$ROOT/prom2.jsonl")"
+check "a bold sub-label stays in the promise" grep -q '^\*\*Check:\*\* run x' <<<"$op"
+check "the promise keeps items after a bold sub-label" grep -q '^2\. Fix the doc' <<<"$op"
+goal prom3 "Goal result: met (3/3 met)"
+REPORT=$'Summary: 6/10 (see Path to 8: at the end)\n\n## Findings\nOne gap.\n\nPath to 8:\n1. fix the parser; check: run x' panel prom3 9 6 9
+echo "v2" >"$ROOT/work-prom3/app.txt"; judge prom3 ja 9; judge prom3 jb 8; judge prom3 jc 9
+op="$(GOAL_STATE_TOKEN="$(token prom3)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom3.contract.md" "$ROOT/prom3.jsonl")"
+check "the promise is the real section, not an inline mention" grep -q '^1\. fix the parser; check: run x' <<<"$op"
+check "an inline mention is not quoted as the promise" bash -c '! grep -q "^Summary: 6/10" <<<"$1"' _ "$op"
 
 goal fewj "Goal result: met (3/3 met)" "Judges: ja, jb"; judge fewj ja 9 sonnet; judge fewj jb 9
 expect "a contract with two judges blocks" 2 "$(run fewj)"
@@ -358,6 +386,16 @@ jq -cn --arg t "$note" '{type:"attachment",attachment:{type:"queued_command",pro
 jq -cn --arg t "$note" '{type:"user",message:{content:$t}}' >>"$ROOT/notify.jsonl"
 calibrate notify jc 8.5
 expect "a background judge's attachment notification counts once" 0 "$(run notify RUN_GOAL_JUDGE_MODELS=1)"
+
+goal tkjudge "Goal result: met (3/3 met)"; st="$(token tkjudge)"; judge tkjudge ja 9 sonnet; judge tkjudge jb 9
+call tkjudge Agent bgres "haiku" "$(prompt tkjudge jc)" '{"run_in_background":true}'
+result tkjudge bgres "Async agent launched successfully. agentId: tkres"
+note="<task-notification><task-id>tkres</task-id><tool-use-id>bgres</tool-use-id><result>Still waiting on my own test run; no score yet.</result></task-notification>"
+jq -cn --arg t "$note" '{type:"user",message:{content:$t}}' >>"$ROOT/tkjudge.jsonl"
+note="<task-notification><task-id>tkres</task-id><result>$(block_text jc 9 "$st")</result></task-notification>"
+jq -cn --arg t "$note" '{type:"user",message:{content:$t}}' >>"$ROOT/tkjudge.jsonl"
+calibrate tkjudge jc 9
+check "a resumed judge's final notification with only a task-id counts" grep -q "^Next step: no overseer ran" <<<"$(run_out tkjudge RUN_GOAL_JUDGE_MODELS=1)"
 
 goal bgbash "Goal result: met (3/3 met)"
 jq -cn '{type:"assistant",message:{content:[{type:"tool_use",id:"bgx",name:"Bash",input:{command:"sleep 99999",run_in_background:true}}]}}' >>"$ROOT/bgbash.jsonl"

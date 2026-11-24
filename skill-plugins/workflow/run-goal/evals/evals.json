@@ -4540,6 +4540,17 @@
         "Separates items the runner can do from items only the owner or an outside record can close",
         "Does not spend another judging round while a judge says its score needs the owner's answers; asks the owner first"
       ]
+    },
+    {
+      "id": 404,
+      "prompt": "/goal ship the judge hook fix (round 1: one judge scored 6 for a cosmetic wording gap and a test it could not finish in its budget; the other two scored 8)",
+      "expected_output": "The judge lists every fix in round 1, worst first, caps only on a high-severity blocker, and names its unfinished check as unverified; the overseer raises the score, and the goal passes without a second full round.",
+      "expectations": [
+        "The judge prompt tells each judge to find the worst bugs first and list every fix in the first round",
+        "Only a high-severity blocker (false pass, lost verdict, no exit, unmet done-when) caps a score; the wording gap is a follow-up",
+        "A check the judge could not finish is reported as unverified, not as a deduction",
+        "The runner does not start a second full round for follow-ups alone"
+      ]
     }
   ]
 }

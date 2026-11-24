@@ -198,7 +198,11 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
    round on that same state: run only the other judges, then the overseer.
    Do not run the re-judged judge again there: a second launch on one state
    is a re-roll. Only a state with every judge and the overseer can pass,
-   since a fix can break what another judge passed.
+   since a fix can break what another judge passed. The block's next step
+   names the focused re-judge when exactly one judge is under the bar.
+   The overseer quotes each judge's promise: the last "Path to 8:" line and
+   all that follows, bold labels included, up to the verdict block or the
+   next heading.
 
 ## 3. Iterate the work
 
@@ -227,6 +231,10 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
   retro for a goal with no repo. File them **before** the judges run: a task
   added to a judged repo changes the state token, so filing after a passing
   round makes its verdicts stale and spends a round.
+  Judges help the runner: they find the worst bugs first and list every fix
+  in round 1, give each blocker a severity, and only a high-severity blocker
+  (a false pass, a lost verdict, no exit, an unmet done-when) caps a score.
+  A check a judge could not finish is unverified, not a deduction.
   Judges label each defect Blocker or Follow-up, and only blockers cap a
   score; the overseer raises a score lowered by a follow-up. This keeps each
   round's new findings from moving the bar.

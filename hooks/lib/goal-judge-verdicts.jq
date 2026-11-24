@@ -98,7 +98,12 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
        elif .type == "queue-operation" then (.content // empty | texts)
        else empty end
      | select(test("<task-notification>"))
-     | {id: ((capture("<tool-use-id>(?<id>[^<]+)</tool-use-id>").id) // ""), text: .} ]) as $notes
+     | {id: ((capture("<tool-use-id>(?<id>[^<]+)</tool-use-id>").id) // ""),
+        task: ((capture("<task-id>(?<t>[^<]+)</task-id>").t) // ""), text: .} ]) as $raw
+# A resumed agent's later notification can carry only its task-id; bind it
+# to the tool-use-id an earlier notification of the same task named.
+| ([ $raw[] | select(.id != "" and .task != "") | {key: .task, value: .id} ] | from_entries) as $task2id
+| ([ $raw[] | .id = (if .id == "" then ($task2id[.task] // "") else .id end) | del(.task) ]) as $notes
 | ($results + $notes | map(select(.id != ""))
    | group_by(.id) | map({key: .[0].id, value: (map(.text) | join("\n"))}) | from_entries) as $outs
 | ("[*_]*GOAL-JUDGE-VERDICT[*_]*[ \t]*\r?\n" + f("Judge") + "[ \t>*_-]*Score[*_]*:[*_ \t]*[0-9]") as $filled

@@ -67,6 +67,10 @@ depends on it.
    files. A research or Q&A goal with no repo writes its answer to
    `<state dir>/<session id>.answer.md` (next to the contract; the write is
    pre-approved) and judges that file.
+   The first judge prompt after `/goal` saves the judged paths to
+   `<state dir>/<session id>.paths`; later prompts and the state token read
+   that file, so editing `Judged paths:` mid-goal does not change what is
+   judged. A new `/goal` starts a new list.
    The judge set, each rubric, and the contract freeze at the goal's first
    judging round: the hook rejects a swapped judge, an edited rubric, or an
    edited contract later, even in a new round. Rubric changes go into `## Calibration` notes and are merged at the
@@ -147,7 +151,8 @@ round when its judges started while the main gate on the final sha still ran.
    self-judging): on Opus, run `sonnet`, `haiku`, and `fable`. An Agent call
    with no `model`, or `model: inherit`, counts as your own model. Each
    prompt names the judge's role (refuter, spec auditor, or first-time
-   user); the script picks it from the state token, so you cannot choose it.
+   user); the script picks it from the session id, so you cannot choose it,
+   and a judge keeps the same role in every round of the goal.
 3. The judge ends with this block, once:
 
 ```
@@ -186,7 +191,8 @@ excuse a met claim.
    judge's report from the transcript, so you cannot trim one. The overseer
    checks every deduction (reproduced, in scope, not an after-judging step),
    looks for misses, splits defects into blockers and follow-ups, and names
-   the smallest fix set that reaches the bar. It ends with:
+   the smallest fix set that reaches the bar. An overseer that made no tool
+   calls cannot change a score: the hook keeps the judge's own score. It ends with:
 
 ```
 GOAL-OVERSEER-VERDICT
@@ -366,3 +372,14 @@ that then ended below the bar. A high count there means the judges or the
 procedure are too strict for real work; review those sessions before you
 change the bar. Rows logged before 2026-11-22 predate the test-log isolation
 and may hold fixture sessions.
+
+Judging rounds per goal (the owner's metric: reach the bar in 1 or 2
+rounds): the number of judged states per session in the hook's history.
+
+```bash
+awk -F'\t' '{s[$3 FS $6]=1} END {for (k in s) {split(k, a, FS); n[a[1]]++} for (i in n) print i, n[i], "rounds"}' \
+  ~/.cache/agentbrew/run-goal/goal-judge-history.tsv | sort
+```
+
+It prints one line per session: the session id and its rounds per goal.
+A session that ran two goals shows their sum.

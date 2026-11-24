@@ -68,7 +68,7 @@ while IFS= read -r id; do
   [ -n "$id" ] || continue
   b64="$(printf '%s\n' "$JROWS" | awk -F'\t' -v j="$id" -v t="$TOKEN" '$1=="J" && $3==j && $4!=t {v = $5} END {print v}')"
   [ -n "$b64" ] || continue
-  path="$(printf '%s' "$b64" | hook_jq -Rr '@base64d' 2>/dev/null | awk '/^GOAL-JUDGE-VERDICT/ {exit} /^[#*_ >-]*Path to 8:/ {buf = $0 "\n"; on = 1; next} on {buf = buf $0 "\n"} END {printf "%s", buf}')"
+  path="$(printf '%s' "$b64" | hook_jq -Rr '@base64d' 2>/dev/null | awk '/^GOAL-JUDGE-VERDICT/ {exit} /^[#*_ >-]*([0-9]+[.)][ \t]*)?[*_]*Path to 8:/ {buf = $0 "\n"; on = 1; next} on {buf = buf $0 "\n"} END {printf "%s", buf}')"
   [ -n "$path" ] && PROMISES="$PROMISES
 === Judge $id, earlier round ===
 $path

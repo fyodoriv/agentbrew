@@ -43,7 +43,10 @@ TEXTLESS="$(perl -0777 -pe 's/(?<!<)<<(?!<)-?[ \t]*([\x27"]?)(\w+)\1([^\n]*\n)(?
 # Fail closed: drop text only when every command in the line is a known data-only command.
 # Any other first word (a shell, an interpreter, a path, a quoted or $VAR name) may run the text as code.
 # git and gh pass only with these subcommands: others (rebase -x, config alias, extension) run text.
-SAFE_CMDS=" echo printf cat ls cd pwd tee mkdir touch cp mv rm head tail wc cut tr diff test [ true false basename dirname date sleep kill wait pgrep curl "
+SAFE_CMDS=" echo printf cat ls cd pwd tee mkdir touch cp mv rm head tail wc cut tr diff test [ true false basename dirname date sleep kill wait pgrep curl grep rg sort uniq "
+# An interpreter reading its script from stdin (`python3 - <<'EOF'`) gets the heredoc as its own
+# language, not shell, so an `&` there detaches nothing. `-c` and script paths stay code.
+STDIN_INTERP=" python python3 node perl ruby "
 SAFE_GIT=" commit add status log show diff push fetch pull switch checkout branch "
 SAFE_GH=" pr issue run repo api "
 text_is_data() {
@@ -60,11 +63,16 @@ text_is_data() {
     if [ "$word" = git ] || [ "$word" = gh ]; then
       grep -qE -- '[[:space:]]--(u|r|e)[[:alpha:]-]*|(^|[[:space:]])-[[:alpha:]]*x([=[:space:]]|$)|[[:space:]]--([[:space:]]|$)' <<<"$seg" && return 1
     fi
+    # rg --pre runs a program on each file.
+    [ "$word" = rg ] && grep -qE -- '(^|[[:space:]])--pre' <<<"$seg" && return 1
     sub="$(awk '{print $2}' <<<"$seg")"
     case "$word" in
       git) case "$SAFE_GIT" in *" $sub "*) ;; *) return 1 ;; esac ;;
       gh) case "$SAFE_GH" in *" $sub "*) ;; *) return 1 ;; esac ;;
-      *) case "$SAFE_CMDS" in *" $word "*) ;; *) return 1 ;; esac ;;
+      *) case "$SAFE_CMDS" in
+           *" $word "*) ;;
+           *) case "$STDIN_INTERP" in *" $word "*) [ "$sub" = - ] || return 1 ;; *) return 1 ;; esac ;;
+         esac ;;
     esac
   done < <(sed -E 's/&&|\|\|/\n/g; s/[;&|(){}!]/\n/g' <<<"$TEXTLESS")
   return 0

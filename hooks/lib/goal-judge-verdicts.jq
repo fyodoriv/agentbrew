@@ -144,7 +144,10 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
        | (($aid != "" and ($sent | index($aid)) != null)
           or ($call.name != "" and ($sent | index($call.name)) != null))) as $msg
     | ($outs[$id] // "") as $out
-    | (["O", $id, $call.state, $call.model, $call.typeok, (if $msg then "1" else "0" end), ($call.prompt | @base64)] | @tsv),
+    # Tool calls the overseer made, from its usage note ("-" when unknown:
+    # an empty field would collapse in the hook's tab-split read).
+    | ([ $out | scan("<tool_uses>([0-9]+)</tool_uses>|tool_uses:[ \t]*([0-9]+)") | map(select(. != null))[0] ] | last // "-") as $tools
+    | (["O", $id, $call.state, $call.model, $call.typeok, (if $msg then "1" else "0" end), $tools, ($call.prompt | @base64)] | @tsv),
       ( ($out | [splits("GOAL-OVERSEER-VERDICT")] | if length > 1 then last else "" end)
         | ( [ scan("(?m)^[ \t>*_-]*Ruling[ \t]+([A-Za-z0-9_.-]+)[*_]*:[*_ \t]*([0-9]+(?:\\.[0-9]+)?)[ \t]*/[ \t]*10[*_ \t]*(?:[-:\u2013\u2014][ \t]*)?([^\n]*)") ][]
             | (.[2] | gsub("^\\s+|\\s+$"; "")) as $why

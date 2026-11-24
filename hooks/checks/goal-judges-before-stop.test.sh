@@ -111,7 +111,7 @@ oversee() { # session, [model], [ruling a b c], [prompt suffix], [extra input js
   p="$(GOAL_STATE_TOKEN="$st" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/$s.contract.md" "$ROOT/$s.jsonl")" || return 1
   call "$s" Agent "$id" "$m" "$p${6:-}" "${7:-}"
   result "$s" "$id" "$(printf 'Checked the three reports.\n\nGOAL-OVERSEER-VERDICT\nState: %s\nRuling ja: %s/10 - kept; the deduction was a follow-up\nRuling jb: %s/10 - kept; the deduction was a follow-up\nRuling jc: %s/10 - kept; the deduction was a follow-up\n' \
-    "$st" "${3:-9}" "${4:-9}" "${5:-9}")"
+    "$st" "${3:-9}" "${4:-9}" "${5:-9}")${OUSAGE:-}"
 }
 run_out() { # session, [env] -> the hook's stdout and stderr
   jq -cn --arg s "$1" --arg p "$ROOT/$1.jsonl" '{hook_event_name:"Stop",session_id:$s,transcript_path:$p}' |
@@ -237,6 +237,32 @@ echo "v2" >"$ROOT/work-prom5/app.txt"; judge prom5 ja 9; judge prom5 jb 8; judge
 op="$(GOAL_STATE_TOKEN="$(token prom5)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom5.contract.md" "$ROOT/prom5.jsonl")"
 check "a fenced check and a Check: paragraph keep the next item" grep -q '^2\. Fix the doc; check: run d' <<<"$op"
 check "the overseer lets only a high-severity blocker cap a score" grep -q 'Only a high-severity blocker caps a score' <<<"$op"
+# Round-13 follow-ups: a numbered promise heading is quoted; a judge keeps
+# its role across states; judged paths freeze at goal start; an overseer
+# with no tool calls cannot change a score.
+goal prom6 "Goal result: met (3/3 met)"
+REPORT=$'Findings.\n\n### 5. Path to 8:\n1. fix the lexer; check: run y' panel prom6 9 6 9
+echo "v2" >"$ROOT/work-prom6/app.txt"; judge prom6 ja 9; judge prom6 jb 8; judge prom6 jc 9
+op="$(GOAL_STATE_TOKEN="$(token prom6)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom6.contract.md" "$ROOT/prom6.jsonl")"
+check "a numbered Path to 8 heading is quoted" grep -q '^1\. fix the lexer; check: run y' <<<"$op"
+goal rolep "Goal result: met (3/3 met)"
+r1="$(prompt rolep ja gs2-aaaa | grep '^Your role this round:')"; r2="$(prompt rolep ja gs2-bbbb | grep '^Your role this round:')"
+check "a judge keeps one role across states of one goal" test -n "$r1" -a "$r1" = "$r2"
+goal pfrz "Goal result: met (3/3 met)"
+echo "freeze the paths" >"$RUN_GOAL_STATE_DIR/pfrz.owner.md"
+prompt pfrz ja gs2-aaaa >/dev/null
+sed -i.bak "s|^Judged paths: .*|Judged paths: $ROOT/elsewhere|" "$RUN_GOAL_STATE_DIR/pfrz.contract.md"
+check "an edited Judged paths line does not change the judged paths" grep -qF -- "- $ROOT/work-pfrz" <(prompt pfrz ja gs2-aaaa)
+check "the edited path is not shown to judges" bash -c '! grep -qF -- "$1" <<<"$2"' _ "- $ROOT/elsewhere" "$(prompt pfrz ja gs2-aaaa)"
+rm -f "$RUN_GOAL_STATE_DIR/pfrz.owner.md" "$RUN_GOAL_STATE_DIR/pfrz.paths" "$RUN_GOAL_STATE_DIR/pfrz.contract.md.bak"
+goal otl "Goal result: met (3/3 met)"
+judge otl ja 9 sonnet; judge otl jb 6 haiku; judge otl jc 9 fable
+OUSAGE=$'\n<usage><tool_uses>0</tool_uses></usage>' oversee otl sonnet 9 8 9
+check "an overseer with no tool calls cannot raise a score" grep -q 'jb scored 6/10 (the overseer.s change was not counted' <(run_out otl RUN_GOAL_JUDGE_SLACK=1)
+goal otl2 "Goal result: met (3/3 met)"
+judge otl2 ja 9 sonnet; judge otl2 jb 6 haiku; judge otl2 jc 9 fable
+OUSAGE=$'\n<usage><tool_uses>4</tool_uses></usage>' oversee otl2 sonnet 9 8 9
+expect "an overseer that ran tools can raise a score" 0 "$(run otl2 RUN_GOAL_JUDGE_SLACK=1)"
 
 goal fewj "Goal result: met (3/3 met)" "Judges: ja, jb"; judge fewj ja 9 sonnet; judge fewj jb 9
 expect "a contract with two judges blocks" 2 "$(run fewj)"

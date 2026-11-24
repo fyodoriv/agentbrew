@@ -418,7 +418,7 @@
   - **Hypothesis**: block messages that name the wrong next step drop from 5 reproduced to 0.
   - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
   - **Success**: 0 failed, with one named case per message.
-  - **Pivot**: if the message logic grows past one screen, move it into `hooks/lib/` with its own test.
+  - **Pivot**: if the message logic adds more than 0.2 s per Stop, move it into `hooks/lib/` with its own test.
   - **Anchor**: Nielsen 1994, usability heuristics (error messages).
 
 - [ ] Honest goal-result lines with ordinary punctuation are allowed

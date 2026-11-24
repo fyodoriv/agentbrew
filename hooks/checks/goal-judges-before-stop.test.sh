@@ -200,6 +200,7 @@ check "the judge prompt asks for a Path to 8 promise" grep -q 'Path to 8:' <(pro
 check "the judge prompt asks for the worst bugs first, all in this round" grep -q 'Find the worst bugs first and list every fix now' <(prompt prom ja)
 check "only a high-severity blocker caps a rubric line" grep -q 'Only a high-severity blocker caps a rubric line' <(prompt prom ja)
 check "an unfinished check is unverified, not a deduction" grep -q 'is unverified, not a deduction' <(prompt prom ja)
+check "every listed fix has a severity and a check, at any score" grep -q 'Every fix you list, at any score, names its severity' <(prompt prom ja)
 REPORT=$'Findings.\n\nPath to 8:\n1. fix the parser; check: run x, shows 0 failed' panel prom 9 6 9
 echo "v2" >"$ROOT/work-prom/app.txt"; judge prom ja 9; judge prom jb 8; judge prom jc 9
 op="$(GOAL_STATE_TOKEN="$(token prom)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom.contract.md" "$ROOT/prom.jsonl")"
@@ -219,6 +220,16 @@ echo "v2" >"$ROOT/work-prom3/app.txt"; judge prom3 ja 9; judge prom3 jb 8; judge
 op="$(GOAL_STATE_TOKEN="$(token prom3)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom3.contract.md" "$ROOT/prom3.jsonl")"
 check "the promise is the real section, not an inline mention" grep -q '^1\. fix the parser; check: run x' <<<"$op"
 check "an inline mention is not quoted as the promise" bash -c '! grep -q "^Summary: 6/10" <<<"$1"' _ "$op"
+# Iteration 1: an inner heading and a long list stay whole; a later prose
+# mention does not replace the real section.
+goal prom4 "Goal result: met (3/3 met)"
+long="$(for i in $(seq 1 45); do printf '%s. fix item %s; check: run t%s\n' "$i" "$i" "$i"; done)"
+REPORT=$'Findings.\n\nPath to 8:\n### High\n0. fix the head; check: run h\n'"$long"$'\n\nNote: see Path to 8: above.' panel prom4 9 6 9
+echo "v2" >"$ROOT/work-prom4/app.txt"; judge prom4 ja 9; judge prom4 jb 8; judge prom4 jc 9
+op="$(GOAL_STATE_TOKEN="$(token prom4)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom4.contract.md" "$ROOT/prom4.jsonl")"
+check "an inner heading does not cut the promise" grep -q '^0\. fix the head; check: run h' <<<"$op"
+check "a long promise is not cut at 40 lines" grep -q '^45\. fix item 45; check: run t45' <<<"$op"
+check "a later prose mention does not replace the promise" bash -c '! grep -q "^Note: see Path to 8" <<<"$1"' _ "$op"
 
 goal fewj "Goal result: met (3/3 met)" "Judges: ja, jb"; judge fewj ja 9 sonnet; judge fewj jb 9
 expect "a contract with two judges blocks" 2 "$(run fewj)"

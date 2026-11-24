@@ -136,7 +136,8 @@ judged paths can get its judge line after the verdicts.
    verdict only on an exact match, so add nothing: no summary, no hints, no
    score. Leave `subagent_type` out (or use `general-purpose`): a fork
    shares your context, and a custom agent type brings its own system prompt.
-   Never message a running judge (SendMessage) and never run practice judges
+   Never message a judge while it runs (SendMessage); after its verdict, a
+   follow-up question is fine (section 3). Never run practice judges
    (judge markers without the header, or `claude -p` with a judge prompt):
    the hook counts both as a used round.
    Give each judge a different model family, none of them your own (no
@@ -200,9 +201,12 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
    is a re-roll. Only a state with every judge and the overseer can pass,
    since a fix can break what another judge passed. The block's next step
    names the focused re-judge when exactly one judge is under the bar.
-   The overseer quotes each judge's promise: the last "Path to 8:" line and
-   all that follows, bold labels included, up to the verdict block or the
-   next heading.
+   The overseer quotes each judge's promise: the last line that starts with
+   "Path to 8:" (after any heading or bold marks) and all that follows,
+   inner headings, bold labels and long lists included. It stops at the
+   verdict block, or at plain prose after a blank line.
+   Every fix a judge lists, at any score, names its severity and a
+   runnable check.
 
 ## 3. Iterate the work
 
@@ -222,7 +226,7 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
   follow-up deduction it lifts; `ok` blocks. A keep or a lower needs any
   one-line reason.
 
-- Any judge under 8: fix **every** blocker the overseer listed, in one
+- Any judge under the bar: fix **every** blocker the overseer listed, in one
   batch, each with a test that fails before the fix. File each follow-up as
   a task before the next round, and do not fix follow-ups in this goal
   unless the owner asks for them.
@@ -238,7 +242,7 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
   Judges label each defect Blocker or Follow-up, and only blockers cap a
   score; the overseer raises a score lowered by a follow-up. This keeps each
   round's new findings from moving the bar.
-- After a round with a judge under 8, ask that judge (a follow-up message to the
+- After a round with a judge under the bar, ask that judge (a follow-up message to the
   same agent, not a new judge run) what is missing to reach 8. Have it mark each
   item: the runner can do it now, only the owner can do it, or it needs an outside
   record. Ask whether the runner items alone reach 8. When a judge says no, do not

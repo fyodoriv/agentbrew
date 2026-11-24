@@ -118,6 +118,9 @@ Judge after everything else that edits a judged path: the work, the Phase 6
 retro skill updates, and the final report when it is a judged file. Any edit
 to a judged path after the verdicts makes them stale. A report outside the
 judged paths can get its judge line after the verdicts.
+Start the judges only once every gate that a done-when names has a saved result.
+A spec auditor caps Evidence for a check that is still running. One goal lost a
+round when its judges started while the main gate on the final sha still ran.
 
 1. For each judge, print its prompt:
    `bash hooks/lib/goal-judge-prompt.sh <contract path> <judge id>` from an
@@ -170,7 +173,11 @@ verdicts. Other background tasks, and a launch with any other prompt, never
 excuse a met claim.
 
 4. When every judge has reported, run the **overseer**: one more fresh
-   Agent call, on a model family that is not yours. Print its prompt with
+   Agent call, on a model family that is not yours. Set `model` on that
+   call: with no `model`, it runs on your own family and the round cannot pass.
+   The script reads the transcript, which can lag a just-finished
+   judge. If its `State:` or a quoted report is from an older round, wait and
+   print it again before you launch. Print its prompt with
    `bash hooks/lib/goal-overseer-prompt.sh <contract path> <transcript path>`
    (outside a checkout, the installed copy next to `goal-judge-prompt.sh`)
    (the transcript is `~/.claude/projects/<project>/<session id>.jsonl`; the

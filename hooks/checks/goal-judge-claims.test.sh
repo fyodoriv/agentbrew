@@ -105,5 +105,10 @@ if grep -q 'content is written' <<<"$out"; then PASS=$((PASS + 1)); else FAIL=$(
 for f in "$PROMPT_SH" "$DIR/../lib/goal-overseer-prompt.sh"; do
   if grep -q 'safety standard' "$f"; then FAIL=$((FAIL + 1)); echo "  FAIL: $(basename "$f") lets a field standard cap a score"; else PASS=$((PASS + 1)); fi
 done
+# Goal iteration 5: a rule the owner set (such as the 8, 8, 7 pass rule)
+# is never a blocker.
+for f in "$PROMPT_SH" "$DIR/../lib/goal-overseer-prompt.sh"; do
+  if grep -q 'A rule the owner set is never a blocker' "$f"; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $(basename "$f") lets a judge block on an owner rule"; fi
+done
 echo "goal-judge-claims: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

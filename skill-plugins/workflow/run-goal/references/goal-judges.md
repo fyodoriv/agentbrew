@@ -271,6 +271,8 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
   consensus <lowest>/10)`. Never claim met without it. After five blocks the
   hook writes that line for you (five, not three like the retro hook: each
   round needs the judges to run between two Stops).
+  A rule the owner set is never a blocker: that includes the pass rule,
+  where one of three or more judges may sit one point under the bar.
 
 Print one goal-check line, for example
 `Goal check judges ✅ 9, 8, 9 (agent-harness-reliability, llm-evaluation-methodology, devex-workflow-design)`.

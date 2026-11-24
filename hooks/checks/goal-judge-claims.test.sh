@@ -49,6 +49,12 @@ for l in "Goal result: unmet; 2 of 5 criteria met, rest blocked" "Goal result: n
   want ok "$l"
 done
 want claim "Goal result: partly met - 9/10"
+# Round-5 blocker: a not-met word with an all-met count says the goal is met.
+for l in "Goal result: partly met: 5 of 5 met" "Goal result: stopped; 5 of 5 met" \
+  "Goal result: unmet; 3 of 3 criteria met" "Goal result: failed; 3 of 3 criteria met" \
+  "Goal result: not met: 4/4 met"; do
+  want claim "$l"
+done
 # The hook's give-up line strips brackets from its cut reason, so a cut
 # inside "family(ies) ( sonnet h" still reads as not met.
 reason="$(printf '%s' 'judges used 2 model family(ies) ( sonnet h' | tr -d '\n()')"

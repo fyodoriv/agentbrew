@@ -100,5 +100,10 @@ n="$(grep -c 'judge scores removed' <<<"$out" || true)"
 if [ "$n" = 5 ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $n of 5 score targets removed"; fi
 if grep -q 'content is written' <<<"$out"; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: a plain line was hidden"; fi
 
+# Goal iteration 4 (the pivot): a blocker must break a done-when criterion
+# or the owner request; a field standard alone does not cap a score.
+for f in "$PROMPT_SH" "$DIR/../lib/goal-overseer-prompt.sh"; do
+  if grep -q 'safety standard' "$f"; then FAIL=$((FAIL + 1)); echo "  FAIL: $(basename "$f") lets a field standard cap a score"; else PASS=$((PASS + 1)); fi
+done
 echo "goal-judge-claims: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

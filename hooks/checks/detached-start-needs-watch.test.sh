@@ -102,5 +102,18 @@ check "backslash nohup blocked" 2 "no\\hup sleep 100" false
 check "coproc blocked" 2 "coproc sleep 100" false
 check "wait before the detach is no watch" 2 "wait; nohup y &" false
 check "pgrep before the detach is no watch" 2 "pgrep foo; nohup y &" false
+# A quoted ampersand in a read-only search, or in a heredoc fed to an
+# interpreter's stdin script, is text, not a detach.
+check "grep with a quoted ampersand ok" 0 "grep -c '&gt;' file.txt" false
+check "rg with a quoted ampersand ok" 0 "rg -n 'a & b' src" false
+check "python stdin heredoc with an ampersand ok" 0 "python3 - <<'EOF'
+x = 1 & 2
+EOF" false
+check "python -c with an ampersand still blocked" 2 "python3 -c 'import os' &" false
+check "grep then a bare detach still blocked" 2 "grep -c 'x' f; nohup y &" false
+check "python heredoc then a detach still blocked" 2 "python3 - <<'EOF'
+x = 1
+EOF
+nohup y &" false
 [ "$FAIL" = 0 ] && echo "detached-start-needs-watch: all passed"
 exit $FAIL

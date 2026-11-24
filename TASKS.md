@@ -1,6 +1,5 @@
 # Tasks
 
-
 <!-- policy: Run tests before every commit. Never skip CI checks.
              `npm run verify` must pass before every commit (AGENTS.md rule #1).
      policy: Maintain 95%+ coverage on statements, functions, and lines. Branch coverage target is 95%.
@@ -335,8 +334,6 @@
   - **Pivot**: if the real collector refuses the HEC request shape (any 4xx that a correct token and index do not fix), switch the overlay to `kind: file` plus the company log forwarder, and report the refused shape upstream.
   - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); Splunk documentation, "Format events for HTTP Event Collector".
 
-
-
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
      canvases/agentic-tooling-vs-agentbrew.canvas.tsx). Four moves that push
      agentbrew further into pure orchestration: two delegations that shrink the
@@ -473,19 +470,6 @@
   - **Pivot**: if 1 or more honest retro lines from the goal-judge history would block, keep brackets free and require the not-met word alone instead.
   - **Anchor**: Nygard 2018, "Release It!" (fail-safe defaults).
 
-- [ ] The judge measure command shows rounds per goal
-  - **ID**: goal-judge-rounds-metric
-  - **Tags**: hooks, run-goal, metrics
-  - **Details**: Found 2026-11-23, judge round 2 of the blocker-loop goal (devex-workflow-design). The "Measure the effect" command in `goal-judges.md` prints goal counts but not judging rounds per goal or blockers per round, the numbers that show the one-batch iteration rule works. `goal-judge-history.tsv` already holds the data.
-  - **Files**: `skill-plugins/workflow/run-goal/references/goal-judges.md`, `hooks/checks/goal-judges-before-stop.sh`.
-  - **Output**: code
-  - **Acceptance**: the measure command prints median rounds per goal.
-  - **Hypothesis**: median judging rounds per goal becomes visible, and drops below 3 after the one-batch rule.
-  - **Measurement**: the measure command in `goal-judges.md`.
-  - **Success**: it prints a rounds-per-goal number for every goal in the history file.
-  - **Pivot**: if the history file lacks a round key for more than half the rows, add the key to the hook first.
-  - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (lead time).
-
 - [ ] Agents can run one named case of the goal-judge hook suite
   - **ID**: goal-judge-suite-one-case
   - **Tags**: hooks, run-goal, speed
@@ -590,7 +574,6 @@
   - **Pivot**: if 2 or more of the next 10 eval-only PRs still conflict, or per-eval files break the frozen-prefix hash, use a git merge driver for `evals.json` instead.
   - **Anchor**: Forsgren, Humble, Kim 2018 (lead time for changes); Basili, Caldiera, Rombach 1994 (GQM).
 
-
 - [ ] A plain `agentbrew sync` deploys the hooks on current `main`, not an old pinned runtime
   - **ID**: sync-uses-current-hooks
   - **Tags**: hooks, sync, upgrade
@@ -682,7 +665,6 @@
   - **Success**: all three observation controls classify their exact lifecycle state; zero false completion, swallowed failures or private-marker disclosures; unchanged original assertions and 30,000 ms case limit; required gates pass without executing the exhausted lease probes. A repair still requires separate diagnosed/reproduced-boundary evidence and a committed hypothesis.
   - **Pivot**: any ambiguous boundary, missing record, altered timeout/assertion, disclosed payload or passing retry presented as a cause rejects the observation. Preserve the unknown and revise measurement; do not raise the timeout, replace real lifecycle work with a stub or run until green.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration; the actual terminal timeout and current in-process `Command.parseAsync` lifecycle fixture.
-
 
 - [ ] Deliver OpenCode 2 session hooks during a cold CLI start
   - **ID**: opencode-v2-cold-session-hooks
@@ -790,97 +772,6 @@
   - **Anchor**: Nielsen 1994, heuristic 9 (help users recognize, diagnose and recover from errors).
 
 ## P2
-
-- [ ] Take the goal judges' judged paths from a hook-owned file
-  - **ID**: goal-judge-hook-owned-paths
-  - **Tags**: run-goal, judges, independence
-  - **Details**: Round 13 of the 2026-11-24 judge goal: the llm-evaluation judge capped Independence at 5 because `goal-judge-prompt.sh` copies the judged paths from the runner-written contract, so the runner picks what is judged. Record the paths in a hook-owned state file when the contract is first saved, and have the prompt read that file.
-  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/checks/goal-judges-before-stop.sh`, its test, `skill-plugins/workflow/run-goal/references/goal-judges.md`.
-  - **Output**: code
-  - **Acceptance**: a contract whose Judged paths line was edited after the first save still yields the original list in the prompt.
-  - **Hypothesis**: Independence deductions for runner-chosen paths drop from 1 per round to 0.
-  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (new fixture) plus the Independence line in the next 5 judged goals.
-  - **Success**: fixture passes and 0 of 5 rounds cite runner-chosen paths.
-  - **Pivot**: if 2 or more of 5 rounds still cite it, move the whole contract out of the judge prompt.
-  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (self-enhancement bias).
-
-- [ ] Pin each goal judge's role for the whole goal
-  - **ID**: goal-judge-pin-role
-  - **Tags**: run-goal, judges, bias-controls
-  - **Details**: The role line is picked by `cksum` of the state token, so a judge's angle changes between rounds and a re-judge does not compare like with like (round 13, llm-evaluation judge). Key the role on session id plus judge id.
-  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/checks/goal-judges-before-stop.test.sh`.
-  - **Output**: code
-  - **Acceptance**: two prompts for the same judge and session with different state tokens carry the same `Your role this round:` line.
-  - **Hypothesis**: new deductions in a re-judge that are not regressions drop from about 1 per re-judge to 0.
-  - **Measurement**: the new suite check, then `goal-judge-history.tsv` score deltas across the next 5 re-judges.
-  - **Success**: check passes; no re-judge adds a non-regression deduction.
-  - **Pivot**: if score swings above 2 points persist, rotate roles per goal deliberately and record the role in the history file.
-  - **Anchor**: Krippendorff, "Content Analysis" (inter-rater reliability).
-
-- [ ] Match numbered "Path to 8" headings in the overseer prompt
-  - **ID**: goal-overseer-numbered-path-heading
-  - **Tags**: run-goal, overseer, bug
-  - **Details**: The overseer's promise extractor only allows heading marks before "Path to 8:", so `### 5. Path to 8:` is dropped and that judge has no promise to be held to (round 13, harness judge, reproduced).
-  - **Files**: `hooks/lib/goal-overseer-prompt.sh`, `hooks/checks/goal-judges-before-stop.test.sh`.
-  - **Output**: code
-  - **Acceptance**: a fixture report with `### 5. Path to 8:` appears under Earlier promises.
-  - **Hypothesis**: lost promises drop from 1 known heading shape to 0.
-  - **Measurement**: the new fixture in `goal-judges-before-stop.test.sh`.
-  - **Success**: the fixture passes and the suite shows 0 failed.
-  - **Pivot**: if a third heading shape breaks it, have judges emit a fixed `PATH-TO-8` marker instead of parsing headings.
-  - **Anchor**: Nygard, "Release It!" (fail loudly on unexpected input).
-
-- [ ] Give the goal-judges stop suite a fast mode
-  - **ID**: goal-judges-suite-fast
-  - **Tags**: run-goal, tests, speed
-  - **Details**: `goal-judges-before-stop.test.sh` took 11 to 12 minutes in round 13, longer than a judge's 10-minute budget, so 2 of 3 judges could not confirm it in time. Move the prompt-text greps for done-when 1 to 3 into `goal-judge-claims.test.sh` (2 s), add a grep for "add a new deduction only for a regression", and print progress within 10 s.
-  - **Files**: `hooks/checks/goal-judge-claims.test.sh`, `hooks/checks/goal-judges-before-stop.test.sh`.
-  - **Output**: code
-  - **Acceptance**: the claims suite covers the task-id, promise-quoting, focused-next-step, worst-bugs-first and regression-only checks.
-  - **Hypothesis**: judges that report the suite unverified drop from 2 of 3 to 0 of 3.
-  - **Measurement**: `time bash hooks/checks/goal-judge-claims.test.sh` and the next round's reports.
-  - **Success**: claims suite under 10 s with 0 failed; 0 judges report it unverified.
-  - **Pivot**: if the full suite stays required, cache its result keyed on the hook files' hashes.
-  - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (fast feedback).
-
-- [ ] Add a judging-rounds-per-goal command
-  - **ID**: goal-judge-rounds-metric
-  - **Tags**: run-goal, metrics
-  - **Details**: The owner's metric is rounds to reach the bar, but `goal-judges.md` only shows final outcomes. Document one command that counts distinct states per session in `~/.cache/agentbrew/run-goal/goal-judge-history.tsv`.
-  - **Files**: `skill-plugins/workflow/run-goal/references/goal-judges.md`, a claims-suite check.
-  - **Output**: docs
-  - **Acceptance**: the command prints one line per session with its round count.
-  - **Hypothesis**: the share of judged goals passing in 2 or fewer rounds becomes visible (today unknown).
-  - **Measurement**: run the documented command on the history file.
-  - **Success**: it prints a count for every session in the file.
-  - **Pivot**: if the history file lacks the needed fields, add a round column first.
-  - **Anchor**: Basili, Caldiera, Rombach 1994 (GQM).
-
-- [ ] Require the goal overseer to run commands
-  - **ID**: goal-overseer-must-reproduce
-  - **Tags**: run-goal, overseer, gaming-resistance
-  - **Details**: In round 13 the overseer made 0 tool calls and still raised a score by 2, although its prompt says to reproduce what it relies on. Have the hook reject an overseer ruling that changes a score when the overseer call ran no tools.
-  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test, `docs/hook-protocol.md`.
-  - **Output**: code
-  - **Acceptance**: a fixture overseer with 0 tool uses and a raised score is not counted.
-  - **Hypothesis**: unverified score changes drop from 1 of 3 rulings to 0.
-  - **Measurement**: the new fixture, then tool-use counts of the next 5 overseer calls.
-  - **Success**: fixture passes; every score-changing ruling has 1 or more tool uses.
-  - **Pivot**: if overseers start making token calls only, require a quoted command and output in each changed ruling.
-  - **Anchor**: Zheng et al. 2023 (judge verification).
-
-- [ ] Stop detached-start-needs-watch firing on a quoted ampersand
-  - **ID**: hook-detached-start-quoted-amp
-  - **Tags**: hooks, false-positive
-  - **Details**: On 2026-11-24 the hook blocked two read-only commands: a quoted grep pattern holding an HTML entity, and a heredoc, each with an ampersand inside quotes. It read the quoted ampersand as a background start. Ignore ampersands inside quotes and heredocs.
-  - **Files**: the detached-start-needs-watch hook script and its test.
-  - **Output**: code
-  - **Acceptance**: a grep whose quoted pattern holds an ampersand passes; an unquoted trailing ampersand with no watch still blocks.
-  - **Hypothesis**: false blocks from quoted ampersands drop from 2 seen on 2026-11-24 to 0.
-  - **Measurement**: the hook's test file with both fixtures.
-  - **Success**: both fixtures pass.
-  - **Pivot**: if quote parsing grows complex, use a bash tokenizer (`shfmt --to-json`).
-  - **Anchor**: Google SRE book (alert precision).
 
 - [ ] run-goal eval 384 lists one follow-up per line
   - **ID**: run-goal-eval-384-one-follow-up-per-line
@@ -1037,7 +928,6 @@
   - **Success**: 6 of 6 when the gate is kept; the workflow file is absent when it is dropped.
   - **Pivot**: fewer than 5 of 6 after the gate is restored means agents do not load the rule; drop the gate.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate: a gate that always fails is ignored; Basili, Caldiera and Rombach (1994), GQM.
-
 
 - [ ] Detect duplicate Ollama servers before they split the local prompt cache
   - **ID**: ollama-single-server-readiness
@@ -1297,7 +1187,6 @@
   - **Success**: the time-span fixture passes and 100% of the existing violation fixtures still fail.
   - **Pivot**: more than 1 real-count fixture passes; then drop the exemption and reword prose instead.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
-
 
 ## P3
 
@@ -1564,7 +1453,6 @@
   - **Acceptance**: (a) a substantive RFC-style comment is posted on BOTH #268 and #455 with the 5-case taxonomy and the invariant statement; (b) the comment links to the exact `src/sync/skills-sync.ts` `cleanEntry` reference and explicitly states "not filing a PR"; (c) if any of the 4 open PRs (#609, #611, #869, #944) subsequently merges with a classifier design, close this task with a link to the merge in the commit message; (d) if the queue stays stuck for another 4 weeks post-comment, the escalation comment on #268 asking for architectural direction is posted.
   - **Research**: 2026-10-16 — #268, #455, #606, #609, and #611 are still open; #869 merged but only preserves dotfiles in copied skills; #944 closed. No classifier has landed. Both comment texts are staged in [`docs/audits/skills-cli-268-455-rfc-comment-draft.md`](docs/audits/skills-cli-268-455-rfc-comment-draft.md) with the posting steps; the only remaining step is the approved `gh issue comment`.
   - **Human-approval-required**: external-issue
-
 
 - [ ] Add machine-setup verification cases to third-party skills
   - **ID**: setup-goal-third-party-skill-retro

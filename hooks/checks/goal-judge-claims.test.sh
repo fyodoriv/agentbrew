@@ -114,5 +114,29 @@ done
 # set -euo pipefail then kills the hook (exit 141) on a long transcript.
 n=$(grep -cE "\| *awk[^|]*; *exit *\}" "$DIR/goal-judges-before-stop.sh" || true)
 if [ "$n" = 0 ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $n pipes into an early-exit awk can SIGPIPE the hook"; fi
+# Fast copies of the done-when prompt checks (the full suite runs them on
+# real prompts), so a judge with a short budget can confirm them in seconds.
+has() { # label, file, fixed text
+  if grep -qF -- "$3" "$2"; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $1"; fi
+}
+OV="$DIR/../lib/goal-overseer-prompt.sh"
+has "judges list the worst bugs first, all in one round" "$PROMPT_SH" "Find the worst bugs first and list every fix now"
+has "only a high-severity blocker caps a rubric line" "$PROMPT_SH" "Only a high-severity blocker caps a rubric line"
+has "every listed fix has a severity and a check" "$PROMPT_SH" "Every fix you list, at any score, names its severity"
+has "a later round adds deductions only for regressions" "$PROMPT_SH" "add a new deduction only for a regression or for code that changed since"
+has "an unfinished check is unverified, not a deduction" "$PROMPT_SH" "is unverified, not a deduction"
+has "a judge keeps one role for the whole goal" "$PROMPT_SH" 'basename "$CONTRACT" .contract.md | cksum'
+has "judged paths are frozen at goal start" "$PROMPT_SH" 'PATHS_FILE="${CONTRACT%.contract.md}.paths"'
+has "the overseer holds judges to their promise" "$OV" "Hold each judge to its earlier Path to 8"
+has "the overseer lets only a high-severity blocker cap a score" "$OV" "Only a high-severity blocker caps a score"
+has "a task-id-only notification binds to its judge" "$DIR/../lib/goal-judge-verdicts.jq" '$task2id'
+has "one low judge gets a focused re-judge" "$DIR/goal-judges-before-stop.sh" "re-judge only \$LOWID"
+has "an overseer with no tool calls cannot change a score" "$DIR/goal-judges-before-stop.sh" 'otools:-}" = 0'
+has "the guide documents rounds per goal" "$DIR/../../skill-plugins/workflow/run-goal/references/goal-judges.md" "rounds per goal"
+# The promise heading match, run on a numbered heading.
+re="$(grep -oE "/\^\[#\*_ >-\]\*[^/]*Path to 8:/" "$OV" | head -1)"
+for h in '### 5. Path to 8:' '**Path to 8:**' '## Path to 8:' '- **Path to 8:**' 'Path to 8:'; do
+  if [ -n "$re" ] && printf '%s\n' "$h" | awk "$re {f=1} END {exit !f}"; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: promise heading '$h' is not matched"; fi
+done
 echo "goal-judge-claims: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

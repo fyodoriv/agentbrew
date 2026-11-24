@@ -303,7 +303,9 @@ bracketed reason, a count (`3/5 met`, `3 of 5 criteria met`), or one
 is a claim: `partly met, ready to merge` and `blocked on 2FA and done` are
 claims. A count where every item is met (`5 of 5 met`) is also a
 claim. An overseer ruling that raises a score needs a reason of 20 or
-more characters. A calibration line for the current state that states any
+more characters. An overseer whose usage note shows no tool calls cannot
+change a score; the judge's score stands. Judged paths freeze at goal start
+in `<session id>.paths`, and each judge keeps one role for the whole goal. A calibration line for the current state that states any
 score other than the judge's verdict blocks. When only low scores are left,
 the block's `Next step:` is the one-batch blocker fix. The hook blocks Stop until each judge on the
 contract's `Judges:` line has exactly one `GOAL-JUDGE-VERDICT` block (Judge,

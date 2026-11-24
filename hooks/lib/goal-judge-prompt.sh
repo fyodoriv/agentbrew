@@ -77,16 +77,29 @@ CONTRACT_SHA="${GOAL_CONTRACT_SHA:-}"
 OWNER_FILE="${CONTRACT%.contract.md}.owner.md"
 OWNER_TEXT="(no owner file; judge against the contract only)"
 [ "$OWNER_FILE" != "$CONTRACT" ] && [ -f "$OWNER_FILE" ] && OWNER_TEXT="$(cat "$OWNER_FILE")"
-# A review role per judge, from the state token and the judge's place on the
-# Judges: line, so the three angles differ and the runner cannot pick them.
+# A review role per judge, from the session id and the judge's place on the
+# Judges: line, so the three angles differ, the runner cannot pick them, and a
+# judge keeps one role for every round of the goal (re-judges compare like
+# with like).
 ROLES=("Refuter: assume the work is wrong; try to break each claim by running it, and score only what survives."
   "Spec auditor: check each owner word and each done-when criterion against the work, one by one, and score the gaps."
   "First-time user: follow the docs as a newcomer would, run each step, and score every step that fails or confuses.")
 POS="$(grep -nxF -- "$ID" <<<"$JUDGES" | head -1 | cut -d: -f1)"
-OFF="$(printf '%s' "$TOKEN" | cksum | cut -d' ' -f1)"
+OFF="$(basename "$CONTRACT" .contract.md | cksum | cut -d' ' -f1)"
 ROLE="${ROLES[$(((POS + OFF) % 3))]}"
 PATHS="$(sed -nE 's/^[-*_ ]*Judged paths:[*_ ]*(.*)$/\1/p' "$CONTRACT" | head -1 | tr ',' '\n' |
   sed -E 's/^[[:space:]`]+//; s/[[:space:]`]+$//' | sed '/^$/d' | sed "s|^~|$HOME|; s/^/- /")"
+# The judged paths are fixed when the goal starts: the first prompt after the
+# /goal hook writes the owner file saves them next to it (goal-scoped state
+# file), and later prompts read that file, so a contract edited mid-goal
+# cannot narrow what is judged. With no owner file, the contract line is used.
+PATHS_FILE="${CONTRACT%.contract.md}.paths"
+if [ "$OWNER_FILE" != "$CONTRACT" ] && [ -f "$OWNER_FILE" ] && [ -n "$PATHS" ]; then
+  if [ ! -f "$PATHS_FILE" ] || [ "$OWNER_FILE" -nt "$PATHS_FILE" ]; then
+    printf '%s\n' "$PATHS" >"$PATHS_FILE" 2>/dev/null || true
+  fi
+  [ -s "$PATHS_FILE" ] && PATHS="$(cat "$PATHS_FILE")"
+fi
 
 cat <<EOF
 GOAL-JUDGE-PROMPT v2

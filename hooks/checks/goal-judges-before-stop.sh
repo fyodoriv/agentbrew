@@ -434,7 +434,7 @@ if [ -n "$TOKEN" ]; then
     elif [ "$no" -gt 1 ]; then
       add "the overseer was launched $no times on state $TOKEN (a re-roll); change the work, then judge all again"
     else
-      IFS=$'\t' read -r _ OID _ omodel otype omsg oprompt <<<"$OROWS"
+      IFS=$'\t' read -r _ OID _ omodel otype omsg otools oprompt <<<"$OROWS"
       canon_o="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="J"' | GOAL_STATE_TOKEN="$TOKEN" GOAL_CONTRACT_SHA="$NOW_CONTRACT" \
         RUN_GOAL_JUDGE_DIR="$JUDGE_DIR" bash "$__HOOK_LIB_DIR/goal-overseer-prompt.sh" "$CONTRACT" - 2>/dev/null || true)"
       got="$(printf '%s' "$oprompt" | hook_jq -Rr '@base64d' 2>/dev/null || true)"
@@ -452,7 +452,7 @@ if [ -n "$TOKEN" ]; then
   LOWS=""
   while read -r id score; do
     [ -n "$id" ] || continue
-    eff="$score"
+    eff="$score"; ign=""
     if [ -n "$OID" ]; then
       read -r r why <<<"$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" -v j="$id" '$1=="Q" && $2==o && $3==j && !d {print $4, $5; d=1}')"
       if [ -z "$r" ]; then
@@ -462,12 +462,17 @@ if [ -n "$TOKEN" ]; then
       elif [ "${why:-0}" -lt 20 ] && awk -v s="$score" -v r="$r" 'BEGIN{exit !(r>s)}'; then
         # A raise needs a real reason ("ok" lifted a 6 to 8): name the follow-up deduction.
         add "the overseer raised $id with a reason under 20 characters; name the follow-up deduction it lifts"
+      elif [ "${otools:-}" = 0 ] && [ "$r" != "$score" ]; then
+        # A ruling must rest on reproduced evidence: an overseer that ran no
+        # tool calls cannot change a score, so the judge's score stands. No
+        # block here: a second overseer on the same state is a re-roll.
+        eff="$score"; ign=" (the overseer's change was not counted: it made no tool calls)"
       else
         eff="$(awk -v s="$score" -v r="$r" 'BEGIN { if (r > s + 2) r = s + 2; if (r < s - 2) r = s - 2; if (r < 0) r = 0; if (r > 10) r = 10; print r }')"
       fi
     fi
     if awk -v a="$eff" -v m="$MIN" 'BEGIN{exit !(a<m)}'; then
-      if [ "$eff" = "$score" ]; then msg="$id scored $score/10"; else msg="$id scored $eff/10 after the overseer (judge: $score/10)"; fi
+      if [ "$eff" = "$score" ]; then msg="$id scored $score/10$ign"; else msg="$id scored $eff/10 after the overseer (judge: $score/10)"; fi
       LOWN=$((LOWN + 1))
       awk -v a="$eff" -v m="$MIN" -v k="$SLACK" 'BEGIN{exit !(a<m-k)}' && LOWN=$((LOWN + 9))
       LOWS="$LOWS$SEP$msg"

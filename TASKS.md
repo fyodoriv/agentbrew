@@ -773,6 +773,45 @@
 
 ## P2
 
+- [ ] Allow a quoted-tag heredoc inside $() in the detached-start hook
+  - **ID**: detached-start-heredoc-in-subst
+  - **Tags**: hooks, devex
+  - **Details**: Round 14 devex judge: `gh pr create --body "$(cat <<'EOF' ... EOF)"` with an ampersand in the body is blocked, because any `$(` makes the text check fail closed. This is the most common way agents write PR and commit bodies, and the hook header says such bodies are not blocked.
+  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a `$(cat <<'EOF' ... EOF)` body with an ampersand passes; a real trailing ampersand after it stays blocked.
+  - **Hypothesis**: false blocks on PR and commit bodies drop from 1 known shape to 0.
+  - **Measurement**: `bash hooks/checks/detached-start-needs-watch.test.sh` (new cases).
+  - **Success**: all passed.
+  - **Pivot**: if 1 or more unsafe cases pass after 2 tries, keep the block and name the body-file exit in the block message.
+  - **Anchor**: Nielsen 1994, "Usability Engineering" (error prevention without false alarms).
+
+- [ ] Show judges one judged-paths list after a contract edit
+  - **ID**: goal-judge-prompt-one-path-list
+  - **Tags**: run-goal, judges, clarity
+  - **Details**: Round 14 devex judge: after a contract edit, the judge prompt shows the frozen list and also the edited `Judged paths:` line inside the quoted contract. The existing fixture greps only the `- ` form, so it misses this.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: after the edit, the prompt does not contain the edited path anywhere.
+  - **Hypothesis**: prompts with two path lists drop from every edited-contract case to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (fixture greps the bare path).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if 1 or more fixtures still show the edited path, drop the Judged paths line from the quoted contract entirely.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (position and anchoring bias).
+
+- [ ] Warn when the frozen judged-paths list wins over the contract
+  - **ID**: goal-judge-prompt-frozen-warning
+  - **Tags**: run-goal, judges, devex
+  - **Details**: Round 14 devex judge: when the contract's `Judged paths:` line differs from the frozen `.paths` file, the prompt script exits 0 with no message, so a user who edits the line gets no hint.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: the script prints one stderr line naming the frozen file when the lists differ.
+  - **Hypothesis**: silent mismatches drop from 1 per edit to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (fixture checks stderr for `frozen`).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if the warning breaks 1 or more prompt-equality fixtures, write it to a log file instead.
+  - **Anchor**: Nielsen 1994, "Usability Engineering" (visibility of system status).
+
 - [ ] Fail closed when the overseer report has no usage note
   - **ID**: goal-overseer-missing-usage-fails-open
   - **Tags**: run-goal, overseer, bug

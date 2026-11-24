@@ -14,8 +14,10 @@
 #   bash goal-overseer-prompt.sh <contract path> <transcript path>
 #   bash goal-overseer-prompt.sh <contract path> -   (J rows on stdin; the hook)
 # A J row is: J <tab> <tool_use_id> <tab> <judge id> <tab> <state> <tab> <report, base64>
-# (from goal-judge-verdicts.jq). The first report per judge on the current
-# state is used, in the order of the contract's Judges: line.
+# (from goal-judge-verdicts.jq). The latest report per judge on the current
+# state is used, so a focused re-judge replaces the older report. Judges are
+# listed in the order of the contract's Judges: line. Each awk here reads all
+# of its input: an early exit can end the pipe with SIGPIPE (exit 141).
 #
 # Exit 2 with a message on stderr when goal-state.sh fails or a judge on the
 # Judges: line has no report on the current state.
@@ -58,7 +60,7 @@ fi
 REPORTS=""
 while IFS= read -r id; do
   [ -n "$id" ] || continue
-  b64="$(printf '%s\n' "$JROWS" | awk -F'\t' -v j="$id" -v t="$TOKEN" '$1=="J" && $3==j && $4==t {print $5; exit}')"
+  b64="$(printf '%s\n' "$JROWS" | awk -F'\t' -v j="$id" -v t="$TOKEN" '$1=="J" && $3==j && $4==t {v = $5} END {print v}')"
   [ -n "$b64" ] || { echo "goal-overseer-prompt: no report from $id on state $TOKEN; run every judge first" >&2; exit 2; }
   text="$(printf '%s' "$b64" | hook_jq -Rr '@base64d' 2>/dev/null)"
   REPORTS="$REPORTS
@@ -67,14 +69,14 @@ $text
 "
 done <<<"$JUDGES"
 # Each judge's promise from its latest earlier report: the last "Path to 8:"
-# line and what follows it, bold sub-labels included, up to the verdict block
-# or the next heading, so the overseer can hold the judge to it.
+# line and what follows it, bold sub-labels included, up to the verdict block,
+# so the overseer can hold the judge to it.
 PROMISES=""
 while IFS= read -r id; do
   [ -n "$id" ] || continue
   b64="$(printf '%s\n' "$JROWS" | awk -F'\t' -v j="$id" -v t="$TOKEN" '$1=="J" && $3==j && $4!=t {v = $5} END {print v}')"
   [ -n "$b64" ] || continue
-  path="$(printf '%s' "$b64" | hook_jq -Rr '@base64d' 2>/dev/null | awk '/^GOAL-JUDGE-VERDICT/ {exit} /^[#*_ >-]*([0-9]+[.)][ \t]*)?[*_]*Path to 8:/ {buf = $0 "\n"; on = 1; next} on {buf = buf $0 "\n"} END {printf "%s", buf}')"
+  path="$(printf '%s' "$b64" | hook_jq -Rr '@base64d' 2>/dev/null | awk 'done {next} /^GOAL-JUDGE-VERDICT/ {done = 1; next} /^[#*_ >-]*([0-9]+[.)][ \t]*)?[*_]*Path to 8:/ {buf = $0 "\n"; on = 1; next} on {buf = buf $0 "\n"} END {printf "%s", buf}')"
   [ -n "$path" ] && PROMISES="$PROMISES
 === Judge $id, earlier round ===
 $path

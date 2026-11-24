@@ -812,6 +812,71 @@
   - **Pivot**: if the warning breaks 1 or more prompt-equality fixtures, write it to a log file instead.
   - **Anchor**: Nielsen 1994, "Usability Engineering" (visibility of system status).
 
+- [ ] The overseer prompt quotes each judge's full report, not a later short note
+  - **ID**: goal-overseer-full-report
+  - **Tags**: run-goal, overseer, bug
+  - **Details**: Round 15 of the 2026-11-24 follow-up goal: a judge that finishes its own background work sends a second short notification with the same verdict. The overseer prompt takes the latest report, so it quotes the short note and drops the full report with its rubric lines.
+  - **Files**: `hooks/lib/goal-overseer-prompt.sh`, `hooks/lib/goal-judge-verdicts.jq`, their test.
+  - **Output**: code
+  - **Acceptance**: a fixture with a full report then a short note from one judge on one state yields an overseer prompt that holds the full report's rubric text.
+  - **Hypothesis**: overseer prompts missing a judge's rubric lines drop from 3 of 3 judges in round 15 to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (new fixture greps for the full report's rubric line).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if 1 or more same-state re-roll fixtures fail, keep the longest report per judge and state instead.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (judges need the full evidence).
+
+- [ ] The exit-141 fixture also checks the overseer prompt is not empty
+  - **ID**: goal-overseer-141-output-check
+  - **Tags**: run-goal, overseer, test
+  - **Details**: Round 15 harness judge: the SIGPIPE fixture checks only the exit code, so a script that exits 0 with no output still passes.
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: the fixture also greps the prompt for `Score: 8/10`.
+  - **Hypothesis**: vacuous passes of the exit-141 fixture drop from possible to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if the grep makes the fixture flaky in 1 or more of 5 runs, check byte count over 0 instead.
+  - **Anchor**: Meszaros 2007, "xUnit Test Patterns" (weak assertions).
+
+- [ ] goal-overseer-prompt.sh prints a usage line when run with no arguments
+  - **ID**: goal-overseer-usage-line
+  - **Tags**: run-goal, overseer, devex
+  - **Details**: Round 15 devex judge: `bash hooks/lib/goal-overseer-prompt.sh` with no arguments prints a raw `sed` file error before exit 2.
+  - **Files**: `hooks/lib/goal-overseer-prompt.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a no-argument call prints one line starting `goal-overseer-prompt: usage:` and nothing from `sed`; exit 2.
+  - **Hypothesis**: raw tool errors on a no-argument call drop from 1 to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (new fixture on stderr).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if the guard breaks 1 or more stdin-mode fixtures, check only for an empty first argument.
+  - **Anchor**: Nielsen 1994, "Usability Engineering" (help users recognize errors).
+
+- [ ] detached-start allows a quoted ampersand next to any command substitution
+  - **ID**: detached-start-quoted-amp-subst
+  - **Tags**: hooks, detached-start, bug
+  - **Details**: Round 15: a quoted ampersand in a python or sed string next to a `$( )` or a pipe is blocked as a detached start, with no heredoc. Task detached-start-heredoc-in-subst names only the heredoc shape.
+  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture with a quoted ampersand inside a string next to `$(pwd)` is allowed.
+  - **Hypothesis**: false detached-start blocks on quoted ampersands drop to 0.
+  - **Measurement**: `bash hooks/checks/detached-start-needs-watch.test.sh` (new fixture).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if allowing it lets 1 or more real background-start fixtures through, keep the block and improve its hint.
+  - **Anchor**: Bash Reference Manual 2022, "Quoting" (quoted metacharacters lose meaning).
+
+- [ ] The goal-judges stop suite runs in under 5 minutes
+  - **ID**: goal-judges-suite-speed
+  - **Tags**: run-goal, tests, perf
+  - **Details**: Round 15 harness judge: `goal-judges-before-stop.test.sh` takes about 11 minutes wall time on this Mac, the top tool-time step this week.
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: the suite finishes in under 300 s and keeps every check.
+  - **Hypothesis**: suite wall time drops from about 660 s to under 300 s by sharing fixture setup.
+  - **Measurement**: `/usr/bin/time -p bash hooks/checks/goal-judges-before-stop.test.sh`
+  - **Success**: real under 300 s and 0 failed.
+  - **Pivot**: if real time stays over 500 s after sharing setup, split the suite and run the parts in parallel instead.
+  - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (fast feedback lowers lead time).
+
 - [ ] Fail closed when the overseer report has no usage note
   - **ID**: goal-overseer-missing-usage-fails-open
   - **Tags**: run-goal, overseer, bug

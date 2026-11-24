@@ -455,8 +455,8 @@
   - **Output**: code
   - **Acceptance**: the error names how to create the contract; the docs cover each gap; the suite ends with one total line.
   - **Hypothesis**: newcomer steps that fail or confuse in a first-time-user judge pass drop from 5 to 0.
-  - **Measurement**: the next first-time-user judge report.
-  - **Success**: it lists 0 of these items.
+  - **Measurement**: `bash hooks/lib/goal-judge-prompt.sh no-such-session devex-workflow-design 2>&1 | rg -c "create the contract"` plus the next first-time-user judge report.
+  - **Success**: the command prints 1 and the judge report lists 0 of these items.
   - **Pivot**: if a judge still reports 2 or more, add a worked example goal to `goal-judges.md`.
   - **Anchor**: Nielsen 1994, usability heuristics (help and documentation).
 

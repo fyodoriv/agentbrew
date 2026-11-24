@@ -247,9 +247,10 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
   in round 1, give each blocker a severity, and only a high-severity blocker
   (a false pass, a lost verdict, no exit, an unmet done-when) caps a score.
   A check a judge could not finish is unverified, not a deduction.
-  Judges label each defect Blocker or Follow-up, and only blockers cap a
-  score; the overseer raises a score lowered by a follow-up. This keeps each
-  round's new findings from moving the bar.
+  A blocker breaks a done-when criterion or the owner request; a defect
+  that only misses a field standard is a follow-up. The overseer raises a
+  score lowered by a low blocker or a follow-up. This keeps each round's
+  new findings from moving the bar.
 - After a round with a judge under the bar, ask that judge (a follow-up message to the
   same agent, not a new judge run) what is missing to reach 8. Have it mark each
   item: the runner can do it now, only the owner can do it, or it needs an outside

@@ -221,14 +221,14 @@ SEL=""
   SEL="$(grep -F '<command-name>/goal</command-name>' "$TRANSCRIPT" 2>/dev/null || true)"
 if [ -n "$SEL" ]; then
   G_ROW="$(hook_jq -R -r -n --argjson canon '{}' --arg lib "$LIB_REAL" --arg contract "$CONTRACT" --arg mode g -f "$VJQ" <<<"$SEL" 2>/dev/null || true)"
-  G_ACTIVE="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G"{print $2; exit}')"
+  G_ACTIVE="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G" && !d {print $2; d=1}')"
 fi
 SEL=""
 # The owner text comes from the transcript. Rewrite the owner file when it
 # differs (whitespace aside), so the runner's prompts and the hook's agree.
 # This runs before any early allow: the runner builds judge prompts while
 # the retro still says in progress.
-G_OWNER="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G"{print $3; exit}' | hook_jq -Rr '@base64d' 2>/dev/null || true)"
+G_OWNER="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G" && !d {print $3; d=1}' | hook_jq -Rr '@base64d' 2>/dev/null || true)"
 if [ "$G_ACTIVE" = 1 ] && [ -n "$G_OWNER" ]; then
   norm_ws() { tr -s '[:space:]' ' ' | sed -E 's/^ //; s/ $//'; }
   [ -f "$OWNER" ] && [ "$(norm_ws <"$OWNER")" = "$(printf '%s' "$G_OWNER" | norm_ws)" ] ||
@@ -289,7 +289,7 @@ parse "$CANON"
 # An unofficial judge run (practice) uses up one round of the cap, so a
 # false match costs a round, not the goal.
 UROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="U"' | wc -l | tr -d ' ')"
-RUNNING="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="R"{print $2; exit}')"
+RUNNING="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="R" && !d {print $2; d=1}')"
 case "$RUNNING" in "" | *[!0-9]*) RUNNING=0 ;; esac
 if [ "$RUNNING" -gt 0 ]; then
   waits="$(count "$WAITS")"
@@ -351,8 +351,8 @@ if [ -n "$PROWS" ]; then
     add "the goal contract changed after the first round; judge against the contract you started with"
   while IFS= read -r id; do
     [ -n "$id" ] && [ -f "$JUDGE_DIR/$id.md" ] || continue
-    first="$(printf '%s\n' "$PROWS" | awk -F'\t' -v j="$id" '$3==j{print $4; exit}')"
-    now="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$id" '$1==j{print $2; exit}')"
+    first="$(printf '%s\n' "$PROWS" | awk -F'\t' -v j="$id" '$3==j && !d {print $4; d=1}')"
+    now="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$id" '$1==j && !d {print $2; d=1}')"
     [ -z "$first" ] || [ "$first" = "$now" ] ||
       add "$id's rubric changed after its first round; put rubric changes in ## Calibration and merge them at the next goal"
   done <<<"$JUDGES"
@@ -377,7 +377,7 @@ done <<<"$(printf '%s\n' "$PROWS" | awk -F'\t' '$3 != "" { k = $3 " " $5; n[k]++
 # practice under another name.
 ODD="$(printf '%s\n' "$PROWS" | awk -F'\t' '$3 != "" {print $3}' | LC_ALL=C sort -u | { grep -vxF -f <(printf '%s\n' "$JUDGES") || true; } | tr '\n' ' ')"
 [ -z "${ODD// /}" ] || add "judge calls named ${ODD}which the contract's Judges: line does not list; judge only the contract's judges"
-RUNNER="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="T"{print $2; exit}')"
+RUNNER="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="T" && !d {print $2; d=1}')"
 RUNNER_JUDGES=0
 LOWEST=""
 MISSING=""
@@ -442,7 +442,7 @@ if [ -n "$TOKEN" ]; then
         add "the overseer's prompt is not the exact output of goal-overseer-prompt.sh for this state"
       [ "$otype" = 1 ] || add "the overseer ran as a fork or a custom agent type; leave subagent_type out, or set it to general-purpose"
       [ "$omsg" = 1 ] && add "the overseer got a SendMessage after launch (a message can steer it); change the work, then judge all again"
-      ostate="$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" '$1=="W" && $2==o {print $3; exit}')"
+      ostate="$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" '$1=="W" && $2==o && !d {print $3; d=1}')"
       [ "$ostate" = "$TOKEN" ] || add "the overseer's verdict says State: ${ostate:-none}, not $TOKEN"
       [ -n "$RUNNER" ] && [ "$omodel" = "$RUNNER" ] &&
         add "the overseer ran on the runner's own model family ($RUNNER); set a different Agent model on it"
@@ -454,7 +454,7 @@ if [ -n "$TOKEN" ]; then
     [ -n "$id" ] || continue
     eff="$score"
     if [ -n "$OID" ]; then
-      read -r r why <<<"$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" -v j="$id" '$1=="Q" && $2==o && $3==j {print $4, $5; exit}')"
+      read -r r why <<<"$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" -v j="$id" '$1=="Q" && $2==o && $3==j && !d {print $4, $5; d=1}')"
       if [ -z "$r" ]; then
         add "the overseer gave no Ruling line for $id"
       elif [ "${why:-0}" = 0 ]; then
@@ -487,7 +487,7 @@ PLAIN="${PROBLEMS//$SEP/; }"
 # states included, one line per tool_use id, so the pass rate is a fair base rate.
 printf '%s\n' "$ROWS" | awk -F'\t' '$1 == "V" && $11 == "1" && !seen[$2]++' | while IFS=$'\t' read -r _ tid hj hs _ hst hm _; do
   grep -qF -- "	$tid	" "$HISTORY" 2>/dev/null && continue
-  rs="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$hj" '$1==j{print $2; exit}')"
+  rs="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$hj" '$1==j && !d {print $2; d=1}')"
   { printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%F)" "$tid" "$SESSION_ID" "$hj" "$rs" "$hst" "$hm" "$hs" >>"$HISTORY"; } 2>/dev/null || true
 done
 

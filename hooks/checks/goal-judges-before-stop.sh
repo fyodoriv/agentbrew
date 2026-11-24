@@ -526,6 +526,13 @@ NEXT="${PROBLEMS%%"$SEP"*}"
 if ! grep -qvE ' scored [0-9.]+/10' <<<"$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed '/^$/d')"; then
   NEXT="fix every blocker the overseer listed in one batch, each with a test that fails first; file the follow-ups as tasks outside the judged paths before judging; then judge every judge again ($NEXT)"
 fi
+# A focused re-judge that failed: lead with that judge, not the judges that
+# have not run on this state yet (judging them now spends a round on a failing state).
+LOWLINE="$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | grep -E ' scored [0-9.]+/10' | head -1 || true)"
+if [ -n "$LOWLINE" ] && [ "${NEXT#no verdict for the current state}" != "$NEXT" ]; then
+  LOWID="${LOWLINE%% scored *}"; LOWID="${LOWID# }"
+  NEXT="focused re-judge: $LOWLINE; fix its blockers and its Path to 8 items in one batch, each with a test that fails first, change the work, and re-judge only $LOWID; run the other judges and the overseer only after it reaches the bar"
+fi
 LIST="$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed -E 's/^ +//; /^$/d' | awk '{ printf "  %d. %s\n", NR, $0 }')"
 RATE=""
 [ -f "$HISTORY" ] && RATE="$(awk -F'\t' -v m="$MIN" '{ n[$4]++; if ($8 + 0 >= m + 0) p[$4]++ }

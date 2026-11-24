@@ -194,9 +194,11 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
 5. **Focused re-judge.** When only one judge is under the bar, fix its
    blockers and re-judge only that judge, as often as needed (each run
    needs a changed state; `RUN_GOAL_JUDGE_FOCUSED` caps them). A focused
-   re-judge does not use a full round. When it reaches the bar, run one
-   full round with every judge and the overseer on the final state:
-   only that round can pass, since a fix can break what another judge passed.
+   re-judge does not use a full round. When it reaches the bar, finish the
+   round on that same state: run only the other judges, then the overseer.
+   Do not run the re-judged judge again there: a second launch on one state
+   is a re-roll. Only a state with every judge and the overseer can pass,
+   since a fix can break what another judge passed.
 
 ## 3. Iterate the work
 
@@ -234,7 +236,7 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
   record. Ask whether the runner items alone reach 8. When a judge says no, do not
   spend the next round: give the owner that judge's owner items as the one ask, and
   judge again after the answers.
-- Then run **all three** judges again on the new state. Judging one judge twice on one state is a re-roll and fails.
+- Then judge the new state: with one judge under the bar, re-judge only that judge (focused re-judge, step 5); with two or more, run **all three** judges again. Judging one judge twice on one state is a re-roll and fails.
   A launch counts, not a verdict: a judge stopped before its verdict and
   launched again on the same state is a re-roll too.
   The state token ignores trailing spaces, line endings, end-of-file blank

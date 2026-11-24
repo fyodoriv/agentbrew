@@ -382,6 +382,84 @@
   - **Pivot**: if the diff cannot be found for more than 1 in 5 real goals, list unjudged files in the block message instead of blocking.
   - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge", arXiv:2306.05685.
 
+- [ ] A new /goal on the same contract cannot reset the judging-round cap
+  - **ID**: goal-judge-rounds-across-goals
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 6 (llm-evaluation-methodology). The round counter reads the transcript from the latest `/goal` line, so a runner can type a new `/goal` and get 3 fresh rounds on the same contract. Key the count to the contract hash instead.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test file.
+  - **Output**: code
+  - **Acceptance**: a new `/goal` after 3 failing rounds on the same contract still blocks.
+  - **Hypothesis**: goals that pass after a `/goal` restart drop from possible to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with a named restart case.
+  - **Success**: the restart case blocks and the suite shows 0 failed.
+  - **Pivot**: if keying by contract hash breaks legitimate new goals in more than 1 fixture, key by contract file path instead.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (gaming resistance).
+
+- [ ] A judge under the bar always leaves a complete Path to 8
+  - **ID**: goal-judge-path-to-8-check
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 6. The hook does not check that a verdict under the bar has a "Path to 8:" section. The overseer extractor stops at any `# ` or `**X` line, so a bold item cuts the quoted promise. "Path to 8" and "under 8" ignore `RUN_GOAL_JUDGE_MIN`.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-judge-prompt.sh`, `hooks/lib/goal-overseer-prompt.sh`.
+  - **Output**: code
+  - **Acceptance**: a low verdict without the section blocks with "re-run that judge"; a bold list item stays in the quote; the heading follows the minimum.
+  - **Hypothesis**: rounds lost to a guessed fix list drop from 1 per goal to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with named cases for each part.
+  - **Success**: all named cases pass and the suite shows 0 failed.
+  - **Pivot**: if judges skip the section in more than 1 of 3 real rounds, move the list into the verdict block itself.
+  - **Anchor**: Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Judge block messages match the 8, 8, 7 bar and the focused re-judge
+  - **ID**: goal-judge-block-wording
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 6 (devex-workflow-design). After a full round with one low judge, the next step does not name the focused re-judge; "Every effective score needs 8/10" contradicts the slack rule; the header comment lacks `RUN_GOAL_JUDGE_SLACK` and `RUN_GOAL_JUDGE_FOCUSED`; a passing focused re-judge adds a "judges used 1 model family" noise line. Round 5 (devex): with no verdicts yet the next step repeats problem 1; a zero-blocker round with a low score has no stated step.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `skill-plugins/workflow/run-goal/references/goal-judges.md`.
+  - **Output**: code
+  - **Acceptance**: each case above prints the right next step in a named test.
+  - **Hypothesis**: block messages that name the wrong next step drop from 5 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: 0 failed, with one named case per message.
+  - **Pivot**: if the message logic grows past 40 lines, move it into `hooks/lib/` with its own test.
+  - **Anchor**: Nielsen 1994, usability heuristics (error messages).
+
+- [ ] Honest goal-result lines with ordinary punctuation are allowed
+  - **ID**: goal-claim-honest-punctuation
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge rounds 5 and 6. These honest lines read as claims: apostrophes ("blocked on the owner's 2FA code"), "blocked on PR #12", colon text ("not met: owner approval needed"), ranges ("criteria 1-3 met"), and a bare score as a reason ("partly met; judges scored 6/10"). Each costs one of 5 blocks.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh` (CLAIM_AWK), `hooks/checks/goal-judge-claims.test.sh`.
+  - **Output**: code
+  - **Acceptance**: each line above allows, and every current claim case still blocks.
+  - **Hypothesis**: honest lines that block drop from 5 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
+  - **Success**: 0 failed with the 5 new honest cases.
+  - **Pivot**: if any widening lets 1 current claim case through, keep the line blocked and improve the hint instead.
+  - **Anchor**: Nygard 2018, "Release It!" (fail-safe defaults).
+
+- [ ] The contract filter keeps plain lines that mention judges and numbers
+  - **ID**: goal-judge-filter-plain-lines
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 5 and runner. The filter hides plain done-when lines: "At least 3 judges read the README", and a line quoting the owner words "re-judge 1" and "Path to 8". Require a score word next to the number before removing a line.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/checks/goal-judge-claims.test.sh`.
+  - **Output**: code
+  - **Acceptance**: both lines stay; all current removed cases still go.
+  - **Hypothesis**: plain lines hidden from judges drop from 2 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
+  - **Success**: 0 failed with the 2 new kept cases.
+  - **Pivot**: if any change lets 1 current target form through, refuse score targets in the contract instead of filtering them.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (independence).
+
+- [ ] Newcomers can find the goal contract and judge docs from the error alone
+  - **ID**: goal-judge-newcomer-docs
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge rounds 5 and 6. `goal-judge-prompt.sh` with no contract prints only the missing path, with no hint how to make it or find the session id. `SKILL.md` does not mention the slack or focused settings. The full suite prints no final total. `goal-judges.md` does not say where follow-ups from a passing round go, or that all judge families are Claude models.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `skill-plugins/workflow/run-goal/SKILL.md`, `skill-plugins/workflow/run-goal/references/goal-judges.md`, `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: the error names how to create the contract; the docs cover each gap; the suite ends with one total line.
+  - **Hypothesis**: newcomer steps that fail or confuse in a first-time-user judge pass drop from 5 to 0.
+  - **Measurement**: the next first-time-user judge report.
+  - **Success**: it lists 0 of these items.
+  - **Pivot**: if a judge still reports 2 or more, add a worked example goal to `goal-judges.md`.
+  - **Anchor**: Nielsen 1994, usability heuristics (help and documentation).
+
 - [ ] The judge measure command shows rounds per goal
   - **ID**: goal-judge-rounds-metric
   - **Tags**: hooks, run-goal, metrics

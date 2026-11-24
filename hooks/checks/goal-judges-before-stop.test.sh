@@ -172,6 +172,17 @@ expect "a focused re-judge alone blocks: every judge must judge the final state"
 echo "v3" >"$ROOT/work-foc/app.txt"; panel foc 9 8 9
 expect "the focused re-judge cap blocks" 2 "$(run foc "RUN_GOAL_JUDGE_ROUNDS=2 RUN_GOAL_JUDGE_FOCUSED=0")"
 expect "two full rounds and one focused re-judge fit a cap of 2 rounds" 0 "$(run foc RUN_GOAL_JUDGE_ROUNDS=2)"
+# Round-6 blocker 1: after a passing focused re-judge, the final round on the
+# same state runs only the other judges and the overseer, and can pass.
+goal foc2 "Goal result: met (3/3 met)"; panel foc2 9 6 9
+echo "v2" >"$ROOT/work-foc2/app.txt"; judge foc2 jb 8 haiku; judge foc2 ja 9 sonnet; judge foc2 jc 9 fable; oversee foc2 sonnet 9 8 9
+expect "a passing focused re-judge, then the other judges and the overseer on that state, allows" 0 "$(run foc2 RUN_GOAL_JUDGE_SLACK=1)"
+# Round-6 blocker 2: a failed focused re-judge leads with that judge, not the missing ones.
+goal fc "Goal result: met (3/3 met)"; panel fc 9 6 9
+echo "v2" >"$ROOT/work-fc/app.txt"; judge fc jb 6 haiku
+nx="$(run_out fc RUN_GOAL_JUDGE_SLACK=1 | grep '^Next step:')"
+check "a failed focused re-judge names that judge in the next step" grep -q 'jb' <<<"$nx"
+check "a failed focused re-judge does not lead with the missing verdicts" bash -c "! grep -q '^Next step: no verdict' <<<\"\$1\"" _ "$nx"
 # Path to 8: a judge under 8 must promise the fixes; the overseer gets the promise next round.
 goal prom "Goal result: met (3/3 met)"
 check "the judge prompt asks for a Path to 8 promise" grep -q 'Path to 8:' <(prompt prom ja)

@@ -4558,7 +4558,8 @@
       "expected_output": "The agent waits for the main gate result to be saved, then prints and launches all three judges, so no judge caps Evidence for an unfinished check.",
       "expectations": [
         "Does not launch the judges while a gate named in Done when is still running",
-        "Launches the judges after the gate result is saved and quotes it"
+        "Launches the judges after the gate result is saved and quotes it",
+        "States in chat which gate it waits on and the check that watches it"
       ]
     },
     {
@@ -4567,7 +4568,8 @@
       "expected_output": "The agent prints the overseer prompt, checks its State and quoted reports are from the latest round, and launches it with an explicit model of another family (for example sonnet).",
       "expectations": [
         "Passes an explicit model of a family other than its own on the overseer Agent call",
-        "Checks the overseer prompt quotes the latest round before launching it"
+        "Checks the overseer prompt quotes the latest round before launching it",
+        "Rebuilds the overseer prompt when its State or a quoted report is from an older round"
       ]
     }
   ]

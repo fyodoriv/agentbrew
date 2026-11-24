@@ -110,5 +110,9 @@ done
 for f in "$PROMPT_SH" "$DIR/../lib/goal-overseer-prompt.sh"; do
   if grep -q 'A rule the owner set is never a blocker' "$f"; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $(basename "$f") lets a judge block on an owner rule"; fi
 done
+# A pipe into an awk that exits early sends SIGPIPE to the writer, and
+# set -euo pipefail then kills the hook (exit 141) on a long transcript.
+n=$(grep -cE "\| *awk[^|]*; *exit *\}" "$DIR/goal-judges-before-stop.sh" || true)
+if [ "$n" = 0 ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $n pipes into an early-exit awk can SIGPIPE the hook"; fi
 echo "goal-judge-claims: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

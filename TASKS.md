@@ -773,6 +773,110 @@
 
 ## P2
 
+- [ ] Fail closed when the overseer report has no usage note
+  - **ID**: goal-overseer-missing-usage-fails-open
+  - **Tags**: run-goal, overseer, bug
+  - **Details**: Round 14 of the 2026-11-24 follow-up goal: when the overseer's report has no usage note, its tool count is never checked, so a report made with no tool calls still passes.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture overseer report with no usage note is rejected.
+  - **Hypothesis**: overseer reports accepted without a tool count drop from possible to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (new fixture).
+  - **Success**: fixture passes and the suite shows 0 failed.
+  - **Pivot**: if 1 or more of the next 5 real overseer runs lacks a usage note, count tool calls from the transcript instead.
+  - **Anchor**: Saltzer and Schroeder 1975, "The Protection of Information in Computer Systems" (fail-safe defaults).
+
+- [ ] Stop overseer report text from faking tool_uses
+  - **ID**: goal-overseer-fake-tool-uses
+  - **Tags**: run-goal, overseer, independence
+  - **Details**: With no usage trailer, a line like `tool_uses: 9` inside the overseer's own text is read as the count (round 14, overseer).
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture whose body says `tool_uses: 9` but has no trailer is not counted as 9.
+  - **Hypothesis**: spoofable tool counts drop from 1 known path to 0.
+  - **Measurement**: the new fixture in `goal-judges-before-stop.test.sh`.
+  - **Success**: fixture passes; suite 0 failed.
+  - **Pivot**: if 1 or more spoof fixtures still pass after the fix, read the count only from the harness transcript.
+  - **Anchor**: Saltzer and Schroeder 1975, "The Protection of Information in Computer Systems" (complete mediation).
+
+- [ ] Freeze judged paths for goals with no owner file
+  - **ID**: goal-judge-paths-no-owner-file
+  - **Tags**: run-goal, judges, independence
+  - **Details**: The `.paths` freeze only applies when an owner file exists, so a goal without one still lets the runner edit what is judged (round 14).
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/lib/goal-overseer-prompt.sh`, their test.
+  - **Output**: code
+  - **Acceptance**: a no-owner-file goal whose Judged paths line is edited later still yields the first list.
+  - **Hypothesis**: goals with editable judged paths drop from all no-owner-file goals to 0.
+  - **Measurement**: new fixture in `goal-judges-before-stop.test.sh`.
+  - **Success**: fixture passes; suite 0 failed.
+  - **Pivot**: if no stable first-save moment exists, freeze on the first judge run.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (self-enhancement bias).
+
+- [ ] Clean up .paths files with the other goal state
+  - **ID**: goal-state-paths-cleanup
+  - **Tags**: run-goal, hygiene
+  - **Details**: `goal-set-loads-run-goal.sh` removes old contract and state files but not `.paths`, so a stale list can carry into a new goal with the same session id (round 14).
+  - **Files**: `hooks/checks/goal-set-loads-run-goal.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: after a new `/goal`, no `.paths` file from the old goal remains.
+  - **Hypothesis**: stale `.paths` files after a goal reset drop from 1 per reset to 0.
+  - **Measurement**: `bash hooks/checks/goal-set-loads-run-goal.test.sh` (new check).
+  - **Success**: check passes; suite 0 failed.
+  - **Pivot**: if cleanup lists keep drifting, glob all `<session>.*` state files instead.
+  - **Anchor**: Nygard 2018, "Release It!" (clean up stale state).
+
+- [ ] Say what to do next when a quoted ampersand is blocked
+  - **ID**: detached-start-quoted-amp-hint
+  - **Tags**: hooks, devex
+  - **Details**: The detached-start-needs-watch block message names no next step when the ampersand is inside quotes or a heredoc (round 14, devex).
+  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: the block message for a quoted ampersand names the fix (use `run_in_background`, or write the text with a file tool).
+  - **Hypothesis**: repeat blocks of the same command drop from about 2 to 1.
+  - **Measurement**: `bash hooks/checks/detached-start-needs-watch.test.sh` plus `node templates/scripts/agent-perf.mjs report` blocked-call counts over 7 days.
+  - **Success**: test passes and repeat blocks fall by half.
+  - **Pivot**: if repeat blocks stay at 2 or more per command, allow a quoted ampersand in known-safe commands instead.
+  - **Anchor**: Nielsen 1994, "Usability Engineering" (help users recover from errors).
+
+- [ ] Allow node -e and python -c with a quoted ampersand
+  - **ID**: detached-start-inline-code-amp
+  - **Tags**: hooks, devex
+  - **Details**: `node -e` and `python -c` scripts that hold a quoted ampersand are still blocked as detached starts (round 14).
+  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: an inline script with a quoted ampersand passes; a trailing unquoted ampersand stays blocked.
+  - **Hypothesis**: false blocks for inline code drop from 1 known shape to 0.
+  - **Measurement**: new cases in `detached-start-needs-watch.test.sh`.
+  - **Success**: cases pass; 0 failed.
+  - **Pivot**: if 1 or more safe-command cases still fail after 2 tries, keep the block and improve the hint only.
+  - **Anchor**: Nygard 2018, "Release It!" (avoid false alarms).
+
+- [ ] Document detached-start-needs-watch in hook-protocol.md
+  - **ID**: hook-protocol-detached-start
+  - **Tags**: docs, hooks
+  - **Details**: `docs/hook-protocol.md` does not mention detached-start-needs-watch (round 14, devex).
+  - **Files**: `docs/hook-protocol.md`.
+  - **Output**: docs
+  - **Acceptance**: the doc names the hook, what it blocks and the fix.
+  - **Hypothesis**: hooks missing from the doc drop from 1 to 0.
+  - **Measurement**: `grep -c detached-start-needs-watch docs/hook-protocol.md` is at least 1.
+  - **Success**: count at least 1.
+  - **Pivot**: if 1 or more hooks are missing from the doc again within 30 days, generate the list from `hooks/checks/`.
+  - **Anchor**: Parnas and Clements 1986, "A Rational Design Process" (keep docs current).
+
+- [ ] Fit the goal-judges stop suite in a judge's time budget
+  - **ID**: goal-judges-suite-judge-budget
+  - **Tags**: run-goal, speed
+  - **Details**: The full `goal-judges-before-stop.test.sh` run takes longer than a judge's budget, so judges cannot re-run it (round 14).
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: a judge can run the relevant part in under 2 minutes.
+  - **Hypothesis**: suite time for a judge drops from over 5 minutes to under 2.
+  - **Measurement**: `time bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: under 2 minutes.
+  - **Pivot**: if it stays above 3 minutes, split the suite into files.
+  - **Anchor**: Forsgren, Humble and Kim 2018, "Accelerate" (fast feedback).
+
 - [ ] run-goal eval 384 lists one follow-up per line
   - **ID**: run-goal-eval-384-one-follow-up-per-line
   - **Tags**: run-goal, evals

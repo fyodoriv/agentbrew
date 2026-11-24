@@ -85,6 +85,17 @@ out3="$(bash "$PROMPT_SH" --contract-text "$tc")"
 rm -f "$tc"
 n3="$(grep -c 'judge scores removed' <<<"$out3" || true)"
 if [ "$n3" = 0 ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $n3 plain lines hidden"; fi
+# Goal iteration 2: a bare "reach N" score target goes; "reach N users" stays.
+tc="$(mktemp "${TMPDIR:-/tmp}/gjc.XXXXXX")"
+printf '%s\n' '1. Reach 8.0 within two rounds.' 'Reach 8 after one iteration' 'Goal: reach 9.' >"$tc"
+out4="$(bash "$PROMPT_SH" --contract-text "$tc")"
+printf '%s\n' 'Reach 3 users in the pilot' 'The doc must reach 2 teams' >"$tc"
+out5="$(bash "$PROMPT_SH" --contract-text "$tc")"
+rm -f "$tc"
+n4="$(grep -c 'judge scores removed' <<<"$out4" || true)"
+if [ "$n4" = 3 ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $n4 of 3 bare reach targets removed"; fi
+n5="$(grep -c 'judge scores removed' <<<"$out5" || true)"
+if [ "$n5" = 0 ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $n5 plain reach lines hidden"; fi
 n="$(grep -c 'judge scores removed' <<<"$out" || true)"
 if [ "$n" = 5 ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $n of 5 score targets removed"; fi
 if grep -q 'content is written' <<<"$out"; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: a plain line was hidden"; fi

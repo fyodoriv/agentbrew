@@ -30,7 +30,8 @@ set -uo pipefail
 # only happen once the judges pass, such as merge or install) is left out,
 # and a line that sets a score target (N/10, "N of ten", or a score or judge
 # word with a number and "or more", ">=", "8+", "no less than", "minimum",
-# or "above|target|bar|exceed|reach 8", ...) is replaced, so no target
+# or "above|target|bar|exceed|reach 8", ...) or a bare "reach 8.0" (a score-sized
+# number at the end or before "within", "in", "after") is replaced, so no target
 # anchors a judge. Words match whole ("sidebar" and "on target" stay), and
 # the Judges: and Judged paths: lines always stay. The overseer prompt uses
 # the same text.
@@ -41,6 +42,7 @@ contract_text() {
     skip { next }
     l ~ /^[-*_ ]*judge(s|d paths):/ { print; next }
     l ~ /([0-9]|(^|[^a-z])(one|two|three|four|five|six|seven|eight|nine|ten)) *(\/|out of|of) *(10|ten)([^a-z]|$)/ ||
+    l ~ /(^|[^a-z])reach(es|ing)? +(10|[0-9])(\.[0-9]+)? *([.,;:)]|$| (within|in|after|by|on|for)([^a-z]|$))/ ||
     (l ~ /score|judge|grade|rating|pass mark/ && l ~ /[0-9]|(^|[^a-z])(one|two|three|four|five|six|seven|eight|nine|ten)([^a-z]|$)/ &&
      (l ~ /(^|[^a-z])(or more|or higher|or better|or above|or less|or lower|or below|at least|no less than|no lower than|no fewer than|minimum|passing grade|pass mark)([^a-z]|$)/ ||
       l ~ /(^|[^a-z])(above|below|over|under|exceeds?|exceeding|reach(es|ing)?|raised?|target|bar|threshold)([^a-z][^.;]*)?([0-9]|(^|[^a-z])(one|two|three|four|five|six|seven|eight|nine|ten)([^a-z]|$))/ ||

@@ -77,7 +77,7 @@ depends on it.
    Keep each judged path until the goal's last Stop: a removed worktree
    fails the state check and forces partly met. Remove it after the goal ends.
    The prompt drops contract lines about judge scores (a `N/10` or a score
-   with a number), so put targets on their own lines.
+   with a number, or a bare "reach 8.0"), so put targets on their own lines.
 
    A judge file must meet the rubric floor, or the hook refuses it:
    - `Field:`, `Applies:`, and `Scale:` lines and three or more rubric lines

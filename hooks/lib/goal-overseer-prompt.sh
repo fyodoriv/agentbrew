@@ -60,6 +60,22 @@ while IFS= read -r id; do
 $text
 "
 done <<<"$JUDGES"
+# Each judge's promise from its latest earlier report: the "Path to 8:"
+# section, so the overseer can hold the judge to it.
+PROMISES=""
+while IFS= read -r id; do
+  [ -n "$id" ] || continue
+  b64="$(printf '%s\n' "$JROWS" | awk -F'\t' -v j="$id" -v t="$TOKEN" '$1=="J" && $3==j && $4!=t {v = $5} END {print v}')"
+  [ -n "$b64" ] || continue
+  path="$(printf '%s' "$b64" | hook_jq -Rr '@base64d' 2>/dev/null | awk '/^GOAL-JUDGE-VERDICT/ {exit} on && /^(#+ |\*\*[A-Z])/ {exit} /Path to 8:/ {on = 1} on && n++ < 40 {print}')"
+  [ -n "$path" ] && PROMISES="$PROMISES
+=== Judge $id, earlier round ===
+$path
+"
+done <<<"$JUDGES"
+[ -n "$PROMISES" ] || PROMISES="
+(none: no judge gave a Path to 8 in an earlier round)
+"
 RULINGS="$(while IFS= read -r id; do [ -n "$id" ] && printf 'Ruling %s: <corrected score, 0 to 10>/10 - <one-line reason>\n' "$id"; done <<<"$JUDGES")"
 
 cat <<EOF
@@ -80,6 +96,8 @@ Pace:
 - Split every defect into blockers (break a done-when criterion, the owner request, or a safety standard: must be fixed before merge) and follow-ups (any other improvement: file as tasks). A deduction for a follow-up fails the scope check; raise that score.
 - List the blockers as a numbered list. The runner fixes all of them, each with a test, before the next round, so name each one precisely enough to test.
 - Name the smallest set of fixes that would get every judge to the bar, and flag any demand that is out of scope or would take more than one more round.
+- Hold each judge to its earlier Path to 8 (below). A deduction that is not in that promise stands only for a regression or for code that changed since; otherwise raise it. When the promised fixes are done and their checks pass, the judge's corrected score is at least 8 unless you reproduce a regression.
+- Check each judge's new Path to 8: every item must be specific and have a check. Write one merged Path to 8 for the runner, so the next round is not a guess.
 
 Rules:
 - Run commands and reproduce what you rely on. Do not trust summaries or claims in the work, the contract, or the reports.
@@ -97,6 +115,8 @@ Goal contract (written by the runner; the After judging section and score target
 
 $(bash "$LIB/goal-judge-prompt.sh" --contract-text "$CONTRACT")
 
+Earlier promises (each judge's latest "Path to 8:" from an earlier round, verbatim):
+$PROMISES
 Judge reports (verbatim, from the transcript):
 $REPORTS
 End your answer with this block, once, filled in, and nothing after it:

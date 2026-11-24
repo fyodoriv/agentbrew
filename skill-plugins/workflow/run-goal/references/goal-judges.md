@@ -7,7 +7,8 @@ budget allows. Green checks show the work runs. Judges show it is good.
 In Claude Code with agentbrew, the `goal-judges-before-stop` hook enforces
 this, and it is success-gated. While a goal contract exists, it lets Stop
 through only when each judge the contract names has exactly one verdict for
-the current state, each at 8/10 or more, within three judging rounds, or when
+the current state, each at 8/10 or more (one judge of three or more may sit
+at 7: the 8, 8, 7 bar), within three judging rounds, or when
 the retro says plainly that the goal is not met. No retro, no `Goal result`
 line, or any other form ("met", "done") all need the consensus.
 
@@ -29,6 +30,8 @@ contract is back or the retro says not met.
 | `RUN_GOAL_JUDGE_COUNT` | 3 | never lower it to pass a goal |
 | `RUN_GOAL_JUDGE_MODELS` | 3 | model families needed (opus, sonnet, haiku, fable); lower it only when fewer families can run (then say so in the report) |
 | `RUN_GOAL_JUDGE_ROUNDS` | 3 | the owner approves more rounds for one goal |
+| `RUN_GOAL_JUDGE_SLACK` | 1 | points one judge may sit under the minimum while every other judge meets it (needs 3 or more judges); 0 means every judge meets the minimum |
+| `RUN_GOAL_JUDGE_FOCUSED` | 4 | focused re-judges allowed per goal (a state judged by only some judges) |
 | `RUN_GOAL_JUDGE_DIR` | `~/.config/agentbrew/goal-judges` | the judge cache lives elsewhere |
 
 **Cost**: one round is three fresh subagents reading the judged paths; a
@@ -188,6 +191,12 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
    round with no overseer, an edited overseer prompt, a second overseer on
    one state, or an overseer on your own model family cannot pass. Fix the
    overseer's blockers first: that is how a round stays short.
+5. **Focused re-judge.** When only one judge is under the bar, fix its
+   blockers and re-judge only that judge, as often as needed (each run
+   needs a changed state; `RUN_GOAL_JUDGE_FOCUSED` caps them). A focused
+   re-judge does not use a full round. When it reaches the bar, run one
+   full round with every judge and the overseer on the final state:
+   only that round can pass, since a fix can break what another judge passed.
 
 ## 3. Iterate the work
 

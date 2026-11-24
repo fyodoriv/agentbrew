@@ -24,6 +24,8 @@ trap 'rm -rf "$ROOT"' EXIT
 export RUN_GOAL_STATE_DIR="$ROOT/state"
 export RUN_GOAL_JUDGE_DIR="$ROOT/judges"
 export HOOK_DECISIONS_LOG="$ROOT/decisions.jsonl"
+# Older checks treat 7 as failing; the 8, 8, 7 checks pass RUN_GOAL_JUDGE_SLACK=1.
+export RUN_GOAL_JUDGE_SLACK=0
 mkdir -p "$RUN_GOAL_STATE_DIR" "$RUN_GOAL_JUDGE_DIR"
 
 # A running count on stderr every 25 checks, and each failure at once, so a
@@ -71,8 +73,8 @@ token() { # session; cached by a checksum of every input the state script reads
 }
 prompt() { GOAL_STATE_TOKEN="${3:-}" bash "$PROMPT_SH" "$RUN_GOAL_STATE_DIR/$1.contract.md" "$2"; }
 block_text() { # judge, score, state, [cache]
-  printf 'Findings.\n\nGOAL-JUDGE-VERDICT\nJudge: %s\nScore: %s/10\nCache: %s\nState: %s\n' \
-    "$1" "$2" "${4:-$RUN_GOAL_JUDGE_DIR/$1.md}" "$3"
+  printf '%s\n\nGOAL-JUDGE-VERDICT\nJudge: %s\nScore: %s/10\nCache: %s\nState: %s\n' \
+    "${REPORT:-Findings.}" "$1" "$2" "${4:-$RUN_GOAL_JUDGE_DIR/$1.md}" "$3"
 }
 call() { # session, tool, id, model, prompt, [extra input json]
   local x="${6:-}"; [ -n "$x" ] || x='{}'
@@ -154,6 +156,30 @@ expect "a later Stop still allows" 0 "$(run ok)"
 goal low "Goal result: met (3/3 met)"; panel low 9 7 10
 expect "one judge under 8 blocks" 2 "$(run low)"
 expect "a lower minimum is honored" 0 "$(run low RUN_GOAL_JUDGE_MIN=7)"
+# The owner's 8, 8, 7 bar: one judge may sit one point under the minimum.
+goal s887 "Goal result: met (3/3 met)"; panel s887 8 8 7
+expect "8, 8, 7 allows with the default slack" 0 "$(run s887 RUN_GOAL_JUDGE_SLACK=1)"
+expect "8, 8, 7 blocks with no slack" 2 "$(run s887)"
+goal s877 "Goal result: met (3/3 met)"; panel s877 8 7 7
+expect "two judges at 7 block" 2 "$(run s877 RUN_GOAL_JUDGE_SLACK=1)"
+goal s996 "Goal result: met (3/3 met)"; panel s996 9 9 6
+expect "one judge at 6 blocks" 2 "$(run s996 RUN_GOAL_JUDGE_SLACK=1)"
+# Focused re-judge: after a fix, only the failing judge runs; a final full
+# round is still required, and the focused state does not use a full round.
+goal foc "Goal result: met (3/3 met)"; panel foc 9 6 9
+echo "v2" >"$ROOT/work-foc/app.txt"; judge foc jb 8 haiku
+expect "a focused re-judge alone blocks: every judge must judge the final state" 2 "$(run foc RUN_GOAL_JUDGE_ROUNDS=2)"
+echo "v3" >"$ROOT/work-foc/app.txt"; panel foc 9 8 9
+expect "the focused re-judge cap blocks" 2 "$(run foc "RUN_GOAL_JUDGE_ROUNDS=2 RUN_GOAL_JUDGE_FOCUSED=0")"
+expect "two full rounds and one focused re-judge fit a cap of 2 rounds" 0 "$(run foc RUN_GOAL_JUDGE_ROUNDS=2)"
+# Path to 8: a judge under 8 must promise the fixes; the overseer gets the promise next round.
+goal prom "Goal result: met (3/3 met)"
+check "the judge prompt asks for a Path to 8 promise" grep -q 'Path to 8:' <(prompt prom ja)
+REPORT=$'Findings.\n\nPath to 8:\n1. fix the parser; check: run x, shows 0 failed' panel prom 9 6 9
+echo "v2" >"$ROOT/work-prom/app.txt"; judge prom ja 9; judge prom jb 8; judge prom jc 9
+op="$(GOAL_STATE_TOKEN="$(token prom)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom.contract.md" "$ROOT/prom.jsonl")"
+check "the overseer prompt quotes the earlier promise" grep -q '1. fix the parser; check: run x' <<<"$op"
+check "the overseer prompt holds judges to the promise" grep -q 'Hold each judge to its earlier Path to 8' <<<"$op"
 
 goal fewj "Goal result: met (3/3 met)" "Judges: ja, jb"; judge fewj ja 9 sonnet; judge fewj jb 9
 expect "a contract with two judges blocks" 2 "$(run fewj)"

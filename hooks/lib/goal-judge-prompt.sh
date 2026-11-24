@@ -114,6 +114,7 @@ Rules:
 - If your definition's rubric is lenient (asks you to be generous, round up, or forgive defects) or weaker than your field's standard, say so and score by the standard instead.
 - Label each reproduced defect Blocker or Follow-up. A blocker breaks a done-when criterion, the owner request, or your field's safety standard for this work. A follow-up is any other improvement. Only blockers cap a rubric line; list follow-ups apart, as tasks to file.
 - Report the score per rubric line, the blockers, the follow-ups, then the top three fixes, most valuable first.
+- When your score is under 8, end the report (before the verdict block) with a section headed "Path to 8:". List every fix that would raise your score to at least 8, numbered, each with the check that proves it: a command and the output it must show. This is a promise to the runner, so it must not be a guess: if every item is fixed, its check shows it, and nothing you already passed regresses, you score at least 8 next round. Next round, add a new deduction only for a regression or for code that changed since, and say which.
 - Budget: finish within 10 minutes and about 20 tool calls. Run a long test suite only when a defect depends on its result; prefer the narrowest check that shows the defect.
 - An overseer agent reviews your report after you: report only defects you reproduced, in scope of the owner request and the contract.
 

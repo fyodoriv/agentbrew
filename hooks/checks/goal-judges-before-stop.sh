@@ -187,10 +187,14 @@ MIN="${RUN_GOAL_JUDGE_MIN:-8}"
 NEED="${RUN_GOAL_JUDGE_COUNT:-3}"
 MODELS="${RUN_GOAL_JUDGE_MODELS:-3}"
 ROUNDS="${RUN_GOAL_JUDGE_ROUNDS:-3}"
+FOCUSED="${RUN_GOAL_JUDGE_FOCUSED:-4}"
+SLACK="${RUN_GOAL_JUDGE_SLACK:-1}"
 case "$MIN" in "" | *[!0-9.]*) MIN=8 ;; esac
 case "$NEED" in "" | *[!0-9]*) NEED=3 ;; esac
 case "$MODELS" in "" | *[!0-9]*) MODELS=3 ;; esac
 case "$ROUNDS" in "" | *[!0-9]*) ROUNDS=3 ;; esac
+case "$FOCUSED" in "" | *[!0-9]*) FOCUSED=4 ;; esac
+case "$SLACK" in "" | *[!0-9]*) SLACK=1 ;; esac
 CONTRACT="$STATE_DIR/$SESSION_ID.contract.md"
 RETRO="$STATE_DIR/$SESSION_ID.retro.md"
 COUNTER="$STATE_DIR/$SESSION_ID.judgeblocks"
@@ -323,7 +327,11 @@ fi
 
 # Rounds, frozen judge set, and frozen rubrics, from this goal's judge prompts.
 PROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="P"')"
-NR_ROUNDS="$(printf '%s\n' "$PROWS" | sed '/^$/d' | awk -F'\t' '!seen[$5]++' | wc -l | tr -d ' ')"
+# A full round judges every judge; a state that judged fewer is a focused
+# re-judge of the failing judge(s), counted against its own cap.
+read -r NR_ROUNDS NR_FOCUSED <<<"$(printf '%s\n' "$PROWS" | sed '/^$/d' | awk -F'\t' -v nj="${NJ:-0}" '!seen[$5 FS $3]++ { n[$5]++ } END { f = 0; p = 0; for (k in n) { if (n[k] >= nj) f++; else p++ } print f, p }')"
+[ "${NR_FOCUSED:-0}" -gt "$FOCUSED" ] &&
+  add "this goal used $NR_FOCUSED focused re-judges (a state judged by only some judges); the cap is $FOCUSED (RUN_GOAL_JUDGE_FOCUSED); run a full round instead"
 NR_ROUNDS=$((NR_ROUNDS + UROWS))
 [ "$NR_ROUNDS" -gt "$ROUNDS" ] &&
   add "this goal used $NR_ROUNDS judging rounds ($UROWS of them unofficial: a judge call without the prompt header, or claude -p/codex exec/ollama run in Bash, whose result holds a verdict); the cap is $ROUNDS (more rounds farm for a lucky score; only the owner can raise it, by typing a message that starts with: approve round $((NR_ROUNDS)))"
@@ -440,6 +448,8 @@ if [ -n "$TOKEN" ]; then
         add "the overseer ran on the runner's own model family ($RUNNER); set a different Agent model on it"
     fi
   fi
+  LOWN=0
+  LOWS=""
   while read -r id score; do
     [ -n "$id" ] || continue
     eff="$score"
@@ -457,10 +467,18 @@ if [ -n "$TOKEN" ]; then
       fi
     fi
     if awk -v a="$eff" -v m="$MIN" 'BEGIN{exit !(a<m)}'; then
-      if [ "$eff" = "$score" ]; then add "$id scored $score/10"; else add "$id scored $eff/10 after the overseer (judge: $score/10)"; fi
+      if [ "$eff" = "$score" ]; then msg="$id scored $score/10"; else msg="$id scored $eff/10 after the overseer (judge: $score/10)"; fi
+      LOWN=$((LOWN + 1))
+      awk -v a="$eff" -v m="$MIN" -v k="$SLACK" 'BEGIN{exit !(a<m-k)}' && LOWN=$((LOWN + 9))
+      LOWS="$LOWS$SEP$msg"
     fi
     if [ -z "$LOWEST" ] || awk -v a="$eff" -v b="$LOWEST" 'BEGIN{exit !(a<b)}'; then LOWEST="$eff"; fi
   done <<<"$SCORES"
+  # The 8, 8, 7 bar: with 3 or more judges, one judge may sit up to SLACK
+  # points below the minimum when every other judge meets it.
+  if [ "${LOWN:-0}" -gt 0 ] && ! { [ "$LOWN" = 1 ] && [ "${NJ:-0}" -ge 3 ] && [ "$SLACK" -gt 0 ]; }; then
+    PROBLEMS="$PROBLEMS$LOWS"
+  fi
 fi
 PROBLEMS="${PROBLEMS#"$SEP"}"
 PLAIN="${PROBLEMS//$SEP/; }"

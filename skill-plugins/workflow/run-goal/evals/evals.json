@@ -4530,6 +4530,16 @@
         "The overseer raises a new deduction that was not in the earlier Path to 8 unless it names a regression or changed code",
         "Treats 8, 8, 7 as passing and 8, 7, 7 as blocking"
       ]
+    },
+    {
+      "id": 403,
+      "prompt": "/goal get the visa form checked (round 1 judges scored 7, 6, 5; two judges say their score needs answers only the owner can give)",
+      "expected_output": "The agent asks each judge under 8 what is missing to reach 8 with each item marked runner, owner or outside record, fixes the runner items, and gives the owner the owner items as one ask before it spends another judging round.",
+      "expectations": [
+        "Asks each judge under 8, in a follow-up to the same agent, what is missing to reach 8",
+        "Separates items the runner can do from items only the owner or an outside record can close",
+        "Does not spend another judging round while a judge says its score needs the owner's answers; asks the owner first"
+      ]
     }
   ]
 }

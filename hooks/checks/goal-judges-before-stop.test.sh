@@ -229,7 +229,14 @@ echo "v2" >"$ROOT/work-prom4/app.txt"; judge prom4 ja 9; judge prom4 jb 8; judge
 op="$(GOAL_STATE_TOKEN="$(token prom4)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom4.contract.md" "$ROOT/prom4.jsonl")"
 check "an inner heading does not cut the promise" grep -q '^0\. fix the head; check: run h' <<<"$op"
 check "a long promise is not cut at 40 lines" grep -q '^45\. fix item 45; check: run t45' <<<"$op"
-check "a later prose mention does not replace the promise" bash -c '! grep -q "^Note: see Path to 8" <<<"$1"' _ "$op"
+check "a later prose mention does not replace the promise" grep -q '^Path to 8:$' <<<"$op"
+# Iteration 3: a fenced check or a Check: paragraph does not end the promise.
+goal prom5 "Goal result: met (3/3 met)"
+REPORT=$'Findings.\n\nPath to 8:\n1. Fix the parser.\n\n```\nbash t.sh\n```\n\nCheck: bash t.sh shows 0 failed\n\n2. Fix the doc; check: run d' panel prom5 9 6 9
+echo "v2" >"$ROOT/work-prom5/app.txt"; judge prom5 ja 9; judge prom5 jb 8; judge prom5 jc 9
+op="$(GOAL_STATE_TOKEN="$(token prom5)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom5.contract.md" "$ROOT/prom5.jsonl")"
+check "a fenced check and a Check: paragraph keep the next item" grep -q '^2\. Fix the doc; check: run d' <<<"$op"
+check "the overseer lets only a high-severity blocker cap a score" grep -q 'Only a high-severity blocker caps a score' <<<"$op"
 
 goal fewj "Goal result: met (3/3 met)" "Judges: ja, jb"; judge fewj ja 9 sonnet; judge fewj jb 9
 expect "a contract with two judges blocks" 2 "$(run fewj)"

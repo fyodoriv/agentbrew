@@ -68,7 +68,7 @@ while IFS= read -r id; do
   [ -n "$id" ] || continue
   b64="$(printf '%s\n' "$JROWS" | awk -F'\t' -v j="$id" -v t="$TOKEN" '$1=="J" && $3==j && $4!=t {v = $5} END {print v}')"
   [ -n "$b64" ] || continue
-  path="$(printf '%s' "$b64" | hook_jq -Rr '@base64d' 2>/dev/null | awk '/^GOAL-JUDGE-VERDICT/ {exit} /^[#*_ >-]*Path to 8:/ {buf = $0 "\n"; on = 1; gap = 0; next} on && gap && !/^([ \t]|[0-9]+[.)]|[-*+] |#|\*\*|$)/ {on = 0} on {buf = buf $0 "\n"; gap = ($0 ~ /^[ \t]*$/)} END {printf "%s", buf}')"
+  path="$(printf '%s' "$b64" | hook_jq -Rr '@base64d' 2>/dev/null | awk '/^GOAL-JUDGE-VERDICT/ {exit} /^[#*_ >-]*Path to 8:/ {buf = $0 "\n"; on = 1; next} on {buf = buf $0 "\n"} END {printf "%s", buf}')"
   [ -n "$path" ] && PROMISES="$PROMISES
 === Judge $id, earlier round ===
 $path
@@ -94,8 +94,8 @@ For each judge:
 - Correct the score by at most 2 points, up or down, with one reason. Lower it for a reproduced miss; raise it only for a deduction that fails the checks above, with a reason of 20 or more characters that names that deduction; keep it when the judge was right.
 
 Pace:
-- Split every defect into blockers (break a done-when criterion, the owner request, or a safety standard: must be fixed before merge) and follow-ups (any other improvement: file as tasks). A deduction for a follow-up fails the scope check; raise that score.
-- List the blockers as a numbered list. The runner fixes all of them, each with a test, before the next round, so name each one precisely enough to test.
+- Split every defect into blockers (break a done-when criterion, the owner request, or a safety standard) and follow-ups (any other improvement: file as tasks). Give each blocker a severity: high when it lets a false result pass, loses a verdict, traps the agent with no exit, or leaves a done-when criterion unmet; low otherwise. Only a high-severity blocker caps a score; a deduction for a low blocker or a follow-up fails the scope check, so raise that score, and list those as tasks to file.
+- List the high-severity blockers as a numbered list. The runner fixes all of them, each with a test, before the next round, so name each one precisely enough to test.
 - Name the smallest set of fixes that would get every judge to the bar, and flag any demand that is out of scope or would take more than one more round.
 - Hold each judge to its earlier Path to 8 (below). A deduction that is not in that promise stands only for a regression or for code that changed since; otherwise raise it. When the promised fixes are done and their checks pass, the judge's corrected score is at least 8 unless you reproduce a regression.
 - Check each judge's new Path to 8: every item must be specific and have a check. Write one merged Path to 8 for the runner, so the next round is not a guess.

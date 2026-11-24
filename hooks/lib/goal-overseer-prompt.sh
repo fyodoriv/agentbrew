@@ -39,6 +39,12 @@ OWNER_TEXT="(no owner file; judge against the contract only)"
 [ "$OWNER_FILE" != "$CONTRACT" ] && [ -f "$OWNER_FILE" ] && OWNER_TEXT="$(cat "$OWNER_FILE")"
 PATHS="$(sed -nE 's/^[-*_ ]*Judged paths:[*_ ]*(.*)$/\1/p' "$CONTRACT" | head -1 | tr ',' '\n' |
   sed -E 's/^[[:space:]`]+//; s/[[:space:]`]+$//' | sed '/^$/d' | sed "s|^~|$HOME|; s/^/- /")"
+# Use the judged paths the judge prompt froze (goal-judge-prompt.sh), so a
+# contract edited mid-goal cannot narrow what the overseer checks.
+PATHS_FILE="${CONTRACT%.contract.md}.paths"
+if [ "$OWNER_FILE" != "$CONTRACT" ] && [ -f "$OWNER_FILE" ] && [ -s "$PATHS_FILE" ] && [ ! "$OWNER_FILE" -nt "$PATHS_FILE" ]; then
+  PATHS="$(cat "$PATHS_FILE")"
+fi
 
 if [ "$SRC" = "-" ]; then
   JROWS="$(cat)"

@@ -254,7 +254,11 @@ prompt pfrz ja gs2-aaaa >/dev/null
 sed -i.bak "s|^Judged paths: .*|Judged paths: $ROOT/elsewhere|" "$RUN_GOAL_STATE_DIR/pfrz.contract.md"
 check "an edited Judged paths line does not change the judged paths" grep -qF -- "- $ROOT/work-pfrz" <(prompt pfrz ja gs2-aaaa)
 check "the edited path is not shown to judges" bash -c '! grep -qF -- "$1" <<<"$2"' _ "- $ROOT/elsewhere" "$(prompt pfrz ja gs2-aaaa)"
-rm -f "$RUN_GOAL_STATE_DIR/pfrz.owner.md" "$RUN_GOAL_STATE_DIR/pfrz.paths" "$RUN_GOAL_STATE_DIR/pfrz.contract.md.bak"
+: >"$ROOT/pfrz-empty.jsonl"
+OPFRZ="$(bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/pfrz.contract.md" "$ROOT/pfrz-empty.jsonl")"
+check "the overseer prompt uses the frozen judged paths" grep -qF -- "- $ROOT/work-pfrz" <<<"$OPFRZ"
+check "the overseer prompt hides the edited path" bash -c '! grep -qF -- "$1" <<<"$2"' _ "- $ROOT/elsewhere" "$OPFRZ"
+rm -f "$ROOT/pfrz-empty.jsonl" "$RUN_GOAL_STATE_DIR/pfrz.owner.md" "$RUN_GOAL_STATE_DIR/pfrz.paths" "$RUN_GOAL_STATE_DIR/pfrz.contract.md.bak"
 goal otl "Goal result: met (3/3 met)"
 judge otl ja 9 sonnet; judge otl jb 6 haiku; judge otl jc 9 fable
 OUSAGE=$'\n<usage><tool_uses>0</tool_uses></usage>' oversee otl sonnet 9 8 9

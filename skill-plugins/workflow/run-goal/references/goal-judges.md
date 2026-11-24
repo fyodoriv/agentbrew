@@ -228,6 +228,12 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
   Judges label each defect Blocker or Follow-up, and only blockers cap a
   score; the overseer raises a score lowered by a follow-up. This keeps each
   round's new findings from moving the bar.
+- After a round with a judge under 8, ask that judge (a follow-up message to the
+  same agent, not a new judge run) what is missing to reach 8. Have it mark each
+  item: the runner can do it now, only the owner can do it, or it needs an outside
+  record. Ask whether the runner items alone reach 8. When a judge says no, do not
+  spend the next round: give the owner that judge's owner items as the one ask, and
+  judge again after the answers.
 - Then run **all three** judges again on the new state. Judging one judge twice on one state is a re-roll and fails.
   A launch counts, not a verdict: a judge stopped before its verdict and
   launched again on the same state is a re-roll too.

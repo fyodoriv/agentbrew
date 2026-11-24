@@ -835,7 +835,7 @@
   - **Hypothesis**: repeat blocks of the same command drop from about 2 to 1.
   - **Measurement**: `bash hooks/checks/detached-start-needs-watch.test.sh` plus `node templates/scripts/agent-perf.mjs report` blocked-call counts over 7 days.
   - **Success**: test passes and repeat blocks fall by half.
-  - **Pivot**: if repeat blocks stay at 2 or more per command, allow a quoted ampersand in known-safe commands instead.
+  - **Pivot**: if the same command is still blocked twice in a row (count above 1), allow a quoted ampersand in known-safe commands instead.
   - **Anchor**: Nielsen 1994, "Usability Engineering" (help users recover from errors).
 
 - [ ] Allow node -e and python -c with a quoted ampersand

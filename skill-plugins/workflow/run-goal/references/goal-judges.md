@@ -210,8 +210,9 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
    names the focused re-judge when exactly one judge is under the bar.
    The overseer quotes each judge's promise: the last line that starts with
    "Path to 8:" (after any heading or bold marks) and all that follows,
-   inner headings, bold labels and long lists included. It stops at the
-   verdict block, or at plain prose after a blank line.
+   inner headings, bold labels, fenced checks and long lists included,
+   up to the verdict block. The overseer, like the judges, lets only a
+   high-severity blocker cap a score.
    Every fix a judge lists, at any score, names its severity and a
    runnable check.
 

@@ -189,7 +189,7 @@ excuse a met claim.
    (the transcript is `~/.claude/projects/<project>/<session id>.jsonl`; the
    block message names it) and pass it unchanged. The script quotes each
    judge's latest report on the state from the transcript, so you cannot
-   trim one, and a focused re-judge replaces that judge's older report. A
+   trim one, and a later report on the same state replaces the earlier one. A
    report reaches the transcript only after its notification turn ends:
    build the prompt in the next turn. The overseer
    checks every deduction (reproduced, in scope, not an after-judging step),

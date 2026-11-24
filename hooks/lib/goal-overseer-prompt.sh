@@ -15,9 +15,10 @@
 #   bash goal-overseer-prompt.sh <contract path> -   (J rows on stdin; the hook)
 # A J row is: J <tab> <tool_use_id> <tab> <judge id> <tab> <state> <tab> <report, base64>
 # (from goal-judge-verdicts.jq). The latest report per judge on the current
-# state is used, so a focused re-judge replaces the older report. Judges are
-# listed in the order of the contract's Judges: line. Each awk here reads all
-# of its input, so no writer in these pipes gets SIGPIPE.
+# state is used: a later report on the same state replaces the earlier one.
+# Judges are listed in the order of the contract's Judges: line. Each awk here
+# reads all of its input: an awk that exits on the first match made the whole
+# script exit 141 (SIGPIPE) with no output on a large transcript.
 #
 # Exit 2 with a message on stderr when goal-state.sh fails or a judge on the
 # Judges: line has no report on the current state.

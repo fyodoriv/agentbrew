@@ -450,7 +450,7 @@
 - [ ] Newcomers can find the goal contract and judge docs from the error alone
   - **ID**: goal-judge-newcomer-docs
   - **Tags**: hooks, run-goal
-  - **Details**: Found 2026-11-23, judge rounds 5 and 6. `goal-judge-prompt.sh` with no contract prints only the missing path, with no hint how to make it or find the session id. `SKILL.md` does not mention the slack or focused settings. The full suite prints no final total. `goal-judges.md` does not say where follow-ups from a passing round go, or that all judge families are Claude models.
+  - **Details**: Found 2026-11-23, judge rounds 5 and 6. `goal-judge-prompt.sh` with no contract prints only the missing path, with no hint how to make it or find the session id. `SKILL.md` does not mention the slack or focused settings. The full suite prints no final total. `goal-judges.md` does not say where follow-ups from a passing round go, or that all judge families are Claude models. Goal iteration 1 adds: the "at most nine judge runs" cost text ignores focused re-judges and the overseer; section 3 puts "fix every blocker" before "ask that judge"; the doc gives no measured time for each suite.
   - **Files**: `hooks/lib/goal-judge-prompt.sh`, `skill-plugins/workflow/run-goal/SKILL.md`, `skill-plugins/workflow/run-goal/references/goal-judges.md`, `hooks/checks/goal-judges-before-stop.test.sh`.
   - **Output**: code
   - **Acceptance**: the error names how to create the contract; the docs cover each gap; the suite ends with one total line.

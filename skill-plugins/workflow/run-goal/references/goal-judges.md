@@ -188,7 +188,10 @@ excuse a met claim.
    (outside a checkout, the installed copy next to `goal-judge-prompt.sh`)
    (the transcript is `~/.claude/projects/<project>/<session id>.jsonl`; the
    block message names it) and pass it unchanged. The script quotes each
-   judge's report from the transcript, so you cannot trim one. The overseer
+   judge's latest report on the state from the transcript, so you cannot
+   trim one, and a focused re-judge replaces that judge's older report. A
+   report reaches the transcript only after its notification turn ends:
+   build the prompt in the next turn. The overseer
    checks every deduction (reproduced, in scope, not an after-judging step),
    looks for misses, splits defects into blockers and follow-ups, and names
    the smallest fix set that reaches the bar. An overseer that made no tool

@@ -258,6 +258,14 @@ NOCAL=1 judge pfrz ja 8; NOCAL=1 judge pfrz jb 8; NOCAL=1 judge pfrz jc 8
 OPFRZ="$(GOAL_STATE_TOKEN="$(token pfrz)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/pfrz.contract.md" "$ROOT/pfrz.jsonl")"
 check "the overseer prompt uses the frozen judged paths" grep -qF -- "- $ROOT/work-pfrz" <<<"$OPFRZ"
 check "the overseer prompt hides the edited path" bash -c '! grep -qF -- "$1" <<<"$2"' _ "- $ROOT/elsewhere" "$OPFRZ"
+NOCAL=1 judge pfrz jc 7
+OPFRZ="$(GOAL_STATE_TOKEN="$(token pfrz)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/pfrz.contract.md" "$ROOT/pfrz.jsonl")"
+check "the overseer prompt quotes a judge's latest report on the state" grep -qF -- "Score: 7/10" <<<"$OPFRZ"
+check "the overseer prompt drops the judge's older report on the state" test "$(grep -c '^Judge: jc' <<<"$OPFRZ")" = 1
+PTOK="$(token pfrz)"; PB64="$(printf 'Score: 8/10' | base64 | tr -d '\n')"
+PIPEROWS="$(for j in ja jb jc; do printf 'J\tm%s\t%s\t%s\t%s\n' "$j" "$j" "$PTOK" "$PB64"; done; for i in $(seq 1 20000); do printf 'J\tf%s\tzz\tnone\tAAAA\n' "$i"; done)"
+printf '%s\n' "$PIPEROWS" | GOAL_STATE_TOKEN="$PTOK" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/pfrz.contract.md" - >/dev/null 2>&1
+check "the overseer prompt exits 0 with matching rows before 20000 others" test "$?" = 0
 rm -f "$RUN_GOAL_STATE_DIR/pfrz.owner.md" "$RUN_GOAL_STATE_DIR/pfrz.paths" "$RUN_GOAL_STATE_DIR/pfrz.contract.md.bak"
 goal otl "Goal result: met (3/3 met)"
 judge otl ja 9 sonnet; judge otl jb 6 haiku; judge otl jc 9 fable

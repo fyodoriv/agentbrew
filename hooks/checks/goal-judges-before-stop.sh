@@ -156,7 +156,7 @@ function claim(l,  r) { l = norm(l)
 # What may follow a not-met or waiting word: counts go first ("3/5 met",
 # "3 of 5 criteria met"), then any success word left claims met ("blocked
 # on 2FA and done"), then one "on|by|until|for <what>" tail may stay.
-function rest(r,  n) { r = unparen(r); n = "(criteria|criterion|items?|steps?|parts?)"
+function rest(r,  n, t, a, b) { r = unparen(r); t = r; while (match(t, /[0-9]+ *(of|\/) *[0-9]+/)) { a = substr(t, RSTART, RLENGTH); b = a; sub(/ *(of|\/).*/, "", a); sub(/.*(of|\/) */, "", b); if (a + 0 == b + 0 && a + 0 > 0 && substr(t, RSTART + RLENGTH) ~ /^ *(criteria|criterion|items?|steps?|parts?)? *(are |is )?met/) return 1; t = substr(t, RSTART + RLENGTH) } n = "(criteria|criterion|items?|steps?|parts?)"
   gsub("(" n ")? *[0-9]+( *(,|and|&|or) *[0-9]+)* *((of|/) *[0-9]+ *)?(" n " *)?(are |is )?(not met|met|done|blocked|open|left)", "", r)
   gsub(/(the )?rest (is |are )?(blocked|open|left|pending|not met)|lowest( score)? [0-9.]+ *\/ *10/, "", r)
   if (success(r)) return 1

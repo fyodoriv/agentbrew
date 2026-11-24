@@ -301,7 +301,8 @@ result line, or any other form is a claim. After that word, only a
 bracketed reason, a count (`3/5 met`, `3 of 5 criteria met`), or one
 `on|by|until|for <what>` tail may follow, and a success word in that tail
 is a claim: `partly met, ready to merge` and `blocked on 2FA and done` are
-claims. An overseer ruling that raises a score needs a reason of 20 or
+claims. A count where every item is met (`5 of 5 met`) is also a
+claim. An overseer ruling that raises a score needs a reason of 20 or
 more characters. A calibration line for the current state that states any
 score other than the judge's verdict blocks. When only low scores are left,
 the block's `Next step:` is the one-batch blocker fix. The hook blocks Stop until each judge on the

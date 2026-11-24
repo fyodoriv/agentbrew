@@ -396,7 +396,7 @@
   - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (gaming resistance).
 
 - [ ] A judge under the bar always leaves a complete Path to 8
-  - **ID**: goal-judge-path-to-8-check
+  - **ID**: goal-judge-path-to-eight
   - **Tags**: hooks, run-goal
   - **Details**: Found 2026-11-23, judge round 6. The hook does not check that a verdict under the bar has a "Path to 8:" section. The overseer extractor stops at any `# ` or `**X` line, so a bold item cuts the quoted promise. "Path to 8" and "under 8" ignore `RUN_GOAL_JUDGE_MIN`.
   - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-judge-prompt.sh`, `hooks/lib/goal-overseer-prompt.sh`.
@@ -418,7 +418,7 @@
   - **Hypothesis**: block messages that name the wrong next step drop from 5 reproduced to 0.
   - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
   - **Success**: 0 failed, with one named case per message.
-  - **Pivot**: if the message logic grows past 40 lines, move it into `hooks/lib/` with its own test.
+  - **Pivot**: if the message logic grows past one screen, move it into `hooks/lib/` with its own test.
   - **Anchor**: Nielsen 1994, usability heuristics (error messages).
 
 - [ ] Honest goal-result lines with ordinary punctuation are allowed
@@ -431,7 +431,7 @@
   - **Hypothesis**: honest lines that block drop from 5 reproduced to 0.
   - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
   - **Success**: 0 failed with the 5 new honest cases.
-  - **Pivot**: if any widening lets 1 current claim case through, keep the line blocked and improve the hint instead.
+  - **Pivot**: if any widening lets a current claim case through, keep the line blocked and improve the hint instead.
   - **Anchor**: Nygard 2018, "Release It!" (fail-safe defaults).
 
 - [ ] The contract filter keeps plain lines that mention judges and numbers
@@ -444,7 +444,7 @@
   - **Hypothesis**: plain lines hidden from judges drop from 2 reproduced to 0.
   - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
   - **Success**: 0 failed with the 2 new kept cases.
-  - **Pivot**: if any change lets 1 current target form through, refuse score targets in the contract instead of filtering them.
+  - **Pivot**: if any change lets a current target form through, refuse score targets in the contract instead of filtering them.
   - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (independence).
 
 - [ ] Newcomers can find the goal contract and judge docs from the error alone

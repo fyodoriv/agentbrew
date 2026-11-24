@@ -60,14 +60,15 @@ while IFS= read -r id; do
 $text
 "
 done <<<"$JUDGES"
-# Each judge's promise from its latest earlier report: the "Path to 8:"
-# section, so the overseer can hold the judge to it.
+# Each judge's promise from its latest earlier report: the last "Path to 8:"
+# line and what follows it, bold sub-labels included, up to the verdict block
+# or the next heading, so the overseer can hold the judge to it.
 PROMISES=""
 while IFS= read -r id; do
   [ -n "$id" ] || continue
   b64="$(printf '%s\n' "$JROWS" | awk -F'\t' -v j="$id" -v t="$TOKEN" '$1=="J" && $3==j && $4!=t {v = $5} END {print v}')"
   [ -n "$b64" ] || continue
-  path="$(printf '%s' "$b64" | hook_jq -Rr '@base64d' 2>/dev/null | awk '/^GOAL-JUDGE-VERDICT/ {exit} on && /^(#+ |\*\*[A-Z])/ {exit} /Path to 8:/ {on = 1} on && n++ < 40 {print}')"
+  path="$(printf '%s' "$b64" | hook_jq -Rr '@base64d' 2>/dev/null | awk '/^GOAL-JUDGE-VERDICT/ {exit} /Path to 8:/ {buf = $0 "\n"; n = 1; on = 1; next} on && /^#+ / {on = 0; next} on && n++ < 40 {buf = buf $0 "\n"} END {printf "%s", buf}')"
   [ -n "$path" ] && PROMISES="$PROMISES
 === Judge $id, earlier round ===
 $path

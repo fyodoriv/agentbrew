@@ -409,7 +409,9 @@ It also allows, without counting a block, while the goal waits on
 background work: a launch in the transcript ("Async agent launched" or
 "running in background with ID") with no `<tool-use-id>` completion
 notification yet. The retro belongs at the end of the goal, not at each
-turn that only waits on workers.
+turn that only waits on workers. A resumed agent's later notification may
+carry only `<task-id>`; it binds to the `<tool-use-id>` that an earlier
+notification of the same task named, so a resumed judge's verdict counts.
 
 An earlier version read the transcript instead. Claude Code writes the
 transcript in batches, so a contract printed 6 to 8 seconds earlier was

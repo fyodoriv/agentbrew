@@ -524,7 +524,14 @@ fi
 NEXT="${PROBLEMS%%"$SEP"*}"
 # Only low scores left: the next step is the iteration rule, not the score.
 if ! grep -qvE ' scored [0-9.]+/10' <<<"$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed '/^$/d')"; then
-  NEXT="fix every blocker the overseer listed in one batch, each with a test that fails first; file the follow-ups as tasks outside the judged paths before judging; then judge every judge again ($NEXT)"
+  NLOW="$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | grep -cE ' scored [0-9.]+/10' || true)"
+  if [ "$NLOW" = 1 ]; then
+    # One judge under the bar: a focused re-judge, not a full round (step 5).
+    LOWID="${NEXT%% scored *}"; LOWID="${LOWID# }"
+    NEXT="fix every blocker the overseer listed in one batch, each with a test that fails first; file the follow-ups as tasks outside the judged paths before judging; then re-judge only $LOWID (focused re-judge; $NEXT)"
+  else
+    NEXT="fix every blocker the overseer listed in one batch, each with a test that fails first; file the follow-ups as tasks outside the judged paths before judging; then judge every judge again ($NEXT)"
+  fi
 fi
 # A focused re-judge that failed: lead with that judge, not the judges that
 # have not run on this state yet (judging them now spends a round on a failing state).

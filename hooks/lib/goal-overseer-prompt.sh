@@ -17,7 +17,7 @@
 # (from goal-judge-verdicts.jq). The latest report per judge on the current
 # state is used, so a focused re-judge replaces the older report. Judges are
 # listed in the order of the contract's Judges: line. Each awk here reads all
-# of its input: an early exit can end the pipe with SIGPIPE (exit 141).
+# of its input, so no writer in these pipes gets SIGPIPE.
 #
 # Exit 2 with a message on stderr when goal-state.sh fails or a judge on the
 # Judges: line has no report on the current state.

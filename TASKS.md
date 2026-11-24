@@ -773,6 +773,19 @@
 
 ## P2
 
+- [ ] Find why the overseer prompt script once exited 141
+  - **ID**: goal-overseer-exit-141
+  - **Tags**: run-goal, overseer, bug
+  - **Details**: On 2026-11-24 `goal-overseer-prompt.sh <contract> <live transcript>` exited 141 (SIGPIPE) once with empty output, then exited 0 on a copy of the same transcript. An early awk exit inside `$(...)` cannot set the script's exit status, so PR 1299's awk change is not the cause. Suspects: the transcript was being appended while jq read it, or a pipe write in the final heredoc.
+  - **Files**: `hooks/lib/goal-overseer-prompt.sh`, `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: a fixture reproduces the 141, and the fix makes it exit 0.
+  - **Hypothesis**: overseer prompt runs that exit 141 drop from 1 seen to 0.
+  - **Measurement**: `for i in $(seq 1 50); do bash hooks/lib/goal-overseer-prompt.sh <contract> <growing transcript> >/dev/null; echo $?; done | sort | uniq -c`.
+  - **Success**: 0 runs exit 141.
+  - **Pivot**: if no repro appears in 50 runs, have the script copy the transcript to a temp file first and close the task.
+  - **Anchor**: Stevens and Rago 2013, "Advanced Programming in the UNIX Environment" (SIGPIPE semantics).
+
 - [ ] Allow a quoted-tag heredoc inside $() in the detached-start hook
   - **ID**: detached-start-heredoc-in-subst
   - **Tags**: hooks, devex

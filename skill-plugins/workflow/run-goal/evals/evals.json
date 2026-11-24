@@ -4519,6 +4519,17 @@
         "Gives every raise a reason of 20 or more characters, never a bare 'ok'",
         "Lists the follow-ups as tasks and states that no blockers remain"
       ]
+    },
+    {
+      "id": 402,
+      "prompt": "/goal ship the parser fix (round 1: judges scored 9, 6, 9; the 6 judge listed two blockers; round 2 after the fix)",
+      "expected_output": "The runner fixes both blockers, re-judges only the failing judge as a focused re-judge, then runs one full round with the overseer on the final state. The judge under 8 ends with a Path to 8 list whose items each name a check, and the overseer holds the judge to that earlier promise.",
+      "expectations": [
+        "Re-judges only the failing judge after the fix, then runs every judge and the overseer once on the final state",
+        "The judge report under 8 ends with a Path to 8: list, each item with a command and its expected output",
+        "The overseer raises a new deduction that was not in the earlier Path to 8 unless it names a regression or changed code",
+        "Treats 8, 8, 7 as passing and 8, 7, 7 as blocking"
+      ]
     }
   ]
 }

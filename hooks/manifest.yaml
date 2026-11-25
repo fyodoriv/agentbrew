@@ -625,6 +625,16 @@ hooks:
     sourceRule: 'issue #442 "daily update nudge"; dotfiles bin/dotfiles-updates-landed (#311)'
     agents: ["claude-code"]
 
+  - id: session-entry-context
+    description: List project documents and remind the agent to recall shared memory at session start
+    event: SessionStart
+    script: checks/session-entry-context.sh
+    tier: deterministic
+    verdict: allow
+    sourceRule: shared-rules.md "Session entry"
+    agents: ["claude-code"]
+    defaultEnabled: false
+
   - id: perf-brief
     description: At session start, give the agent the 7-day agent time brief for the project (silent without data)
     event: SessionStart

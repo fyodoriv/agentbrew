@@ -9,7 +9,7 @@ const repoRoot = join(import.meta.dirname, "..", "..");
 const SELF_RESOLVING_JQ = new Set(["checks/perf-record.sh"]);
 
 describe("manifest hook endpoint bootstrap", () => {
-  it("every manifest hook sources stdin-json (which bootstraps endpoint PATH)", () => {
+  it("each manifest hook uses the endpoint bootstrap or its declared isolated runtime", () => {
     const manifest = loadManifestFile(join(repoRoot, "hooks", "manifest.yaml"));
     expect(manifest).not.toBeNull();
     const missing: string[] = [];
@@ -20,6 +20,11 @@ describe("manifest hook endpoint bootstrap", () => {
       if (SELF_RESOLVING_JQ.has(entry.script)) {
         expect(content, entry.id).toContain("/opt/homebrew/bin/jq");
         expect(content, entry.id).toContain("/usr/bin/jq");
+        continue;
+      }
+      if (entry.id === "session-entry-context") {
+        expect(content).toContain('exec /usr/bin/env -i HOME="${HOME:-}" PATH=/usr/bin:/bin /usr/bin/perl');
+        expect(content).not.toMatch(/bootstrap-endpoint-path\.sh|stdin-json\.sh/);
         continue;
       }
       const hasBootstrap = content.includes("bootstrap-endpoint-path.sh") || content.includes("stdin-json.sh");

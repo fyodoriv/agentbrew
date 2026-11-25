@@ -4582,6 +4582,18 @@
         "Reverts config edits that did not change the in-app result",
         "Writes probe commands without raw URLs when the app turns URLs into links"
       ]
+    },
+    {
+      "id": 365,
+      "prompt": "/goal deliver (a PR whose full gate keeps hanging in the UI e2e step for over an hour while other sessions kill it)",
+      "expected_output": "Treats a gate killed with exit 143 or hung far past its normal time as a finding, not a retry: reads the kept test log and page snapshot, opens the page in a browser and reads console errors (e.g. two React copies from a stale worktree node_modules missing a new dependency), fixes the environment (install, rebuild a build output whose cache ignores installed packages), and confirms the gate log says 'full gate passed' before merging; never trusts a ship wrapper's exit 0. Clears switches like MAIN_GATE_RUN before a run so tests do not inherit them.",
+      "files": [],
+      "expectations": [
+        "Reads the saved gate log and browser console before retrying a hung UI test",
+        "Checks the worktree dependency graph and rebuilds outputs when stale packages caused the failure",
+        "Clears inherited gate filter variables before rerunning the full gate",
+        "Requires the actual full gate success line and exit status before merging; a wrapper exit of zero is insufficient"
+      ]
     }
   ]
 }

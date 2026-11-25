@@ -138,9 +138,12 @@
 
 - [ ] `agentbrew` on PATH runs a stale runtime copy, so `sync` skips new hooks
   - **ID**: stale-cli-runtime
+  - **Tags**: hooks, sync, reliability
+  - **Output**: code
+  - **Acceptance**: a stale PATH runtime is reported with a repair command; after repair, the current source build reports zero hook drift for Claude Code.
   - **Details**: Found 2026-11-23. `which agentbrew` resolves to `~/.local/share/agentbrew-runtimes/memory-129-*/dist`, whose `hooks/manifest.yaml` has no `goal-judges-before-stop`. `agentbrew sync` reported success and left that Stop hook uninstalled; `node dist/cli.js sync` from the repo installed it. Make `sync` warn when its runtime is older than the source repo, or point the PATH shim at the repo build. Also add a name filter to hook test files (the full goal-judges test took 2 min per run, 4 runs in one fix).
   - **Hypothesis**: syncs that leave a manifest hook uninstalled drop from 1 seen to 0.
-  - **Measurement**: `agentbrew doctor` lists each manifest hook missing from `~/.claude/settings.json`; count after each sync.
+  - **Measurement**: Run the current source build, `node dist/cli.js hooks verify --agent claude-code --json`, after each sync. Record its drift count and exit status, and compare the deployed manifest with the source manifest. Do not measure through the stale PATH runtime.
   - **Success**: 0 missing hooks after `agentbrew sync` on this Mac.
   - **Pivot**: if a version check cannot tell runtimes apart in 1 day of work, drop the runtime copies and run from the repo build only.
   - **Anchor**: Forsgren, Humble, Kim 2018 (DORA change failure rate).

@@ -68,6 +68,12 @@ Do not invent a goal-update tool, edit host storage, or spoof user origin.
 5. On completion, read authoritative results again before merging. Require
    the same current head and run attempt; a replaced head makes the old
    result stale. Keep original review, merge and installed-state requirements.
+   An automated merge counts only explicit passes. Cancelled, skipped, timed
+   out or missing counts as red. Merge only when this prints 0 and the list
+   is not empty:
+   `gh pr checks <PR> --repo <OWNER/REPO> --json bucket -q '[.[]|select(.bucket!="pass")]|length'`.
+   Never test "green" with a negated text grep: one merged a PR whose macOS
+   check had been cancelled at its time limit.
 
 ### Host forbids polling
 

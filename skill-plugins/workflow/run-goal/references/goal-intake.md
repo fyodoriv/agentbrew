@@ -58,37 +58,75 @@ means: take this session's work from where it stands to proven and live, in
 whatever repo, app, or machine the session is in. Expand it into the
 contract with these criteria. Do not ask what "deliver" means.
 
-1. **Related work, listed.** Find what this session created: its commits,
-   branches, worktrees, uncommitted files, and PRs, plus PRs opened by
-   sessions it started. Name each one in the contract with its URL or path.
-   Another author's PR is out of scope: deliver never merges, closes, or
+`/goal deliver` is the preferred way to ship: the goal's Stop hook keeps
+the run going until the judges confirm each criterion. The delivery steps
+live in one place, the `/ship-it` command and its reference
+(`docs/ship-it-reference.md` Steps 1–16 in dotfiles). Deliver runs those
+steps for inventory, gates, PR body, CI, self-review, merge, file coverage,
+sync, branch cleanup and memory sync. Do not restate them here. The goal adds
+the contract, the judges, the baseline and the proof. Each criterion below is
+what the judges check, with the `/ship-it` step that does the work.
+
+1. **Related work, listed.** (`/ship-it` Step 1.) Name each commit, branch,
+   worktree, uncommitted file, and PR this session or its child sessions
+   created, with its URL or path. Deliver never merges, closes, or
    force-pushes work this session did not create.
-2. **Green and reviewed.** Every related PR passes its hosted checks at its
-   current head. A fresh-context reviewer reads each diff before merge. Read
-   the log of a failed check before you fix it.
-3. **Merged.** Merge each PR the way the repo's delivery rules say, under a
-   cited approval (repo `AGENTS.md`, the user's standing rules), with every
-   required review approved. Never bypass a check, also on an outage. Without
-   an approval, park the merge and ask once at the end; if nothing else is
-   left, write the BLOCKED report.
-4. **Live in the final environment.** Find where users meet the work from the
-   repo docs (install, deploy, or sync sections). A local install step those
-   docs name runs as part of delivery: `agentbrew sync` for skills and rules,
-   `dotfiles apply` for machine config. A deploy to a shared or production
+2. **Green and reviewed.** (Steps 6–6a.) Every related PR passes its
+   hosted checks at its current head. A fresh-context reviewer read
+   its diff before merge. A child session's brief asks for that review and its
+   verdict. A PR merged without one stays "partly met".
+3. **Merged.** (Step 7.) Under a cited approval, with every
+   required review approved. Never bypass a check. Without an approval,
+   park the merge and ask once at the end; if nothing else is left,
+   write the BLOCKED report.
+4. **Live in the final environment.** (Steps 12–13: `agentbrew sync` with
+   `--pull`, `dotfiles apply`.) A deploy to a shared or production
    target, a publish, or a release needs a cited approval; without one, park
-   it. Then read the live state back: installed files byte-equal to the
-   merged source, the loaded service, the served page.
-5. **Proved there.** Use the delivered thing where users meet it, on real
-   input, with the baseline taken before the merge: run the installed script,
-   start a fresh agent session that sees the skill, open the live URL.
-6. **Shown and explained.** Publish a report with a before/after table, and
-   explain in plain words what changed for the user.
+   it. Read the live state back: installed files byte-equal to the
+   merged source.
+5. **Proved there.** (Goal only.) Use the delivered thing where users meet
+   it, on real input, with the baseline taken before the merge.
+6. **Shown and explained.** (Goal only.) Publish a report with a
+   before/after table, and explain in plain words what changed.
+7. **Wrapped up.** (Step 9 and the `wrap-up` skill.) No open work left.
+8. **Learned.** (Step 14 plus the retro.) Lessons stored in memory.
+9. **Follow-ups filed.** (Goal only.) Each item on the last **Follow-ups:**
+   line becomes a task with the pre-registered fields.
+10. **Archived.** (Goal only.) Archive this session last. Never archive
+    another session unless asked.
 
 The metric is the before/after number from step 5. Pick it and take its
 baseline before the first merge.
 
+`/goal ship follow ups` (also "ship the follow-ups", "close the follow-ups")
+is a full goal too. It means: close every item on the last message's
+**Follow-ups:** line. Expand it into the contract without asking what it
+means:
+
+1. **One criterion per item.** Copy each follow-up word for word as a
+   done-criterion. Each one ends as a merged PR, a filed task with its
+   pre-registered fields, or a drop with a stated reason.
+2. **Owner choices go in the one question round.** Ask only about items whose
+   result depends on the owner (keep or drop, which of two designs, a setting
+   only they may change). Put your pick first.
+3. **Drops need a reason.** An item that turns out not to fit the repo or the
+   app (for example, not a money feature in a money app) is dropped in the
+   contract with one sentence why, not silently.
+4. **Proof per item.** A task id on the default branch, a merged PR URL, or a
+   fresh read-only run of the check the item named.
+
+The metric is open follow-ups: baseline the count on that line, target 0.
+
 ## Special cases
 
+- **A judged score on data quality** ("judges rate it 8/10"): in intake, list
+  which rubric axes depend on the data sources. Examples: a store with no
+  ratings of its own, a page that never states a field, links that refuse
+  automated checks. Also list the profile inputs the judges need, such as the
+  recipient's preferences. Name each source ceiling in the contract. Ask in
+  the first question round for the inputs only the user has. In one run,
+  cleanup took the score from 4.9 to 7.5, and three later approaches
+  stayed at 6.8 to 7.5 because of these ceilings.
 - **The goal is only the user's own work** (no agent work in it): do not arm
   the goal checker. Offer to put the chunks in their task tracker instead.
 - **"Revert to what it used to be"**: read the backup or snapshot from before
@@ -103,10 +141,37 @@ baseline before the first merge.
   slides through a connector (not a sign-in page), and diff a local clone
   against its upstream (it may be a stale fork). List each source in the
   contract with what it gave.
+- **The goal integrates an existing service**: search authorized projects and
+  their current docs for a working client first. Cite the source and the
+  documented route before choosing a new transport. Keep its consent and
+  credential checks. When deployment needs the owner, cite the source for the
+  remaining step and report the unverified outcome.
+- **The goal asks for current readiness**: read the authorized system of record
+  and record the read time. Report the observed tier and the requested target
+  separately. Derive the gaps from the live checks for the target tier. Give
+  an independent reviewer the same authorized capture and ask them to verify
+  each gap. If the current source cannot be read, keep readiness unverified.
 - **The goal grants someone access**: read your own rights first (for a
   GitHub repo, `permissions.admin`). Find the person's account, but invite
   only after the operator confirms it. Without admin rights, write a short
   BLOCKED report: who can grant access, and what the person can already do.
+- When the goal changes the user's own access, read current permissions and the
+  approved access policy. Keep the confirmation step before any form
+  submission. If the user replaces a temporary request with a permanent one,
+  cancel the temporary path without submitting. Cite any policy that blocks
+  permanent access and report the verified current role.
+
+## Ticket gates before first push
+
+Ask for required fields, such as priority and estimate, in the first
+question round.
+Read the ticket from the tracker and check the repository's active PR gate.
+A Done or Closed ticket cannot satisfy a gate that requires work in progress.
+Reuse a matching open ticket when one is available. Create or change a ticket
+only with authorization. Read back the required status and assignee before
+the first push. Use the verified key in the commit header and pull request
+title when the gate requires it. If the tracker or required permission is
+unavailable, hold the push and state what remains unverified.
 
 ## Host authentication intake
 

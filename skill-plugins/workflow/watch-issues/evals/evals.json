@@ -181,6 +181,16 @@
         "Adds the new issue number to the existing out-of-scope file",
         "Parks the issue for the owner; never comments on or closes it without a yes"
       ]
+    },
+    {
+      "id": 18,
+      "prompt": "/watch-issues found PR #201 and PR #203 touching the same file. The owner says they look like duplicates. The preservation command reports one file with unique work in #201. What do you do?",
+      "expected_output": "The agent runs the exact local preservation check for proposal #201 and replacement #203. It keeps #201 open and names the missing work so the owner can see why the comparison refused.",
+      "expectations": [
+        "Runs the preservation check with the two exact pull request numbers",
+        "Treats the missing content result as unresolved work",
+        "Keeps the proposal open and reports the affected file"
+      ]
     }
   ]
 }

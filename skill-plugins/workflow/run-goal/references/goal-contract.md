@@ -21,6 +21,9 @@ every turn.
 - Guards (must not get worse): <tests, lint, build, latency, ...>
 - Success: <keep threshold> · Pivot: <change-approach threshold>
 
+Judges: <id>, <id>, <id>  (three expert judges from ~/.config/agentbrew/goal-judges; see goal-judges.md)
+Judged paths: <worktrees and output files the judges grade>
+
 **Scope**: in — <...>, plus the retro's updates to every skill used · out — <...>
 **Approvals already granted**: <each with its source: rule file line or user answer>
 **Human-only steps**: <secrets, 2FA, payments, uncited approvals; when they happen>
@@ -46,6 +49,14 @@ every turn.
 - **Subjective goals get a proxy plus a review.** For "make the page nicer",
   use concrete proxies (zero console errors, Lighthouse score, a screenshot)
   and list "user review of the screenshot" as the last criterion.
+- **A "file it as a task" criterion names both ways to meet it.** Write "has a
+  task on the default branch, new or existing". Before you promise it, search
+  the task queue. For an existing task, quote its line with `git grep` on
+  `origin/<default>`. For a finding that no longer reproduces, quote the live
+  check that shows it is gone. "I filed no duplicates" alone reads as unmet.
+- **End-of-goal background work is accounted for.** List every background job
+  and monitor that still runs (a published page arms a live-update monitor on
+  its own). Stop each one or say why it stays, by its id.
 
 ## Reachable criteria
 
@@ -78,6 +89,9 @@ Raw goal: "fix the flaky checkout tests"
 - Primary: failure rate over 20 runs, baseline 4/20, target 0/20
 - Guards: full `npm test` green; suite runtime within +10%
 - Success: 0/20 · Pivot: still ≥2/20 after two root-cause fixes → re-investigate
+
+Judges: test-reliability, checkout-domain, ci-gate-skeptic
+Judged paths: ~/apps/shop/wt/fix-checkout-flake
 
 **Scope**: in — `src/checkout/**` and its fixtures · out — product code changes beyond the race fix
 **Approvals already granted**: merge own PRs when green — AGENTS.md "Delivery" step 6

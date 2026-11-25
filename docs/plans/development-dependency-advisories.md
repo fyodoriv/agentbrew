@@ -36,3 +36,19 @@ optional Chokidar ^3.3.0 peer. The development lock uses the local jks-js
 stub. The package resolver still advertises Promptfoo 0.125.1, which pins
 node-server 2.1.5. Alert 181 remains in its separate task while a compatible
 normal resolution is unavailable. [Promptfoo registry manifest](https://registry.npmjs.org/promptfoo/0.126.0) · [Nunjucks registry manifest](https://registry.npmjs.org/nunjucks/3.2.4)
+
+## Default-branch result
+
+[PR #1188](https://github.com/fyodoriv/agentbrew/pull/1188) merged as
+`f057fd6c` after both platform, privacy, and prediction checks passed.
+GitHub's default-branch dependency graph showed Hono 4.13.19,
+Fast XML Parser 5.12.1, and Mongoose 9.12.2.
+
+GitHub marked all ten alerts fixed on Nov 20, 2026 at 10:17:25–26 UTC.
+The observed affected count fell from 10 to 0. The lock changed 22
+records in the three dependency trees and no unrelated records. This
+matches the registered prediction. Verify the landed lockfile, GitHub
+dependency graph, and alert status separately. The graph can show the
+new versions before the alert service records them as fixed.
+
+Alerts 162, 172, 175, and 181 still have separate open tasks.

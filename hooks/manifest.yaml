@@ -56,6 +56,28 @@ hooks:
     agents: ["claude-code"]
     defaultEnabled: false  # PreToolUse:Bash hooks are opt-in; enable via the overlay `enabled:`
 
+  - id: detached-start-needs-watch
+    description: Block a detached start (nohup, setsid, disown, trailing &) with no watch; use run_in_background or check the pid in the same call
+    event: PreToolUse
+    matcher: Bash
+    script: checks/detached-start-needs-watch.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md "Fast, safe iterations" — every long or background start has a working watch
+    agents: ["claude-code"]
+    defaultEnabled: false  # PreToolUse:Bash hooks are opt-in; enable via the overlay `enabled:`
+
+  - id: start-refused-caught
+    description: After a start, stop the agent when the output says it was refused (lock held, already running)
+    event: PostToolUse
+    matcher: Bash
+    script: checks/start-refused-caught.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md "Fast, safe iterations" — confirm a start is alive before you report it
+    agents: ["claude-code"]
+    defaultEnabled: false  # Bash hooks are opt-in; enable via the overlay `enabled:`
+
   - id: block-local-tests
     description: Block local test runs (vitest, npm test, npm run verify*) in an agentbrew checkout; tests run on hosted CI only
     event: PreToolUse
@@ -265,6 +287,16 @@ hooks:
     verdict: block
     sourceRule: shared-rules.md:645 "A PR Is Not Ready Until It's Rebased and Green (IRON LAW)"
     agents: ["claude-code"]
+
+  - id: pr-merge-preflight
+    description: Check the exact pull request head before an explicit Bash merge
+    event: PreToolUse
+    matcher: Bash
+    script: checks/pr-merge-preflight.sh
+    tier: deterministic
+    verdict: block
+    agents: ["claude-code"]
+    defaultEnabled: false
 
   - id: manual-test-steps-start-at-app-url
     description: Block gh pr create when body has test-plan section but no app URL
@@ -505,6 +537,16 @@ hooks:
     sourceRule: 'skill-plugins/workflow/run-goal/SKILL.md Phase 6 (live retros skipped run-goal 1 of 2 times)'
     agents: ["claude-code"]
 
+  - id: goal-judges-before-stop
+    description: Success-gated - during an active /goal, hold Stop unless the retro says plainly it is not met or each contract judge has one subagent verdict for the current state token in the latest round, each 8/10 or more, from three or more model families and none on the runner's own, then one overseer per state whose rulings (at most 2 points from each judge) set the effective scores, and each cached judge logs this session
+    event: Stop
+    script: checks/goal-judges-before-stop.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: HOOK_BYPASS_GOAL_JUDGES_BEFORE_STOP
+    sourceRule: 'skill-plugins/workflow/run-goal/references/goal-judges.md (owner request 2026-11-22: a goal succeeds only with a 3-judge consensus of 8/10 or more)'
+    agents: ["claude-code"]
+
   - id: memory-sync-projects-session-end
     description: Schedule a successful-run-debounced shared-memory ingest when a Claude Code session ends
     event: SessionEnd
@@ -601,6 +643,17 @@ hooks:
     verdict: block
     bypassEnvVar: HOOK_BYPASS_PERF_TASK_REVIEW
     sourceRule: 'docs/agent-perf.md "Hooks that use the log"'
+    agents: ["claude-code"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
+
+  - id: always-on-watch-stop
+    description: Remind an enrolled watcher session once if it has no live watch before stop
+    event: Stop
+    script: checks/always-on-watch-stop.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: ALWAYS_ON_STOP_GUARD
+    sourceRule: 'docs/hook-protocol.md "Check for a live watch before stop"'
     agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 

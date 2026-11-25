@@ -5,7 +5,10 @@ hooks_dir="$(CDPATH='' cd -- "${BASH_SOURCE[0]%/*}/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
 mkdir -p "$fixture/bin" "$fixture/shared" "$fixture/linked" "$fixture/home" "$fixture/deployed/lib"
+mkdir -p "$fixture/shared/docs"
+touch "$fixture/shared/docs/fixture-file"
 export GIT_FIXTURE_RECORD="$fixture/calls"
+export GIT_FIXTURE_OBJECT_LOOKUP="$fixture/object-lookups"
 fixture_path="$fixture/bin:/usr/bin:/bin"
 unset BASH_ENV ENV
 
@@ -13,13 +16,34 @@ cat >"$fixture/bin/git" <<'RECORDER'
 #!/bin/bash
 set -euo pipefail
 if [[ " $* " == *" rev-parse "* ]]; then
+  if [[ " $* " == *" --show-toplevel --show-prefix "* ]]; then
+    printf '%s\n\n' "$PWD"
+    exit 0
+  fi
   [[ "${GIT_FIXTURE_PROBE_ERROR:-}" != 1 ]] || exit 128
-  if [[ " $* " == *" linked "* ]]; then
+  if [[ " $* " == *" linked "* || "${PWD##*/}" == linked ]]; then
     printf '%s\n' '/scratch/shared/.git/worktrees/linked' '/scratch/shared/.git'
   else
     printf '%s\n' '/scratch/shared/.git' '/scratch/shared/.git'
   fi
   exit 0
+fi
+if [[ "$#" == 2 && "$1" == check-ref-format ]]; then
+  exec /usr/bin/git "$@"
+fi
+if [[ " $* " == *" show-ref --verify --quiet -- "* ]]; then
+  printf '%s\n' 'object lookup' >>"$GIT_FIXTURE_OBJECT_LOOKUP"
+  [[ "${GIT_FIXTURE_REF_ERROR:-}" != 1 ]] || exit 1
+  [[ "${!#}" == refs/heads/feat/fixture-branch ]]
+  exit
+fi
+if [[ " $* " == *" show-ref --exists -- "* ]]; then
+  if [[ "${GIT_FIXTURE_REF_ERROR:-}" == 1 ]]; then
+    printf '%s\n' 'synthetic-private-marker' >&2
+    exit 1
+  fi
+  [[ "${!#}" != refs/heads/feat/fixture-branch ]] || exit 0
+  exit 2
 fi
 printf '%s\0' "$@" >"$GIT_FIXTURE_RECORD"
 printf '%s\n' 'git received the call'
@@ -107,6 +131,16 @@ allowed push -f main topic
 allowed commit --no-verify --verify -m sample
 GIT_FIXTURE_PROBE_ERROR=1 blocked git reset --hard
 
+blocked git -c core.hooksPath=/fixture-hooks commit -m sample
+blocked git checkout -b feat/fixture-new
+blocked git checkout -B feat/fixture-new
+blocked git switch -C feat/fixture-new
+allowed -C linked checkout -b feat/fixture-new
+allowed -C linked checkout -B feat/fixture-new
+(cd "$fixture/linked" && allowed switch -C feat/fixture-new)
+allowed worktree add linked feat/fixture-branch
+printf '%s\n' 'Commit hook override and shared branch option checks passed.'
+
 blocked "$AGENTBREW_SESSION_GIT_GUARD" --agentbrew-check-only "$fixture/bin/git" reset --hard
 rm -f "$GIT_FIXTURE_RECORD"
 "$AGENTBREW_SESSION_GIT_GUARD" --agentbrew-check-only "$fixture/bin/git" status --short
@@ -122,5 +156,89 @@ scratch_git /usr/bin:/bin status --porcelain >"$fixture/direct"
 [[ -s "$fixture/direct" ]]
 scratch_git "$fixture/deployed/lib:/usr/bin:/bin" status --porcelain >"$fixture/guarded"
 /usr/bin/cmp "$fixture/direct" "$fixture/guarded"
-printf '%s\n' 'Ten blocked and ten allowed cases matched, plus script, linked-checkout and compatibility controls.'
+printf '%s\n' 'Blocked and allowed cases matched across script, linked-checkout and compatibility controls.'
 printf '%s\n' 'Real Git status output stayed byte-identical.'
+
+allowed -C linked checkout feat/fixture-branch
+allowed -C linked switch feat/fixture-branch
+allowed checkout -- feat/fixture-branch
+allowed checkout docs/fixture-file
+allowed checkout 'docs/fixture file'
+
+named_branch_failure=0
+for subcommand in checkout switch; do
+  if (blocked git "$subcommand" feat/fixture-branch); then
+    printf 'Shared named branch %s: refused before Git\n' "$subcommand"
+  else
+    printf 'Shared named branch %s: refusal missing\n' "$subcommand" >&2
+    named_branch_failure=1
+  fi
+done
+GIT_FIXTURE_REF_ERROR=1 allowed checkout -- feat/fixture-branch
+if (GIT_FIXTURE_REF_ERROR=1 blocked git checkout feat/fixture-branch); then
+  printf '%s\n' 'Branch lookup error: refused before Git'
+else
+  printf '%s\n' 'Branch lookup error: refusal missing' >&2
+  named_branch_failure=1
+fi
+if [[ -e "$GIT_FIXTURE_OBJECT_LOOKUP" ]]; then
+  printf 'Object-resolving queries: %s (expected 0)\n' "$(wc -l <"$GIT_FIXTURE_OBJECT_LOOKUP")" >&2
+  named_branch_failure=1
+else
+  printf '%s\n' 'Object-resolving queries: 0'
+fi
+[[ "$named_branch_failure" == 0 ]]
+
+system_git_path=/usr/bin:/bin
+guarded_git_path="$fixture/deployed/lib:$system_git_path"
+mkdir -p "$fixture/real/docs" "$fixture/real/nested/docs"
+printf '%s\n' fixture-file >"$fixture/real/docs/fixture-file"
+printf '%s\n' nested-file >"$fixture/real/nested/docs/fixture-file"
+scratch_git "$system_git_path" add docs/fixture-file nested/docs/fixture-file
+scratch_git "$system_git_path" -c user.name=Fixture -c user.email=fixture@example.com \
+  -c commit.gpgSign=false commit -qm 'Seed shared branch fixture'
+scratch_git "$system_git_path" config remote.fixture.url "$fixture/absent-remote"
+scratch_git "$system_git_path" config remote.fixture.fetch '+refs/heads/*:refs/remotes/fixture/*'
+seed_commit="$(scratch_git "$system_git_path" rev-parse HEAD)"
+for shape in checkout terminated switch linked nested; do
+  scratch_git "$system_git_path" update-ref "refs/remotes/fixture/feat/guess-$shape" "$seed_commit"
+done
+
+shared_guess_refused() {
+  local shape="$1" before after command_status=0 reference_status=0
+  shift
+  before="$(scratch_git "$system_git_path" symbolic-ref HEAD)"
+  scratch_git "$guarded_git_path" "$@" >"$fixture/stdout" 2>"$fixture/stderr" || command_status=$?
+  after="$(scratch_git "$system_git_path" symbolic-ref HEAD)"
+  scratch_git "$system_git_path" show-ref --exists -- "refs/heads/feat/guess-$shape" 2>/dev/null || reference_status=$?
+  if [[ "$command_status" != 2 || "$reference_status" != 2 || "$before" != "$after" ]] ||
+    ! /usr/bin/grep -qF 'agentbrew git guard:' "$fixture/stderr"; then
+    printf 'Shared remote branch %s: expected refusal and unchanged refs, got Git exit %s and ref status %s\n' \
+      "$shape" "$command_status" "$reference_status" >&2
+    return 1
+  fi
+  printf 'Shared remote branch %s: refused with unchanged HEAD and refs\n' "$shape"
+}
+
+remote_guess_failure=0
+shared_guess_refused checkout checkout feat/guess-checkout || remote_guess_failure=1
+shared_guess_refused terminated checkout feat/guess-terminated -- || remote_guess_failure=1
+shared_guess_refused switch switch feat/guess-switch || remote_guess_failure=1
+shared_guess_refused nested -C "$fixture/real/nested" checkout feat/guess-nested || remote_guess_failure=1
+
+scratch_git "$system_git_path" worktree add --quiet --detach "$fixture/real-linked"
+scratch_git "$guarded_git_path" -C "$fixture/real-linked" switch feat/guess-linked >"$fixture/stdout" 2>"$fixture/stderr"
+[[ "$(scratch_git "$system_git_path" -C "$fixture/real-linked" symbolic-ref HEAD)" == refs/heads/feat/guess-linked ]]
+
+printf '%s\n' changed >"$fixture/real/docs/fixture-file"
+scratch_git "$guarded_git_path" checkout docs/fixture-file >"$fixture/stdout" 2>"$fixture/stderr"
+[[ "$(<"$fixture/real/docs/fixture-file")" == fixture-file ]]
+/bin/rm -- "$fixture/real/docs/fixture-file"
+scratch_git "$guarded_git_path" checkout -- docs/fixture-file >"$fixture/stdout" 2>"$fixture/stderr"
+[[ "$(<"$fixture/real/docs/fixture-file")" == fixture-file ]]
+printf '%s\n' 'Linked branch guessing and both file controls passed in the disposable Git checkout.'
+printf '%s\n' changed >"$fixture/real/nested/docs/fixture-file"
+scratch_git "$guarded_git_path" -C "$fixture/real/nested" checkout docs/fixture-file >"$fixture/stdout" 2>"$fixture/stderr"
+[[ "$(<"$fixture/real/nested/docs/fixture-file")" == nested-file ]]
+printf '%s\n' 'The nested checkout restored its file under the effective directory.'
+[[ "$remote_guess_failure" == 0 ]]

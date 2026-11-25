@@ -34,6 +34,12 @@ describe("fresh-reader review", () => {
     );
   });
 
+  it("fails an ask that leaves a named term or the options unexplained", () => {
+    expect(rule).toMatch(
+      /When the artifact asks the user anything, also return FAIL if the ask does not say what each named term is, why it needs the user, each option and what it changes for the user, and where to do it/,
+    );
+  });
+
   it("rechecks each revision and holds unreviewed work", () => {
     expect(rule).toMatch(/Revise and judge again until the exact artifact gets PASS/);
     expect(rule).toMatch(/If a fresh subagent is unavailable or the artifact still fails, hold the artifact/);

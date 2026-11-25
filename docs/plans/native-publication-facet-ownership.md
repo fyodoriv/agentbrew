@@ -1195,3 +1195,260 @@ survived with a mode-0600 intent and no receipt or index. A retry refused
 before making a write. The two focused cases and all 85 native tests
 passed on Mac, and TypeScript passed. Independent review verified the
 guard and the fixture.
+
+## Check the retained intent against interrupted output
+
+- **Hypothesis**: The selected publisher retains an ordered description of
+  all five planned files when its process stops. The files already written
+  form an exact prefix of that description. The certified full publisher's
+  record identifies an owner only and cannot describe which files to recover.
+- **Measurement**: Use the existing signed scratch child in
+  `src/plugins/claude-native.test.ts` with its fixed umask 022. Stop the
+  selected writer before the first payload file, before the output receipt,
+  and before the marketplace index. Compare the private record to the fixed
+  five-path order and the regular file checksums and modes. Keep the fourth
+  control that stops certified full publication before its settings write.
+  Run both native publisher files in required hosted CI.
+- **Success**: Three selected prefixes contain exactly 0, 3 and 4 planned
+  files with matching digests and modes. The remaining 5, 2 and 1 paths are
+  absent. The full record has zero per-file intent entries. Each of the four
+  retries refuses and makes zero file or owner changes.
+- **Pivot**: One wrong path, unexpected file, wrong digest or mode, missing
+  owner record, or changed retry output leaves the evidence unqualified.
+  Keep activation and recovery on hold.
+- **Anchor**: The existing process-loss cases and the intent layout in
+  `src/plugins/claude-native-selected.ts`.
+
+## Preserve native output during a selection with an empty lock
+
+- **Hypothesis**: A live selection with hooks, MCP or rules and a valid
+  lock listing zero installed plugins has no native payload to publish.
+  Leaving its existing native output alone avoids an unrelated cleanup.
+- **Measurement**: Run hosted `npx vitest run src/cli-sync-build-health.test.ts src/plugins/claude-native.test.ts src/plugins/claude-native-ordinary.test.ts`.
+  Exercise the three selected CLI gates and the mixed selection. In the signed
+  scratch fixture, leave a marketplace, launcher and settings in place after
+  removing the last installed pin. Compare the three output surfaces in
+  selected mode, then run the ordinary publisher. Compare a missing
+  lock, a malformed lock, a revoked signer and an active signed plugin
+  with the existing ordinary behavior.
+- **Success**: All four selected CLI cases request empty-lock preservation.
+  The three native surfaces have zero changes in the valid empty case.
+  Ordinary full publication still cleans the same three surfaces. All
+  four missing, malformed, revoked and active controls keep their prior
+  behavior. No selected call enters the experimental facet publisher.
+- **Pivot**: Reject after 1 changed surface with a valid empty lock,
+  1 skipped cleanup for a missing, malformed or revoked lock, or 1 changed
+  ordinary publication outcome.
+- **Anchor**: The ordinary publisher's empty marketplace, launcher and
+  settings branches, and the existing selected CLI gate.
+
+The [Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44859673123/job/136709923106)
+failed the four selected CLI cases. In the signed scratch test, the first
+marketplace file was gone when it should have been preserved. The four
+missing, malformed, revoked and active compatibility cases passed.
+
+Independent review identified a second empty-lock case and a data-shape
+control. Before measuring them, require the same three surfaces to survive
+both omitted and explicit empty plugin arrays. A parseable lock with
+`locked: [{}]` must trigger ordinary cleanup of all three surfaces.
+A single mistaken preservation or cleanup rejects the candidate.
+
+## Validate Claude settings before certified full output
+
+- **Hypothesis**: The opt-in full publisher can detect unknown settings
+  before the first write. Earlier refusal leaves no partial native output
+  or pending publication owner.
+- **Measurement**: Run hosted `npx vitest run src/plugins/claude-native.test.ts src/plugins/claude-native-ordinary.test.ts`.
+  With the existing signed scratch plugin, seed malformed JSON, a null
+  root, an array root, a non-object marketplace map, and a non-object
+  enabled-plugin map. Keep the signed scratch launcher's destination
+  and the current settings bytes and mode in the observation.
+- **Success**: All 5 malformed cases refuse before any native output or
+  settings write, leave zero publisher owners, and preserve the exact
+  settings bytes and mode. The existing valid, missing-settings and
+  ordinary publication controls still pass.
+- **Pivot**: Reject after 1 partial output, 1 changed setting, 1 retained
+  owner before mutation, or 1 ordinary publication change.
+- **Anchor**: The existing settings ownership fence and the certified
+  publisher's separate settings commit.
+
+These controls apply only to the opt-in full publisher. They do not
+establish recovery after a write has already started.
+
+The [Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44864963822/job/136726482731)
+failed all five early validation cases. The malformed JSON arm made six
+atomic write calls before refusal. Each of the other four arms made seven.
+
+Independent review identified two encoding controls before qualification.
+An invalid UTF-8 byte inside a quoted setting must refuse without a
+replacement character. A UTF-8 byte-order mark must retain the existing
+JSON reader's refusal. Add both to the same scratch test. Require seven
+early refusals, with zero atomic writes and the exact seven inputs
+retained. Any accepted encoding variant rejects the candidate.
+
+## Verify the retained intent while extending a warm receipt
+
+- **Hypothesis**: An interrupted hooks extension keeps the exact before
+  and after states when it replaces the rules-only hook definition and
+  the existing receipt. Its known payload writes form an ordered prefix
+  of the three recorded paths.
+- **Measurement**: Use the signed scratch child in
+  `src/plugins/claude-native.test.ts`. Add rules first, then stop a
+  separate hooks writer before its script and before its receipt. Use
+  the same fixed umask in all children. Compare both pre-existing file
+  digests and modes, the missing script state, the physical prefix,
+  and the marketplace, settings and owner record on retry. Run the
+  hosted native suites on Linux and macOS.
+- **Success**: 2 exact before states, 1 absent before state, and the
+  expected 1-of-3 and 2-of-3 prefixes. Both retries refuse and make
+  zero changes. The existing cold and full controls stay green.
+- **Pivot**: Reject 1 missing or wrong before state, 1 changed
+  unrelated file, 1 non-prefix result, or 1 write during a retry.
+- **Anchor**: The selected publisher's ordered intent and the
+  cold process-loss controls above.
+
+For an exact after-state comparison, first let the extension succeed
+in each scratch home. Record the digest and mode of all three files.
+Restore the two original files and the absence of the script. Compare
+the entire scratch output snapshot before testing the interruption.
+Require both interruption records to match all three known after states,
+including the writes that have yet to happen. Reject one wrong digest or
+mode, or any change outside the three planned paths.
+
+## Report a native publication record that needs review
+
+- **Hypothesis**: Agentbrew status can report the presence of an
+  owned publication record without reading its contents or changing it.
+  An unexpected file type, ownership or mode reports unavailable.
+- **Measurement**: Run hosted `npm exec -- vitest run src/status.test.ts
+  src/plugins/claude-native.test.ts --maxWorkers=1`. Use disposable
+  homes for a missing record, owned regular file, unsafe mode and
+  symlink. Check verbose and JSON status, the exact record and
+  target bytes, and the compact output control.
+- **Success**: One fixed status value for each present case, zero
+  status rows for the missing case, zero modified files and zero
+  paths, owner IDs, process IDs or record values in the new output.
+- **Pivot**: A missing warning, a claim that an owner is active,
+  a changed record, a followed symlink or a raw value rejects the probe.
+- **Anchor**: The native publisher's retained owner after interruption,
+  Basili, Caldiera and Rombach (1994), and
+  [Node file metadata](https://nodejs.org/api/fs.html#fslstatsyncpath-options).
+
+The signal covers the observed file at status time. Runtime
+coordination and verified recovery remain separate work.
+
+The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44886715102/job/136793463218)
+passed the missing case and failed the three present cases at the
+verbose status assertion. Status skipped the publication record.
+The probe now uses file metadata at the same path as the writer.
+It reports presence only when the file is regular, has one link,
+and has mode `0600` and the verified home directory owner.
+
+### Verify the complete permission mode
+
+- **Hypothesis**: A record with mode `04600` is unavailable even
+  when its read and write bits otherwise match mode `0600`.
+- **Measurement**: Add the special-mode file to the hosted
+  `npm exec -- vitest run src/status.test.ts --maxWorkers=1` matrix.
+- **Success**: The special-mode case returns `unavailable` and
+  preserves the file. All 4 earlier cases still pass.
+- **Pivot**: One accepted special mode, changed file or original
+  result rejects the check.
+- **Anchor**: [Node file mode](https://nodejs.org/api/fs.html#statsmode)
+  and the read-only status case above.
+
+The check runs in the normal status flow after Agentbrew has
+loaded its state.
+
+The [first Linux candidate](https://github.com/fyodoriv/agentbrew/actions/runs/44887780153/job/136796798894)
+passed all 64 status tests. The skill size check found one error
+because the status skill reached 1,015 estimated tokens against its
+954-token limit. The skill now states the status rule once and keeps
+the existing diagnosis instructions.
+
+## Apply the same private mode check during publication
+
+- **Hypothesis**: The publisher refuses an owner record with special
+  permission bits before it can use the record for mutation or cleanup.
+- **Measurement**: Run hosted
+  `npm exec -- vitest run src/plugins/claude-native.test.ts src/status.test.ts --maxWorkers=1`.
+  Set mode `04600` on an acquired owner record in a disposable home.
+  Exercise one change before mutation and one before publisher cleanup.
+  Verify the exact mode and the record digest in both cases.
+- **Success**: Both cases refuse and preserve the record, with 0 fixture
+  payload writes after a failed mutation check and 0 cleanup removals
+  after a failed cleanup check. All existing controls pass.
+- **Pivot**: One accepted special mode, removed owner record, changed
+  unrelated payload or ordinary publication regression rejects the check.
+- **Anchor**: The [status mode check](#verify-the-complete-permission-mode),
+  the publisher's existing owner checks and
+  [Node file mode](https://nodejs.org/api/fs.html#statsmode).
+
+These controls check one writer's ownership evidence in its scratch
+home. Runtime recovery and writer rollout remain open.
+
+The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44890936287/job/136806367121)
+accepted the special mode in both cases. The writer checked only
+the read, write and execute bits, while status checked the complete
+mode. Both now use the same private-file check. The writer still
+checks its exact file identity and record bytes before each action.
+
+## Verify owner bytes through the held file
+
+- **Hypothesis**: The publisher verifies its exact owner bytes
+  through the file it opened at admission. It does not reopen
+  the record by path during mutation or cleanup.
+- **Measurement**: Run hosted
+  `npm exec -- vitest run src/plugins/native-publication-lock.test.ts src/plugins/claude-native.test.ts --maxWorkers=1`.
+  Record pathname reads in a disposable publication. Separately
+  change the held record to different bytes of the same length
+  and verify that ownership fails and cleanup preserves it.
+- **Success**: A successful publication makes 0 pathname reads
+  of its owner record and keeps its existing cleanup result.
+  A changed record produces 1 refusal and 0 removals. Status
+  and the ordinary native publisher keep their results.
+- **Pivot**: At least 1 pathname read, lost refusal, deleted
+  changed record or existing publisher regression rejects the change.
+- **Anchor**: The current publisher's pathname identity check,
+  the acquisition file descriptor and
+  [Node positional reads](https://nodejs.org/api/fs.html#fsreadsyncfd-buffer-offset-length-position).
+
+The scope is one invocation's open file and its ownership
+checkpoints. Identifying and recovering an abandoned record
+remains a separate operation.
+
+The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44894218566/job/136816296061)
+recorded three pathname reads. The same-length change still
+refused. The writer now reads at offset zero from its held
+file. The bounded read also checks for a trailing byte. The
+pathname still has to identify that same private file.
+
+## Recheck the publication owner before each selected write
+
+A selected writer checks ownership before it admits planned changes
+and again during cleanup. If ownership changes between two planned
+writes, that last check can detect the change after output has advanced.
+
+- **Hypothesis**: A selected writer detects an owner-record change
+  before the next planned write and preserves the changed record.
+- **Measurement**: Run hosted `npm exec -- vitest run src/plugins/claude-native.test.ts src/plugins/native-publication-lock.test.ts --maxWorkers=1`.
+  Use the signed hooks fixture. Change the held record to different
+  bytes of the same length immediately after the first actual write.
+  Separately change it after the selected receipt and before the index.
+  Compare recorded writes, the absent remaining outputs and owner bytes.
+- **Success**: Exactly 1 payload write in the early case. Exactly 4
+  ordered writes in the late case. Both changes are refused, with
+  0 further writes and 0 owner removals. The ordinary writer and the
+  original signed scratch controls keep their results.
+- **Pivot**: At least 1 extra write, changed owner removal or ordinary
+  publication regression rejects the change.
+- **Anchor**: The [held owner check](#verify-owner-bytes-through-the-held-file)
+  and the signed selected interruption controls.
+
+This qualifies the selected prototype at its ordered write boundaries.
+It does not decide whether a retained owner is abandoned.
+
+The [hosted Linux baseline](https://github.com/fyodoriv/agentbrew/actions/runs/44897370592/job/136825799016)
+made all five writes in both cases. Cleanup detected the new record
+and left it in place. The selected publisher now verifies ownership
+at each payload, receipt and index write before it changes output.

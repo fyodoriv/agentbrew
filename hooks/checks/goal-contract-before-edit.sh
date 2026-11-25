@@ -21,6 +21,10 @@
 #     valid contract file exists;
 #   - allows everything in sessions with no pending goal;
 #   - approves a Write to `<session_id>.retro.md` (read by goal-retro-before-stop).
+#   - approves a Write or Edit of `<session_id>.answer.md` while a contract
+#     exists: a research or Q&A goal saves its answer there to be judged.
+#   - approves a Write or Edit of a goal judge file `<RUN_GOAL_JUDGE_DIR>/<id>.md`
+#     (default `~/.config/agentbrew/goal-judges`) while a contract exists.
 #
 # **State** (session-file scope, shared with goal-set-loads-run-goal):
 # `<session_id>.pending` exists from `/goal <condition>` until a valid
@@ -69,6 +73,32 @@ FILE_PATH="$(json_get "$INPUT" '.tool_input.file_path')"
 has_sections() {
   hook_jq -e -R -s 'test("Done when") and test("Metric") and test("Pivot")' >/dev/null 2>&1
 }
+
+# Goal judge files (run-goal references/goal-judges.md): while a goal
+# contract exists, a Write or Edit of `<judge dir>/<id>.md` is pre-approved,
+# so unattended goals can create and calibrate judges without a prompt.
+JUDGE_DIR="${RUN_GOAL_JUDGE_DIR:-$HOME/.config/agentbrew/goal-judges}"
+case "$FILE_PATH" in
+  "$JUDGE_DIR"/*.md)
+    judge_name="${FILE_PATH#"$JUDGE_DIR"/}"
+    case "$judge_name" in
+      *[!a-z0-9.-]* | *..* | .*) ;;
+      *)
+        if { [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; } && [ -f "$CONTRACT" ]; then
+          log_decision "$HOOK_ID" "allow" "goal judge file written"
+          hook_jq -cn '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "allow", permissionDecisionReason: "run-goal judge file"}}'
+          exit 0
+        fi
+        ;;
+    esac
+    ;;
+esac
+
+if { [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ]; } && [ "$FILE_PATH" = "$STATE_DIR/$SESSION_ID.answer.md" ] && [ -f "$CONTRACT" ]; then
+  log_decision "$HOOK_ID" "allow" "goal answer file written"
+  hook_jq -cn '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "allow", permissionDecisionReason: "run-goal answer file"}}'
+  exit 0
+fi
 
 if [ "$TOOL" = "Write" ] && [ "$FILE_PATH" = "$STATE_DIR/$SESSION_ID.retro.md" ]; then
   log_decision "$HOOK_ID" "allow" "goal retro file written"

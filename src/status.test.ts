@@ -17,6 +17,11 @@ vi.mock("node:fs", async () => {
   return { ...actual, existsSync: vi.fn(() => false), readFileSync: vi.fn(() => ""), readdirSync: vi.fn(() => []) };
 });
 
+vi.mock("node:os", async () => {
+  const actual = await vi.importActual<typeof import("node:os")>("node:os");
+  return { ...actual, homedir: vi.fn(actual.homedir) };
+});
+
 vi.mock("./sync/name-clashes.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./sync/name-clashes.js")>();
   return { ...actual, commandNameClashes: vi.fn(() => []), agentNameClashes: vi.fn(() => []) };
@@ -83,7 +88,19 @@ vi.mock("./mcp/health-snapshot.js", () => ({
   mcpLoginCommand: vi.fn((name: string) => `agentbrew mcp setup ${name}`),
 }));
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  lstatSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { join } from "node:path";
 import { catalogRuleDrift } from "./catalog/install-other.js";
 import { loadSyncErrors } from "./core/errors.js";
 import { readDesktopMcpFailures } from "./drift-checks/claude-desktop-mcp.js";
@@ -351,6 +368,63 @@ describe("status", () => {
     expect(calls).toContain("1 deferred");
     expect(calls).toContain("remote/claude-code");
     expect(calls).toContain("load per core 2.00 is above 1");
+  });
+});
+
+describe("native publication owner status", () => {
+  it.skipIf(process.platform === "win32").each([
+    ["missing", undefined, undefined],
+    ["owned", "owner-record-present", "Native publication: owner record present. Review before recovery."],
+    ["wrong mode", "unavailable", "Native publication: owner record could not be verified."],
+    ["special mode", "unavailable", "Native publication: owner record could not be verified."],
+    ["symlink", "unavailable", "Native publication: owner record could not be verified."],
+  ])("reports the %s record without opening it", async (shape, expected, line) => {
+    const home = mkdtempSync(join(tmpdir(), "ab-native-status-"));
+    const record = join(home, ".agentbrew-native-publication.lock");
+    const target = join(home, "private-fixture-target");
+    const marker = "private-fixture-record-value";
+    const { readFileSync: readActual } = await vi.importActual<typeof import("node:fs")>("node:fs");
+    mockLoadState.mockReturnValue({ agents: [], sources: [], catalogVersion: "0.1.0" });
+    try {
+      writeFileSync(target, marker, { mode: 0o600 });
+      if (shape === "symlink") {
+        symlinkSync(target, record);
+      } else if (shape !== "missing") {
+        writeFileSync(record, marker, { mode: 0o600 });
+        chmodSync(record, shape === "wrong mode" ? 0o644 : 0o600);
+        if (shape === "special mode") chmodSync(record, 0o4600);
+      }
+      const before = lstatSync(record, { throwIfNoEntry: false });
+      if (shape === "special mode") expect((before?.mode ?? 0) & 0o7777).toBe(0o4600);
+      await vi.mocked(homedir).withImplementation(
+        () => home,
+        async () => {
+          await status({ verbose: true });
+          const verbose = vi.mocked(console.log).mock.calls.flat().join("\n");
+          if (line) expect(verbose).toContain(line);
+          else expect(verbose).not.toContain("Native publication:");
+          vi.mocked(console.log).mockClear();
+          await status({ json: true });
+          const json = vi.mocked(console.log).mock.calls.at(-1)?.[0] as string;
+          expect(JSON.parse(json).nativePublication).toBe(expected);
+          expect(verbose + json).not.toContain(marker);
+          expect(verbose + json).not.toContain(record);
+          expect(verbose + json).not.toContain(target);
+          vi.mocked(console.log).mockClear();
+          await status();
+          expect(vi.mocked(console.log).mock.calls.flat().join("\n")).not.toContain("Native publication:");
+        },
+      );
+      expect(mockReadFileSync.mock.calls.map(([path]) => path)).not.toContain(record);
+      expect(mockReadFileSync.mock.calls.map(([path]) => path)).not.toContain(target);
+      const after = lstatSync(record, { throwIfNoEntry: false });
+      expect(after?.ino).toBe(before?.ino);
+      expect(after?.mode).toBe(before?.mode);
+      expect(readActual(target, "utf8")).toBe(marker);
+      if (before?.isFile()) expect(readActual(record, "utf8")).toBe(marker);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
   });
 });
 

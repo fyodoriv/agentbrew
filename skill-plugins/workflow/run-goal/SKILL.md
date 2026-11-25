@@ -63,10 +63,10 @@ Follow this order, even for a small goal:
    At creation and each milestone, request an independent review using the
    [plan artifact judge](references/plan-artifact-judge.md); on resume, review the existing artifact and its identity before continuing.
 5. Work, printing a `Goal check` line after each done-criterion (Phase 4).
-6. Verify with fresh evidence (Phase 5), then the retro and the final report (Phase 6).
+6. Verify with fresh evidence (Phase 5), then the retro, the final report, and the judges (Phase 6).
 
 A small goal gets a short contract, not none. Without it, the goal checker cannot verify done and the user cannot review your plan.
-**Research or choice goal** (pick between options, answer a question, no repo change): print a 3-line contract (`Done when:` the pick and why, `Metric:` sources checked per option, `Pivot:` what means "no clear winner"; save it if the hook names a file). Check each option's own source, then answer in chat with the pick and one source link per claim. Skip the plan Artifact, HTML report, and skill PR; keep a one-line retro.
+**Research or choice goal** (pick between options, answer a question, no repo change): print a 3-line contract (`Done when:` the pick and why, `Metric:` sources checked per option, `Pivot:` what means "no clear winner") plus `Judges:` and `Judged paths: <state dir>/<session id>.answer.md`; save it if the hook names a file. Check each option's own source, then answer in chat with the pick and one source link per claim. Save the same answer to the answer file, then judge it ([references/goal-judges.md](references/goal-judges.md)). Skip the plan Artifact, HTML report, and skill PR; keep a one-line retro.
 
 ## Why the transcript matters
 
@@ -105,8 +105,8 @@ So:
 6. Spot human-only steps now: secrets, 2FA codes, payments, production
    deploys, and public or destructive actions that no rule approves. Each one
    goes into the contract. If someone is at the keyboard, ask about it in the
-   question round. If not, schedule it last. A ticket-gated PR check needs
-   ticket fields (priority, estimate): ask for them in the first round.
+   question round. If not, schedule it last. See [ticket gate steps](references/goal-intake.md#ticket-gates-before-first-push) for fields to ask about.
+   Before the first push, read the ticket's current status.
    Classify tasks by their Details (who must act), not only the Blocked flag.
    Probe the actual owner, writable source/config and valid submission route for each criterion before promising changes. Keep unknown ownership or route unverified; access alone is not change authority. Check each Git host: [host authentication intake](references/goal-intake.md#host-authentication-intake).
    Before a write to a live store (migration, sync, move), list the target
@@ -134,7 +134,7 @@ Write the contract in the chat before you change anything. Fill in the template 
 
 - **Outcome**: one sentence. What is true when you are done?
 - **Done when**: two to five checkable criteria. Each one names a command, a
-  file, a URL, or a reviewable artifact. Read a check's code before you promise it passes ([reachable criteria](references/goal-contract.md#reachable-criteria)).
+  file, a URL, or a reviewable artifact. Read a check's code before you promise it passes ([reachable criteria](references/goal-contract.md#reachable-criteria)). Add `Judges: <id>, <id>, <id>` and `Judged paths:` lines ([goal judges](references/goal-judges.md) step 1).
 - **Metric**: the primary number (Goal → Question → Metric), with its baseline,
   target, and the exact command that measures it. Add guard metrics that must
   not get worse (tests, lint, build).
@@ -170,10 +170,10 @@ docs, memory, or a quick experiment can answer.
 
 - One round only, three questions at most. Put your recommended option first.
 - Give each question its full context. Say what the thing is in plain
-  words, what each option does, and what changes for the user. Never ask
-  about a hook, flag, file, or internal name without explaining it first:
-  the user may not know it, and "I'm not sure what this is" wastes the one
-  round.
+  words, why it needs the user, what each option does, what changes for the
+  user, and where to do it. Never ask about a hook, flag, file, domain term,
+  or internal name without explaining it first; it wastes the round. The same
+  holds for every later ask: the BLOCKED report and the final "Needed from you" line.
 - Prefer the structured question tool when it exists (`AskUserQuestion` in
   Claude Code).
 - Someone is at the keyboard when the structured question tool exists and
@@ -195,7 +195,7 @@ docs, memory, or a quick experiment can answer.
 - Preserve a pending question until answered. Stop re-fires do not authorize
   another question, chat re-ask, or waiting message. Do independent work or ready
   retro tasks. If only the human step remains, yield without re-asking.
-  Do not disable hooks or invent completion to escape the wait.
+  Never disable hooks or fake completion. Handed-off work, repeat re-fires: [§ Outside this goal](references/external-waits.md#outside-this-goal).
 - Honor **Later / Skip**. An optional quiz is not a new mandatory criterion.
   Keep explicit understanding criteria unverified until answers are graded or
   the user revises the contract. Do not claim mastery or required quiz completion
@@ -222,7 +222,7 @@ When only an external wait remains, use the supported [quiet wait](references/ex
 
 - Keep a task list (`update_plan`, TodoWrite, or a list in chat), ordered by
   risk: unknowns first. Two apps joined: read [references/cross-app-poc.md](references/cross-app-poc.md).
-- Work in small verified steps. Run the guard after each change that matters.
+- Work in small verified steps. Run the guard after each change that matters. Start background work only with a watch (`run_in_background: true`); a run is live only after a pid, lock or log line proves it.
 - Before you start, read [references/execution.md](references/execution.md) and follow every
   bullet: live-tool probes, test loops, commits, subagents, workers, restarts, secrets, web facts.
 - A tool's "fixed" or "auto-fixed" line is a claim, not evidence. Check
@@ -306,7 +306,7 @@ Before you call a failure "pre-existing", compare it with the unchanged base ([r
 For every proof image, read the image itself and cross-check the system-of-record log for the same run or item. A caption, filename or worker verdict is not completion evidence.
 If either reader is unavailable, evidence conflicts or identities differ, leave the criterion unverified and report the gap. Do not manufacture pending input.
 
-For UI work, open and read [screenshots of every view](references/execution.md#screenshot-proof) for
+For UI work, require the [independent live UX gate](references/execution.md#live-ux-review). Open and read [screenshots of every view](references/execution.md#screenshot-proof) for
 wrong content, not only for presence. Tests that assert "the view shows
 text" miss logic bugs such as the same task repeated on every day.
 When the goal brings the user's own data into the app (an import, a sync),
@@ -379,9 +379,9 @@ with actuals and update the estimation method as described in
    writable change in this session (gate, PR, merge, cite the PR); when a
    tried write is refused, cite the task with its error; never bypass it.
 6. **Remember**: store reusable lessons in memory, if the agent has memory.
-7. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)`
-   in the retro file, run `scripts/export-goals.py`, and refresh the one
-   Goals dashboard: [references/dashboard.md](references/dashboard.md).
+7. **Judge consensus** (every goal, last): met only when each contract judge, run fresh on the final state with the exact `goal-judge-prompt.sh` prompt on a model family other than yours, scores 8/10 or more within three rounds (the owner can type "approve round N" to allow more); the `goal-judges-before-stop` hook holds every Stop until then, and mid-goal Stops (a question, a wait) need `Goal result: in progress (<why>)` in the retro file first. Steps: [references/goal-judges.md](references/goal-judges.md).
+8. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)` in the retro file,
+   run `scripts/export-goals.py`, and refresh the one Goals dashboard: [references/dashboard.md](references/dashboard.md).
 
 ## Final report
 

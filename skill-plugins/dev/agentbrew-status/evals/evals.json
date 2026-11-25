@@ -89,6 +89,17 @@
         "Does not read credential or auth files",
         "Does not equate drift=0 with a working OpenCode runtime"
       ]
+    },
+    {
+      "id": 9,
+      "prompt": "A native Claude publication was interrupted. Can Agentbrew tell me whether a record needs review? Please leave everything as it is.",
+      "expected_output": "A summary of the native publication line from fresh verbose status. Writer activity remains unknown. The check leaves the record in place.",
+      "expectations": [
+        "Runs `agentbrew status --verbose` and reports only the status it observes",
+        "Leaves the record in place without reading or exposing its contents",
+        "Treats writer activity as unknown",
+        "Does not run repair or sync"
+      ]
     }
   ]
 }

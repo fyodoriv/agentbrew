@@ -119,8 +119,26 @@ direct leading `npm publish`, including when it has a dry-run option.
 The owner publishes through the [documented release process](ci.md).
 The npm check applies when `publish` immediately follows the executable.
 
+The same opt-in check covers direct recursive forced deletion. It
+checks each destination at observation time and allows verified
+descendants of system temporary folders or the owned session scratch
+folder. Roots, relative paths, links and other unverified operands refuse.
+This checks the named operand path. The recursive traversal itself
+still depends on the filesystem at execution time. The plain
+temporary-variable form assumes the hook and Bash tool share the
+same verified `TMPDIR`. An absolute path does not depend on that variable.
+
 Add `no-destructive-commands` to `enabled:` in the hooks overlay and run
 `agentbrew sync` to turn on the check.
+
+`pr-merge-preflight` is an opt-in Claude Code check for a direct Bash
+merge on github.com. Put the PR number first and use
+`--repo github.com/OWNER/REPO`, or put its full HTTPS PR URL first.
+Supply the full head commit with
+`--match-head-commit`. The check reads GitHub once and stops the merge
+when the head changed, the PR is unready, or the checks are incomplete.
+Add `pr-merge-preflight` to `enabled:` in the hooks overlay to include
+it at the next sync. GitHub still enforces the repository's branch rules.
 
 Hook scripts read the agent's hook payload from stdin as JSON. The common Claude
 Code shape is:
@@ -275,6 +293,90 @@ when it has "Done when", "Metric", and "Pivot", and blocks other file edits
 until it exists. A valid contract file, `/goal clear`, or a marker older
 than one day ends the block.
 
+`goal-judges-before-stop` (Stop) is success-gated. While a goal contract
+exists, Stop passes only with a judge consensus or a retro whose every
+`Goal result` line (after list, heading, quote, or bold marks) says partly
+met, not met, in progress, blocked, impossible, or pending. No retro, no
+result line, or any other form is a claim. After that word, only a
+bracketed reason, a count (`3/5 met`, `3 of 5 criteria met`), or one
+`on|by|until|for <what>` tail may follow, and a success word in that tail
+is a claim: `partly met, ready to merge` and `blocked on 2FA and done` are
+claims. A count where every item is met (`5 of 5 met`) is also a
+claim. An overseer ruling that raises a score needs a reason of 20 or
+more characters. An overseer whose usage note shows no tool calls cannot
+change a score; the judge's score stands. Judged paths freeze at goal start
+in `<session id>.paths`, and each judge keeps one role for the whole goal. A calibration line for the current state that states any
+score other than the judge's verdict blocks. When only low scores are left,
+the block's `Next step:` is the one-batch blocker fix. The hook blocks Stop until each judge on the
+contract's `Judges:` line has exactly one `GOAL-JUDGE-VERDICT` block (Judge,
+Score N/10, Cache, State) whose `State:` equals the token
+`hooks/lib/goal-state.sh <contract>` prints now. The token hashes the
+contract, each judge's rubric (its file up to `## Calibration`), and the
+`Judged paths:` (each tracked and untracked file's path and content, with
+LF line endings and trailing spaces and end-of-file blank lines cut), so any
+other edit by any tool, a space inside a line included, makes the verdicts
+stale, while a trailing-space edit or a commit keeps the state (judging it
+again is a re-roll). Each judge call's prompt must equal the
+output of `hooks/lib/goal-judge-prompt.sh <contract> <id>` (no added text)
+and must leave `subagent_type` out or set it to `general-purpose` (no
+fork, no custom agent type); the prompt embeds the rubric, so judges never read the
+runner-written calibration notes. A missing contract during an active goal
+(read from the transcript's last `/goal` command) blocks. The hook rewrites
+`<session>.owner.md` from that command, so the prompt carries the owner's
+own words. A judge that got a SendMessage does not count. Any unofficial
+judge run (an Agent call without the header, or `claude -p`, `codex exec`,
+`ollama run`, `llm`, or an Ollama HTTP call in command position in Bash,
+whose result holds a filled-in verdict block) uses up one round of the cap. A
+review that only quotes the template returns no verdict, so it is free.
+The block message lists `Next step:`, the numbered problems, the honest
+exit, and each judge's pass rate from `<state dir>/goal-judge-history.tsv`
+(one line per counted verdict). Each judge prompt carries a review role
+(refuter, spec auditor, or first-time user) picked from the state token and
+the judge's place on the `Judges:` line. The history keeps every official
+verdict of the goal, failing rounds included. `goal-state.sh` refuses a
+contract that steers the judges or quotes earlier scores, and a rubric changed
+after scored rounds whose `Rubric <sha>:` line cites none of their states. A
+block counter that cannot be written falls back to `$TMPDIR`, then gives up
+at once (partly met); a wait counter that cannot be written never excuses a
+met claim. A give-up that cannot rewrite a met retro blocks instead of
+allowing. The judge
+set, rubric hashes, and the contract hash freeze at the goal's first round
+(read from earlier judge prompts after the last `/goal` command), only
+the latest round can pass, and a goal gets `RUN_GOAL_JUDGE_ROUNDS` (3) full rounds (a state judged by only some judges is a focused re-judge, capped by `RUN_GOAL_JUDGE_FOCUSED` (4), and uses no full round); with 3 or more judges, one judge may score `RUN_GOAL_JUDGE_SLACK` (1) under the minimum when every other judge meets it; the owner raises the cap for one goal by typing a message that starts with "approve round N" or "approve N more rounds" (tool results, hook feedback and the runner's own text never count). Only `Agent`
+or `Task` results and their background notifications (user, `attachment`,
+or `queue-operation` rows) count. A result with two verdict blocks counts
+for none; two launches of one judge on one state are a re-roll, even when
+the first run was stopped before its verdict. The prompt drops contract lines
+about judge scores and the contract's `## After judging` section, so a target
+cannot anchor a judge and no judge scores a step that can only follow its
+verdict. After the judges, one overseer Agent call per state must run, on a
+family other than the runner's, with the exact output of
+`goal-overseer-prompt.sh` (it quotes each judge's report from the
+transcript). Its `Ruling <judge>: N/10` lines set each effective score,
+clamped to 2 points from the judge's own; each ruling needs a one-line
+reason, and the verdict's `State:` must be the current token. A second
+overseer on one state is a re-roll. Judges and the overseer work to a
+budget stated in their prompts: about 10 minutes and about 20 tool calls. The state token also covers file modes and ignored files (an
+ignored folder by name only). Each score
+is 0-10 and at least `RUN_GOAL_JUDGE_MIN` (8); the cache must be
+`<judge dir>/<id>.md`; the judges use at least `RUN_GOAL_JUDGE_MODELS` (3)
+model families, and none runs the runner's own model family (a call with no `model` or `model: inherit` counts as the
+runner's); each
+judge's `## Calibration` has a line with the session id, the token, and the
+score. Judge files must meet a rubric floor (`Field:`, `Applies:`,
+`Scale:`, three "capped at" lines, every cap below the passing bar, no line
+that steers the judge, and a `Rubric <sha>: <defect>` calibration line for
+the current rubric once the file has notes; after a scored round that line
+must cite the state token of an earlier score line). Each Stop parses the
+transcript once with jq (the `/goal` row comes from grep-selected lines). While a judge with its exact official prompt
+runs in the background it allows up to 10 times and rewrites a met result
+line to `in progress (waiting on N judge(s) ...)`; if it cannot rewrite it,
+it blocks. A failed counter write never turns a block into an allow. After five blocks it rewrites the result to
+`partly met (judge consensus not reached: ...)`, resets its counters, and
+allows. `goal-contract-before-edit` pre-approves Write and Edit of judge
+files and of `<session>.answer.md` while a contract exists.
+Procedure: `skill-plugins/workflow/run-goal/references/goal-judges.md`.
+
 `goal-retro-before-stop` (Stop) closes the goal. While the session's
 contract file exists, it blocks Stop until `<session_id>.retro.md` has one
 line per skill used (each `Skill` call, plus each `skills/<name>/SKILL.md`
@@ -309,7 +411,9 @@ It also allows, without counting a block, while the goal waits on
 background work: a launch in the transcript ("Async agent launched" or
 "running in background with ID") with no `<tool-use-id>` completion
 notification yet. The retro belongs at the end of the goal, not at each
-turn that only waits on workers.
+turn that only waits on workers. A resumed agent's later notification may
+carry only `<task-id>`; it binds to the `<tool-use-id>` that an earlier
+notification of the same task named, so a resumed judge's verdict counts.
 
 An earlier version read the transcript instead. Claude Code writes the
 transcript in batches, so a contract printed 6 to 8 seconds earlier was
@@ -329,8 +433,17 @@ PATH. Dotfiles runs the allowed Git command.
 
 The wrapper checks recognized destructive Git arguments, including calls
 from a script. A branch creation or whole-tree operation needs a verified
-linked checkout. Stashes are shared across linked checkouts. Ordinary
-commands keep their arguments and use the existing Git command on PATH.
+linked checkout. The same check applies to a direct `git checkout` or
+`git switch` with an existing local branch name that contains a slash.
+This shorthand uses Git 2.43 or later to check whether the local
+reference exists. It refuses a lookup error before forwarding the command.
+When the local branch is absent, the wrapper requires a linked checkout
+before Git can guess a branch from a remote-tracking reference. The file
+shorthand stays available for a path that exists in the effective checkout.
+Use `git checkout -- path` to select a file explicitly. Stashes are shared
+across linked checkouts. Ordinary commands keep their arguments and use
+the existing Git command on PATH.
+The wrapper refuses a command-line replacement of the commit hook path.
 The commit hooks and remote protections also apply.
 
 ## Check task files after an edit
@@ -346,6 +459,39 @@ A valid file stays quiet. A validation error asks the agent to run
 A missing tool or timeout appears in hook diagnostics. The check keeps task
 text out of its output and logs. Use the project's commit check to enforce
 the task rules at delivery.
+
+
+## Check for a live watch before stop
+
+`always-on-watch-stop` is an opt-in Claude Code Stop hook. It reminds a
+configured watcher session once when the session would end with no live
+watch. Enable it through the hook overlay's `enabled:` list. The hook
+reads stamps written by the watcher session. It takes no action on the
+watcher.
+
+Set `ALWAYS_ON_DIR` to an absolute user-owned directory. Set
+`ALWAYS_ON_PROJECTS` to a comma-separated list of project IDs. Keep the
+directory and stamps free of group and other-user write permission.
+For each enrolled session, use its native session ID as the filename
+prefix and these suffixes.
+
+| File | What the writer records |
+| --- | --- |
+| `<session_id>.project` | One project ID from the configured list |
+| `<session_id>.watch` | `pid=<number>` for an active watcher process, or `cron=<id>` after confirming the schedule exists |
+| `<session_id>.wrapup` | A regular file when the owner wants to stop |
+
+Write each stamp to a temporary file and rename it into place. Write a
+new watch stamp after confirming the watch. A cron stamp remains
+valid for `ALWAYS_ON_CRON_MAX_AGE` seconds, which defaults to 300. A PID
+stamp checks for a process at that PID. Refresh it if the watcher restarts.
+
+A wrap-up stamp, an explicit stop in the latest user text,
+`ALWAYS_ON_STOP_GUARD=off`, or the native second Stop event allows the turn
+to end. The hook allows the stop when the transcript or stamp identity
+cannot be verified. It publishes no transcript or stamp contents.
+
+See [registered watch-stop cases](plans/always-on-watch-stop.md).
 
 ## Retry failed calls before stop
 

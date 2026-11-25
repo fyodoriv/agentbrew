@@ -1,0 +1,568 @@
+#!/bin/bash
+# agentbrew/hooks/checks/goal-judges-before-stop.sh
+#
+# **Hook**: goal-judges-before-stop
+# **Event**: Stop
+# **Verdict**: block (after five blocks it downgrades the claim and allows)
+# **Source rule**: skill-plugins/workflow/run-goal/references/goal-judges.md
+#   (owner request 2026-11-22: a goal succeeds only when three of the best
+#   judges in its field agree it scores 8/10 or more)
+#
+# A goal may end as "met" only with a judge consensus. The hook is
+# success-gated: while a goal contract exists, Stop is allowed only when each
+# judge the contract names has exactly one verdict for the current state, each
+# scored at least the minimum (default 8 of 10), or when the retro says plainly
+# that the goal is not met.
+#
+# **Not met**: the retro has a `Goal result` line and every such line
+# starts with a whole not-met phrase (hyphens read as spaces): partly met,
+# partially met, not met, not yet met, unmet, failed, abandoned, cancelled,
+# stopped, in progress, blocked, impossible, or pending. After in progress,
+# blocked, impossible, or pending, the rest of the line (outside parentheses
+# and counts like "2 of 4 criteria met") must not say "met" ("blocked? no,
+# met" is a claim). Mid-goal
+# Stops (a question round, a wait) need `Goal result: in progress (<why>)`.
+#
+# **Claim**: anything else: no retro, no `Goal result` line, or a `Goal
+# result` line (after list, heading, quote, bold, or number marks) in any
+# other form ("met", "fully met", "done").
+#
+# **Contract**: `Judges: <id>, <id>, <id>` and `Judged paths: <path>, ...`.
+# A goal is active when the transcript's last `/goal` command with an argument
+# set one. A missing contract file during an active goal blocks (deleting it
+# is not a way out).
+#
+# **Owner text**: the hook writes the `/goal` argument from the transcript,
+# which the runner cannot edit, to `<session>.owner.md` before it builds the
+# judge prompts, so an edited owner file only yields prompts that do not match.
+#
+# **State token**: `lib/goal-state.sh <contract>` hashes the contract, each
+# judge's rubric (its file up to `## Calibration`), and the judged paths (git
+# files tracked or untracked but not ignored, with trailing whitespace
+# normalized). An edit to any of them by any tool changes it. A
+# verdict counts only when its `State:` equals the token now. goal-state.sh
+# also refuses a judge file below the rubric floor.
+#
+# **Prompt**: each judge call's prompt must equal the output of
+# `lib/goal-judge-prompt.sh <contract> <id>` (outer whitespace aside), so the
+# runner cannot add steering text. The prompt holds the rubric, so the judge
+# never reads the runner-written calibration notes. Leave `subagent_type`
+# out, or set it to `general-purpose`: a fork shares the runner's context and
+# a custom agent type brings its own system prompt. A judge that got a
+# SendMessage after launch does not count. An unofficial judge run (an
+# Agent call without the header, or `claude -p`/`codex exec`/`ollama run` in
+# Bash, whose result holds a filled-in verdict block) uses up one round of
+# the cap: practice runs would let the runner tune the work to the judges.
+# A review that only quotes the template returns no verdict, so it is free.
+#
+# **Verdicts**: one block per judge subagent result (bold names allowed):
+#
+#     GOAL-JUDGE-VERDICT
+#     Judge: <judge id>
+#     Score: <0-10>/10
+#     Cache: <judge dir>/<judge id>.md
+#     State: <token>
+#
+# Only results of `Agent` or `Task` calls and their background notifications
+# after the last `/goal <condition>` command count. A result with two or more
+# blocks counts for none. Two verdicts from one judge for one state is a
+# re-roll and fails. Judges must use at least `RUN_GOAL_JUDGE_MODELS` (3)
+# model families (opus, sonnet, haiku, fable), and none may run the runner's
+# own family (a call with no `model` counts as the runner's): no self-judging.
+# Each judge gets a review role (refuter, spec auditor, first-time user) that
+# goal-judge-prompt.sh picks from the state token, so the runner cannot choose
+# it. Every counted verdict is appended to `<state dir>/goal-judge-history.tsv`
+# (date, tool_use id, session, judge, rubric, state, family, score), and the block message
+# shows each judge's pass rate from it: a base rate for the 8/10 bar.
+#
+# **Rounds**: the judge prompts in the transcript freeze the judge set, each
+# rubric hash, and the contract hash at the goal's first round; a goal gets
+# `RUN_GOAL_JUDGE_ROUNDS` distinct judged states. Only the latest round can
+# pass: reverting the work to an earlier passing state after a failing round
+# blocks. The state token ignores trailing spaces, line endings, and
+# end-of-file blank lines, so such an edit is the same state and judging it
+# again is a re-roll.
+#
+# **Judge cache**: `RUN_GOAL_JUDGE_DIR` (default
+# `~/.config/agentbrew/goal-judges`), one `<id>.md` per judge. Its
+# `## Calibration` section needs a line with this session id, the token, and
+# the score as `N/10`.
+#
+# **Background judges**: while a judge call is still running, the hook
+# allows, at most 10 times per goal. Other background tasks do not excuse.
+#
+# **Give-up**: after five blocks it rewrites each claim line to
+# `Goal result: partly met (judge consensus not reached: <reason>)` (and adds
+# that line when the retro has none, creating the retro if needed), resets its
+# counters, and allows, so a goal never reads as met without consensus.
+#
+# **Fails open** when: the bypass is set during an active goal, no goal is
+# active (no `/goal`, or after `/goal clear`), the agent has no Stop hook
+# (Codex), or the session id is unusable. Known limits, not closed: a
+# lenient runner-written judge file (the rubric floor, the cap-below-bar and
+# steering checks, and the field-standard rule limit it), a paraphrased
+# practice run with no marker, steering phrased in words the steering
+# check does not list, up to three rounds bought by small real edits, rounds
+# counted per /goal command (a new /goal on the same work starts a new cap),
+# and a runner that edits the installed hook files. A block counter that
+# cannot be written falls back to $TMPDIR, then gives up (partly met) at once,
+# so the hook never blocks forever; a wait counter that cannot be written
+# never excuses a met claim.
+#
+# **Bypass**: `HOOK_BYPASS_GOAL_JUDGES_BEFORE_STOP=1`
+#
+# **Configuration** (optional):
+#   - RUN_GOAL_STATE_DIR: state folder. Default `$HOME/.cache/agentbrew/run-goal`.
+#   - RUN_GOAL_JUDGE_DIR: judge cache. Default `$HOME/.config/agentbrew/goal-judges`.
+#   - RUN_GOAL_JUDGE_MIN: lowest passing score. Default 8.
+#   - RUN_GOAL_JUDGE_COUNT: judges needed. Default 3.
+#   - RUN_GOAL_JUDGE_MODELS: different judge model families needed. Default 3.
+#   - RUN_GOAL_JUDGE_ROUNDS: judging rounds allowed per goal. Default 3.
+#     The owner can raise it for one goal from chat: a message of their own,
+#     after the /goal line, that starts with "approve round N" (cap N) or
+#     "approve N more rounds" (cap +N). Tool results, hook feedback, meta and
+#     summary lines never count, so the runner cannot approve itself.
+
+set -euo pipefail
+
+__HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -d "$__HOOK_DIR/lib" ]; then __HOOK_LIB_DIR="$__HOOK_DIR/lib"; else __HOOK_LIB_DIR="$__HOOK_DIR/../lib"; fi
+# shellcheck source=../lib/stdin-json.sh
+source "$__HOOK_LIB_DIR/stdin-json.sh"
+# shellcheck source=../lib/verdict.sh
+source "$__HOOK_LIB_DIR/verdict.sh"
+
+readonly HOOK_ID="goal-judges-before-stop"
+LIB_REAL="$(cd "$__HOOK_LIB_DIR" && pwd -P)"
+# Five, not three like goal-retro-before-stop: each judging round needs the
+# judges to run between two Stops.
+readonly MAX_BLOCKS=5
+readonly MAX_WAITS=10
+# A retro line claims met when it starts with "Goal result" (after list,
+# heading, quote, bold, and number marks) and its value is not a known
+# not-met form. Unknown forms ("met", "fully met", "done") are claims, and so
+# is a not-met or waiting form followed by a success word outside parentheses.
+readonly CLAIM_AWK='function norm(l) { l = tolower(l); gsub(/[*_`]/, "", l); sub(/^[[:space:]#>0-9.)-]*/, "", l); return l }
+function result(l) { return norm(l) ~ /^goal result([^a-z]|$)/ }
+function claim(l,  r) { l = norm(l)
+  if (l !~ /^goal result([^a-z]|$)/) return 0
+  r = substr(l, 12); sub(/^[^a-z]*/, "", r); gsub(/-/, " ", r)
+  if (r ~ /^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)([^a-z]|$)/) {
+    sub(/^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)/, "", r)
+    return rest(r) }
+  if (r !~ /^(in progress|blocked|impossible|pending)([^a-z]|$)/) return 1
+  sub(/^(in progress|blocked|impossible|pending)/, "", r)
+  return rest(r) }
+# What may follow a not-met or waiting word: counts go first ("3/5 met",
+# "3 of 5 criteria met"), then any success word left claims met ("blocked
+# on 2FA and done"), then one "on|by|until|for <what>" tail may stay.
+function rest(r,  n, t, a, b) { r = unparen(r); t = r; while (match(t, /[0-9]+ *(of|\/) *[0-9]+/)) { a = substr(t, RSTART, RLENGTH); b = a; sub(/ *(of|\/).*/, "", a); sub(/.*(of|\/) */, "", b); if (a + 0 == b + 0 && a + 0 > 0 && substr(t, RSTART + RLENGTH) ~ /^ *(criteria|criterion|items?|steps?|parts?)? *(are |is )?met/) return 1; t = substr(t, RSTART + RLENGTH) } n = "(criteria|criterion|items?|steps?|parts?)"
+  gsub("(" n ")? *[0-9]+( *(,|and|&|or) *[0-9]+)* *((of|/) *[0-9]+ *)?(" n " *)?(are |is )?(not met|met|done|blocked|open|left)", "", r)
+  gsub(/(the )?rest (is |are )?(blocked|open|left|pending|not met)|lowest( score)? [0-9.]+ *\/ *10/, "", r)
+  if (success(r)) return 1
+  sub(/^[^a-z0-9]*(on|by|until|for) [a-z0-9 ._\/-]+$/, "", r)
+  return extra(r) }
+# Allow list: after a not-met or waiting form, only a bracketed reason, a
+# count ("3/5 met", "criteria 1 and 2 met, 3 blocked") or, when waiting,
+# "on|by|until|for <what>" may follow. Any other text reads as a claim:
+# "partly met, ready to merge", "unmet; resolved".
+# Strip bracketed reasons innermost first, so "(waiting on 1 judge(s); ...)"
+# goes whole and an unclosed "(" keeps its text.
+function unparen(r) { while (gsub(/\([^()]*\)/, "", r) > 0) ; return r }
+function extra(r) { return r ~ /[a-z0-9]/ }
+# After a not-met or waiting form, any success word or score still claims met:
+# "partly met -> fully achieved", "failed to find a gap; done", "9/10".
+function success(r) {
+  return r ~ /(^|[^a-z])(met|achieved|accomplished|done|success|successful|succeeded|complete|completed|passed|delivered|shipped)([^a-z]|$)/ || r ~ /[0-9] *\/ *10/ }'
+
+INPUT="$(read_hook_stdin)"
+SESSION_ID="$(json_get "$INPUT" '.session_id')"
+case "$SESSION_ID" in
+  "" | *[!A-Za-z0-9_-]*) verdict_allow "$HOOK_ID" "no usable session id" ;;
+esac
+
+STATE_DIR="${RUN_GOAL_STATE_DIR:-$HOME/.cache/agentbrew/run-goal}"
+JUDGE_DIR="${RUN_GOAL_JUDGE_DIR:-$HOME/.config/agentbrew/goal-judges}"
+MIN="${RUN_GOAL_JUDGE_MIN:-8}"
+NEED="${RUN_GOAL_JUDGE_COUNT:-3}"
+MODELS="${RUN_GOAL_JUDGE_MODELS:-3}"
+ROUNDS="${RUN_GOAL_JUDGE_ROUNDS:-3}"
+FOCUSED="${RUN_GOAL_JUDGE_FOCUSED:-4}"
+SLACK="${RUN_GOAL_JUDGE_SLACK:-1}"
+case "$MIN" in "" | *[!0-9.]*) MIN=8 ;; esac
+case "$NEED" in "" | *[!0-9]*) NEED=3 ;; esac
+case "$MODELS" in "" | *[!0-9]*) MODELS=3 ;; esac
+case "$ROUNDS" in "" | *[!0-9]*) ROUNDS=3 ;; esac
+case "$FOCUSED" in "" | *[!0-9]*) FOCUSED=4 ;; esac
+case "$SLACK" in "" | *[!0-9]*) SLACK=1 ;; esac
+CONTRACT="$STATE_DIR/$SESSION_ID.contract.md"
+RETRO="$STATE_DIR/$SESSION_ID.retro.md"
+COUNTER="$STATE_DIR/$SESSION_ID.judgeblocks"
+WAITS="$STATE_DIR/$SESSION_ID.judgewaits"
+OWNER="$STATE_DIR/$SESSION_ID.owner.md"
+PROMPT_CMD="bash $LIB_REAL/goal-judge-prompt.sh $CONTRACT <judge id>"
+OVERSEER_CMD="bash $LIB_REAL/goal-overseer-prompt.sh $CONTRACT <transcript path>"
+trimws() { hook_jq -Rrs 'gsub("^\\s+|\\s+$"; "")' 2>/dev/null; }
+HISTORY="$STATE_DIR/goal-judge-history.tsv"
+
+TRANSCRIPT="$(json_get "$INPUT" '.transcript_path')"
+[ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] || TRANSCRIPT=""
+ROWS=""
+VJQ="$__HOOK_LIB_DIR/goal-judge-verdicts.jq"
+# Two reads per Stop: one grep selects the /goal lines (is a goal active,
+# and the owner's words), so a session with no goal exits after that grep;
+# then one full jq pass.
+parse() { [ -z "$TRANSCRIPT" ] || ROWS="$(hook_jq -R -r -n --argjson canon "$1" --arg lib "$LIB_REAL" \
+  --arg contract "$CONTRACT" --arg mode all -f "$VJQ" <"$TRANSCRIPT" 2>/dev/null || true)"; }
+G_ACTIVE=0
+G_ROW=""
+SEL=""
+[ -z "$TRANSCRIPT" ] ||
+  SEL="$(grep -F '<command-name>/goal</command-name>' "$TRANSCRIPT" 2>/dev/null || true)"
+if [ -n "$SEL" ]; then
+  G_ROW="$(hook_jq -R -r -n --argjson canon '{}' --arg lib "$LIB_REAL" --arg contract "$CONTRACT" --arg mode g -f "$VJQ" <<<"$SEL" 2>/dev/null || true)"
+  G_ACTIVE="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G" && !d {print $2; d=1}')"
+fi
+SEL=""
+# The owner text comes from the transcript. Rewrite the owner file when it
+# differs (whitespace aside), so the runner's prompts and the hook's agree.
+# This runs before any early allow: the runner builds judge prompts while
+# the retro still says in progress.
+G_OWNER="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G" && !d {print $3; d=1}' | hook_jq -Rr '@base64d' 2>/dev/null || true)"
+if [ "$G_ACTIVE" = 1 ] && [ -n "$G_OWNER" ]; then
+  norm_ws() { tr -s '[:space:]' ' ' | sed -E 's/^ //; s/ $//'; }
+  [ -f "$OWNER" ] && [ "$(norm_ws <"$OWNER")" = "$(printf '%s' "$G_OWNER" | norm_ws)" ] ||
+    { mkdir -p "$STATE_DIR" && printf '%s\n' "$G_OWNER" >"$OWNER"; } 2>/dev/null || true
+fi
+# No contract and no active goal: nothing to judge. A contract with no
+# readable transcript still gates (fail closed).
+[ -f "$CONTRACT" ] || [ "$G_ACTIVE" = 1 ] || verdict_allow "$HOOK_ID" "no active goal contract"
+
+if [ "${HOOK_BYPASS_GOAL_JUDGES_BEFORE_STOP:-0}" = "1" ]; then
+  verdict_bypass "$HOOK_ID" "HOOK_BYPASS_GOAL_JUDGES_BEFORE_STOP=1"
+fi
+
+# Success-gated: only an explicit not-met result skips judging. No retro, no
+# result line, or any claim line all need a consensus.
+if [ -f "$RETRO" ] &&
+  awk "$CLAIM_AWK"' result($0) { r = 1 } claim($0) { c = 1 } END { exit !(r && !c) }' "$RETRO"; then
+  verdict_allow "$HOOK_ID" "goal says it is not met"
+fi
+
+count() { local n=0; [ -f "$1" ] && n="$(cat "$1" 2>/dev/null || echo 0)"; case "$n" in "" | *[!0-9]*) n=0 ;; esac; echo "$n"; }
+
+PROBLEMS=""
+SEP=$'\036'
+add() { PROBLEMS="$PROBLEMS$SEP$1"; }
+
+if [ -f "$CONTRACT" ]; then
+  JUDGES="$(sed -nE 's/^[-*_ ]*Judges:[*_ ]*(.*)$/\1/p' "$CONTRACT" | head -1 | tr ',' '\n' |
+    sed -E 's/^[[:space:]`]+//; s/[[:space:]`]+$//' | sed '/^$/d' | tr '[:upper:]' '[:lower:]' | LC_ALL=C sort -u)"
+else
+  JUDGES=""
+fi
+NJ="$(printf '%s\n' "$JUDGES" | sed '/^$/d' | wc -l | tr -d ' ')"
+TOKEN=""
+CANON="{}"
+NOW_CONTRACT=""
+RUBRIC_SHAS=""
+if [ ! -f "$CONTRACT" ]; then
+  add "the goal contract file is missing ($CONTRACT); save the contract there again, or write Goal result: partly met (<why>) in the retro"
+elif [ "$NJ" -lt "$NEED" ]; then
+  add "the contract names $NJ of $NEED judges (add a 'Judges: <id>, <id>, <id>' line before judging)"
+elif ! TOKEN="$(RUN_GOAL_JUDGE_DIR="$JUDGE_DIR" bash "$__HOOK_LIB_DIR/goal-state.sh" "$CONTRACT" 2>&1)"; then
+  add "${TOKEN#goal-state: }"
+  TOKEN=""
+else
+  NOW_CONTRACT="$(bash "$__HOOK_LIB_DIR/goal-state.sh" --file-sha "$CONTRACT" 2>/dev/null || true)"
+  while IFS= read -r id; do
+    rs="$(bash "$__HOOK_LIB_DIR/goal-state.sh" --rubric-sha "$JUDGE_DIR/$id.md" 2>/dev/null)" || continue
+    RUBRIC_SHAS="$RUBRIC_SHAS$id $rs
+"
+    p="$(GOAL_STATE_TOKEN="$TOKEN" GOAL_CONTRACT_SHA="$NOW_CONTRACT" GOAL_RUBRIC_SHA="$rs" \
+      bash "$__HOOK_LIB_DIR/goal-judge-prompt.sh" "$CONTRACT" "$id" "$JUDGE_DIR" 2>/dev/null)" || continue
+    CANON="$(hook_jq -c --arg k "$id" --arg v "$p" '. + {($k): $v}' <<<"$CANON")"
+  done <<<"$JUDGES"
+fi
+
+parse "$CANON"
+# An unofficial judge run (practice) uses up one round of the cap, so a
+# false match costs a round, not the goal.
+UROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="U"' | wc -l | tr -d ' ')"
+RUNNING="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="R" && !d {print $2; d=1}')"
+case "$RUNNING" in "" | *[!0-9]*) RUNNING=0 ;; esac
+if [ "$RUNNING" -gt 0 ]; then
+  waits="$(count "$WAITS")"
+  if [ "$waits" -lt "$MAX_WAITS" ]; then
+    { echo $((waits + 1)) >"$WAITS"; } 2>/dev/null ||
+      verdict_block "$HOOK_ID" "Next step: make $WAITS writable. The hook cannot count judge waits there, so a running judge cannot excuse this Stop."
+    # Never let a met claim stand while judges run: rewrite it to in progress.
+    if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$RETRO"; then
+      tmp="$RETRO.tmp.$$"
+      awk -v n="$RUNNING" "$CLAIM_AWK"' claim($0) { print "Goal result: in progress (waiting on " n " judge(s); write the result again after the verdicts)"; next } { print }' \
+        "$RETRO" >"$tmp" 2>/dev/null && mv "$tmp" "$RETRO" 2>/dev/null ||
+        { rm -f "$tmp"; verdict_block "$HOOK_ID" "Next step: wait for the judges. The retro claims the goal is met while $RUNNING judge(s) still run, and the hook could not rewrite it; write Goal result: in progress (waiting on judges) in $RETRO."; }
+    fi
+    verdict_allow "$HOOK_ID" "goal still waiting on $RUNNING judge(s) running in the background"
+  fi
+fi
+
+# Owner approvals of more rounds: only the owner's own typed messages after
+# the last /goal line. One grep first, so a session with none runs no jq.
+if [ -n "$TRANSCRIPT" ] && grep -qi 'approve' "$TRANSCRIPT" 2>/dev/null; then
+  GL="$(grep -nF '<command-name>/goal</command-name>' "$TRANSCRIPT" 2>/dev/null | tail -1 | cut -d: -f1 || true)"
+  APPROVED="$(tail -n +"${GL:-1}" "$TRANSCRIPT" | grep -i 'approve' | hook_jq -R -r --argjson base "$ROUNDS" '
+    (try fromjson catch null) | select(type == "object" and .type == "user")
+    | select((.isMeta // false) == false and (.isCompactSummary // false) == false and .toolUseResult == null)
+    | .message.content
+    | if type == "string" then . elif type == "array" then
+        (if any(.[]; .type == "tool_result") then "" else (map(select(.type == "text") | .text) | join(" ")) end)
+      else "" end
+    | ascii_downcase | sub("^\\s+"; "")
+    | (capture("^approve (judge )?rounds? (?<n>[0-9]+)") | (.n | tonumber)),
+      (capture("^approve (?<n>[0-9]+) more (judge )?rounds?") | ($base + (.n | tonumber)))
+  ' 2>/dev/null | sort -n | tail -1 || true)"
+  case "$APPROVED" in "" | *[!0-9]*) ;; *) [ "$APPROVED" -gt "$ROUNDS" ] && ROUNDS="$APPROVED" ;; esac
+fi
+
+# Rounds, frozen judge set, and frozen rubrics, from this goal's judge prompts.
+PROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="P"')"
+# A full round judges every judge; a state that judged fewer is a focused
+# re-judge of the failing judge(s), counted against its own cap.
+read -r NR_ROUNDS NR_FOCUSED <<<"$(printf '%s\n' "$PROWS" | sed '/^$/d' | awk -F'\t' -v nj="${NJ:-0}" '!seen[$5 FS $3]++ { n[$5]++ } END { f = 0; p = 0; for (k in n) { if (n[k] >= nj) f++; else p++ } print f, p }')"
+[ "${NR_FOCUSED:-0}" -gt "$FOCUSED" ] &&
+  add "this goal used $NR_FOCUSED focused re-judges (a state judged by only some judges); the cap is $FOCUSED (RUN_GOAL_JUDGE_FOCUSED); run a full round instead"
+NR_ROUNDS=$((NR_ROUNDS + UROWS))
+[ "$NR_ROUNDS" -gt "$ROUNDS" ] &&
+  add "this goal used $NR_ROUNDS judging rounds ($UROWS of them unofficial: a judge call without the prompt header, or claude -p/codex exec/ollama run in Bash, whose result holds a verdict); the cap is $ROUNDS (more rounds farm for a lucky score; only the owner can raise it, by typing a message that starts with: approve round $((NR_ROUNDS)))"
+if [ -n "$PROWS" ]; then
+  FIRST_STATE="$(printf '%s\n' "$PROWS" | awk -F'\t' 'NR==1{print $5}')"
+  LAST_STATE="$(printf '%s\n' "$PROWS" | awk -F'\t' '{s=$5} END{print s}')"
+  [ -z "$TOKEN" ] || [ "$LAST_STATE" = "$TOKEN" ] ||
+    add "the latest judging round was on state $LAST_STATE, not the current state $TOKEN; only the latest round counts, so judge all again"
+  # The contract (with its Judges: line) freezes at the first round; a
+  # partial first round may judge fewer, never other, judges.
+  FIRST_SET="$(printf '%s\n' "$PROWS" | awk -F'\t' -v s="$FIRST_STATE" '$5==s{print $3}' | LC_ALL=C sort -u)"
+  EXTRA="$(printf '%s\n' "$FIRST_SET" | { grep -vxF -f <(printf '%s\n' "$JUDGES") || true; } | tr '\n' ' ')"
+  [ -z "${EXTRA// /}" ] ||
+    add "the first round judged ${EXTRA}which the contract's Judges: line no longer names; keep the first panel"
+  FIRST_CONTRACT="$(printf '%s\n' "$PROWS" | awk -F'\t' 'NR==1{print $6}')"
+  [ -z "$FIRST_CONTRACT" ] || [ "$FIRST_CONTRACT" = "$NOW_CONTRACT" ] ||
+    add "the goal contract changed after the first round; judge against the contract you started with"
+  while IFS= read -r id; do
+    [ -n "$id" ] && [ -f "$JUDGE_DIR/$id.md" ] || continue
+    first="$(printf '%s\n' "$PROWS" | awk -F'\t' -v j="$id" '$3==j && !d {print $4; d=1}')"
+    now="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$id" '$1==j && !d {print $2; d=1}')"
+    [ -z "$first" ] || [ "$first" = "$now" ] ||
+      add "$id's rubric changed after its first round; put rubric changes in ## Calibration and merge them at the next goal"
+  done <<<"$JUDGES"
+fi
+
+# One row per tool_use id (a notification can appear in two row types).
+VROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="V" && !seen[$2]++')"
+MROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="M"' | wc -l | tr -d ' ')"
+[ "$MROWS" -gt 0 ] && add "$MROWS result(s) held more than one verdict block and count for none"
+
+USED_FAMILIES=""
+SCORES=""
+# Count launches, not verdicts, on every state: a judge stopped before its
+# verdict and launched again on one state is a re-roll, in any round.
+RELAUNCHED=""
+while IFS=' ' read -r j st k; do
+  [ -n "$j" ] || continue
+  add "$j was launched $k times on state $st (a stopped run still counts); change the work, then judge all again"
+  [ "$st" = "$TOKEN" ] && RELAUNCHED="$RELAUNCHED $j"
+done <<<"$(printf '%s\n' "$PROWS" | awk -F'\t' '$3 != "" { k = $3 " " $5; n[k]++ } END { for (k in n) if (n[k] > 1) print k, n[k] }')"
+# A judge call whose Judge-Id is not on the contract's Judges: line is
+# practice under another name.
+ODD="$(printf '%s\n' "$PROWS" | awk -F'\t' '$3 != "" {print $3}' | LC_ALL=C sort -u | { grep -vxF -f <(printf '%s\n' "$JUDGES") || true; } | tr '\n' ' ')"
+[ -z "${ODD// /}" ] || add "judge calls named ${ODD}which the contract's Judges: line does not list; judge only the contract's judges"
+RUNNER="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="T" && !d {print $2; d=1}')"
+RUNNER_JUDGES=0
+LOWEST=""
+MISSING=""
+if [ -n "$TOKEN" ]; then
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    cache="$JUDGE_DIR/$id.md"
+    mine="$(printf '%s\n' "$VROWS" | awk -F'\t' -v j="$id" -v t="$TOKEN" '$3==j && $6==t')"
+    n="$(printf '%s\n' "$mine" | sed '/^$/d' | wc -l | tr -d ' ')"
+    case " $RELAUNCHED " in *" $id "*) continue ;; esac
+    if [ "$n" -eq 0 ]; then
+      MISSING="$MISSING $id"; continue
+    elif [ "$n" -gt 1 ]; then
+      add "$id was judged $n times on one state (a re-roll); change the work, then judge all again"; continue
+    fi
+    IFS=$'\t' read -r _ tid _ score vcache _ model ok typeok msg _ <<<"$mine"
+    [ "${vcache/#\~/$HOME}" = "$cache" ] || add "$id cites cache $vcache, not $cache"
+    [ "$ok" = 1 ] || add "$id's prompt is not the exact output of goal-judge-prompt.sh for this state"
+    [ "$typeok" = 1 ] || add "$id ran as a fork or a custom agent type; leave subagent_type out, or set it to general-purpose"
+    [ "$msg" = 1 ] && add "$id got a SendMessage after launch (a message can steer a judge); run it again with no messages"
+    case "$score" in bad | "") add "$id's Score line is not N/10"; continue ;; esac
+    if awk -v a="$score" 'BEGIN{exit !(a>10)}'; then add "$id score $score is out of range"; continue; fi
+    SCORES="$SCORES$id $score
+"
+    case " $USED_FAMILIES " in *" $model "*) ;; *) USED_FAMILIES="$USED_FAMILIES $model" ;; esac
+    [ -n "$RUNNER" ] && [ "$model" = "$RUNNER" ] && RUNNER_JUDGES=$((RUNNER_JUDGES + 1))
+    awk -v s="$SESSION_ID" -v t="$TOKEN" -v sc="$score/10" \
+      '/^## Calibration/{c=1} c && index($0, s) && index($0, t) && index($0, sc){f=1} END{exit !f}' "$cache" 2>/dev/null ||
+      add "$id's ## Calibration section has no line with session $SESSION_ID, state $TOKEN, and $score/10"
+    # The runner writes these notes: a line for this state may carry only the
+    # verdict's score, so the record cannot show a score the judge never gave.
+    awk -v s="$SESSION_ID" -v t="$TOKEN" -v sc="$score" \
+      '/^## Calibration/{c=1; next} c && index($0, s) && index($0, t) { l = $0
+        while (match(l, /[0-9]+(\.[0-9]+)? *\/ *10/)) { v = substr(l, RSTART, RLENGTH); sub(/ *\/.*/, "", v)
+          if (v + 0 != sc + 0) bad = 1; l = substr(l, RSTART + RLENGTH) } } END { exit !bad }' "$cache" 2>/dev/null &&
+      add "$id's calibration line for state $TOKEN states a score other than $score/10; keep only the verdict's score there"
+  done <<<"$JUDGES"
+  [ -n "$MISSING" ] && add "no verdict for the current state $TOKEN from:$MISSING"
+  NF="$(printf '%s\n' $USED_FAMILIES | sed '/^$/d' | wc -l | tr -d ' ')"
+  [ -n "$SCORES" ] && [ "$NF" -lt "$MODELS" ] &&
+    add "judges used $NF model family(ies) ($USED_FAMILIES ); use at least $MODELS: give each judge a different Agent model (sonnet, haiku, fable, opus), none of them yours"
+  [ -n "$SCORES" ] && [ "$RUNNER_JUDGES" -gt 0 ] &&
+    add "$RUNNER_JUDGES of $NJ judges ran on the runner's own model family ($RUNNER); set a different Agent model on each judge (no self-judging)"
+  # The overseer: one fresh agent per state, after every judge. Its prompt is
+  # rebuilt from the judges' own reports in the transcript, so the runner
+  # cannot trim them. Its ruling (at most 2 points from the judge's score) is
+  # the effective score; with no overseer the round cannot pass.
+  OID=""
+  if [ -z "$MISSING" ] && [ -n "$SCORES" ]; then
+    OROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' -v t="$TOKEN" '$1=="O" && $3==t')"
+    no="$(printf '%s\n' "$OROWS" | sed '/^$/d' | wc -l | tr -d ' ')"
+    if [ "$no" -eq 0 ]; then
+      add "no overseer ran on state $TOKEN; print its prompt with \`$OVERSEER_CMD\` and pass it unchanged as the prompt of one fresh Agent call on a model family that is not yours"
+    elif [ "$no" -gt 1 ]; then
+      add "the overseer was launched $no times on state $TOKEN (a re-roll); change the work, then judge all again"
+    else
+      IFS=$'\t' read -r _ OID _ omodel otype omsg otools oprompt <<<"$OROWS"
+      canon_o="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="J"' | GOAL_STATE_TOKEN="$TOKEN" GOAL_CONTRACT_SHA="$NOW_CONTRACT" \
+        RUN_GOAL_JUDGE_DIR="$JUDGE_DIR" bash "$__HOOK_LIB_DIR/goal-overseer-prompt.sh" "$CONTRACT" - 2>/dev/null || true)"
+      got="$(printf '%s' "$oprompt" | hook_jq -Rr '@base64d' 2>/dev/null || true)"
+      [ -n "$canon_o" ] && [ "$(printf '%s' "$got" | trimws)" = "$(printf '%s' "$canon_o" | trimws)" ] ||
+        add "the overseer's prompt is not the exact output of goal-overseer-prompt.sh for this state"
+      [ "$otype" = 1 ] || add "the overseer ran as a fork or a custom agent type; leave subagent_type out, or set it to general-purpose"
+      [ "$omsg" = 1 ] && add "the overseer got a SendMessage after launch (a message can steer it); change the work, then judge all again"
+      ostate="$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" '$1=="W" && $2==o && !d {print $3; d=1}')"
+      [ "$ostate" = "$TOKEN" ] || add "the overseer's verdict says State: ${ostate:-none}, not $TOKEN"
+      [ -n "$RUNNER" ] && [ "$omodel" = "$RUNNER" ] &&
+        add "the overseer ran on the runner's own model family ($RUNNER); set a different Agent model on it"
+    fi
+  fi
+  LOWN=0
+  LOWS=""
+  while read -r id score; do
+    [ -n "$id" ] || continue
+    eff="$score"; ign=""
+    if [ -n "$OID" ]; then
+      read -r r why <<<"$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" -v j="$id" '$1=="Q" && $2==o && $3==j && !d {print $4, $5; d=1}')"
+      if [ -z "$r" ]; then
+        add "the overseer gave no Ruling line for $id"
+      elif [ "${why:-0}" = 0 ]; then
+        add "the overseer's Ruling for $id has no reason; each ruling needs a one-line reason"
+      elif [ "${why:-0}" -lt 20 ] && awk -v s="$score" -v r="$r" 'BEGIN{exit !(r>s)}'; then
+        # A raise needs a real reason ("ok" lifted a 6 to 8): name the follow-up deduction.
+        add "the overseer raised $id with a reason under 20 characters; name the follow-up deduction it lifts"
+      elif [ "${otools:-}" = 0 ] && [ "$r" != "$score" ]; then
+        # A ruling must rest on reproduced evidence: an overseer that ran no
+        # tool calls cannot change a score, so the judge's score stands. No
+        # block here: a second overseer on the same state is a re-roll.
+        eff="$score"; ign=" (the overseer's change was not counted: it made no tool calls)"
+      else
+        eff="$(awk -v s="$score" -v r="$r" 'BEGIN { if (r > s + 2) r = s + 2; if (r < s - 2) r = s - 2; if (r < 0) r = 0; if (r > 10) r = 10; print r }')"
+      fi
+    fi
+    if awk -v a="$eff" -v m="$MIN" 'BEGIN{exit !(a<m)}'; then
+      if [ "$eff" = "$score" ]; then msg="$id scored $score/10$ign"; else msg="$id scored $eff/10 after the overseer (judge: $score/10)"; fi
+      LOWN=$((LOWN + 1))
+      awk -v a="$eff" -v m="$MIN" -v k="$SLACK" 'BEGIN{exit !(a<m-k)}' && LOWN=$((LOWN + 9))
+      LOWS="$LOWS$SEP$msg"
+    fi
+    if [ -z "$LOWEST" ] || awk -v a="$eff" -v b="$LOWEST" 'BEGIN{exit !(a<b)}'; then LOWEST="$eff"; fi
+  done <<<"$SCORES"
+  # The 8, 8, 7 bar: with 3 or more judges, one judge may sit up to SLACK
+  # points below the minimum when every other judge meets it.
+  if [ "${LOWN:-0}" -gt 0 ] && ! { [ "$LOWN" = 1 ] && [ "${NJ:-0}" -ge 3 ] && [ "$SLACK" -gt 0 ]; }; then
+    PROBLEMS="$PROBLEMS$LOWS"
+  fi
+fi
+PROBLEMS="${PROBLEMS#"$SEP"}"
+PLAIN="${PROBLEMS//$SEP/; }"
+
+# Score history: every official verdict of this goal, failing rounds and older
+# states included, one line per tool_use id, so the pass rate is a fair base rate.
+printf '%s\n' "$ROWS" | awk -F'\t' '$1 == "V" && $11 == "1" && !seen[$2]++' | while IFS=$'\t' read -r _ tid hj hs _ hst hm _; do
+  grep -qF -- "	$tid	" "$HISTORY" 2>/dev/null && continue
+  rs="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$hj" '$1==j && !d {print $2; d=1}')"
+  { printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%F)" "$tid" "$SESSION_ID" "$hj" "$rs" "$hst" "$hm" "$hs" >>"$HISTORY"; } 2>/dev/null || true
+done
+
+if [ -z "$PROBLEMS" ]; then
+  rm -f "$COUNTER" "$WAITS" "${TMPDIR:-/tmp}/goal-judges-$(id -u).$SESSION_ID.judgeblocks" 2>/dev/null || true
+  verdict_allow "$HOOK_ID" "judge consensus: $NJ judges, lowest $LOWEST/10, state $TOKEN"
+fi
+
+FALLBACK="${TMPDIR:-/tmp}/goal-judges-$(id -u).$SESSION_ID.judgeblocks"
+blocks="$(count "$COUNTER")"; b2="$(count "$FALLBACK")"; [ "$b2" -gt "$blocks" ] && blocks="$b2"
+WROTE=0
+{ echo $((blocks + 1)) >"$COUNTER"; } 2>/dev/null && WROTE=1
+[ "$WROTE" = 1 ] || { { echo $((blocks + 1)) >"$FALLBACK"; } 2>/dev/null && WROTE=1; }
+if [ "$blocks" -ge "$MAX_BLOCKS" ] || [ "$WROTE" = 0 ]; then
+  # Bounded: a counter that cannot be written ends the loop now, as a give-up.
+  [ "$WROTE" = 0 ] && PLAIN="the block counter cannot be written ($COUNTER); $PLAIN"
+  # No brackets in the reason: a cut inside one would leave text the claim
+  # check reads as "met", and the downgraded line would block forever.
+  reason="$(printf '%s' "$PLAIN" | tr -d '\n()' | cut -c1-300)"
+  src="$RETRO"; [ -f "$src" ] || src=/dev/null
+  # Rewrite in place from memory (no temp file), so a read-only state folder
+  # or a missing $TMPDIR still gets the downgrade.
+  new="$(awk -v r="$reason" "$CLAIM_AWK"' BEGIN { line = "Goal result: partly met (judge consensus not reached: " r ")" }
+    claim($0) { print line; s = 1; next } result($0) { s = 1 } { print } END { if (!s) print line }' "$src")" &&
+    { printf '%s\n' "$new" >"$RETRO"; } 2>/dev/null || true
+  # Never allow while the retro still claims met: that would end as met.
+  if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$RETRO"; then
+    verdict_block "$HOOK_ID" "Goal cannot end as met: the judge consensus was not reached after $blocks block(s), and the hook cannot downgrade the retro ($RETRO is not writable). Make it writable, or write Goal result: partly met (<why>) in it yourself. Problems: $PLAIN"
+  fi
+  rm -f "$COUNTER" "$WAITS" "$FALLBACK" 2>/dev/null || true
+  verdict_allow "$HOOK_ID" "gave up after $blocks block(s); the goal is NOT met; retro downgraded to partly met: $PLAIN"
+fi
+
+NEXT="${PROBLEMS%%"$SEP"*}"
+# Only low scores left: the next step is the iteration rule, not the score.
+if ! grep -qvE ' scored [0-9.]+/10' <<<"$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed '/^$/d')"; then
+  NLOW="$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | grep -cE ' scored [0-9.]+/10' || true)"
+  if [ "$NLOW" = 1 ]; then
+    # One judge under the bar: a focused re-judge, not a full round (step 5).
+    LOWID="${NEXT%% scored *}"; LOWID="${LOWID# }"
+    NEXT="fix every blocker the overseer listed in one batch, each with a test that fails first; file the follow-ups as tasks outside the judged paths before judging; then re-judge only $LOWID (focused re-judge; $NEXT)"
+  else
+    NEXT="fix every blocker the overseer listed in one batch, each with a test that fails first; file the follow-ups as tasks outside the judged paths before judging; then judge every judge again ($NEXT)"
+  fi
+fi
+# A focused re-judge that failed: lead with that judge, not the judges that
+# have not run on this state yet (judging them now spends a round on a failing state).
+LOWLINE="$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | grep -E ' scored [0-9.]+/10' | head -1 || true)"
+if [ -n "$LOWLINE" ] && [ "${NEXT#no verdict for the current state}" != "$NEXT" ]; then
+  LOWID="${LOWLINE%% scored *}"; LOWID="${LOWID# }"
+  NEXT="focused re-judge: $LOWLINE; fix its blockers and its Path to 8 items in one batch, each with a test that fails first, change the work, and re-judge only $LOWID; run the other judges and the overseer only after it reaches the bar"
+fi
+LIST="$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed -E 's/^ +//; /^$/d' | awk '{ printf "  %d. %s\n", NR, $0 }')"
+RATE=""
+[ -f "$HISTORY" ] && RATE="$(awk -F'\t' -v m="$MIN" '{ n[$4]++; if ($8 + 0 >= m + 0) p[$4]++ }
+  END { for (j in n) printf "%s %d/%d, ", j, p[j], n[j] }' "$HISTORY" 2>/dev/null | sed 's/, $//')"
+if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$RETRO"; then
+  WHY="The retro claims the goal is met, but there is no judge consensus yet."
+  awk "$CLAIM_AWK"' claim($0) && norm($0) ~ /^goal result[^a-z]*(partly|partially|not|unmet|failed|abandoned|cancelled|canceled|stopped|in progress|blocked|impossible|pending)/ { c = 1 } END { exit !c }' "$RETRO" &&
+    WHY="The retro's Goal result line starts as not met, but text after it reads as a claim. Put the reason in brackets: Goal result: partly met (<why>)."
+else
+  WHY="No Goal result line says the goal is not met, so this Stop needs a judge consensus. Mid-goal (a question round, a wait), write Goal result: in progress (<why>) and stop again."
+fi
+MSG="Goal cannot end as met yet (block $((blocks + 1)) of $MAX_BLOCKS).
+Next step: $NEXT
+Problems:
+$LIST
+Why: $WHY
+How to judge: for each contract judge, print its prompt with \`$PROMPT_CMD\` and pass it unchanged as the prompt of one fresh-context Agent call (no subagent_type, or general-purpose), each on a different model family that is not yours ($MODELS families at least). Then add a calibration line with session $SESSION_ID, the state, and the score to each judge's ## Calibration. When every judge has reported, print the overseer prompt with \`$OVERSEER_CMD\` and pass it unchanged to one more fresh Agent call, on a model family that is not yours; it checks each judge and gives a Ruling per judge (at most 2 points from the judge's score). Every effective score needs $MIN/10 or more, within $ROUNDS rounds.
+Honest exit: write Goal result: partly met (<lowest score and why>) in $RETRO.${RATE:+
+Pass rate so far (score >= $MIN): $RATE.}
+Guide: run-goal references/goal-judges.md"
+verdict_block "$HOOK_ID" "$MSG"

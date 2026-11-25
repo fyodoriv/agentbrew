@@ -5,8 +5,9 @@ import {
   fsyncSync,
   lstatSync,
   openSync,
-  readFileSync,
+  readSync,
   realpathSync,
+  type Stats,
   unlinkSync,
   writeFileSync,
   writeSync,
@@ -25,11 +26,40 @@ export interface NativeWriteIntent {
   after: FileState;
 }
 
-type BeginNativeMutation = (intent?: readonly NativeWriteIntent[]) => void;
+type BeginNativeMutation = (intent?: readonly NativeWriteIntent[]) => () => void;
+
+const NATIVE_PUBLICATION_LOCK_NAME = ".agentbrew-native-publication.lock";
+
+export type NativePublicationStatus = "owner-record-present" | "unavailable";
+
+function isPrivateOwnerRecord(record: Stats, owner: number): boolean {
+  return record.isFile() && record.uid === owner && record.nlink === 1 && (record.mode & 0o7777) === 0o600;
+}
+
+/** Inspect file metadata without opening the owner record or deciding whether its writer is active. */
+export function inspectNativePublicationStatus(): NativePublicationStatus | undefined {
+  try {
+    const home = realpathSync.native(homedir());
+    const record = lstatSync(join(home, NATIVE_PUBLICATION_LOCK_NAME), { throwIfNoEntry: false });
+    if (!record) return undefined;
+
+    const directory = lstatSync(home);
+    if (
+      !directory.isDirectory() ||
+      directory.uid !== process.getuid?.() ||
+      !isPrivateOwnerRecord(record, directory.uid)
+    ) {
+      return "unavailable";
+    }
+    return "owner-record-present";
+  } catch {
+    return "unavailable";
+  }
+}
 
 function acquire(path: string): number {
   try {
-    return openSync(path, "wx", 0o600);
+    return openSync(path, "wx+", 0o600);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
     throw new Error("Claude native publication is busy or has an earlier owner that needs verification.");
@@ -44,7 +74,7 @@ export function withNativePublicationLock<T>(publish: (beginMutation: BeginNativ
     throw new Error("Claude native publication cannot verify the home directory owner.");
   }
 
-  const path = join(home, ".agentbrew-native-publication.lock");
+  const path = join(home, NATIVE_PUBLICATION_LOCK_NAME);
   const fd = acquire(path);
   try {
     const identity = fstatSync(fd);
@@ -53,16 +83,17 @@ export function withNativePublicationLock<T>(publish: (beginMutation: BeginNativ
     writeFileSync(fd, record);
     fsyncSync(fd);
     const assertOwner = () => {
+      const bytes = Buffer.alloc(record.length + 1);
+      const count = readSync(fd, bytes, 0, bytes.length, 0);
       const current = lstatSync(path, { throwIfNoEntry: false });
       if (
-        !current?.isFile() ||
+        !current ||
+        !isPrivateOwnerRecord(current, directory.uid) ||
         current.dev !== identity.dev ||
         current.ino !== identity.ino ||
-        current.uid !== directory.uid ||
-        current.nlink !== 1 ||
-        (current.mode & 0o777) !== 0o600 ||
         current.size !== record.length ||
-        !readFileSync(path).equals(record)
+        count !== record.length ||
+        !bytes.subarray(0, count).equals(record)
       ) {
         throw new Error("Claude native publication ownership changed. The current record was preserved.");
       }
@@ -92,6 +123,7 @@ export function withNativePublicationLock<T>(publish: (beginMutation: BeginNativ
           assertOwner();
         }
         mutationStarted = true;
+        return assertOwner;
       });
       finished = true;
       return result;

@@ -315,7 +315,8 @@ adds a hint as `additionalContext`. It never blocks.
   `bash -c '...'` is quoted text, so the hook misses it.
 - The hint names three cheaper waits: run the command with
   `run_in_background: true` and wait for the completion notice; use a
-  blocking wait such as `gh pr checks --watch` or `wait <pid>`; or raise the
+  blocking wait such as `gh run watch <run-id>` on the CI run for your head
+  commit, or `wait <pid>`; or raise the
   poll interval and cap the total time.
 - Turn it on with `- poll-loop-hint` under `enabled:` in
   `~/.config/agentbrew/hooks-overlay/manifest.yaml`, then run
@@ -337,6 +338,11 @@ absent or still equals the value that agentbrew wrote last time (kept in
 `~/.config/agentbrew/manifest.json` as `managedStatusLine`). A status line
 that you set yourself is never changed, and `agentbrew status` lists it under
 "User additions". To opt out, set your own `statusLine`.
+
+The managed status line decodes log rows for the selected session. It saves
+its position in complete file bytes so the next refresh can read appended
+rows, including after an invalid line. The first run after upgrading
+rebuilds an older status line cache from the log.
 
 ## Tokens, cost, and hours
 

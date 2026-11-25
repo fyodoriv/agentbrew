@@ -412,7 +412,8 @@ async function emitNativePluginOutput(syncModules?: readonly string[]): Promise<
   try {
     if (!syncModules || syncModules.some((name) => name === "hooks" || name === "mcp" || name === "rules")) {
       const { emitClaudeNative } = await import("./plugins/claude-native.js");
-      emitClaudeNative();
+      if (syncModules) emitClaudeNative({ skipEmptyPublication: true });
+      else emitClaudeNative();
     }
     const { writeRedactPatterns } = await import("./plugins/leak-audit.js");
     writeRedactPatterns();
@@ -463,7 +464,7 @@ function registerSyncCommand(program: Command): void {
     .description(
       "Detect agents (first run) + install recommended catalog items + deploy MCP, rules, commands, skills to every agent (repairs drift)",
     )
-    .option("--dry-run", "Preview changes without applying")
+    .addOption(new Option("--dry-run", "Preview changes without applying").conflicts("rollback"))
     .option("--no-prune", "Keep stale items in agent configs (default: prune)")
     .option(
       "--no-recommended",

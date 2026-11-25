@@ -101,7 +101,7 @@ without asking again. Report real delays and pending work.
 
 During each iteration, measure recurring slow steps and use affected checks or a validated cache when they give the needed signal. Key reuse to all relevant effective inputs, including external state, without exposing values or guessable hashes; verify invalidation. Unknown inputs require the full check. Keep the required final gate, and fix in-scope recurring delays when unblocked.
 
-When a run gets stuck or goes unwatched, fix the cause for good, ideally with a hook or a fail-fast check, not only this once. Give every background test run a fail-fast limit (hook `background-suite-fail-fast`).
+When a run gets stuck or goes unwatched, fix the cause for good, ideally with a hook or a fail-fast check, not only this once. Give every background test run a fail-fast limit (hook `background-suite-fail-fast`). Start background work only with a watch, and confirm a pid, lock or log line before you call it started (hooks `detached-start-needs-watch`, `start-refused-caught`).
 
 ### Reuse before implementation
 

@@ -45,6 +45,16 @@ describe("long-run reports end as a published Artifact", () => {
     );
   });
 
+  it("shared rules and run-goal: every ask explains each term it names", () => {
+    expect(section(sharedRules, "Communication")).toMatch(
+      /every question or ask to the user .* explains, in plain words, each term, file, flag, step, or internal name it names/,
+    );
+    expect(section(sharedRules, "Communication")).toMatch(
+      /The \[fresh-reader review\]\(#fresh-reader-review\) fails an ask that does not/,
+    );
+    expect(runGoal).toMatch(/every later ask: the BLOCKED report and the final "Needed from you" line/);
+  });
+
   it("requires a goal plan at the start and updates to the same artifact", () => {
     const rule = section(sharedRules, "Long-run reports");
     expect(rule).toMatch(/after the goal contract, create a plan Artifact in the task outputs before execution/);

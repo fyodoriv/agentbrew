@@ -108,10 +108,31 @@ function assertNativeTargetsUnchanged(writes: readonly NativeTargetObservation[]
   }
 }
 
+function isNativeSettingsMap(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 /** Verify the settings file before a certified publication and again before its write. */
 export function planNativeSettingsCheck(path: string): () => void {
-  const targets = [{ path, before: observeNativeTarget(path) }];
-  return () => assertNativeTargetsUnchanged(targets);
+  const before = observeNativeTarget(path);
+  if (before) {
+    let settings: unknown;
+    try {
+      const content = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(before.body);
+      settings = JSON.parse(content);
+    } catch {
+      refuse("invalid native settings");
+    }
+    if (
+      !isNativeSettingsMap(settings) ||
+      [settings.extraKnownMarketplaces, settings.enabledPlugins].some(
+        (value) => value !== undefined && !isNativeSettingsMap(value),
+      )
+    ) {
+      refuse("invalid native settings");
+    }
+  }
+  return () => assertNativeTargetsUnchanged([{ path, before }]);
 }
 
 function planMissingFile(writes: PlannedWrite[], path: string, body: Buffer, mode?: number): void {
@@ -794,9 +815,10 @@ function recordSelectedWrites(writes: readonly (PlannedWrite & { mode: number })
   });
 }
 
-function writeNativeOutput(write: PlannedWrite): void {
+function writeNativeOutput(write: PlannedWrite, assertOwner: () => void): void {
   const { path, body, mode } = write;
   assertNativeTargetsUnchanged([write]);
+  assertOwner();
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, body, { mode });
 }
@@ -882,7 +904,7 @@ export function publishSelectedNativePlugins(
     marketplace: string;
     name: string;
     rulesHook: unknown;
-    beginMutation: (intent: readonly NativeWriteIntent[]) => void;
+    beginMutation: (intent: readonly NativeWriteIntent[]) => () => void;
   },
 ): void {
   if (!modules.length || !plugins.length) return;
@@ -937,16 +959,16 @@ export function publishSelectedNativePlugins(
     const allWrites = [...payload, ...receiptPlans.map(({ write }) => write), ...(manifest ? [manifest] : [])];
     const intent = recordSelectedWrites(allWrites);
     assertLock();
-    beginMutation(intent);
+    const assertOwner = beginMutation(intent);
     assertNativeTargetsUnchanged(targets);
-    for (const write of payload) writeNativeOutput(write);
+    for (const write of payload) writeNativeOutput(write, assertOwner);
     for (const { receipt, write } of receiptPlans) assertSelectedReceipt(receipt, write);
     assertLock();
     assertNativeTargetsUnchanged(receiptTargets);
-    for (const { write } of receiptPlans) writeNativeOutput(write);
+    for (const { write } of receiptPlans) writeNativeOutput(write, assertOwner);
     if (manifest) {
       assertLock();
-      writeNativeOutput(manifest);
+      writeNativeOutput(manifest, assertOwner);
     }
     for (const write of allWrites) verifyFullFile(write);
   });

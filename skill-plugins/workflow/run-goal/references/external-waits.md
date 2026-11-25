@@ -46,8 +46,13 @@ Do not invent a goal-update tool, edit host storage, or spoof user origin.
    PID, queued task record, claimed auto-fix service or timer is not proof
    that this goal's evaluator will defer or receive a result.
 3. If needed, launch one native background shell with the available tool's
-   `run_in_background: true`. A GitHub CLI example is
-   `gh pr checks <PR> --repo <OWNER/REPO> --required --watch --interval 60`.
+   `run_in_background: true`. A GitHub CLI example: find the main workflow's
+   run for the full head SHA with
+   `gh run list --repo <OWNER/REPO> --workflow <name> --commit <full-sha>`
+   (empty means it does not exist yet: wait and list again), then
+   `timeout 1800 gh run watch <run-id> --repo <OWNER/REPO> --interval 60 --exit-status`.
+   A `gh pr checks <PR> --watch` started right after a push can exit green
+   while only a fast side check is listed and the main run has not started.
    Record the accepted task handle, exact target, bounded deadline and next
    check event. Use the repo's existing timeout/wait facility; the command
    example alone does not establish a deadline. For a watch script, print the
@@ -166,3 +171,16 @@ lift command, and put that command in the "Needed from you" line. Never
 write "Needed from you: nothing" while the queue waits on a lift. A silent
 wait at 84% held 7 merges for 8 hours (2026-11-08) while the user expected
 only Claude's own limit.
+
+## Outside this goal
+
+- Open-ended goal ("fix all issues you see"): list the finite issues in the
+  contract. Work you hand to another session or file as a task is outside
+  this goal. Say so in the contract and in chat ("Outside this goal: <item>,
+  owned by <session or task>"), and never list it under the goal's
+  **Pending**. The checker reads the chat, and an item under Pending keeps
+  the goal open.
+- Same Stop re-fire, no new evidence: never send a second identical status.
+  Act on the checker's reason once (finish the item, or move it outside the
+  goal with an owner). If nothing changed after that, reply with one line.
+  Twelve repeated "still waiting" replies cost tokens and changed nothing.

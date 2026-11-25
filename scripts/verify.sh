@@ -63,8 +63,9 @@ step_inputs() {
   lint-artifacts) echo "scripts/lint-repo-artifacts.sh scripts/verify.sh" ;;
   lint-tasks) echo "TASKS.md .tasks-stability-allowlist scripts/lint-tasks-stability.mjs scripts/verify.sh" ;;
   # The fixtures run hook scripts, the perf helper, and the wrap-up skill's
-  # open-work script (src/scripts/verify-cache.test.ts checks this list).
-  hook-fixtures) echo "hooks templates/scripts skill-plugins/workflow/wrap-up scripts/run-hook-fixtures.sh" ;;
+  # open-work script, and the goal-judge claims test greps the run-goal judge
+  # guide (src/scripts/verify-cache.test.ts checks this list).
+  hook-fixtures) echo "hooks templates/scripts skill-plugins/workflow/wrap-up skill-plugins/workflow/run-goal/references/goal-judges.md scripts/run-hook-fixtures.sh" ;;
   esac
 }
 

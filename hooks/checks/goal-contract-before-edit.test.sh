@@ -12,7 +12,8 @@ PASS=0
 FAIL=0
 FAIL_DETAILS=()
 
-ROOT="$(mktemp -d)"
+ROOT="$(mktemp -d "${TMPDIR:-/tmp}/goal-contract.XXXXXX")"
+export HOOK_DECISIONS_LOG="$ROOT/decisions.jsonl"
 trap 'rm -rf "$ROOT"' EXIT
 export RUN_GOAL_STATE_DIR="$ROOT/state"
 mkdir -p "$RUN_GOAL_STATE_DIR"
@@ -67,6 +68,17 @@ expect "stale marker removed" 0 "$(pending s3)"
 expect "unsafe session id allows" 0 "$(code_of "$(run '../x' Edit /repo/a.js)")"
 touch "$RUN_GOAL_STATE_DIR/s4.pending"
 expect "contract path of another session does not count" 2 "$(code_of "$(run s4 Write "$C1" "$GOOD")")"
+
+# Goal judge files are pre-approved while a contract exists.
+export RUN_GOAL_JUDGE_DIR="$ROOT/judges"
+approved() { printf '%s' "${1#*:}" | jq -e '.hookSpecificOutput.permissionDecision == "allow"' >/dev/null 2>&1 && echo 1 || echo 0; }
+expect "judge file Write approved during a goal" 1 "$(approved "$(run s2 Write "$ROOT/judges/devex-cli.md" x)")"
+expect "judge file Edit approved during a goal" 1 "$(approved "$(run s2 Edit "$ROOT/judges/devex-cli.md")")"
+expect "judge file outside a goal is not approved" 0 "$(approved "$(run s9 Write "$ROOT/judges/devex-cli.md" x)")"
+expect "a judge path with .. is not approved" 0 "$(approved "$(run s2 Write "$ROOT/judges/../evil.md" x)")"
+expect "answer file Write approved during a goal" 1 "$(approved "$(run s2 Write "$RUN_GOAL_STATE_DIR/s2.answer.md" x)")"
+expect "answer file Edit approved during a goal" 1 "$(approved "$(run s2 Edit "$RUN_GOAL_STATE_DIR/s2.answer.md")")"
+expect "another session's answer file is not approved" 0 "$(approved "$(run s2 Write "$RUN_GOAL_STATE_DIR/s9.answer.md" x)")"
 
 echo "goal-contract-before-edit.test.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

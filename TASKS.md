@@ -1,6 +1,5 @@
 # Tasks
 
-
 <!-- policy: Run tests before every commit. Never skip CI checks.
              `npm run verify` must pass before every commit (AGENTS.md rule #1).
      policy: Maintain 95%+ coverage on statements, functions, and lines. Branch coverage target is 95%.
@@ -137,6 +136,175 @@
 
 ## P0
 
+- [ ] Check the end-of-turn closeout in one Stop hook
+  - **ID**: hook-closeout-stop
+  - **Tags**: hooks, reliability, owner-rules
+  - **Details**: From the 2026-11-22 rules-to-hooks audit. Owner rules ask every turn to end with the footer lines, to run `agentbrew sync` after a rule or skill source edit, and to publish an Artifact after a long run. Agents forget, so the owner asked "wrap up… tell me what is pending" by hand 13 times and "Is everything done?" 5 times in 45 days. Add one Stop hook that searches the transcript and blocks the stop once when one of these is missing. **Parallel changes first**: fetch `origin/main` and list open PRs touching `hooks/`. dotfiles PR #829 ("split Pending into Follow-ups and Waiting on") renames the footer lines, so read the labels from the owner-rules config (`config/agentfile-owner-rules.yaml` in dotfiles), never hard-code them. Guards: skip when `stop_hook_active` is true, skip subagent turns, and keep a per-session state file so each reminder fires once. The memory save (`commit_session_legacy`) belongs to SessionEnd or a once-per-session reminder, not every turn. Ship it as opt-in (`defaultEnabled: false`) and fold it into the per-event dispatcher (`hook-dispatcher-per-event`) if that lands first.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/closeout-before-stop.sh`, its bats or vitest cases, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: fixture transcripts cover: footer missing (block once), footer present (allow), `stop_hook_active` (allow), subagent turn (allow), a rule-source edit without sync (block once), a long run without an Artifact (block once), and a second stop in the same session (allow).
+  - **Hypothesis**: owner prompts that ask for the wrap-up by hand drop from 13 per 45 days to 3 or fewer, because the hook catches a missing closeout before the turn ends.
+  - **Measurement**: focused hook tests via `heavy-run`, then 30 days after enabling: `fd -e jsonl --changed-within 30d . ~/.claude/projects -x jq -r 'select(.type=="user" and (.message.content|type)=="string")|.message.content' {} | rg -ci "wrap up when done|is everything done"`.
+  - **Success**: all fixture cases pass and the 30-day count is 3 or fewer.
+  - **Pivot**: if false blocks exceed 1 in 20 stops in the perf log (`ev: denied` or repeated Stop blocks), switch from block to a warn-only `additionalContext` reminder.
+  - **Anchor**: Claude Code hooks reference (Stop, `stop_hook_active`), https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Guard `gh pr merge` before it runs, not after
+  - **ID**: hook-pr-merge-guard
+  - **Tags**: hooks, delivery, ci, reliability
+  - **Details**: From the 2026-11-22 audit. `a-pr-is-not-ready` fires at Stop, after a merge already happened. Add a PreToolUse Bash hook for `gh pr merge` that blocks `--admin`, blocks unless `gh pr checks <n>` reports every check passed, and blocks unless an Agent tool call (a fresh review) appears in the transcript after the last commit. Also block a second `gh pr comment` in the same place within 24 hours (shared-rules "One comment per place on a PR"). **Parallel changes first**: fetch `origin/main`, list open PRs touching `hooks/` and the dotfiles `bin/gh` wrapper, and reuse the wrapper's checks where they already exist. The PR body shape check stays in the wrapper (dotfiles task `gh-pr-body-shape-reconcile`); do not add a second body check here.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/pr-merge-guard.sh`, its tests, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: fixtures: `--admin` (block), pending or red checks (block), green checks with no review after the last commit (block), green checks plus review (allow), and a repeat comment within 24 h (block). Network calls time out within 5 s and fail closed for merge, open for comments.
+  - **Hypothesis**: merges made while a required check was pending or red drop from the current baseline to 0 per 30 days.
+  - **Measurement**: baseline and after: `gh search prs --author @me --merged --merged-at '>=<date>' --json number,repository` then per PR `gh pr checks <n> --repo <repo>` at merge time from the GitHub checks API; plus the focused hook tests via `heavy-run`.
+  - **Success**: 0 merges on pending or red checks in 30 days, and all fixtures pass.
+  - **Pivot**: if the checks call adds more than 2 s per merge or blocks a merge that was green, cache the check result per head SHA or move the check into the gh wrapper.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (change failure rate); Claude Code hooks reference.
+
+- [ ] Lint TASKS.md right after an agent edits it
+  - **ID**: hook-tasks-md-lint-on-edit
+  - **Tags**: hooks, tasks, prereg
+  - **Details**: From the 2026-11-22 audit. The rule "every task carries Hypothesis, Measurement, Success, Pivot, Anchor" appears in the global CLAUDE.md, shared-rules, and many skills, but nothing checks it at edit time. Add a PostToolUse `Write|Edit` hook that runs `npx @tasks-md/lint --require-prereg <file>` when the edited path ends in `TASKS.md`, and returns its errors to the agent. **Parallel changes first**: fetch `origin/main`, check the tasks.md repo for a newer lint CLI or flags, and reuse an existing lint wrapper if one landed.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/tasks-md-lint-on-edit.sh`, its tests.
+  - **Output**: code
+  - **Acceptance**: an edit that drops `Pivot:` gets the lint error back in the same turn; a valid edit passes silently; a missing `npx` cache or a timeout (10 s cap) warns and never blocks.
+  - **Hypothesis**: TASKS.md lint failures found in CI or at PR time drop from the current count to 0 per 30 days, because the agent sees them while it edits.
+  - **Measurement**: `gh run list --workflow <task-lint workflow> --status failure --created '>=<date>' --json databaseId | jq length` before and 30 days after, plus the focused hook tests via `heavy-run`.
+  - **Success**: 0 task-lint CI failures in 30 days.
+  - **Pivot**: if the hook adds more than 2 s per TASKS.md edit, run the lint on Stop once per turn instead.
+  - **Anchor**: tasks.md lint docs; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Give the agent its project context at session start
+  - **ID**: hook-session-entry-context
+  - **Tags**: hooks, session-entry, memory
+  - **Details**: From the 2026-11-22 audit. Owner rules tell agents to run `load-project-context.sh` and to load the memory bootstrap at session entry. Agents skip it. Add a SessionStart hook that runs `~/.config/agentbrew/scripts/load-project-context.sh` in the repo root and injects its file list, with an output cap (2 KB), the way `perf-brief` injects the time brief. Add a short memory brief only if the memory service has a local CLI or HTTP path a hook can call; otherwise inject a one-line reminder. **Parallel changes first**: fetch `origin/main` and check for changes to `perf-brief`, `updates-landed`, or the project-context script.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/session-entry-context.sh`, its tests, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: a repo with an `Agentfile.yaml` gets the file list in context; a non-repo folder gets nothing; output never exceeds the cap; the hook finishes within 1 s or prints nothing.
+  - **Hypothesis**: sessions whose opening tool calls (the first ten) include a read of the repo's `AGENTS.md` rise from the current share to 90% or more.
+  - **Measurement**: from the perf log: `jq -r 'select(.ev=="attempt")|[.sid,.key]|@tsv' ~/.local/state/agentbrew/perf/<month>.jsonl` grouped per session, counting sessions whose first 10 keys contain an `AGENTS.md` read, before and 14 days after.
+  - **Success**: 90% or more of repo sessions.
+  - **Pivot**: if the injected text pushes session-start context over 2 KB on large repos, inject only the path list and drop the summaries.
+  - **Anchor**: Claude Code hooks reference (SessionStart additionalContext); Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Block edits to generated agent files and keep docs links valid
+  - **ID**: hook-generated-targets-doc-hygiene
+  - **Tags**: hooks, docs, agentbrew-config
+  - **Details**: From the 2026-11-22 audit. "Edit the source, never the installed mirror" appears in many skills. Add a PreToolUse `Write|Edit` hook that blocks edits to generated targets (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, generated hook entries in `~/.claude/settings.json`) and names the source file plus `agentbrew sync`. Exempt the update-config skill's normal settings edits. Add a PostToolUse check for `*.md` edits that warns when a relative link target does not exist, and warns on PR numbers, branch names, or `## Status` tables added to skills, rules, or AGENTS.md (shared-rules "Timeless committed content"). **Parallel changes first**: fetch `origin/main`; the session sandbox already denies some of these paths, so test which ones an agent can still reach.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/generated-targets.sh`, `hooks/checks/doc-hygiene.sh`, their tests.
+  - **Output**: code
+  - **Acceptance**: an edit to a generated target is blocked with the source path named; a broken relative link and an added `#123` in a SKILL.md each produce one warning; normal edits stay silent.
+  - **Hypothesis**: `agentbrew status` drift caused by hand edits to generated files drops to 0 per 30 days, and broken relative doc links found by CI drop to 0.
+  - **Measurement**: `agentbrew status --verbose` drift lines over 30 days (doctor history), and the repo's link check in CI, before and after.
+  - **Success**: 0 hand-edit drift events and 0 broken-link CI failures in 30 days.
+  - **Pivot**: if the link check warns on more than 1 in 10 valid edits (anchors, generated paths), limit it to links added in the diff.
+  - **Anchor**: Claude Code hooks reference, https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Block banned vendors and unsafe installs from one denylist
+  - **ID**: hook-banned-items-denylist
+  - **Tags**: hooks, security, owner-rules
+  - **Details**: From the 2026-11-22 audit. Owner rules ban several things in prose: xAI, Grok, and X API endpoints; re-adding removed Windsurf or Devin targets; new Augment tasks; a second local model engine (LM Studio, mlx-lm); Chrome launches by code without `--use-mock-keychain --password-store=basic`; AppleScript keystrokes or window activation; `agentbrew add --git` without `--ref`. Add one PreToolUse hook backed by one table. Match only install commands, API endpoints, and config keys, never plain words: rule files and tests (for example `tests/no-cursor-grok.bats` in dotfiles) mention these names on purpose. **Parallel changes first**: fetch `origin/main` and search for existing guards of the same items (`rg -n "mock-keychain|lm-studio|osascript" hooks src`), and extend them instead.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/banned-items.sh`, `hooks/banned-items.tsv`, its tests.
+  - **Output**: code
+  - **Acceptance**: one positive and one negative fixture per table row; editing a rule file that names a banned vendor stays allowed.
+  - **Hypothesis**: banned-item violations reaching a commit drop to 0 per 30 days, with 0 false blocks on rule or test files.
+  - **Measurement**: focused tests via `heavy-run`, then `git log -p --since=30.days -- . | rg -c "<table patterns>"` across the tooling repos.
+  - **Success**: 0 violations and 0 false blocks in 30 days.
+  - **Pivot**: if any false block hits a rule, doc, or test file, switch that row to warn-only.
+  - **Anchor**: Claude Code hooks reference, https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Bring the judge hooks back on a local model, off the hot path
+  - **ID**: hook-judge-tier-local-model
+  - **Tags**: hooks, judges, local-llm, reliability
+  - **Details**: From the 2026-11-22 audit. The owner overlay disables 10 judge hooks because `claude --print` "never returns". On 2026-11-22 it answered in 9 s, and a local `qwen3:4b` call with an Ollama JSON-schema `format` gave the right ALLOW/BLOCK verdict in 1.5 s warm. Move the judge runner (`hooks-scripts/lib/claude-verifier.sh`) to the local model first, per the owner's local-first rule, with a 3 s timeout and fail-open. Run judges only on rare events: Stop (plain-language check, after a cheap sentence-length count), `AskUserQuestion` (every term explained), and posts as the user. Never on each Bash or Edit call. **Parallel changes first**: open PR #755 ("add declared artifact judges") builds a judge framework and PR #1249 ("every ask explains each term it names") changes the question rule. Rebase onto whatever merged and reuse its judge declarations instead of a second runner.
+  - **Files**: `hooks/lib/claude-verifier.sh` or its replacement, `hooks/manifest.yaml` (judge entries), tests with recorded verdicts, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: warn-only mode first; a labeled set of 20 examples per judge scores 90% or more; median judge time 2 s or less; a dead model server never blocks a tool call.
+  - **Hypothesis**: judge hooks that enforce something go from 0 (all 10 disabled) to 3 or more, at 2 s or less median latency, with a false-alarm rate of 10% or less.
+  - **Measurement**: replay the labeled examples with `heavy-run node <judge eval script>`; perf-log median `ms` for judge hook rows over 7 days.
+  - **Success**: 3 or more judges enabled, 90% or more labeled accuracy, median 2 s or less.
+  - **Pivot**: if labeled accuracy stays under 80% on `qwen3:4b`, try `qwen3:8b`; if still under 80%, keep only the cheap deterministic proxies.
+  - **Anchor**: Ollama structured outputs docs; Zheng et al. 2023, "Judging LLM-as-a-Judge"; Claude Code hooks reference.
+
+- [ ] Run each hook event's checks in one process
+  - **ID**: hook-dispatcher-per-event
+  - **Tags**: hooks, performance, reliability
+  - **Details**: From the 2026-11-22 audit. Each Bash call starts 11 hook processes; the 9 Bash ones used 645 ms CPU together (about 110 ms wall, run in parallel). `block-local-tests` is wired twice, from dotfiles `~/.config/dotfiles/hooks/` and from agentbrew `codeassist/hooks-scripts/`. Generate one dispatcher per event that reads stdin once and runs every enabled check in one process, like a lint runner, and dedupe identical check ids across Agentfiles. This keeps a 200 ms wall budget as new hooks land. **Parallel changes first**: fetch `origin/main`; open PR #1248 adds two Bash hooks, and the dotfiles task `guard-final-command-hook-order` studies hook ordering and rewrites. Keep `updatedInput` rewrites in a defined order.
+  - **Files**: `src/hooks/deploy.ts`, `src/hooks/manifest.ts`, a dispatcher script under `hooks/`, tests, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: `settings.json` has one command per event and matcher; every existing hook test still passes through the dispatcher; one block still exits 2 with that hook's message.
+  - **Hypothesis**: hook CPU per Bash call drops from 645 ms to 150 ms or less, and duplicate check runs drop from 2 to 0.
+  - **Measurement**: time the PreToolUse Bash chain with one sample stdin JSON (`git status`) before and after, summing each command's wall time, 10 runs, median.
+  - **Success**: median 150 ms or less CPU per Bash call, no duplicate check ids in generated settings.
+  - **Pivot**: if a dispatcher crash would disable every check, keep one process per check but dedupe ids only.
+  - **Anchor**: Claude Code hooks reference (parallel hook execution), https://code.claude.com/docs/en/hooks; ESLint architecture, https://eslint.org/docs/latest/contribute/architecture/.
+
+- [ ] Warn on bare IDs and unnamed state scope
+  - **ID**: hook-owner-text-warnings
+  - **Tags**: hooks, owner-rules, docs
+  - **Details**: From the 2026-11-22 audit. Owner rules: every issue, PR, or task number gets its title after it; mutable state names its lifecycle scope and never says `globalState`, "global state", or `singleton`; `globalThis` and `Symbol.for` live in one owner module. Add warn-only checks: at Stop, a bare `#123` or `PR 123` in the final text with no title after it; after a code or doc edit, the banned scope terms or a second module touching `globalThis`. **Parallel changes first**: fetch `origin/main` and check for an existing ids-with-names rule check.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/owner-text-warnings.sh`, its tests.
+  - **Output**: code
+  - **Acceptance**: fixtures for a bare ID (warn), an ID with a title (silent), a markdown link with a title (silent), `globalState` in a diff (warn).
+  - **Hypothesis**: final messages with a bare issue or PR number drop from the current share to 5% or less.
+  - **Measurement**: `bash hooks/checks/<hook id>.test.sh` for the fixtures, then sample 100 final assistant messages from transcripts before and 14 days after and count bare-ID matches with the same regex as the hook.
+  - **Success**: 5% or less.
+  - **Pivot**: if more than 1 in 10 warnings is a false alarm (code, logs, quoted text), restrict the check to prose outside code fences.
+  - **Anchor**: owner "IDs with names" rule; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Count only real test runs in verify-before-completion
+  - **ID**: hook-verify-before-completion-real-runs
+  - **Tags**: hooks, verification, bug
+  - **Details**: From the 2026-11-22 audit. `hooks/checks/verify-before-completion.sh` counts any Bash command whose text matches a test pattern (lines ~83-87), including calls another hook refused, so a blocked `npx vitest` counts as verified. It also does not know `make check`, `scripts/check.sh`, or `heavy-run <gate>`, so dotfiles work can be blocked after a real gate run. Count only tool calls that have a result, and read the repo's declared gate. Also align the skill text: `verify.md` and code-smells-aware say "run the gate locally", but `block-local-tests` forbids local tests in agentbrew, where hosted CI is the gate. **Parallel changes first**: fetch `origin/main` and check recent changes to both hooks.
+  - **Files**: `hooks/checks/verify-before-completion.sh`, its tests, the verify skill text.
+  - **Output**: code
+  - **Acceptance**: failing test first: a transcript with only a refused `npx vitest` blocks; `heavy-run make check` with a result allows; agentbrew edits with pushed hosted CI allow per the documented exception.
+  - **Hypothesis**: false passes (refused call counted) drop from at least 1 known case to 0, and false blocks after a real gate run drop to 0.
+  - **Measurement**: the new regression fixtures via `heavy-run`, plus 14 days of Stop-hook blocks from the perf log reviewed for false blocks.
+  - **Success**: all fixtures pass; 0 false blocks in 14 days.
+  - **Pivot**: if more than 1 in 10 of its Stop blocks in 14 days is a false block, read the perf log rows (`ok: true`) instead of transcript matching.
+  - **Anchor**: Claude Code hooks reference (transcript_path), https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Enforce skill-scoped tool limits after a Skill call
+  - **ID**: hook-skill-scoped-limits
+  - **Tags**: hooks, skills, reliability
+  - **Details**: From the 2026-11-22 skills scan of every skill source. Rules repeated across skills: read-only skills (analyze, companion-*, sweep) never edit files; autonomous skills (grind, watch-issues, iterate) never ask the user (5); no `--watch` or `npm run dev` in agent shells (5); no installs during verify, test-gaps, or checkup runs (4); never print secrets (5). Add one PreToolUse hook that reads the last `Skill` call in the transcript and applies that skill's declared limits from a `limits:` frontmatter key, plus the always-on `--watch` and secret-print rules. **Parallel changes first**: fetch `origin/main`, check whether skill frontmatter already has a permission or allowed-tools key and reuse it.
+  - **Files**: skill frontmatter schema, `hooks/checks/skill-scoped-limits.sh`, tests, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: after a read-only skill call an Edit is blocked; after an autonomous skill call `AskUserQuestion` is blocked when the run is unattended; `npm run dev` without background is blocked.
+  - **Hypothesis**: edits made during read-only skill runs drop to 0, and questions asked during unattended runs drop to 0, per 30 days.
+  - **Measurement**: perf log: `ev:"attempt"` Edit or Write rows that follow a read-only Skill row in the same session, and AskUserQuestion rows in unattended sessions, before and after.
+  - **Success**: 0 of each in 30 days.
+  - **Pivot**: if the last-Skill heuristic misattributes more than 1 in 20 calls, require skills to set an explicit session flag instead.
+  - **Anchor**: Claude Code skills and hooks references; Saltzer and Schroeder 1975 (least privilege).
+
+- [ ] Shrink always-loaded rule prose once a hook enforces it
+  - **ID**: rules-prose-after-hooks
+  - **Tags**: rules, context-budget, hooks
+  - **Details**: From the 2026-11-22 audit. The generated global CLAUDE.md is long and loads into every session. When one of the hook tasks above lands, cut that rule's prose in `docs/shared-rules.md` (and the owner-rules source in dotfiles) to one line naming the hook; the hook message teaches the rule when it matters. Do this per hook in the same PR as the hook, or in a follow-up right after. **Parallel changes first**: fetch both repos; other sessions edit shared-rules often.
+  - **Files**: `docs/shared-rules.md`, dotfiles owner-rules config.
+  - **Output**: docs
+  - **Acceptance**: each enforced rule has one line in shared-rules that names its hook; `agentbrew sync` and `agentbrew status` show 0 drift.
+  - **Hypothesis**: the generated global CLAUDE.md shrinks by 15% or more with no rise in rule violations the hooks measure.
+  - **Measurement**: `wc -l ~/.claude/CLAUDE.md` before and after; the per-hook metrics of the tasks above.
+  - **Success**: 15% or more fewer lines and no metric regression.
+  - **Pivot**: if a cut rule's violations rise by more than 20% in its hook metric over 14 days, restore the prose.
+  - **Anchor**: context-budget skill; Liu et al. 2023, "Lost in the Middle".
+
+- [ ] Bring the global instructions file under its 8,000-token target
+  - **ID**: instructions-under-token-target
+  - **Tags**: rules, context-budget
+  - **Details**: Seen 2026-11-22 on the owner's Mac: `agentbrew sync --dry-run` warns `Instructions file is ~9,333 tokens (target: <8,000)`. Largest sections: "Rules relayed from other sessions" (~2,298), "Surgical changes (Karpathy 2024)" (~1,913), "Critical rules" (~1,547). The warning has no owner today, so the file keeps growing as sessions relay rules. `rules-prose-after-hooks` cuts prose only when a hook lands; this task closes the gap to the target now. Move detail from the three largest sections into skills or linked docs and keep one line each; the owner approves each cut to his own rules text. **Parallel changes first**: fetch both repos; other sessions edit shared-rules often.
+  - **Files**: `docs/shared-rules.md`, dotfiles owner-rules config.
+  - **Output**: docs
+  - **Acceptance**: `agentbrew sync --dry-run` prints no "Instructions file is" warning on the owner's Mac; every moved rule is reachable by a link or a skill name from the short line that stays.
+  - **Hypothesis**: the always-loaded instructions drop from ~9,333 to under 8,000 tokens with no rule lost, because detail moves to on-demand files.
+  - **Measurement**: `agentbrew sync --dry-run 2>&1 | rg -c "Instructions file is"` (expect 0), and the token figure the same command prints before the change.
+  - **Success**: the command prints no such warning, and the figure is under 8,000 tokens.
+  - **Pivot**: if the three largest sections cannot give 1,400 tokens without dropping a rule the owner wants always loaded, stop and ask the owner to raise the target instead.
+  - **Anchor**: context-budget skill; Liu et al. 2023, "Lost in the Middle".
+
 - [ ] An org overlay adopts the November 2026 core (plugin form, hosted CI, telemetry sink, core paths)
   - **ID**: org-overlay-adopt-core-2026-11
   - **Tags**: plugins, org-overlay, ci, telemetry, org-sink
@@ -166,8 +334,6 @@
   - **Pivot**: if the real collector refuses the HEC request shape (any 4xx that a correct token and index do not fix), switch the overlay to `kind: file` plus the company log forwarder, and report the refused shape upstream.
   - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); Splunk documentation, "Format events for HTTP Event Collector".
 
-
-
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
      canvases/agentic-tooling-vs-agentbrew.canvas.tsx). Four moves that push
      agentbrew further into pure orchestration: two delegations that shrink the
@@ -187,23 +353,242 @@
 
 ## P1
 
-- [ ] Fix ten development dependency alerts within existing ranges
-  - **ID**: development-dependency-advisories-176-188
-  - **Tags**: security, dependencies, stability
-  - **Mode**: AFK
-  - **Details**: Follow the [fixed cohort](docs/plans/development-dependency-advisories.md) for Hono, Fast XML Parser and Mongoose. Keep Alert 181 and older cohorts in their separate tasks. The baseline resolved Hono 4.13.13, Fast XML Parser 5.8.0 and Mongoose 9.11.2. Check GitHub's alert states after the candidate lands.
-  - **Files**: `package-lock.json`, the cohort plan and this task.
+- [ ] Judge reports that skip the Blocker or Follow-up labels are caught
+  - **ID**: goal-judge-label-check
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, judge round 1 (devex-workflow-design follow-up). The rule that judges label each defect Blocker or Follow-up is prose only; nothing checks a report, and the Pivot "2 rounds in a row each raise new blockers" has no command that counts it. Also: the block message says "ja scored 6/10" but not the next step (fix every overseer blocker with a failing-first test, file follow-ups, judge all three again), and `goal-judge-prompt.sh` with no arguments prints an empty path instead of its usage line.
+  - **Files**: `hooks/lib/goal-judge-verdicts.jq`, `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-judge-prompt.sh`.
   - **Output**: code
-  - **Acceptance**: Every locked copy of each named package is at or above its advisory floor. Direct declarations, Node floor and unrelated lock paths match the base. Required checks pass. GitHub marks all 10 frozen alerts fixed after ingesting the default branch.
-  - **Hypothesis**: Updating the three packages within their current parents reduces affected rows from 10 to 0, with zero unrelated lock changes.
-  - **Measurement**: Run `heavy-run timeout 180 npx --yes --prefer-offline --package=npm@10 -- npm update --package-lock-only --ignore-scripts --include=optional hono fast-xml-parser mongoose`. Compare every matching lock entry against the fixed floors and run the integrity check from the plan.
-  - **Success**: Zero affected copies and zero unrelated lock changes. The standard install and checks pass, and GitHub closes all 10 alerts.
-  - **Pivot**: Any remaining affected copy, missing target package, unrelated lock change or failed check rejects the update.
-  - **Anchor**: Primary advisories linked in the [cohort plan](docs/plans/development-dependency-advisories.md) and Basili, Caldiera and Rombach (1994), Goal Question Metric.
+  - **Acceptance**: a report with no Blocker or Follow-up label gets a named warning; a score under the bar prints the iteration step; the no-argument run prints usage.
+  - **Hypothesis**: rounds that end with unlabelled defects drop from 1 seen to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: the new cases pass with 0 failed.
+  - **Pivot**: if label checks reject more than 1 honest report in the 5 largest local transcripts, keep them as warnings only.
+  - **Anchor**: Krippendorff 2018, "Content Analysis", 4th ed. (coding reliability).
+
+- [ ] Judged paths in a goal contract are checked against the change
+  - **ID**: goal-judge-scope-check
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, judge round 2 of the blocker-loop goal (llm-evaluation-methodology). The runner writes the contract's `Judged paths:` line and nothing compares it with the files the goal changed, so a runner can leave a changed file out of judging. Accepted as an exception for that goal: the runner always writes its own contract. Fix: the hook compares the judged paths with the goal's diff and blocks when a changed file is missing.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-state.sh`, `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: a contract whose judged paths omit a changed file blocks Stop with the file named.
+  - **Hypothesis**: changed files left out of judging drop from undetected to 0 in the suite fixture.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: the new case passes with 0 failed.
+  - **Pivot**: if the diff cannot be found for more than 1 in 5 real goals, list unjudged files in the block message instead of blocking.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge", arXiv:2306.05685.
+
+- [ ] A new /goal on the same contract cannot reset the judging-round cap
+  - **ID**: goal-judge-rounds-across-goals
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 6 (llm-evaluation-methodology). The round counter reads the transcript from the latest `/goal` line, so a runner can type a new `/goal` and get 3 fresh rounds on the same contract. Key the count to the contract hash instead.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test file.
+  - **Output**: code
+  - **Acceptance**: a new `/goal` after 3 failing rounds on the same contract still blocks.
+  - **Hypothesis**: goals that pass after a `/goal` restart drop from possible to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with a named restart case.
+  - **Success**: the restart case blocks and the suite shows 0 failed.
+  - **Pivot**: if keying by contract hash breaks legitimate new goals in more than 1 fixture, key by contract file path instead.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (gaming resistance).
+
+- [ ] A judge under the bar always leaves a complete Path to 8
+  - **ID**: goal-judge-path-to-eight
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 6. The hook does not check that a verdict under the bar has a "Path to 8:" section. The overseer extractor stops at any `# ` or `**X` line, so a bold item cuts the quoted promise. "Path to 8" and "under 8" ignore `RUN_GOAL_JUDGE_MIN`.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-judge-prompt.sh`, `hooks/lib/goal-overseer-prompt.sh`.
+  - **Output**: code
+  - **Acceptance**: a low verdict without the section blocks with "re-run that judge"; a bold list item stays in the quote; the heading follows the minimum.
+  - **Hypothesis**: rounds lost to a guessed fix list drop from 1 per goal to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with named cases for each part.
+  - **Success**: all named cases pass and the suite shows 0 failed.
+  - **Pivot**: if judges skip the section in more than 1 of 3 real rounds, move the list into the verdict block itself.
+  - **Anchor**: Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Judge block messages match the 8, 8, 7 bar and the focused re-judge
+  - **ID**: goal-judge-block-wording
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 6 (devex-workflow-design). After a full round with one low judge, the next step does not name the focused re-judge; "Every effective score needs 8/10" contradicts the slack rule; the header comment lacks `RUN_GOAL_JUDGE_SLACK` and `RUN_GOAL_JUDGE_FOCUSED`; a passing focused re-judge adds a "judges used 1 model family" noise line. Round 5 (devex): with no verdicts yet the next step repeats problem 1; a zero-blocker round with a low score has no stated step.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `skill-plugins/workflow/run-goal/references/goal-judges.md`.
+  - **Output**: code
+  - **Acceptance**: each case above prints the right next step in a named test.
+  - **Hypothesis**: block messages that name the wrong next step drop from 5 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: 0 failed, with one named case per message.
+  - **Pivot**: if the message logic adds more than 0.2 s per Stop, move it into `hooks/lib/` with its own test.
+  - **Anchor**: Nielsen 1994, usability heuristics (error messages).
+
+- [ ] Honest goal-result lines with ordinary punctuation are allowed
+  - **ID**: goal-claim-honest-punctuation
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge rounds 5 and 6. These honest lines read as claims: apostrophes ("blocked on the owner's 2FA code"), "blocked on PR #12", colon text ("not met: owner approval needed"), ranges ("criteria 1-3 met"), and a bare score as a reason ("partly met; judges scored 6/10"). Each costs one of 5 blocks.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh` (CLAIM_AWK), `hooks/checks/goal-judge-claims.test.sh`.
+  - **Output**: code
+  - **Acceptance**: each line above allows, and every current claim case still blocks.
+  - **Hypothesis**: honest lines that block drop from 5 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
+  - **Success**: 0 failed with the 5 new honest cases.
+  - **Pivot**: if any widening lets a current claim case through, keep the line blocked and improve the hint instead.
+  - **Anchor**: Nygard 2018, "Release It!" (fail-safe defaults).
+
+- [ ] The contract filter keeps plain lines that mention judges and numbers
+  - **ID**: goal-judge-filter-plain-lines
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 5 and runner. The filter hides plain done-when lines: "At least 3 judges read the README", and a line quoting the owner words "re-judge 1" and "Path to 8". Require a score word next to the number before removing a line.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/checks/goal-judge-claims.test.sh`.
+  - **Output**: code
+  - **Acceptance**: both lines stay; all current removed cases still go.
+  - **Hypothesis**: plain lines hidden from judges drop from 2 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
+  - **Success**: 0 failed with the 2 new kept cases.
+  - **Pivot**: if any change lets a current target form through, refuse score targets in the contract instead of filtering them.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (independence).
+
+- [ ] Newcomers can find the goal contract and judge docs from the error alone
+  - **ID**: goal-judge-newcomer-docs
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge rounds 5 and 6. `goal-judge-prompt.sh` with no contract prints only the missing path, with no hint how to make it or find the session id. `SKILL.md` does not mention the slack or focused settings. The full suite prints no final total. `goal-judges.md` does not say where follow-ups from a passing round go, or that all judge families are Claude models. Goal iteration 1 adds: the "at most nine judge runs" cost text ignores focused re-judges and the overseer; section 3 puts "fix every blocker" before "ask that judge"; the doc gives no measured time for each suite.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `skill-plugins/workflow/run-goal/SKILL.md`, `skill-plugins/workflow/run-goal/references/goal-judges.md`, `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: the error names how to create the contract; the docs cover each gap; the suite ends with one total line.
+  - **Hypothesis**: newcomer steps that fail or confuse in a first-time-user judge pass drop from 5 to 0.
+  - **Measurement**: `bash hooks/lib/goal-judge-prompt.sh no-such-session devex-workflow-design 2>&1 | rg -c "create the contract"` plus the next first-time-user judge report.
+  - **Success**: the command prints 1 and the judge report lists 0 of these items.
+  - **Pivot**: if a judge still reports 2 or more, add a worked example goal to `goal-judges.md`.
+  - **Anchor**: Nielsen 1994, usability heuristics (help and documentation).
+
+- [ ] A success claim inside a goal-result bracket reads as met
+  - **ID**: goal-judge-bracket-claims
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 7 (agent-harness-reliability); the overseer ruled it a follow-up. `Goal result: partly met (5 of 5 met)`, `(all done)` and `not met (merged)` read as not met, because the claim check strips brackets first. Reading inside brackets risks blocking honest reasons such as "(tests passed, PR unmerged)", so first measure how often honest retros use success words in brackets.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh` (CLAIM_AWK), `hooks/checks/goal-judge-claims.test.sh`.
+  - **Output**: code
+  - **Acceptance**: the bracketed claims above block; every honest line in the claims test still allows.
+  - **Hypothesis**: false met claims hidden in brackets drop from 3 reproduced to 0 with no new false block.
+  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`
+  - **Success**: 0 failed with the bracketed claim cases added.
+  - **Pivot**: if 1 or more honest retro lines from the goal-judge history would block, keep brackets free and require the not-met word alone instead.
+  - **Anchor**: Nygard 2018, "Release It!" (fail-safe defaults).
+
+- [ ] Agents can run one named case of the goal-judge hook suite
+  - **ID**: goal-judge-suite-one-case
+  - **Tags**: hooks, run-goal, speed
+  - **Details**: Found 2026-11-23 while fixing the round-13 blockers. `hooks/checks/goal-judges-before-stop.test.sh` takes about 1.5 min per run and is the slowest repeated agent step this week. Cutting the file to reproduce one case drops the setup earlier lines do, so the cut run gives a wrong result. Add an env filter (for example `ONLY=<label part>`) that still runs setup but checks only matching cases.
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: `ONLY=notify bash hooks/checks/goal-judges-before-stop.test.sh` reports only the matching cases and matches the full run's verdict for them.
+  - **Hypothesis**: time to check one failing case drops from about 90 s to under 30 s.
+  - **Measurement**: `time ONLY=notify bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: under 30 s with the same pass or fail as the full run.
+  - **Pivot**: if a filtered run gives a different verdict than the full run for any case, drop the filter and split the file by area instead.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (DORA, fast feedback).
+
+- [ ] goal-retro-before-stop counts quoted launch text as a running task
+  - **ID**: goal-retro-launch-false-positive
+  - **Tags**: hooks, run-goal, reliability
+  - **Details**: Found 2026-11-22 while building goal-judges-before-stop. goal-retro-before-stop treats any tool result whose text matches "Async agent launched|running in background with ID" as a background launch. A Bash command that prints hook source (or a log) matches, so the hook thinks a task is still running and allows Stop without the retro, every time. On one real session 3 such false launches kept it open. goal-judges-before-stop now counts only calls with `run_in_background: true` and Agent/Task results that start with the launch line (`hooks/lib/goal-judge-verdicts.jq`); reuse that logic here.
+  - **Files**: `hooks/checks/goal-retro-before-stop.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture where Bash output quotes the launch text still blocks a missing retro; real Agent and run_in_background launches still allow.
+  - **Hypothesis**: false "still running" allows drop from at least 3 in one real session to 0.
+  - **Measurement**: `bash hooks/checks/goal-retro-before-stop.test.sh` plus the launch count from the new jq over the 5 largest local transcripts.
+  - **Success**: 0 false launches in the fixture and in the 5 transcripts.
+  - **Pivot**: if more than 1 real launch is missed in the 5 transcripts, match the harness launch line by tool name instead.
+  - **Anchor**: Claude Code hooks reference (transcript_path), https://code.claude.com/docs/en/hooks; Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Goal judges can include one free hosted non-Claude model
+  - **ID**: goal-judges-hosted-outside-judge
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-22, PR #1253 rounds 7-8. The llm-evaluation-methodology judge caps bias controls at 6 while every judge is a Claude model (Zheng et al. 2023, self-enhancement bias). The owner ruled out local models (slow, hot). A free hosted model with no Musk ties (Google Gemini free tier, Cloudflare Workers AI) could run one judge without local heat. Needs the owner's yes: it sends the judged diff to an outside service.
+  - **Files**: `hooks/lib/goal-judge-local.sh` (or a new hosted sibling), `hooks/checks/goal-judges-before-stop.sh`, docs.
+  - **Output**: code
+  - **Acceptance**: with the owner's opt-in, one judge runs on a hosted non-Anthropic model through a hook-checked script, counts as a second vendor, and returns in under 5 minutes.
+  - **Hypothesis**: the evaluation judge's bias line rises from 6 to 8 or more on a panel with one outside-vendor judge.
+  - **Measurement**: one judged goal with `RUN_GOAL_JUDGE_VENDORS=2` and the hosted judge; read the evaluation judge's bias line.
+  - **Success**: bias line 8 or more, hosted judge answers in under 5 minutes.
+  - **Pivot**: if the hosted judge scores erratically (spread over 3 points from the Claude judges on the same state) in 2 goals, drop it.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge"; Verga et al. 2024, "Replacing Judges with Juries".
+
+- [ ] A goal's Stop check finishes in under 1 second on a large transcript
+  - **ID**: goal-judges-stop-cache
+  - **Tags**: hooks, speed
+  - **Details**: Found 2026-11-22 in PR #1253 round 6. Parse-once landed (one full jq pass per Stop), but round 8 measured about 6 s per Stop on a 24 MB transcript: `goal-judge-local.sh --prompt-sha` runs for every judge whenever the transcript only mentions the script (about 3.2 s), and the state token hashes the whole repo (about 1.1 s). Earlier, Stop time on a 16.7 MB transcript copy stayed at 1.81-2.02 s (baseline 1.41-1.99 s): the whitespace-blind state hash costs about 0.65 s (was 0.3 s), using up the jq saving. The parse-once Pivot applies: cache.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-state.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: verdict rows cached per session, keyed by transcript size and mtime; the state token cached per file list with sizes and mtimes; a fixture proves an edit or a transcript append invalidates each cache.
+  - **Hypothesis**: Stop time on the 16.7 MB transcript drops from about 1.9 s to under 1 s.
+  - **Measurement**: `/usr/bin/time -p` of `bash hooks/checks/goal-judges-before-stop.sh` on a transcript copy, 3 full-path runs, plus the hook test suite.
+  - **Success**: median under 1 s and all fixtures pass.
+  - **Pivot**: above 1.5 s with both caches means the shell startup is the cost; move the hook to one compiled or Node step.
+  - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (fast feedback loops).
+
+- [ ] The goal-judges hook test suite finishes in under 90 seconds
+  - **ID**: goal-judges-test-speed
+  - **Tags**: hooks, speed
+  - **Details**: Found 2026-11-22 while iterating PR #1253. `hooks/checks/goal-judges-before-stop.test.sh` ran 4m09s, then 3m20s after the prompt helper reused the state token, then 7m31s (139 cases) after round 6 added the vendor and local-judge fixtures. Each fixture still hashes the judged paths with `goal-state.sh` several times, and the hook hashes again per Stop. Every judge redesign round reruns it.
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`, `hooks/lib/goal-state.sh`.
+  - **Output**: code
+  - **Acceptance**: the suite keeps every case and passes in under 90 s on this Mac.
+  - **Hypothesis**: caching one token per session state in the test helpers cuts the suite from 451 s to under 90 s.
+  - **Measurement**: `time /bin/bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: under 90 s with all cases passing.
+  - **Pivot**: above 150 s after caching means the hook itself is the cost; profile `goal-state.sh` instead.
+  - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (fast feedback loops).
+
+- [ ] A comment-only edit no longer buys a fresh goal-judge round
+  - **ID**: goal-judges-optional-stopping
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, PR #1253 round 12 (overseer follow-up). The latest round wins, so a runner can add one comment line and re-roll the judges up to the round cap. The llm-evaluation-methodology judge reproduced 3,3,3 then 9,9,9 after a `# note` edit. Carry the earlier failing round's lowest score into the decision unless the diff since that round changes code, not only comments or whitespace.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-state.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture with a failing round, then a comment-only edit and a passing round, still blocks; a real code change allows.
+  - **Hypothesis**: comment-only re-rolls that pass drop from 1 of 1 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: the new fixture blocks and every other case passes.
+  - **Pivot**: if more than 1 of the 3 judged repos' languages needs its own parser to tell comment edits from code edits, print earlier failing rounds in the allow message instead.
+  - **Anchor**: Simmons, Nelson, Simonsohn 2011, "False-Positive Psychology" (optional stopping).
+
+- [ ] The goal overseer runs on a model family no judge used, and blockers block
+  - **ID**: goal-overseer-independence
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, PR #1253 round 12 (overseer follow-ups). The overseer may share a family with a judge it corrects, and the hook reads only its Ruling scores, not its blockers list. Require a family no judge used when one is free, and a `Blockers: N` line where N above 0 blocks a pass.
+  - **Files**: `hooks/lib/goal-overseer-prompt.sh`, `hooks/lib/goal-judge-verdicts.jq`, `hooks/checks/goal-judges-before-stop.sh`, its test, `docs/hook-protocol.md`.
+  - **Output**: code
+  - **Acceptance**: fixtures: an overseer on a judge's family blocks when a free family exists; `Blockers: 2` with all rulings 8 blocks.
+  - **Hypothesis**: overseer passes with open blockers drop from possible to 0 in the fixtures.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: both fixtures block and every other case passes.
+  - **Pivot**: if fewer than 4 families can run here, keep the runner-only family rule and document the limit.
+  - **Anchor**: Verga et al. 2024, "Replacing Judges with Juries".
+
+- [ ] Parallel skill-eval PRs merge without conflicts
+  - **ID**: evals-append-conflicts
+  - **Tags**: evals, delivery, retro
+  - **Details**: From the 2026-11-22 cashcast session. Retro PRs from parallel sessions each append one eval to the end of `skill-plugins/workflow/run-goal/evals/evals.json`, so whichever merges second conflicts. agentbrew#1255 went green and then conflicted 3 times in one evening (after #1258, #1263 and #1264 merged), and each round cost a rebase plus a full CI run. Inserting mid-file is not a fix: the frozen-prefix hash test pins the first 245 evals. Make an eval addition touch a file no other PR touches, for example one file per eval under `evals/cases/<id>.json` that the loader merges, or a merge driver for `evals.json`. Keep the frozen-prefix guard working for the existing evals.
+  - **Files**: the eval loader and its tests (`src/skills/*evals*.test.ts`), `skill-plugins/workflow/run-goal/evals/`, `docs/` for the eval layout.
+  - **Output**: code
+  - **Acceptance**: two branches off the same main, each adding one eval, merge in either order with no conflict; the frozen-prefix test still fails when an old eval changes.
+  - **Hypothesis**: eval-only PRs that hit a merge conflict before merging drop from 3 of 4 this evening to 0 of the next 10, because each eval lands in its own file.
+  - **Measurement**: for each merged PR that touches only `evals/`: `gh pr view <n> --repo fyodoriv/agentbrew --json timelineItems` and count `HEAD_REF_FORCE_PUSHED` events after the first green check; plus a vitest case that merges two eval branches in both orders.
+  - **Success**: 0 conflicted eval-only PRs out of the next 10, and the merge test passes.
+  - **Pivot**: if 2 or more of the next 10 eval-only PRs still conflict, or per-eval files break the frozen-prefix hash, use a git merge driver for `evals.json` instead.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (lead time for changes); Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] A plain `agentbrew sync` deploys the hooks on current `main`, not an old pinned runtime
+  - **ID**: sync-uses-current-hooks
+  - **Tags**: hooks, sync, upgrade
+  - **Details**: On 2026-11-22 the `agentbrew` on PATH ran a runtime built on Nov 14 (`~/.local/share/agentbrew-runtimes/<id>/`), and `agentbrew upgrade --check` said it was up to date. So `agentbrew sync` did not deploy the hooks merged that day (`detached-start-needs-watch`, `start-refused-caught`). They deployed only with `tsx src/cli.ts sync` from a checkout of `main`. Make sync (or doctor) say when the runtime's hooks are older than the source checkout's, and give the one command that brings them current.
+  - **Files**: `src/sync/`, `src/doctor/`, the runtime builder, `docs/` for the upgrade path.
+  - **Acceptance**: with a runtime older than `main`, `agentbrew sync` or `agentbrew doctor` prints a stale-runtime line with the fix command; after the fix, the deployed `hooks-scripts/` match `hooks/checks/` on `main`.
+  - **Hypothesis**: hooks merged but not deployed go from 2 seen on 2026-11-22 to 0, because sync names a stale runtime.
+  - **Measurement**: `diff <(ls hooks/checks | grep -v test) <(ls ~/.claude/codeassist/hooks-scripts)` after a plain `agentbrew sync`.
+  - **Success**: 0 missing hook scripts after a plain sync.
+  - **Pivot**: if 1 or more hooks are still missing after the fix, make sync always read hooks from the source checkout.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (Accelerate, deployment frequency and change failure rate).
 
 - [ ] Remove the remaining node-server range for Alert 181
   - **ID**: development-node-server-advisory-181
-  - **Blocked**: needs-compatible-upstream-parent — Promptfoo 0.124.1 pins node-server 2.1.1. The published 0.126.0 manifest pins 2.1.6 but requires incompatible jks-js and Nunjucks watcher peers. The local resolver still advertises 0.125.1 with node-server 2.1.5. Require a compatible published parent and a normal resolution before changing the lock graph.
+  - **Blocked**: needs-compatible-upstream-parent — The locked Promptfoo 0.124.1 pins node-server 2.1.1. The published 0.126.0 manifest pins 2.1.6 and still conflicts with the protected watcher and Java keystore peers. On Nov 21 the local resolver still offered 0.125.1 with node-server 2.1.5. Require a compatible published parent and a normal resolution before changing the lock graph.
   - **Tags**: security, dependencies, stability
   - **Details**: The first fixed node-server release is 2.1.6. Keep this alert separate from the earlier 172 and 175 comparison. A parent update must preserve existing peer choices, optional dependencies and the Node floor.
   - **Files**: `package.json`, `package-lock.json` and a registered dependency update plan.
@@ -269,6 +654,7 @@
   - **ID**: plugin-lifecycle-timeout-observation
   - **Tags**: reliability, tests, measurement
   - **Mode**: AFK
+  - **Blocked**: needs-one-run-approval — the prepared recording path still needs the explicit approval for the original case in the diagnostic plan.
   - **Details**: Published evidence is retained in [draft PR #805](https://github.com/fyodoriv/agentbrew/pull/805); keep it unmerged while qualification is false. The unchanged add/update/rollback/remove marketplace-copy case timed out at its existing 30,000 ms limit. The terminal report identifies the whole case, not the stalled action or cause. Follow [the diagnostic preparation](docs/plans/plugin-lifecycle-timeout-observation.md). Commit that prediction before adding safe test-owned stage records. Preserve original assertions, failure propagation and the time bound; land qualified observation before selecting a product fix. Use a separate clean checkout without the capped physical research probes for any normal full qualification. The [pure recorder pivot](docs/plans/lifecycle-recorder-no-writer-pivot.md) keeps nine synthetic health controls; the runner, external observation and real diagnostic remain unqualified.
   - **PR**: https://github.com/fyodoriv/agentbrew/pull/805
   - **Files**: `src/plugins/cli-plugin.test.ts`, `docs/plans/plugin-lifecycle-timeout-observation.md`
@@ -279,7 +665,6 @@
   - **Success**: all three observation controls classify their exact lifecycle state; zero false completion, swallowed failures or private-marker disclosures; unchanged original assertions and 30,000 ms case limit; required gates pass without executing the exhausted lease probes. A repair still requires separate diagnosed/reproduced-boundary evidence and a committed hypothesis.
   - **Pivot**: any ambiguous boundary, missing record, altered timeout/assertion, disclosed payload or passing retry presented as a cause rejects the observation. Preserve the unknown and revise measurement; do not raise the timeout, replace real lifecycle work with a stub or run until green.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration; the actual terminal timeout and current in-process `Command.parseAsync` lifecycle fixture.
-
 
 - [ ] Deliver OpenCode 2 session hooks during a cold CLI start
   - **ID**: opencode-v2-cold-session-hooks
@@ -300,6 +685,8 @@
   - **ID**: dependency-alert-remediation
   - **Tags**: security, stability, dependencies
   - **Mode**: AFK
+  - **Blocked by**: dependency-peer-compatibility
+  - **Progress**: GitHub marks all nine original alerts fixed. The supported full dependency tree remains a separate acceptance requirement.
   - **Details**: Repair Dependabot alerts 162/161/160/156/155/154/153/150/149 through supported upstream parents. Update the Vitest/coverage pair and the named lock targets; upgrade the Azure identity parent so its nested MSAL copy is fixed too. Preserve optional graph resolution, the jks stub, all unrelated overrides and the current Node floor. Commit [the frozen experiment](docs/plans/dependency-alert-controls.md) before any audit, installation or package change; read-only advisory triage is not a passing baseline. Partial task `dependency-runtime-fast-uri` does not complete this task. Final strict full-graph acceptance still needs `dependency-peer-compatibility`; all original metrics and receipts remain authoritative.
   - **Files**: `package.json`, `package-lock.json`, README dependency/security guidance, `docs/plans/dependency-alert-controls.md`
   - **Output**: code
@@ -314,13 +701,13 @@
   - **ID**: dependency-alerts-172-175
   - **Tags**: security, stability, dependencies
   - **Mode**: AFK
-  - **Blocked**: needs-compatible-upstream-parent-and-peer-contract — published parents still require vulnerable minimatch 10.x. The newer Promptfoo that fixes its pinned Hono copy adds a peer incompatible with the protected jks stub and retains the watcher peer conflict. Require compatible primary metadata before implementation.
+  - **Blocked**: needs-compatible-upstream-parent-and-peer-contract — the locked graph needs minimatch 10.x. Published Promptfoo 0.126.0 moves its parent ranges to minimatch 11, but still conflicts with the protected jks stub and watcher peer. The local resolver still offers 0.125.1. Require compatible primary metadata before implementation.
   - **Details**: Repair only alerts 172 (`@hono/node-server`, GHSA-rmxm-3fg6-px4f) and 175 (`minimatch`, GHSA-g3hv-75wg-m249). [The evidence and preparation plan](docs/plans/dependency-alerts-172-175.md) records exact ranges and parent constraints. Keep the original nine-row `dependency-alert-remediation` cohort, including MSAL alert 162, unchanged. Preserve optional paths, the local jks stub, existing overrides and the Node floor. This records read-only triage, not a passing baseline or an authorized package update.
   - **Files**: future supported parent resolution in `package.json` and `package-lock.json`; dependency/security documentation; no unrelated root update is pre-approved.
   - **Output**: code
   - **Acceptance**: neither new advisory range matches any resolved locked copy; the complete optional graph has no invalid/missing edges, normal installation and full gate pass, protected contracts remain unchanged, and both alerts report fixed with timestamps. No dismissal, omitted path, forced major override or reduced original-nine requirement counts as success.
   - **Hypothesis**: after compatible metadata and a committed exact candidate prediction, the two unsafe advisory rows fall from a predicted two to zero, with zero new unresolved findings, invalid/missing edges or protected-contract changes. Count rows, not vulnerable package nodes; measure the baseline before implementation.
-  - **Measurement**: first commit the exact supported parent selection and runnable experiment; then run the plan's proposed two-row semver query, strict full-graph/audit checks through npm 10, qualified task-owned normal install, existing lockfile/full gates and live GitHub fixed-status query. Commands are future steps, not passing harness evidence.
+  - **Measurement**: first commit the exact supported parent selection and runnable experiment. Compare `npm ls @hono/node-server minimatch --package-lock-only --all` with the advisory ranges. Run the plan’s strict full-graph and audit checks through npm 10, normal install, required gates and live GitHub status query.
   - **Success**: zero unsafe rows among these two, zero new unresolved findings, zero invalid/missing full-tree edges, zero protected-contract changes, green normal installation/full gate and two fixed-alert timestamps. The original nine-row experiment remains separate.
   - **Pivot**: any affected copy, unsupported parent resolution, concealed peer error, omitted optional path, new unresolved finding, protected-contract change or missing acceptance evidence rejects the candidate. Keep the task blocked rather than force a major override or change the denominator.
   - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary GitHub advisory APIs and published parent manifests linked in the plan.
@@ -329,7 +716,7 @@
   - **ID**: dependency-peer-compatibility
   - **Tags**: security, stability, dependencies
   - **Mode**: AFK
-  - **Blocked**: needs-compatible-upstream-contract — checked published Nunjucks latest 3.2.4 requires optional Chokidar `^3.3.0`; current and latest Promptfoo require `5.0.0`, as does the app root. No supported current placement was found under these protected declarations. A future compatible parent release or separately approved upstream change must supply the missing contract; do not force an override or downgrade the root.
+  - **Blocked**: needs-compatible-upstream-contract — published Nunjucks 3.2.4 requires optional Chokidar `^3.3.0`. The app and its locked Promptfoo declare `5.0.0`. The published latest Promptfoo declares `6.0.0`. No supported placement was found under these protected declarations. A future compatible parent release or separately approved upstream change must supply the missing contract; do not force an override or downgrade the root.
   - **Details**: The unchanged-source dependency tree check reports invalid Chokidar 5 at Promptfoo → Nunjucks. Optional means the peer may be absent; it does not accept an incompatible present version. npm rejects placing a peer inside its consumer. Record supported parent/peer metadata before attempting a resolution. [Stage R's constraint record](docs/plans/dependency-alert-controls.md#exact-constraint-and-source-limit) preserves the source evidence and all original nine-alert final requirements.
   - **Files**: future supported parent resolution in `package-lock.json`; dependency documentation; no root declaration or override change is pre-approved.
   - **Output**: code
@@ -360,7 +747,7 @@
 
 - [ ] PR bodies and new task blocks pass the pre-register checker in CI
   - **ID**: preregistration-ci-gate
-  - **Blocked**: needs-time — measure the first 10 merged descriptions and the first 20 pull requests after the check lands.
+  - **Blocked**: needs-default-merge-requirement — [first field sample](docs/plans/preregistration-changed-task-gate.md#first-field-sample). One of the first ten merges lacked a prediction. The first twenty newly opened pull requests all passed on their sampled heads, with zero false refusals in four earlier failed runs. The default branch has no required prediction check. The next cohort needs merge enforcement and a separate registration.
   - **Tags**: quality, ci, pre-registration, from-minsky
   - **Details**: Check the pull request description and each new or changed task block with `check-preregistration.mjs`. An unchanged task stays outside this check. Continue with the field observation after the gate lands.
   - **Files**: the PR-body check workflow or `scripts/check-pr-vision-trace.mjs`, `scripts/verify-changed.sh`, a ratchet helper and its test, AGENTS.md Delivery.
@@ -371,7 +758,241 @@
   - **Pivot**: more than 2 false blocks in the next 20 PRs.
   - **Anchor**: Munafò et al. 2017 (A manifesto for reproducible science, Nature Human Behaviour).
 
+- [ ] Instructions drift that a sync cannot clear is reported as drift
+  - **ID**: instructions-drift-sync-cannot-clear
+  - **Tags**: doctor, drift, sync
+  - **Details**: Seen 2026-11-22 on the owner's Mac. `agentbrew status --ci` reports `claude-code [instructions] instructions out of date (-299 lines)` (codex and opencode -276), and so does the dotfiles doctor. Running `agentbrew sync --only instructions` from `~` prints "3 drift issue(s) remain after sync". So the check and the sync disagree about the expected file, and the advised fix cannot work. `src/drift-checks/instructions.ts` compares the deployed file with `loadInstructions()` through `isInstructionsUpToDate`; the global CLI runs from `~/.local/share/agentbrew-runtimes/...`, which may be an older build than the file format that `dotfiles apply` deployed. Find which side is wrong, make status use the same render the sync writes, and add a test where sync then status reports 0 instructions drift.
+  - **Files**: `src/drift-checks/instructions.ts`, `src/sync/instructions-content.ts`, `src/drift.test.ts`
+  - **Output**: code
+  - **Acceptance**: after `agentbrew sync`, `agentbrew status --ci` reports 0 instructions drift on a fixture with shared rules plus Agentfile rule layers; a real edit still reports drift.
+  - **Hypothesis**: drift items that a sync cannot clear drop from 3 (this Mac) to 0, with true drift still caught.
+  - **Measurement**: `npx vitest run src/drift.test.ts` and, on the Mac, `agentbrew sync && agentbrew status --ci | grep -c instructions`.
+  - **Success**: the new test passes and the Mac count is 0 right after a sync.
+  - **Pivot**: if the runtime build is just stale, fix the runtime refresh (a doctor check that the runtime matches the checkout) instead of the drift check.
+  - **Anchor**: Nielsen 1994, heuristic 9 (help users recognize, diagnose and recover from errors).
+
 ## P2
+
+- [ ] Allow a quoted-tag heredoc inside $() in the detached-start hook
+  - **ID**: detached-start-heredoc-in-subst
+  - **Tags**: hooks, devex
+  - **Details**: Round 14 devex judge: `gh pr create --body "$(cat <<'EOF' ... EOF)"` with an ampersand in the body is blocked, because any `$(` makes the text check fail closed. This is the most common way agents write PR and commit bodies, and the hook header says such bodies are not blocked.
+  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a `$(cat <<'EOF' ... EOF)` body with an ampersand passes; a real trailing ampersand after it stays blocked.
+  - **Hypothesis**: false blocks on PR and commit bodies drop from 1 known shape to 0.
+  - **Measurement**: `bash hooks/checks/detached-start-needs-watch.test.sh` (new cases).
+  - **Success**: all passed.
+  - **Pivot**: if 1 or more unsafe cases pass after 2 tries, keep the block and name the body-file exit in the block message.
+  - **Anchor**: Nielsen 1994, "Usability Engineering" (error prevention without false alarms).
+
+- [ ] Show judges one judged-paths list after a contract edit
+  - **ID**: goal-judge-prompt-one-path-list
+  - **Tags**: run-goal, judges, clarity
+  - **Details**: Round 14 devex judge: after a contract edit, the judge prompt shows the frozen list and also the edited `Judged paths:` line inside the quoted contract. The existing fixture greps only the `- ` form, so it misses this.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: after the edit, the prompt does not contain the edited path anywhere.
+  - **Hypothesis**: prompts with two path lists drop from every edited-contract case to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (fixture greps the bare path).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if 1 or more fixtures still show the edited path, drop the Judged paths line from the quoted contract entirely.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (position and anchoring bias).
+
+- [ ] Warn when the frozen judged-paths list wins over the contract
+  - **ID**: goal-judge-prompt-frozen-warning
+  - **Tags**: run-goal, judges, devex
+  - **Details**: Round 14 devex judge: when the contract's `Judged paths:` line differs from the frozen `.paths` file, the prompt script exits 0 with no message, so a user who edits the line gets no hint.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: the script prints one stderr line naming the frozen file when the lists differ.
+  - **Hypothesis**: silent mismatches drop from 1 per edit to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (fixture checks stderr for `frozen`).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if the warning breaks 1 or more prompt-equality fixtures, write it to a log file instead.
+  - **Anchor**: Nielsen 1994, "Usability Engineering" (visibility of system status).
+
+- [ ] The overseer prompt quotes each judge's full report, not a later short note
+  - **ID**: goal-overseer-full-report
+  - **Tags**: run-goal, overseer, bug
+  - **Details**: Round 15 of the 2026-11-24 follow-up goal: a judge that finishes its own background work sends a second short notification with the same verdict. The overseer prompt takes the latest report, so it quotes the short note and drops the full report with its rubric lines.
+  - **Files**: `hooks/lib/goal-overseer-prompt.sh`, `hooks/lib/goal-judge-verdicts.jq`, their test.
+  - **Output**: code
+  - **Acceptance**: a fixture with a full report then a short note from one judge on one state yields an overseer prompt that holds the full report's rubric text.
+  - **Hypothesis**: overseer prompts missing a judge's rubric lines drop from 3 of 3 judges in round 15 to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (new fixture greps for the full report's rubric line).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if 1 or more same-state re-roll fixtures fail, keep the longest report per judge and state instead.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (judges need the full evidence).
+
+- [ ] The exit-141 fixture also checks the overseer prompt is not empty
+  - **ID**: goal-overseer-141-output-check
+  - **Tags**: run-goal, overseer, test
+  - **Details**: Round 15 harness judge: the SIGPIPE fixture checks only the exit code, so a script that exits 0 with no output still passes.
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: the fixture also greps the prompt for `Score: 8/10`.
+  - **Hypothesis**: vacuous passes of the exit-141 fixture drop from possible to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if the grep makes the fixture flaky in 1 or more of 5 runs, check byte count over 0 instead.
+  - **Anchor**: Meszaros 2007, "xUnit Test Patterns" (weak assertions).
+
+- [ ] goal-overseer-prompt.sh prints a usage line when run with no arguments
+  - **ID**: goal-overseer-usage-line
+  - **Tags**: run-goal, overseer, devex
+  - **Details**: Round 15 devex judge: `bash hooks/lib/goal-overseer-prompt.sh` with no arguments prints a raw `sed` file error before exit 2.
+  - **Files**: `hooks/lib/goal-overseer-prompt.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a no-argument call prints one line starting `goal-overseer-prompt: usage:` and nothing from `sed`; exit 2.
+  - **Hypothesis**: raw tool errors on a no-argument call drop from 1 to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (new fixture on stderr).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if the guard breaks 1 or more stdin-mode fixtures, check only for an empty first argument.
+  - **Anchor**: Nielsen 1994, "Usability Engineering" (help users recognize errors).
+
+- [ ] detached-start allows a quoted ampersand next to any command substitution
+  - **ID**: detached-start-quoted-amp-subst
+  - **Tags**: hooks, detached-start, bug
+  - **Details**: Round 15: a quoted ampersand in a python or sed string next to a `$( )` or a pipe is blocked as a detached start, with no heredoc. Task detached-start-heredoc-in-subst names only the heredoc shape.
+  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture with a quoted ampersand inside a string next to `$(pwd)` is allowed.
+  - **Hypothesis**: false detached-start blocks on quoted ampersands drop to 0.
+  - **Measurement**: `bash hooks/checks/detached-start-needs-watch.test.sh` (new fixture).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if allowing it lets 1 or more real background-start fixtures through, keep the block and improve its hint.
+  - **Anchor**: Bash Reference Manual 2022, "Quoting" (quoted metacharacters lose meaning).
+
+- [ ] The goal-judges stop suite runs in under 5 minutes
+  - **ID**: goal-judges-suite-speed
+  - **Tags**: run-goal, tests, perf
+  - **Details**: Round 15 harness judge: `goal-judges-before-stop.test.sh` takes about 11 minutes wall time on this Mac, the top tool-time step this week.
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: the suite finishes in under 300 s and keeps every check.
+  - **Hypothesis**: suite wall time drops from about 660 s to under 300 s by sharing fixture setup.
+  - **Measurement**: `/usr/bin/time -p bash hooks/checks/goal-judges-before-stop.test.sh`
+  - **Success**: real under 300 s and 0 failed.
+  - **Pivot**: if real time stays over 500 s after sharing setup, split the suite and run the parts in parallel instead.
+  - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (fast feedback lowers lead time).
+
+- [ ] Fail closed when the overseer report has no usage note
+  - **ID**: goal-overseer-missing-usage-fails-open
+  - **Tags**: run-goal, overseer, bug
+  - **Details**: Round 14 of the 2026-11-24 follow-up goal: when the overseer's report has no usage note, its tool count is never checked, so a report made with no tool calls still passes.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture overseer report with no usage note is rejected.
+  - **Hypothesis**: overseer reports accepted without a tool count drop from possible to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (new fixture).
+  - **Success**: fixture passes and the suite shows 0 failed.
+  - **Pivot**: if 1 or more of the next 5 real overseer runs lacks a usage note, count tool calls from the transcript instead.
+  - **Anchor**: Saltzer and Schroeder 1975, "The Protection of Information in Computer Systems" (fail-safe defaults).
+
+- [ ] Stop overseer report text from faking tool_uses
+  - **ID**: goal-overseer-fake-tool-uses
+  - **Tags**: run-goal, overseer, independence
+  - **Details**: With no usage trailer, a line like `tool_uses: 9` inside the overseer's own text is read as the count (round 14, overseer).
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture whose body says `tool_uses: 9` but has no trailer is not counted as 9.
+  - **Hypothesis**: spoofable tool counts drop from 1 known path to 0.
+  - **Measurement**: the new fixture in `goal-judges-before-stop.test.sh`.
+  - **Success**: fixture passes; suite 0 failed.
+  - **Pivot**: if 1 or more spoof fixtures still pass after the fix, read the count only from the harness transcript.
+  - **Anchor**: Saltzer and Schroeder 1975, "The Protection of Information in Computer Systems" (complete mediation).
+
+- [ ] Freeze judged paths for goals with no owner file
+  - **ID**: goal-judge-paths-no-owner-file
+  - **Tags**: run-goal, judges, independence
+  - **Details**: The `.paths` freeze only applies when an owner file exists, so a goal without one still lets the runner edit what is judged (round 14).
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/lib/goal-overseer-prompt.sh`, their test.
+  - **Output**: code
+  - **Acceptance**: a no-owner-file goal whose Judged paths line is edited later still yields the first list.
+  - **Hypothesis**: goals with editable judged paths drop from all no-owner-file goals to 0.
+  - **Measurement**: new fixture in `goal-judges-before-stop.test.sh`.
+  - **Success**: fixture passes; suite 0 failed.
+  - **Pivot**: if no stable first-save moment exists, freeze on the first judge run.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (self-enhancement bias).
+
+- [ ] Clean up .paths files with the other goal state
+  - **ID**: goal-state-paths-cleanup
+  - **Tags**: run-goal, hygiene
+  - **Details**: `goal-set-loads-run-goal.sh` removes old contract and state files but not `.paths`, so a stale list can carry into a new goal with the same session id (round 14).
+  - **Files**: `hooks/checks/goal-set-loads-run-goal.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: after a new `/goal`, no `.paths` file from the old goal remains.
+  - **Hypothesis**: stale `.paths` files after a goal reset drop from 1 per reset to 0.
+  - **Measurement**: `bash hooks/checks/goal-set-loads-run-goal.test.sh` (new check).
+  - **Success**: check passes; suite 0 failed.
+  - **Pivot**: if cleanup lists keep drifting, glob all `<session>.*` state files instead.
+  - **Anchor**: Nygard 2018, "Release It!" (clean up stale state).
+
+- [ ] Say what to do next when a quoted ampersand is blocked
+  - **ID**: detached-start-quoted-amp-hint
+  - **Tags**: hooks, devex
+  - **Details**: The detached-start-needs-watch block message names no next step when the ampersand is inside quotes or a heredoc (round 14, devex).
+  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: the block message for a quoted ampersand names the fix (use `run_in_background`, or write the text with a file tool).
+  - **Hypothesis**: repeat blocks of the same command drop from about 2 to 1.
+  - **Measurement**: `bash hooks/checks/detached-start-needs-watch.test.sh` plus `node templates/scripts/agent-perf.mjs report` blocked-call counts over 7 days.
+  - **Success**: test passes and repeat blocks fall by half.
+  - **Pivot**: if the same command is still blocked twice in a row (count above 1), allow a quoted ampersand in known-safe commands instead.
+  - **Anchor**: Nielsen 1994, "Usability Engineering" (help users recover from errors).
+
+- [ ] Allow node -e and python -c with a quoted ampersand
+  - **ID**: detached-start-inline-code-amp
+  - **Tags**: hooks, devex
+  - **Details**: `node -e` and `python -c` scripts that hold a quoted ampersand are still blocked as detached starts (round 14).
+  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: an inline script with a quoted ampersand passes; a trailing unquoted ampersand stays blocked.
+  - **Hypothesis**: false blocks for inline code drop from 1 known shape to 0.
+  - **Measurement**: new cases in `detached-start-needs-watch.test.sh`.
+  - **Success**: cases pass; 0 failed.
+  - **Pivot**: if 1 or more safe-command cases still fail after 2 tries, keep the block and improve the hint only.
+  - **Anchor**: Nygard 2018, "Release It!" (avoid false alarms).
+
+- [ ] Document detached-start-needs-watch in hook-protocol.md
+  - **ID**: hook-protocol-detached-start
+  - **Tags**: docs, hooks
+  - **Details**: `docs/hook-protocol.md` does not mention detached-start-needs-watch (round 14, devex).
+  - **Files**: `docs/hook-protocol.md`.
+  - **Output**: docs
+  - **Acceptance**: the doc names the hook, what it blocks and the fix.
+  - **Hypothesis**: hooks missing from the doc drop from 1 to 0.
+  - **Measurement**: `grep -c detached-start-needs-watch docs/hook-protocol.md` is at least 1.
+  - **Success**: count at least 1.
+  - **Pivot**: if 1 or more hooks are missing from the doc again within 30 days, generate the list from `hooks/checks/`.
+  - **Anchor**: Parnas and Clements 1986, "A Rational Design Process" (keep docs current).
+
+- [ ] Fit the goal-judges stop suite in a judge's time budget
+  - **ID**: goal-judges-suite-judge-budget
+  - **Tags**: run-goal, speed
+  - **Details**: The full `goal-judges-before-stop.test.sh` run takes longer than a judge's budget, so judges cannot re-run it (round 14).
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: a judge can run the relevant part in under 2 minutes.
+  - **Hypothesis**: suite time for a judge drops from over 5 minutes to under 2.
+  - **Measurement**: `time bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: under 2 minutes.
+  - **Pivot**: if it stays above 3 minutes, split the suite into files.
+  - **Anchor**: Forsgren, Humble and Kim 2018, "Accelerate" (fast feedback).
+
+- [ ] run-goal eval 384 lists one follow-up per line
+  - **ID**: run-goal-eval-384-one-follow-up-per-line
+  - **Tags**: run-goal, evals
+  - **Details**: Eval 384 (the `/goal ship follow ups` question-round case) joins three plans with "and" in one follow-up, so its "baseline 4" depends on how a reader counts. Rewrite the prompt with one follow-up per line and a baseline that matches the count. A fresh-context review of PR #1256 found it. Check first that the eval-mutation tests in `src/skills/run-goal-owner-and-proof.test.ts` allow an edit past the frozen first 245 evals; if they do not, add a replacement eval and mark 384 superseded.
+  - **Files**: `skill-plugins/workflow/run-goal/evals/evals.json`
+  - **Output**: docs
+  - **Acceptance**: the eval prompt lists each follow-up on its own line, and its expected baseline equals that count.
+  - **Hypothesis**: graders disagree less on eval 384: count disagreements across 3 grader runs drop from about 1 in 3 to 0.
+  - **Measurement**: `npm run eval:agent-artifacts` run 3 times on hosted CI, comparing the eval 384 verdicts.
+  - **Success**: 3 of 3 runs give the same verdict.
+  - **Pivot**: below 2 of 3 matching verdicts, split the eval into one case per expectation.
+  - **Anchor**: Cohen 1960, "A coefficient of agreement for nominal scales".
 
 - [ ] A goal retro knows which rule wins when a repo rule limits where skill updates go
   - **ID**: run-goal-retro-repo-rule-precedence
@@ -411,28 +1032,16 @@
 
 - [ ] Debugging starts from a reliable failing signal and ranked hypotheses
   - **ID**: diagnose-loop-ladder-and-ranked-hypotheses
+  - **Blocked**: needs-complete-local-comparison — structured Qwen setup passed, then the first case stopped at its token limit. The independent Llama setup hit its provider deadline. Require four complete replies on one qualified local model before grading. See [the receipts](docs/plans/diagnosing-bugs-response-receipts.md).
   - **Tags**: skills, debugging, from-minsky
   - **Details**: minsky's `diagnose` skill had two techniques the catalog `systematic-debugging` skill lacks. (1) A feedback-loop ladder: try a failing test, a curl fixture, a CLI fixture, a trace replay, a minimal harness, a property or fuzz test, `git bisect run`, then a human-run script, in that order, and do not go on until the signal fails the same way every time. (2) Before testing, write 3 to 5 ranked, falsifiable hypotheses ("if X is the cause, changing Y removes the bug") and test the cheapest to disprove first. Add both as a small agentbrew skill (`skill-plugins/workflow/diagnose/`) or a catalog entry for the upstream mattpocock `diagnose` skill, with evals.
   - **Files**: `skill-plugins/workflow/diagnose/SKILL.md` and `evals/evals.json`, or `src/catalog.yaml`.
   - **Acceptance**: an eval where the bug is intermittent makes the agent build a repeatable failing signal first and list ranked hypotheses before editing code.
   - **Hypothesis**: debugging sessions that edit code before a repeatable failing signal exists drop from common to rare.
-  - **Measurement**: `npx agentbrew eval diagnose` pass rate on its evals.
+  - **Measurement**: Run the [skill behavior comparison](docs/task-backend-contract.md#skill-behavior-measurements) on the diagnose cases. Aggregate both graded groups with `python3 "$skill_creator_dir/scripts/aggregate_benchmark.py" "$eval_dir" --skill-name diagnose` and compare their pass rates.
   - **Success**: all diagnose evals pass with the skill and at least 1 fails without it.
-  - **Pivot**: no eval separates with-skill from without-skill runs.
+  - **Pivot**: 0 evals separate with-skill from without-skill runs.
   - **Anchor**: Zeller 2009 (Why Programs Fail, scientific debugging).
-
-- [ ] Agent hooks block the destructive commands minsky blocked and we still allow
-  - **ID**: block-remaining-dangerous-commands
-  - **Tags**: hooks, safety, from-minsky
-  - **Progress**: The opt-in Bash hook covers leading direct stash discard, GitHub repository deletion and administrator merges without shell redirection. The separate opt-in Git wrapper covers the registered Git operations at the executable boundary. The Bash hook also blocks leading direct npm publishing. Recursive deletion and remaining shell forms still need verified coverage.
-  - **Details**: minsky `.claude/hooks/block-dangerous-bash.sh` blocked commands our hooks still allow: `git stash drop` and `git stash clear` (stashes are shared by every worktree, so one agent can delete another's work), `gh pr merge --admin` (skips branch protection), `gh repo delete`, `git -c core.hooksPath=<x> commit` (a quiet hook bypass), and `rm -rf` outside the temp and scratch folders. Also block: creating or switching branches in a shared main checkout (`git checkout -b/-B`, `git switch -c/-C`, `git checkout <type>/...`) when the git dir equals the common git dir, unless the command uses `git -C`, `cd` into a worktree, or `git worktree` (a sibling agent once switched branches and wiped another session's edits); wholesale reverts `git checkout <ref> -- .` and `git restore :/`; and direct `npm publish` (the owner follows the release procedure in `docs/ci.md`). Add them to `hooks/checks/` (or extend `no-commit-no-verify.sh` for the hooksPath case), each with a fixture test, and register them in the hook manifest.
-  - **Files**: `hooks/checks/no-destructive-commands.sh`, its `.test.sh`, `hooks/checks/no-commit-no-verify.sh`, hook manifest, `docs/` hook list.
-  - **Acceptance**: every command shape listed in Details is blocked in a fixture; `git stash list`, `gh pr merge --squash`, and `rm -rf $TMPDIR/x` still pass.
-  - **Hypothesis**: agent runs that destroy shared stashes or bypass branch protection go from possible to 0.
-  - **Measurement**: `bash hooks/checks/no-destructive-commands.test.sh; echo exit=$?`.
-  - **Success**: 100% of registered blocked and allowed cases pass, including 1 allowed branch switch inside a linked worktree.
-  - **Pivot**: more than 1 false block per week in hook observation logs.
-  - **Anchor**: Reason 1990 (Human Error, defenses in depth).
 
 - [ ] Editing TASKS.md lints it right away
   - **ID**: tasks-md-lint-on-edit
@@ -451,7 +1060,9 @@
 - [ ] Closing a superseded PR proves nothing is lost
   - **ID**: lossless-pr-close
   - **Tags**: ship-it, watch-issues, git, from-minsky
-  - **Details**: Port minsky `scripts/verify-pr-closure-is-lossless.mjs`: before closing a PR as superseded or duplicate, apply its patch onto the surviving branch with `git apply --3way --check` and refuse the close if any hunk is left over. Call it from ship-it and watch-issues; this is the mechanical proof the "Merge means merge" rule asks for.
+  - **Details**: Compare the proposal patch against the replacement with a three-way apply in a disposable Git index. The replacement tree must remain byte-for-byte identical. Ship-it and watch-issues use this proof alongside the existing merge rule.
+  - **Progress**: The [fixture and live controls](docs/plans/verify-pr-preservation.md) accepted two duplicate trees and refused unique text, unique binary content, a conflict and the live #1040/#1041 negative pair. The ten latest closed, unmerged PRs did not name an explicit replacement.
+  - **Blocked**: needs-identified-duplicate-history — obtain verified replacement pairs before measuring the real false-refusal rate.
   - **Files**: `scripts/verify-pr-closure-is-lossless.mjs`, its test, ship-it and watch-issues docs.
   - **Acceptance**: a fixture PR with one unique hunk is refused and the hunk named; a true duplicate passes.
   - **Hypothesis**: PR closes that drop unique work go from unchecked to zero.
@@ -525,7 +1136,6 @@
   - **Success**: 6 of 6 when the gate is kept; the workflow file is absent when it is dropped.
   - **Pivot**: fewer than 5 of 6 after the gate is restored means agents do not load the rule; drop the gate.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate: a gate that always fails is ignored; Basili, Caldiera and Rombach (1994), GQM.
-
 
 - [ ] Detect duplicate Ollama servers before they split the local prompt cache
   - **ID**: ollama-single-server-readiness
@@ -773,22 +1383,9 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] Optional FAKE marker rule: stubs must say they are fake
-  - **ID**: fake-marker-rule
-  - **Tags**: lint, testing, absorbed-from-minsky
-  - **Mode**: AFK
-  - **Details**: Add an optional lint rule to the `new-project` templates: a stub or fake in non-test code carries a `// FAKE:` comment naming what it stands in for, so a stub is never mistaken for a real implementation. Keep it opt-in. Source: https://github.com/fyodoriv/minsky/blob/main/user-stories/011-fake-data-marked-explicitly.md. The story defines the marker format (`// FAKE: <reason> - tracked at <task-id>`) but has no lint script yet, so design the check from it.
-  - **Files**: `skill-plugins/workflow/new-project/templates/`, a new test
-  - **Output**: code
-  - **Acceptance**: A seeded stub without the marker fails the lint; the same stub with the marker passes.
-  - **Hypothesis**: unmarked stubs in a scaffolded repo go from unchecked to 0 findings.
-  - **Measurement**: `npx vitest run` on the new lint test with one marked and one unmarked fixture.
-  - **Success**: 1 of 1 unmarked stub fails; 1 of 1 marked stub passes; 0 findings on a clean scaffold.
-  - **Pivot**: If the lint cannot tell a stub from a real small function without more than 2 false positives on the template, drop it.
-  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Meszaros (2007), xUnit Test Patterns (test doubles).
-
 - [ ] Count guard stops reading a time span as an agent count
   - **ID**: volatile-count-time-units
+  - **Blocked**: The fixture gate covers the source change. Observe the next 30 days of hosted documentation checks after merge to measure false warnings in use.
   - **Tags**: quality, docs-guard
   - **Details**: `src/docs/volatile-count-scan.ts` flags a number, up to three words, then an inventory noun. So a time span before such a noun reads as a count. On 2026-11-19 a TASKS.md acceptance line with a 15-minute timebox, followed by "makes the agent", failed hosted CI and cost one full CI cycle. Exempt a match whose first word after the number is a time unit (ms, second, minute, hour, day, week), next to the existing threshold exemption.
   - **Files**: `src/docs/volatile-count-scan.ts`, `src/docs/volatile-count-claims.test.ts`
@@ -798,30 +1395,6 @@
   - **Success**: the time-span fixture passes and 100% of the existing violation fixtures still fail.
   - **Pivot**: more than 1 real-count fixture passes; then drop the exemption and reword prose instead.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
-
-- [ ] Skill eval cases can be run for a pass rate
-  - **ID**: skill-eval-pass-rate
-  - **Tags**: quality, skills, measurement
-  - **Details**: Task blocks measure skill changes with `npx agentbrew eval <skill>`, but that command does not exist. `agentbrew skills` has only `coverage` and `validate`, which check that `evals/evals.json` cases exist, not that they pass. On 2026-11-19 a reviewer found the command in the `diagnose` block and in the blocks filed for the runner-rule skills, so those Measurement lines could never run. Either add a runner (for example `agentbrew skills eval <name>`, reusing the skill-creator grader) or change the convention to a runnable proxy. Then fix the `diagnose` block.
-  - **Files**: `src/commands/` (a new `skills eval` subcommand) or `docs/task-backend-contract.md`; the `diagnose` block in TASKS.md.
-  - **Acceptance**: the Measurement of every open TASKS.md block names a command that exists; a new runner, if built, prints a pass rate for one skill's eval cases.
-  - **Hypothesis**: open task blocks whose Measurement names a missing command drop from 1 to 0 and stay at 0.
-  - **Measurement**: `grep -c "npx agentbrew eval" TASKS.md`
-  - **Success**: 0 matches, and a new runner, if built, prints a pass rate for one skill.
-  - **Pivot**: grading a single skill run costs more than 1 US dollar; then keep the proxy convention and drop the runner.
-  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
-
-- [ ] Classify the hosted MCP checkout lag test failure
-  - **ID**: observe-mcp-checkout-lag-probe-failure
-  - **Tags**: tests, ci, mcp
-  - **Details**: A macOS run expected one behind checkout and reported none. A local isolated rerun passed. Keep the production probe and its limits until a real failure identifies the outcome. The test receipt is registered in [the plan](docs/plans/mcp-checkout-lag-probe-receipts.md).
-  - **Output**: measurement
-  - **Hypothesis**: A test-only probe receipt identifies a child exit, timeout or spawn failure without exposing private inputs.
-  - **Measurement**: Run `heavy-run npx vitest run src/mcp/git-checkout-lag.test.ts` for the receipt controls. Read the next natural hosted failure for the original checkout-lag assertion.
-  - **Success**: At least 1 real failing hosted run has an exact classified outcome and 0 private strings. Keep the root-cause work open until then.
-  - **Pivot**: If 1 receipt is missing or misleading, repair measurement before choosing a code fix. Ten passing runs without a failure leave the cause unknown.
-  - **Anchor**: [Nov 20, 2026 macOS failure](https://github.com/fyodoriv/agentbrew/actions/runs/44706661566/job/136187967909).
-  - **Blocked**: Needs a natural hosted recurrence after the diagnostic lands. Do not increase load to recreate it.
 
 ## P3
 
@@ -1088,7 +1661,6 @@
   - **Acceptance**: (a) a substantive RFC-style comment is posted on BOTH #268 and #455 with the 5-case taxonomy and the invariant statement; (b) the comment links to the exact `src/sync/skills-sync.ts` `cleanEntry` reference and explicitly states "not filing a PR"; (c) if any of the 4 open PRs (#609, #611, #869, #944) subsequently merges with a classifier design, close this task with a link to the merge in the commit message; (d) if the queue stays stuck for another 4 weeks post-comment, the escalation comment on #268 asking for architectural direction is posted.
   - **Research**: 2026-10-16 — #268, #455, #606, #609, and #611 are still open; #869 merged but only preserves dotfiles in copied skills; #944 closed. No classifier has landed. Both comment texts are staged in [`docs/audits/skills-cli-268-455-rfc-comment-draft.md`](docs/audits/skills-cli-268-455-rfc-comment-draft.md) with the posting steps; the only remaining step is the approved `gh issue comment`.
   - **Human-approval-required**: external-issue
-
 
 - [ ] Add machine-setup verification cases to third-party skills
   - **ID**: setup-goal-third-party-skill-retro

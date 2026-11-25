@@ -37,3 +37,11 @@ included a second observer interpreter startup. Preserve the one-second
 threshold. Measure the complete hook subprocess from one already-running
 observer and print that interval before deciding whether the adapter is fast
 enough. A failure of that corrected interval still rejects the candidate.
+
+The corrected test timed out after two seconds. Reject the Python candidate;
+its internal deadline did not cover interpreter startup or earlier filesystem
+work. The exact slow operation remains unknown. The next candidate uses native
+Perl and its core JSON parser, with an alarm before parsing or filesystem work
+and an owned helper process group. Keep every outcome and the one-second
+successful-case threshold unchanged. A slow successful result or surviving
+helper rejects this candidate too.

@@ -37,6 +37,18 @@ verified scope. For a rolling backlog, report dated counts by type and say
 the total is unknown. Keep partial work and blockers visible. Use a percentage
 only when the numerator and denominator count the same units.
 
+For a nonempty `Needed from you` line, name four details in plain words.
+Describe the item and link it or the place to act. Explain why the user
+needs to decide.
+Say what each option changes for the user. Recommend one option with a
+reason. If only one action is possible, explain what remains pending if
+the user leaves it alone.
+
+Before sending the ask, get an independent read against the live item.
+The reader fails a bare ID, a missing link, an unclear owner action, an
+unexplained choice, or a missing recommendation. Revise the ask until it
+passes. Use `**Needed from you:** nothing` when no user action is needed.
+
 ## Choose what happens next
 
 At every goal closeout, share the results, lessons, and tooling changes before

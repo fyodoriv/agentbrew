@@ -64,7 +64,10 @@ depends on it.
    ```
 
    Judged paths are everything the judges grade: the worktrees, the output
-   files. A research or Q&A goal with no repo writes its answer to
+   files. List each as an absolute path to a file or directory that already
+   exists. A description such as "worktree diff" causes a `judged path missing`
+   error and prevents the judges from starting.
+   A research or Q&A goal with no repo writes its answer to
    `<state dir>/<session id>.answer.md` (next to the contract; the write is
    pre-approved) and judges that file.
    The first judge prompt after `/goal` saves the judged paths to

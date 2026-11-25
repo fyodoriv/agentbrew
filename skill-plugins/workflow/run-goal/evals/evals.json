@@ -4619,13 +4619,13 @@
     {
       "id": 410,
       "prompt": "/goal update all tooling and careerbrew, install recommended things that help my work, file tasks, and make it happen every /work. Mid-run the user adds: don't add a new command. Make the current one smarter.",
-      "expected_output": "The agent runs the existing /work gate first and identifies the gaps in checkout coverage, recommendations, and stale-lease handling. It extends that gate, ships with a failing then passing regression, fresh review, and a merge. It checks the live checkout reads the merged change in a fresh gate run and links existing upstream issues after a duplicate search.",
+      "expected_output": "The agent runs the existing /work gate first and identifies the gaps in checkout coverage, recommendations, and stale-lease handling. It extends that gate, ships with a failing then passing regression, fresh review, and a merge. It checks the exact revision of the live checkout and runs the gate there. It searches upstream for each gap, cites existing issues, and files gaps that have no issue.",
       "expectations": [
         "Runs the existing /work gate before proposing changes",
         "Extends the existing gate in response to the user's correction",
         "Ships the gate change with a failing then passing regression, a fresh review, and a merge",
-        "Proves the live /work gate uses the merged change",
-        "Checks for existing upstream issues before filing any gaps"
+        "Verifies that the checkout /work actually reads is on the merged commit and runs the gate there",
+        "Searches upstream for each gap, cites matching issues, and files only gaps that have no issue"
       ]
     },
     {

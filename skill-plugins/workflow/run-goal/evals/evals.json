@@ -4606,6 +4606,19 @@
         "Does not merge when any check is not an explicit pass",
         "Investigates the cancelled check before re-running or merging"
       ]
+    },
+    {
+      "id": 409,
+      "prompt": "/goal deliver follow ups (one follow-up is a CI job that ran past its timeout once; GitHub kept no log for the cancelled job)",
+      "expected_output": "Measures the job across recent runs before acting (one outlier vs a normal range), reads step timings from the jobs API, notes the missing log, and files a measured task (hypothesis, measurement, success, pivot, anchor) that adds evidence capture such as a step timeout and a sub-step log artifact. Does not edit the CI workflow or raise the timeout on a guess, and hands user-only follow-ups (an email reply) back with exact steps. Complements eval 408, which covers the merge gate for the same cancelled check.",
+      "files": [],
+      "expectations": [
+        "Compares the outlier with recent runs of the same job",
+        "Reads step-level timings and checks whether the log exists",
+        "Files a task with all pre-registration fields instead of guessing a CI fix",
+        "Does not raise the timeout without evidence",
+        "Names user-only follow-ups as user steps with exact instructions"
+      ]
     }
   ]
 }

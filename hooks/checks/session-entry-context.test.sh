@@ -45,10 +45,37 @@ plain="$(jq -nc --arg cwd "$fixture/plain" '{hook_event_name:"SessionStart",cwd:
 [ -z "$(invoke '{invalid')" ]
 [ -z "$(invoke '{"hook_event_name":"Stop"}')" ]
 
+mkdir -p "$fixture/repo/tools"
+cat > "$fixture/repo/tools/SessionContextFixture.pm" <<'PM'
+package SessionContextFixture;
+BEGIN {
+    open my $marker, '>', "$ENV{HOME}/ambient-module-ran" or die $!;
+    print {$marker} 'ran';
+    close $marker;
+}
+1;
+PM
+result="$(PERL5OPT=-MSessionContextFixture PERL5LIB="$fixture/repo/tools" PERLLIB="$fixture/repo/tools" invoke "$payload")"
+if [ -f "$fixture/home/ambient-module-ran" ]; then
+  echo 'ambient Perl module ran before the adapter' >&2
+  exit 1
+fi
+printf '%s' "$result" | python3 -c 'import json,sys; assert "AGENTS.md" in json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"]'
+
 cp "$helper" "$fixture/original-helper"
-printf '#!/bin/bash\nprintf "%%s" "$(printf x%.0s {1..10000})"\n' > "$helper"
+cat > "$helper" <<'SH'
+#!/bin/bash
+printf '%s' "$(printf 'x%.0s' {1..10000})"
+SH
 result="$(invoke "$payload")"
-printf '%s' "$result" | python3 -c 'import json,sys; s=sys.stdin.read(); assert len(s.encode())+1 <= 2048; assert json.loads(s)["hookSpecificOutput"]["additionalContext"]'
+printf '%s' "$result" | python3 -c 'import json,sys; s=sys.stdin.read(); assert len(s.encode())+1 <= 2048; assert len(json.loads(s)["hookSpecificOutput"]["additionalContext"]) > 1000'
+
+cat > "$helper" <<'SH'
+#!/bin/bash
+printf '\360\237\222\241%.0s' {1..2000}
+SH
+result="$(invoke "$payload")"
+printf '%s' "$result" | python3 -c 'import json,sys; s=sys.stdin.read(); assert len(s.encode())+1 <= 2048; assert "\U0001f4a1" in json.loads(s)["hookSpecificOutput"]["additionalContext"]'
 
 cat > "$helper" <<'SH'
 #!/bin/bash

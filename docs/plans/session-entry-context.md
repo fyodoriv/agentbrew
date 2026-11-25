@@ -45,3 +45,18 @@ Perl and its core JSON parser, with an alarm before parsing or filesystem work
 and an owned helper process group. Keep every outcome and the one-second
 successful-case threshold unchanged. A slow successful result or surviving
 helper rejects this candidate too.
+
+A synthetic comparison separated the adapter from its helper: a fast helper
+took 0.228 seconds through the hook. The unchanged real helper took 0.796
+seconds with the system tool path and 0.058 seconds with the actual Xcode Git
+directory first. A subsequent warm hook took 0.288 seconds. These observations
+do not prove the cold startup budget. Prefer an installed macOS toolchain Git
+over its system launcher, keep the caller's project tools excluded, and rerun
+the complete unchanged acceptance fixture.
+
+Independent review found a startup boundary gap: inherited Perl environment
+options can load a project module before the alarm begins. Register a synthetic
+module that writes a marker. Prediction: an isolated interpreter launch leaves
+zero marker files while still returning the context. One marker rejects the
+candidate. Run that fixture red before changing the wrapper, then run the whole
+focused qualification again.

@@ -383,7 +383,7 @@
   - **Tags**: support, user-only
   - **Details**: User-only step: an agent cannot do it. OpenAI Support (Celio) asked for a screenshot of the ChatGPT Work network setting and the app logs, to debug the Work network loss of 2026-11-25. The reply goes by email from the owner's own inbox; the connected Gmail is a different inbox. Steps: open Celio's email, reply with the text in `~/apps/tooling/openai-support-reply-2.txt`, attach `~/apps/tooling/openai-work-network-setting.jpg` and `~/apps/tooling/openai-support-logs-2026-11-25.zip` (logs scanned: no passwords, codes or keys), send. The reply text already has the failure time, the conversation IDs and /feedback ID 10bd583d-5135-4889-a0c5-c509461454dc. Full steps: `~/apps/tooling/openai-support-handoff.md`.
   - **Files**: none in this repo.
-  - **Output**: email reply (owner)
+  - **Output**: mixed
   - **Acceptance**: the reply with both attachments is in the owner's Sent folder.
   - **Hypothesis**: open support asks with no owner drop from 1 to 0 once the owner sends the reply.
   - **Measurement**: `grep -c 'openai-support-attachments' TASKS.md` (1 while open; the owner deletes the task after sending, then 0).

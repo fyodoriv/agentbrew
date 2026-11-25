@@ -117,17 +117,22 @@ name: partial
 });
 
 describe("top-level .agents/skills sources", () => {
-  function mockLayout(options: { rootCopy?: boolean; linkedAgents?: boolean } = {}) {
+  function mockLayout(
+    options: { rootCopy?: boolean; nameCollision?: boolean; linkedEntry?: ".agents" | "skills" } = {},
+  ) {
     const directories = new Map([
       ["/repo", [".agents", ".scratch", "commands", ...(options.rootCopy ? ["preferred"] : [])]],
       ["/repo/.agents", ["skills"]],
-      ["/repo/.agents/skills", ["agent-directory"]],
+      ["/repo/.agents/skills", [...(options.nameCollision ? ["fixture-skill"] : []), "agent-directory"]],
       ["/repo/.scratch", ["unrelated"]],
     ]);
     const files = new Map([
       ["/repo/.agents/skills/agent-directory/SKILL.md", "---\nname: fixture-skill\ndescription: Agent layout\n---"],
       ["/repo/.scratch/unrelated/SKILL.md", "---\nname: unrelated\n---"],
     ]);
+    if (options.nameCollision) {
+      files.set("/repo/.agents/skills/fixture-skill/SKILL.md", "---\nname: separate-skill\n---");
+    }
     if (options.rootCopy) {
       files.set("/repo/preferred/SKILL.md", "---\nname: fixture-skill\ndescription: Root layout\n---");
     }
@@ -136,7 +141,7 @@ describe("top-level .agents/skills sources", () => {
       (path) =>
         (directories.get(String(path)) ?? []).map((name) => ({
           name,
-          isDirectory: () => !(name === ".agents" && options.linkedAgents),
+          isDirectory: () => name !== options.linkedEntry,
         })) as never,
     );
     mockReadFileSync.mockImplementation((path) => files.get(String(path)) ?? "");
@@ -152,6 +157,9 @@ describe("top-level .agents/skills sources", () => {
   it("finds the indexed skill by its frontmatter name", () => {
     mockLayout();
     expect(findSkillDirInCache("/repo", "fixture-skill")).toBe("/repo/.agents/skills/agent-directory");
+    mockLayout({ nameCollision: true });
+    expect(findSkillDirInCache("/repo", "fixture-skill")).toBe("/repo/.agents/skills/agent-directory");
+    expect(findSkillDirInCache("/repo", "separate-skill")).toBe("/repo/.agents/skills/fixture-skill");
   });
 
   it("preserves the existing skill when the names overlap", () => {
@@ -162,11 +170,13 @@ describe("top-level .agents/skills sources", () => {
     expect(findSkillDirInCache("/repo", "fixture-skill")).toBe("/repo/preferred");
   });
 
-  it("skips a linked .agents entry and other hidden directories", () => {
-    mockLayout({ linkedAgents: true });
-    expect(scanDirectoryForSkills("/repo")).toEqual([]);
-    expect(findSkillDirInCache("/repo", "fixture-skill")).toBeUndefined();
-    expect(findSkillDirInCache("/repo", "unrelated")).toBeUndefined();
+  it("skips linked layout directories and other hidden directories", () => {
+    for (const linkedEntry of [".agents", "skills"] as const) {
+      mockLayout({ linkedEntry });
+      expect(scanDirectoryForSkills("/repo")).toEqual([]);
+      expect(findSkillDirInCache("/repo", "fixture-skill")).toBeUndefined();
+      expect(findSkillDirInCache("/repo", "unrelated")).toBeUndefined();
+    }
   });
 });
 

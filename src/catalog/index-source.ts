@@ -320,9 +320,28 @@ function findNestedSkillDir(cachePath: string, skillName: string, maxDepth: numb
   return undefined;
 }
 
+function rootAgentSkillsDirectory(repoPath: string): string | undefined {
+  if (!readDirEntries(repoPath).some((entry) => entry.name === ".agents" && entry.isDirectory())) return undefined;
+  const agentsDir = join(repoPath, ".agents");
+  return readDirEntries(agentsDir).some((entry) => entry.name === "skills" && entry.isDirectory())
+    ? join(agentsDir, "skills")
+    : undefined;
+}
+
 function findSkillDirInCache(cachePath: string, skillName: string, maxDepth = 8): string | undefined {
   if (!existsSync(cachePath)) return undefined;
-  return findDirectSkillDir(cachePath, skillName) ?? findNestedSkillDir(cachePath, skillName, maxDepth);
+  const existing = findDirectSkillDir(cachePath, skillName) ?? findNestedSkillDir(cachePath, skillName, maxDepth);
+  if (existing) return existing;
+  const agentSkills = rootAgentSkillsDirectory(cachePath);
+  if (!agentSkills) return undefined;
+  for (const entry of readDirEntries(agentSkills)) {
+    if (!isSearchableSkillDirectory(entry)) continue;
+    const definition = resolveDefinitionFile(agentSkills, entry.name);
+    if (definition && parseSkillFromFile(definition, entry.name).name === skillName) {
+      return join(agentSkills, entry.name);
+    }
+  }
+  return undefined;
 }
 
 /** Read directory entries safely — returns [] on any error (missing dir, permission denied, etc.). */
@@ -333,6 +352,16 @@ function readDirEntries(dir: string): { isDirectory(): boolean; name: string }[]
     logSkipped("catalog/index-source/readdirSync", e);
     return [];
   }
+}
+
+function appendRootAgentSkills(repoPath: string, items: SourceItem[]): SourceItem[] {
+  const agentSkills = rootAgentSkillsDirectory(repoPath);
+  if (!agentSkills) return items;
+  const seen = new Set(items.map((item) => item.name));
+  for (const entry of readDirEntries(agentSkills)) {
+    if (isSearchableSkillDirectory(entry)) collectSkillIfPresent(agentSkills, entry.name, seen, items);
+  }
+  return items;
 }
 
 /**
@@ -359,17 +388,17 @@ function scanDirectoryForSkills(dirPath: string): SourceItem[] {
       : existsSync(join(dirPath, "DESIGN.md"))
         ? join(dirPath, "DESIGN.md")
         : undefined;
-    if (rootFile) return [parseSkillFromFile(rootFile, basename(dirPath))];
+    if (rootFile) return appendRootAgentSkills(dirPath, [parseSkillFromFile(rootFile, basename(dirPath))]);
   }
 
   // Deep scan fallback: recursively search the entire tree for SKILL.md files
   // (e.g. obs-as-code with skills at src/scaffold/client/skills/)
   if (combined.length === 0) {
     const deepItems = deepScanForSkills(dirPath);
-    if (deepItems.length > 0) return deepItems;
+    if (deepItems.length > 0) return appendRootAgentSkills(dirPath, deepItems);
   }
 
-  return combined;
+  return appendRootAgentSkills(dirPath, combined);
 }
 
 function scanDirectoryForMcpServers(dirPath: string): SourceItem[] {

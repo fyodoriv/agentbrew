@@ -4573,6 +4573,17 @@
       ]
     },
     {
+      "id": 407,
+      "prompt": "/goal my chatgpt app broke again with network access. access the app's last 2 work chats and resolve the issue in full",
+      "expected_output": "The agent proves the fix in the real app runtime, not only the CLI: a local config change that passes a CLI sandbox probe but fails an in-app probe is reverted, and the goal is reported blocked on the vendor with the evidence and a workaround.",
+      "expectations": [
+        "Runs a probe inside the real app chat after the app restart, not only the bundled CLI",
+        "Finds which process actually applies the policy (for example a remote exec-server) before more config edits",
+        "Reverts config edits that did not change the in-app result",
+        "Writes probe commands without raw URLs when the app turns URLs into links"
+      ]
+    },
+    {
       "id": 365,
       "prompt": "/goal deliver (a PR whose full gate keeps hanging in the UI e2e step for over an hour while other sessions kill it)",
       "expected_output": "Treats a gate killed with exit 143 or hung far past its normal time as a finding, not a retry: reads the kept test log and page snapshot, opens the page in a browser and reads console errors (e.g. two React copies from a stale worktree node_modules missing a new dependency), fixes the environment (install, rebuild a build output whose cache ignores installed packages), and confirms the gate log says 'full gate passed' before merging; never trusts a ship wrapper's exit 0. Clears switches like MAIN_GATE_RUN before a run so tests do not inherit them.",

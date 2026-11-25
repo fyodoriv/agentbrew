@@ -364,7 +364,7 @@
   - **Measurement**: add real helper-invocation cases to `src/skills/load-project-context-contract.test.ts`, then run `npx vitest run src/skills/load-project-context-contract.test.ts` on hosted CI and compare each result with the canonical resolver. Check the startup hook's focused deadline fixture too.
   - **Success**: zero destination mismatches across all four descriptor cases, zero task-file writes, and required CI passes.
   - **Pivot**: any mismatch, project-code execution, or startup budget regression rejects the candidate; retain the original contract as unverified rather than inventing another backend parser.
-  - **Anchor**: `templates/AGENTS.md` Task backend; `skill-plugins/dev/detect-task-backend/SKILL.md`; the current helper's legacy backend branch.
+  - **Anchor**: [Task-backend contract](https://github.com/fyodoriv/agentbrew/blob/d0cca54d1ad13dc7c050ee4cfca35db4b356ab6e/templates/AGENTS.md#task-backend); `skill-plugins/dev/detect-task-backend/SKILL.md`; the current helper's legacy backend branch.
 
 - [ ] Judge reports that skip the Blocker or Follow-up labels are caught
   - **ID**: goal-judge-label-check

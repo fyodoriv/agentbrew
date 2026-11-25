@@ -820,7 +820,7 @@
   - **Acceptance**: A source fixture with both physical skill folders retains two stable directory labels. A second registration keeps the same two labels and selected skills. `agentbrew status --verbose` and skills sync report the resulting registered and deployed skills.
   - **Hypothesis**: In the mixed-layout fixture, distinct registered directory paths rise from 1 to 2, while existing single-layout labels and selection stay unchanged.
   - **Measurement**: Add the mixed and single-layout controls, then run `npm exec -- vitest run src/add-source.test.ts` on hosted CI and compare the registered paths and selected-skill sets.
-  - **Success**: 2 distinct mixed-layout paths, 0 duplicate entries on repeat, and 0 changed single-layout labels or selected skills.
+  - **Success**: 2 distinct mixed-layout paths. The second registration adds 0. Existing single-layout labels and selected skills change in 0 cases.
   - **Pivot**: If 1 existing user label or selection would change, keep the existing entry and add only a stable label for the additional path.
   - **Anchor**: [Agentbrew source registration](https://github.com/fyodoriv/agentbrew/blob/b05ffb9c737039431545b0c79d92f77aef20a5e9/src/add-source.ts#L264-L281).
 

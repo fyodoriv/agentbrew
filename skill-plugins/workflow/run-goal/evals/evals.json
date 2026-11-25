@@ -4652,6 +4652,28 @@
         "Refreshes the plugin copy and syncs when the installed command is missing",
         "Reads the live installed command path before claiming installation"
       ]
+    },
+    {
+      "id": 420,
+      "prompt": "/goal closeout. Proposed footer: 'Needed from you: Confirm TICKET-123 is the right parent.' The confirmed item is a request assigned to the owner's queue, and the draft has no live link or explanation of the choice.",
+      "expected_output": "The independent footer reader fails this draft before it is shown to the user. The reader asks the author to verify the item, the owner decision and the available choices before writing a replacement. It withholds the footer if these facts cannot be verified.",
+      "files": [],
+      "expectations": [
+        "Fails the bare-ID ask before sending it",
+        "Requires a verified item link and the reason the decision belongs to the user",
+        "Withholds the ask until the choices, their effects and the recommended pick have evidence"
+      ]
+    },
+    {
+      "id": 421,
+      "prompt": "/goal closeout. The reader has verified the open review request and its owner. Proposed footer: 'Needed from you: Choose where to track the request to update the welcome guide (https://example.com/requests/123). You own both queues and only you can choose the release routing. Put it in onboarding to have that team review it before the release, or leave it in the shared queue for general triage. I recommend onboarding because the guide ships with that release.' Judge the exact ask.",
+      "expected_output": "The footer reader passes the specific ask after the live evidence check. It preserves the item link, the user's ownership, both options and their effects, and the recommendation with its reason.",
+      "files": [],
+      "expectations": [
+        "Passes a verified ask with the four required parts",
+        "Keeps the item link and why the user owns the decision",
+        "Keeps the effects of each option and the reason for the recommended pick"
+      ]
     }
   ]
 }

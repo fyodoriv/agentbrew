@@ -29,6 +29,20 @@ when `package.json`, the manifest, or the template rules change.
 
 ## Manifest schema
 
+The opt-in `session-entry-context` hook runs the installed
+`~/.config/agentbrew/scripts/load-project-context.sh` at the repository root.
+It adds a document list and a shared-memory reminder to Claude Code startup
+context. It does not perform memory recall or run project code. The interpreter
+starts with an isolated environment before any modules load. This hook uses
+Perl and skips the shared endpoint PATH bootstrap. The helper
+gets a fixed system tool path, with an installed macOS toolchain Git preferred
+over the system launcher, and a bounded lifetime. Missing helpers,
+non-repositories, malformed events, and timed-out helpers produce no context.
+Output JSON is capped at 2,048 bytes. Its capture file belongs to one hook
+invocation and is removed when the capture closes; no persistent state is kept.
+Add the ID under `enabled:` in the machine overlay, preview with
+`agentbrew sync --dry-run`, then run `agentbrew sync` and start a new session.
+
 ```yaml
 version: 1
 disabled:

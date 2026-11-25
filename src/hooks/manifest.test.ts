@@ -476,9 +476,14 @@ describe("canonical hook manifest", () => {
     expect(bashHookIds).toHaveLength(24);
     expect(bashHookIds).toContain("no-destructive-commands");
     expect([...resolvedManifest.offByDefault].sort()).toEqual(
-      [...bashHookIds, "context-budget-measure", ...OWNER_WORKFLOW_HOOK_IDS].sort(),
+      [...bashHookIds, "context-budget-measure", "session-entry-context", ...OWNER_WORKFLOW_HOOK_IDS].sort(),
     );
     expect(managed.filter((hook) => hook.matcher === "Bash")).toEqual([]);
+    expect(resolvedManifest.hooks.find((hook) => hook.id === "session-entry-context")).toMatchObject({
+      event: "SessionStart",
+      agents: ["claude-code"],
+    });
+    expect(managed.find((hook) => hook.command?.includes("session-entry-context.sh"))).toBeUndefined();
     expect(resolvedManifest.hooks.find((hook) => hook.id === "tasks-md-lint-on-edit")).toMatchObject({
       event: "PostToolUse",
       matcher: "Write|Edit",

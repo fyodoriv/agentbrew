@@ -33,7 +33,8 @@ The opt-in `session-entry-context` hook runs the installed
 `~/.config/agentbrew/scripts/load-project-context.sh` at the repository root.
 It adds a document list and a shared-memory reminder to Claude Code startup
 context. It does not perform memory recall or run project code. The interpreter
-starts with an isolated environment before any modules load. The helper
+starts with an isolated environment before any modules load. This hook uses
+Perl and skips the shared endpoint PATH bootstrap. The helper
 gets a fixed system tool path, with an installed macOS toolchain Git preferred
 over the system launcher, and a bounded lifetime. Missing helpers,
 non-repositories, malformed events, and timed-out helpers produce no context.

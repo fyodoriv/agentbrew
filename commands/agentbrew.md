@@ -24,6 +24,8 @@ To change a setting the user asks for, run `agentbrew config` (each setting, its
 
 When the user asks to add Chrome's Modern Web Guidance, use `agentbrew install modern-web-guidance` for browser features and Chrome extensions.
 
+When Claude starts without the project document list, use the opt-in `session-entry-context` hook described in the [hook guide](https://github.com/fyodoriv/agentbrew/blob/main/docs/hook-protocol.md#manifest-schema). Preview its approved overlay change with `agentbrew sync --dry-run`, then deploy with `agentbrew sync` and start a new session. Its memory reminder does not replace actual recall.
+
 When the user wants Claude Bash scripts to protect shared Git work, use the [Git script guard](https://github.com/fyodoriv/agentbrew/blob/main/docs/hook-protocol.md#guard-git-calls-from-scripts). Preview the opted-in hook with `agentbrew sync --dry-run`, then apply the approved setup with `agentbrew sync` and start a new session.
 
 When the user asks to send chat messages themselves, enable the optional rule with `agentbrew install chat-drafts-only`. Preview with `agentbrew sync --dry-run`, then run the approved sync.

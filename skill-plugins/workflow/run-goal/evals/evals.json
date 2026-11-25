@@ -4608,7 +4608,7 @@
       ]
     },
     {
-      "id": 409,
+      "id": 412,
       "prompt": "/goal keep my tooling current at every /work start. The draft contract names its judged paths as 'agentbrew worktree diff'.",
       "expected_output": "The contract lists absolute paths to existing files and directories, including the worktree and the report file. The judge prompt runs without a judged path missing error.",
       "expectations": [
@@ -4618,7 +4618,7 @@
       ]
     },
     {
-      "id": 410,
+      "id": 413,
       "prompt": "/goal update all tooling and careerbrew, install recommended things that help my work, file tasks, and make it happen every /work. Mid-run the user adds: don't add a new command. Make the current one smarter.",
       "expected_output": "The agent runs the existing /work gate first and identifies the gaps in checkout coverage, recommendations, and stale-lease handling. It extends that gate, ships with a failing then passing regression, fresh review, and a merge. It checks the exact revision of the live checkout and runs the gate there. It searches upstream for each gap, cites existing issues, and files gaps that have no issue.",
       "expectations": [
@@ -4630,7 +4630,7 @@
       ]
     },
     {
-      "id": 411,
+      "id": 414,
       "prompt": "/goal make a separate daily setup command so /work skips its setup steps. The plugin's commands install from a plugin copy that has not yet been refreshed.",
       "expected_output": "The agent reuses existing setup scripts, writes a per-day stamp only after setup passes, and adds a skip check to each setup step. It refreshes the plugin copy before syncing and reads the installed command file before claiming installation.",
       "expectations": [

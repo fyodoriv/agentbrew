@@ -4608,6 +4608,19 @@
       ]
     },
     {
+      "id": 409,
+      "prompt": "/goal deliver follow ups (one follow-up is a CI job that ran past its timeout once; GitHub kept no log for the cancelled job)",
+      "expected_output": "Measures the job across recent runs before acting (one outlier vs a normal range), reads step timings from the jobs API, notes the missing log, and files a measured task (hypothesis, measurement, success, pivot, anchor) that adds evidence capture such as a step timeout and a sub-step log artifact. Does not edit the CI workflow or raise the timeout on a guess, and hands user-only follow-ups (an email reply) back with exact steps. Complements eval 408, which covers the merge gate for the same cancelled check.",
+      "files": [],
+      "expectations": [
+        "Compares the outlier with recent runs of the same job",
+        "Reads step-level timings and checks whether the log exists",
+        "Files a task with all pre-registration fields instead of guessing a CI fix",
+        "Does not raise the timeout without evidence",
+        "Names user-only follow-ups as user steps with exact instructions"
+      ]
+    },
+    {
       "id": 412,
       "prompt": "/goal keep my tooling current at every /work start. The draft contract names its judged paths as 'agentbrew worktree diff'.",
       "expected_output": "The contract lists absolute paths to existing files and directories, including the worktree and the report file. The judge prompt runs without a judged path missing error.",

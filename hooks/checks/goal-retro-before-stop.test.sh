@@ -116,7 +116,7 @@ bg_done() {
   jq -cn --arg i "$1" '{type:"user",message:{content:("<task-notification>\n<task-id>x</task-id>\n<tool-use-id>" + $i + "</tool-use-id>\n<status>completed</status>")}}' >>"$TX"
 }
 bg_launch toolu_a "Async agent launched successfully."
-bg_launch toolu_b "Async agent launched successfully."
+bg_launch toolu_b "Async agent launched successfully." Task
 bg_launch toolu_c "Command running in background with ID: b1. Output is being written to: /x" Bash true
 expect "three running workers: no retro demanded" 0 "$(run s4)"
 expect "waiting does not count as a block" 0 "$(has s4.stopblocks)"

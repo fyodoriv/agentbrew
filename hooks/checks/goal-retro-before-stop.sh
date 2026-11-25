@@ -53,8 +53,8 @@
 # ends turns mid-goal while it waits for their notifications. The retro
 # belongs at the end, so the hook allows (and does not count a block) while
 # a background launch in the transcript has no `<tool-use-id>` completion
-# notification yet. A launch is a tool result that says "Async agent
-# launched" or "running in background with ID".
+# notification yet. Match each launch result to its original tool call.
+# Bash workers also need an explicit background request.
 #
 # **Bypass**: `HOOK_BYPASS_GOAL_RETRO_BEFORE_STOP=1`
 #
@@ -141,10 +141,24 @@ if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
   RUNNING="$(hook_jq -r -s '
     def texts: if type == "string" then . elif type == "array" then map(texts) | join("\n")
       elif type == "object" then ((.text // .content // "") | texts) else "" end;
-    [ .[] | select(.type == "user") | .message.content ] as $c
-    | ([ $c[] | arrays | .[] | select(.type? == "tool_result")
-         | select((.content | texts) | test("Async agent launched|running in background with ID"))
-         | .tool_use_id ]) as $launched
+    . as $rows
+    | [ $rows[] | select(.type == "assistant") | .message.content[]?
+      | select(.type == "tool_use" and (.id | type == "string"))
+      | select(.name == "Agent" or .name == "Task" or .name == "Bash")
+      | {key: .id, value: {name, background: (.input.run_in_background == true)}}
+    ] | from_entries as $calls
+    | [ $rows[] | select(.type == "user") | .message.content ] as $c
+    | ([ $c[] | arrays | .[]
+         | select(.type? == "tool_result" and .is_error != true)
+         | select(.tool_use_id | type == "string")
+         | $calls[.tool_use_id] as $call
+         | (.content | texts) as $text
+         | select(
+             (($call.name == "Agent" or $call.name == "Task")
+               and ($text | test("^\\s*Async agent launched")))
+             or ($call.name == "Bash" and $call.background
+               and ($text | test("^\\s*Command running in background with ID: [A-Za-z0-9_-]+"))))
+         | .tool_use_id ] | unique) as $launched
     | ([ $c[] | texts | scan("<tool-use-id>([^<]+)</tool-use-id>") | .[0] ]) as $done
     | ($launched - $done) | length' "$TRANSCRIPT" 2>/dev/null || echo 0)"
   case "$RUNNING" in "" | *[!0-9]*) RUNNING=0 ;; esac

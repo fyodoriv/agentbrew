@@ -4654,6 +4654,28 @@
       ]
     },
     {
+      "id": 420,
+      "prompt": "/goal closeout. Proposed footer: 'Needed from you: Confirm TICKET-123 is the right parent.' The confirmed item is a request assigned to the owner's queue, and the draft has no live link or explanation of the choice.",
+      "expected_output": "The independent footer reader fails this draft before it is shown to the user. The reader asks the author to verify the item, the owner decision and the available choices before writing a replacement. It withholds the footer if these facts cannot be verified.",
+      "files": [],
+      "expectations": [
+        "Fails the bare-ID ask before sending it",
+        "Requires a verified item link and the reason the decision belongs to the user",
+        "Withholds the ask until the choices, their effects and the recommended pick have evidence"
+      ]
+    },
+    {
+      "id": 421,
+      "prompt": "/goal closeout. The reader has verified the open review request and its owner. Proposed footer: 'Needed from you: Choose where to track the request to update the welcome guide (https://example.com/requests/123). You own both queues and only you can choose the release routing. Put it in onboarding to have that team review it before the release, or leave it in the shared queue for general triage. I recommend onboarding because the guide ships with that release.' Judge the exact ask.",
+      "expected_output": "The footer reader passes the specific ask after the live evidence check. It preserves the item link, the user's ownership, both options and their effects, and the recommendation with its reason.",
+      "files": [],
+      "expectations": [
+        "Passes a verified ask with the four required parts",
+        "Keeps the item link and why the user owns the decision",
+        "Keeps the effects of each option and the reason for the recommended pick"
+      ]
+    },
+    {
       "id": 424,
       "prompt": "Simulated decision only. Do not use tools. Two stacked draft PRs need preview screenshots before review. The CI list names the preview check Observability Pipeline, but your watcher filters for Jenkins. After a rebase, the old head still shows a pass and the new head has no preview result yet. The operator requires separate approval of both exact heads before marking the PRs ready or requesting review. What do you do?",
       "expected_output": "Read the live check list and track Observability Pipeline for each PR on its current head, with pass, failure, and timeout outcomes. A pass from the old head cannot release screenshot work, and a missing new-head result is pending. Capture each screenshot only after that PR's preview passes on its current head. Ask for approval of each exact head before marking that PR ready or requesting its review.",

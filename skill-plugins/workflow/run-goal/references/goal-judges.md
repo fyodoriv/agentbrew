@@ -7,7 +7,8 @@ budget allows. Green checks show the work runs. Judges show it is good.
 In Claude Code with agentbrew, the `goal-judges-before-stop` hook enforces
 this, and it is success-gated. While a goal contract exists, it lets Stop
 through only when each judge the contract names has exactly one verdict for
-the current state, each at 8/10 or more, within three judging rounds, or when
+the current state, each at 8/10 or more (one judge of three or more may sit
+at 7: the 8, 8, 7 bar), within three judging rounds, or when
 the retro says plainly that the goal is not met. No retro, no `Goal result`
 line, or any other form ("met", "done") all need the consensus.
 
@@ -29,6 +30,8 @@ contract is back or the retro says not met.
 | `RUN_GOAL_JUDGE_COUNT` | 3 | never lower it to pass a goal |
 | `RUN_GOAL_JUDGE_MODELS` | 3 | model families needed (opus, sonnet, haiku, fable); lower it only when fewer families can run (then say so in the report) |
 | `RUN_GOAL_JUDGE_ROUNDS` | 3 | the owner approves more rounds for one goal |
+| `RUN_GOAL_JUDGE_SLACK` | 1 | points one judge may sit under the minimum while every other judge meets it (needs 3 or more judges); 0 means every judge meets the minimum |
+| `RUN_GOAL_JUDGE_FOCUSED` | 4 | focused re-judges allowed per goal (a state judged by only some judges) |
 | `RUN_GOAL_JUDGE_DIR` | `~/.config/agentbrew/goal-judges` | the judge cache lives elsewhere |
 
 **Cost**: one round is three fresh subagents reading the judged paths; a
@@ -64,6 +67,10 @@ depends on it.
    files. A research or Q&A goal with no repo writes its answer to
    `<state dir>/<session id>.answer.md` (next to the contract; the write is
    pre-approved) and judges that file.
+   The first judge prompt after `/goal` saves the judged paths to
+   `<state dir>/<session id>.paths`; later prompts and the state token read
+   that file, so editing `Judged paths:` mid-goal does not change what is
+   judged. A new `/goal` starts a new list.
    The judge set, each rubric, and the contract freeze at the goal's first
    judging round: the hook rejects a swapped judge, an edited rubric, or an
    edited contract later, even in a new round. Rubric changes go into `## Calibration` notes and are merged at the
@@ -74,7 +81,7 @@ depends on it.
    Keep each judged path until the goal's last Stop: a removed worktree
    fails the state check and forces partly met. Remove it after the goal ends.
    The prompt drops contract lines about judge scores (a `N/10` or a score
-   with a number), so put targets on their own lines.
+   with a number, or a bare "reach 8.0"), so put targets on their own lines.
 
    A judge file must meet the rubric floor, or the hook refuses it:
    - `Field:`, `Applies:`, and `Scale:` lines and three or more rubric lines
@@ -115,6 +122,9 @@ Judge after everything else that edits a judged path: the work, the Phase 6
 retro skill updates, and the final report when it is a judged file. Any edit
 to a judged path after the verdicts makes them stale. A report outside the
 judged paths can get its judge line after the verdicts.
+Start the judges only once every gate that a done-when names has a saved result.
+A spec auditor caps Evidence for a check that is still running. One goal lost a
+round when its judges started while the main gate on the final sha still ran.
 
 1. For each judge, print its prompt:
    `bash hooks/lib/goal-judge-prompt.sh <contract path> <judge id>` from an
@@ -133,14 +143,16 @@ judged paths can get its judge line after the verdicts.
    verdict only on an exact match, so add nothing: no summary, no hints, no
    score. Leave `subagent_type` out (or use `general-purpose`): a fork
    shares your context, and a custom agent type brings its own system prompt.
-   Never message a running judge (SendMessage) and never run practice judges
+   Never message a judge while it runs (SendMessage); after its verdict, a
+   follow-up question is fine (section 3). Never run practice judges
    (judge markers without the header, or `claude -p` with a judge prompt):
    the hook counts both as a used round.
    Give each judge a different model family, none of them your own (no
    self-judging): on Opus, run `sonnet`, `haiku`, and `fable`. An Agent call
    with no `model`, or `model: inherit`, counts as your own model. Each
    prompt names the judge's role (refuter, spec auditor, or first-time
-   user); the script picks it from the state token, so you cannot choose it.
+   user); the script picks it from the session id, so you cannot choose it,
+   and a judge keeps the same role in every round of the goal.
 3. The judge ends with this block, once:
 
 ```
@@ -167,15 +179,23 @@ verdicts. Other background tasks, and a launch with any other prompt, never
 excuse a met claim.
 
 4. When every judge has reported, run the **overseer**: one more fresh
-   Agent call, on a model family that is not yours. Print its prompt with
+   Agent call, on a model family that is not yours. Set `model` on that
+   call: with no `model`, it runs on your own family and the round cannot pass.
+   The script reads the transcript, which can lag a just-finished
+   judge. If its `State:` or a quoted report is from an older round, wait and
+   print it again before you launch. Print its prompt with
    `bash hooks/lib/goal-overseer-prompt.sh <contract path> <transcript path>`
    (outside a checkout, the installed copy next to `goal-judge-prompt.sh`)
    (the transcript is `~/.claude/projects/<project>/<session id>.jsonl`; the
    block message names it) and pass it unchanged. The script quotes each
-   judge's report from the transcript, so you cannot trim one. The overseer
+   judge's latest report on the state from the transcript, so you cannot
+   trim one, and a later report on the same state replaces the earlier one. A
+   report reaches the transcript only after its notification turn ends:
+   build the prompt in the next turn. The overseer
    checks every deduction (reproduced, in scope, not an after-judging step),
    looks for misses, splits defects into blockers and follow-ups, and names
-   the smallest fix set that reaches the bar. It ends with:
+   the smallest fix set that reaches the bar. An overseer that made no tool
+   calls cannot change a score: the hook keeps the judge's own score. It ends with:
 
 ```
 GOAL-OVERSEER-VERDICT
@@ -188,16 +208,65 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
    round with no overseer, an edited overseer prompt, a second overseer on
    one state, or an overseer on your own model family cannot pass. Fix the
    overseer's blockers first: that is how a round stays short.
+5. **Focused re-judge.** When only one judge is under the bar, fix its
+   blockers and re-judge only that judge, as often as needed (each run
+   needs a changed state; `RUN_GOAL_JUDGE_FOCUSED` caps them). A focused
+   re-judge does not use a full round. When it reaches the bar, finish the
+   round on that same state: run only the other judges, then the overseer.
+   Do not run the re-judged judge again there: a second launch on one state
+   is a re-roll. Only a state with every judge and the overseer can pass,
+   since a fix can break what another judge passed. The block's next step
+   names the focused re-judge when exactly one judge is under the bar.
+   The overseer quotes each judge's promise: the last line that starts with
+   "Path to 8:" (after any heading or bold marks) and all that follows,
+   inner headings, bold labels, fenced checks and long lists included,
+   up to the verdict block. The overseer, like the judges, lets only a
+   high-severity blocker cap a score.
+   Every fix a judge lists, at any score, names its severity and a
+   runnable check.
 
 ## 3. Iterate the work
 
-- Any judge under 8: fix **every** blocker the overseer listed, in one
+- Do not change the judged paths while judges run: a judge that re-reads a
+  half-edited file reports garbage. Point `Judged paths:` at a checkout you
+  leave alone (for example the merged `main`), and fix in another worktree.
+- Give judges a fast proof: a test that runs in seconds for each done-when
+  claim. A judge with a 10-minute budget cannot read a suite that takes
+  longer. For this hook: `bash hooks/checks/goal-judge-claims.test.sh`.
+- Write a not-met result with its reason in brackets:
+  `Goal result: partly met (<why>)`. After the not-met or waiting word, only
+  a bracket, a count (`3/5 met`, `3 of 5 criteria met`), or one
+  `on|by|until|for <what>` tail may follow. A success word in that tail
+  still claims met: `blocked on 2FA` allows, `blocked on 2FA and done`
+  blocks. Other text reads as a claim.
+- An overseer raise needs a reason of 20 or more characters that names the
+  follow-up deduction it lifts; `ok` blocks. A keep or a lower needs any
+  one-line reason.
+
+- Any judge under the bar: fix **every** blocker the overseer listed, in one
   batch, each with a test that fails before the fix. File each follow-up as
-  a task before the next round, and do not fix follow-ups in this goal.
-  Judges label each defect Blocker or Follow-up, and only blockers cap a
-  score; the overseer raises a score lowered by a follow-up. This keeps each
-  round's new findings from moving the bar.
-- Then run **all three** judges again on the new state. Judging one judge twice on one state is a re-roll and fails.
+  a task before the next round, and do not fix follow-ups in this goal
+  unless the owner asks for them.
+- Where and when to file follow-ups: in the task backend of the repo the
+  follow-up is about (`TASKS.md` or the repo's declared backend), or in the
+  retro for a goal with no repo. File them **before** the judges run: a task
+  added to a judged repo changes the state token, so filing after a passing
+  round makes its verdicts stale and spends a round.
+  Judges help the runner: they find the worst bugs first and list every fix
+  in round 1, give each blocker a severity, and only a high-severity blocker
+  (a false pass, a lost verdict, no exit, an unmet done-when) caps a score.
+  A check a judge could not finish is unverified, not a deduction.
+  A blocker breaks a done-when criterion or the owner request; a defect
+  that only misses a field standard is a follow-up. The overseer raises a
+  score lowered by a low blocker or a follow-up. This keeps each round's
+  new findings from moving the bar.
+- After a round with a judge under the bar, ask that judge (a follow-up message to the
+  same agent, not a new judge run) what is missing to reach 8. Have it mark each
+  item: the runner can do it now, only the owner can do it, or it needs an outside
+  record. Ask whether the runner items alone reach 8. When a judge says no, do not
+  spend the next round: give the owner that judge's owner items as the one ask, and
+  judge again after the answers.
+- Then judge the new state: with one judge under the bar, re-judge only that judge (focused re-judge, step 5); with two or more, run **all three** judges again. Judging one judge twice on one state is a re-roll and fails.
   A launch counts, not a verdict: a judge stopped before its verdict and
   launched again on the same state is a re-roll too.
   The state token ignores trailing spaces, line endings, end-of-file blank
@@ -211,6 +280,8 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
   consensus <lowest>/10)`. Never claim met without it. After five blocks the
   hook writes that line for you (five, not three like the retro hook: each
   round needs the judges to run between two Stops).
+  A rule the owner set is never a blocker: that includes the pass rule,
+  where one of three or more judges may sit one point under the bar.
 
 Print one goal-check line, for example
 `Goal check judges ✅ 9, 8, 9 (agent-harness-reliability, llm-evaluation-methodology, devex-workflow-design)`.
@@ -219,7 +290,12 @@ Print one goal-check line, for example
 
 After each use, append a calibration line to each judge's `## Calibration`
 section with the session id, the state token, and the score as `N/10` (the
-hook checks all three; notes there do not change the state token). Compare the verdict with later evidence:
+hook checks all three; notes there do not change the state token). That
+line may state only the judge's own verdict score: the hook blocks a line
+for the current state with any other `N/10` ("9/10, effective 10/10"), so
+the runner-written notes cannot record a score no judge gave. The score
+record is `goal-judge-history.tsv`, which only the hook writes; judges never
+read the notes. Compare the verdict with later evidence:
 
 - A defect another judge, a reviewer, or a check found that this judge
   missed: add it as a blind spot in the next rubric change.
@@ -299,3 +375,14 @@ that then ended below the bar. A high count there means the judges or the
 procedure are too strict for real work; review those sessions before you
 change the bar. Rows logged before 2026-11-22 predate the test-log isolation
 and may hold fixture sessions.
+
+Judging rounds per goal (the owner's metric: reach the bar in 1 or 2
+rounds): the number of judged states per session in the hook's history.
+
+```bash
+awk -F'\t' '{s[$3 FS $6]=1} END {for (k in s) {split(k, a, FS); n[a[1]]++} for (i in n) print i, n[i], "rounds"}' \
+  ~/.cache/agentbrew/run-goal/goal-judge-history.tsv | sort
+```
+
+It prints one line per session: the session id and its rounds per goal.
+A session that ran two goals shows their sum.

@@ -58,46 +58,42 @@ means: take this session's work from where it stands to proven and live, in
 whatever repo, app, or machine the session is in. Expand it into the
 contract with these criteria. Do not ask what "deliver" means.
 
-1. **Related work, listed.** Find what this session created: its commits,
-   branches, worktrees, uncommitted files, and PRs, plus PRs opened by
-   sessions it started. Name each one in the contract with its URL or path.
-   Another author's PR is out of scope: deliver never merges, closes, or
+`/goal deliver` is the preferred way to ship: the goal's Stop hook keeps
+the run going until the judges confirm each criterion. The delivery steps
+live in one place, the `/ship-it` command and its reference
+(`docs/ship-it-reference.md` Steps 1–16 in dotfiles). Deliver runs those
+steps for inventory, gates, PR body, CI, self-review, merge, file coverage,
+sync, branch cleanup and memory sync. Do not restate them here. The goal adds
+the contract, the judges, the baseline and the proof. Each criterion below is
+what the judges check, with the `/ship-it` step that does the work.
+
+1. **Related work, listed.** (`/ship-it` Step 1.) Name each commit, branch,
+   worktree, uncommitted file, and PR this session or its child sessions
+   created, with its URL or path. Deliver never merges, closes, or
    force-pushes work this session did not create.
-2. **Green and reviewed.** Every related PR passes its hosted checks at its
-   current head. A fresh-context reviewer reads each diff before merge. Read
-   the log of a failed check before you fix it.
-   This covers PRs that sessions you started will merge: their brief asks for
-   that review before each merge and for the verdict in their report. A PR
-   merged without one stays "partly met"; a review after the merge does not
-   count.
-3. **Merged.** Merge each PR the way the repo's delivery rules say, under a
-   cited approval (repo `AGENTS.md`, the user's standing rules), with every
-   required review approved. Never bypass a check, also on an outage. Without
-   an approval, park the merge and ask once at the end; if nothing else is
-   left, write the BLOCKED report.
-4. **Live in the final environment.** Find where users meet the work from the
-   repo docs (install, deploy, or sync sections). A local install step those
-   docs name runs as part of delivery: `agentbrew sync` with `--pull` for
-   skills and rules (without it, sync skips a skill from a fetched GitHub source),
-   `dotfiles apply` for machine config. A deploy to a shared or production
+2. **Green and reviewed.** (Steps 6–6a.) Every related PR passes its
+   hosted checks at its current head. A fresh-context reviewer read
+   its diff before merge. A child session's brief asks for that review and its
+   verdict. A PR merged without one stays "partly met".
+3. **Merged.** (Step 7.) Under a cited approval, with every
+   required review approved. Never bypass a check. Without an approval,
+   park the merge and ask once at the end; if nothing else is left,
+   write the BLOCKED report.
+4. **Live in the final environment.** (Steps 12–13: `agentbrew sync` with
+   `--pull`, `dotfiles apply`.) A deploy to a shared or production
    target, a publish, or a release needs a cited approval; without one, park
-   it. Then read the live state back: installed files byte-equal to the
-   merged source, the loaded service, the served page.
-5. **Proved there.** Use the delivered thing where users meet it, on real
-   input, with the baseline taken before the merge: run the installed script,
-   start a fresh agent session that sees the skill, open the live URL.
-6. **Shown and explained.** Publish a report with a before/after table, and
-   explain in plain words what changed for the user.
-7. **Wrapped up.** Leave no open work from this session: every PR merged or
-   parked as a draft with its pending list, worktrees removed, branches
-   merged, the checkout clean (the `wrap-up` skill).
-8. **Learned.** Store the session's reusable lessons in memory: decisions,
-   errors with their fix, and the user's corrections.
-9. **Follow-ups filed.** Each item on the last **Follow-ups:** line becomes a
-   task in its repo's task backend, with the pre-registered fields. Owner-only
-   steps (sudo, a cable) are named in the report, not filed.
-10. **Archived.** Archive this session last, after the report is published
-    and the retro is saved. Never archive another session unless asked.
+   it. Read the live state back: installed files byte-equal to the
+   merged source.
+5. **Proved there.** (Goal only.) Use the delivered thing where users meet
+   it, on real input, with the baseline taken before the merge.
+6. **Shown and explained.** (Goal only.) Publish a report with a
+   before/after table, and explain in plain words what changed.
+7. **Wrapped up.** (Step 9 and the `wrap-up` skill.) No open work left.
+8. **Learned.** (Step 14 plus the retro.) Lessons stored in memory.
+9. **Follow-ups filed.** (Goal only.) Each item on the last **Follow-ups:**
+   line becomes a task with the pre-registered fields.
+10. **Archived.** (Goal only.) Archive this session last. Never archive
+    another session unless asked.
 
 The metric is the before/after number from step 5. Pick it and take its
 baseline before the first merge.

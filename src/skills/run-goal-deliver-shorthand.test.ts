@@ -32,6 +32,9 @@ describe("run-goal /goal deliver shorthand", () => {
     expect(section).toMatch(/never merges, closes, or\s+force-pushes work this session did not create/);
     expect(section).toMatch(/every\s+required review approved/);
     expect(section).toMatch(/Never bypass a check/);
+    expect(section).toMatch(/preferred way to ship/);
+    expect(section).toMatch(/`docs\/ship-it-reference\.md` Steps 1–16/);
+    expect(section).toMatch(/Do not restate them here/);
     expect(section).toMatch(/park the merge and ask once at the end/);
     expect(section).toMatch(/write the BLOCKED report/);
     expect(section).toMatch(

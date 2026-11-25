@@ -109,6 +109,13 @@ split() { tr ',' '\n' | sed -E 's/^[[:space:]`]+//; s/[[:space:]`]+$//' | sed '/
 
 JUDGES="$(field Judges | split)"
 PATHS="$(field 'Judged paths' | split)"
+# Paths frozen at goal start by goal-judge-prompt.sh (the .paths file beside
+# the contract) win over a later contract edit, so the state hashes what the
+# judges are shown.
+PFILE="${CONTRACT%.contract.md}.paths"; OFILE="${CONTRACT%.contract.md}.owner.md"
+if [ "$PFILE" != "$CONTRACT" ] && [ -s "$PFILE" ] && [ -f "$OFILE" ] && ! [ "$OFILE" -nt "$PFILE" ]; then
+  PATHS="$(sed -E 's/^- //' "$PFILE" | sed '/^$/d')"
+fi
 [ -n "$JUDGES" ] || { echo "goal-state: contract has no 'Judges: <id>, <id>, <id>' line" >&2; exit 2; }
 [ -n "$PATHS" ] || { echo "goal-state: contract has no 'Judged paths: <path>, ...' line" >&2; exit 2; }
 

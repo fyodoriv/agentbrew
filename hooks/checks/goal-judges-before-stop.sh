@@ -148,14 +148,20 @@ function claim(l,  r) { l = norm(l)
   if (l !~ /^goal result([^a-z]|$)/) return 0
   r = substr(l, 12); sub(/^[^a-z]*/, "", r); gsub(/-/, " ", r)
   if (r ~ /^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)([^a-z]|$)/) {
-    sub(/^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)/, "", r); r = unparen(r)
-    gsub(/(criteria|criterion|items?|steps?|parts?)? *[0-9]+( *(,|and|&|or) *[0-9]+)* *(of *[0-9]+ *)?(are |is )?(not met|met|done|blocked|open|left)/, "", r)
-    return extra(r) }
+    sub(/^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)/, "", r)
+    return rest(r) }
   if (r !~ /^(in progress|blocked|impossible|pending)([^a-z]|$)/) return 1
-  sub(/^(in progress|blocked|impossible|pending)/, "", r); r = unparen(r)
-  gsub(/[0-9]+ *(of|\/) *[0-9]+( [a-z]+)? (met|done)/, "", r)
+  sub(/^(in progress|blocked|impossible|pending)/, "", r)
+  return rest(r) }
+# What may follow a not-met or waiting word: counts go first ("3/5 met",
+# "3 of 5 criteria met"), then any success word left claims met ("blocked
+# on 2FA and done"), then one "on|by|until|for <what>" tail may stay.
+function rest(r,  n, t, a, b) { r = unparen(r); t = r; while (match(t, /[0-9]+ *(of|\/) *[0-9]+/)) { a = substr(t, RSTART, RLENGTH); b = a; sub(/ *(of|\/).*/, "", a); sub(/.*(of|\/) */, "", b); if (a + 0 == b + 0 && a + 0 > 0 && substr(t, RSTART + RLENGTH) ~ /^ *(criteria|criterion|items?|steps?|parts?)? *(are |is )?met/) return 1; t = substr(t, RSTART + RLENGTH) } n = "(criteria|criterion|items?|steps?|parts?)"
+  gsub("(" n ")? *[0-9]+( *(,|and|&|or) *[0-9]+)* *((of|/) *[0-9]+ *)?(" n " *)?(are |is )?(not met|met|done|blocked|open|left)", "", r)
+  gsub(/(the )?rest (is |are )?(blocked|open|left|pending|not met)|lowest( score)? [0-9.]+ *\/ *10/, "", r)
+  if (success(r)) return 1
   sub(/^[^a-z0-9]*(on|by|until|for) [a-z0-9 ._\/-]+$/, "", r)
-  return extra(r) || success(r) }
+  return extra(r) }
 # Allow list: after a not-met or waiting form, only a bracketed reason, a
 # count ("3/5 met", "criteria 1 and 2 met, 3 blocked") or, when waiting,
 # "on|by|until|for <what>" may follow. Any other text reads as a claim:
@@ -181,10 +187,14 @@ MIN="${RUN_GOAL_JUDGE_MIN:-8}"
 NEED="${RUN_GOAL_JUDGE_COUNT:-3}"
 MODELS="${RUN_GOAL_JUDGE_MODELS:-3}"
 ROUNDS="${RUN_GOAL_JUDGE_ROUNDS:-3}"
+FOCUSED="${RUN_GOAL_JUDGE_FOCUSED:-4}"
+SLACK="${RUN_GOAL_JUDGE_SLACK:-1}"
 case "$MIN" in "" | *[!0-9.]*) MIN=8 ;; esac
 case "$NEED" in "" | *[!0-9]*) NEED=3 ;; esac
 case "$MODELS" in "" | *[!0-9]*) MODELS=3 ;; esac
 case "$ROUNDS" in "" | *[!0-9]*) ROUNDS=3 ;; esac
+case "$FOCUSED" in "" | *[!0-9]*) FOCUSED=4 ;; esac
+case "$SLACK" in "" | *[!0-9]*) SLACK=1 ;; esac
 CONTRACT="$STATE_DIR/$SESSION_ID.contract.md"
 RETRO="$STATE_DIR/$SESSION_ID.retro.md"
 COUNTER="$STATE_DIR/$SESSION_ID.judgeblocks"
@@ -211,14 +221,14 @@ SEL=""
   SEL="$(grep -F '<command-name>/goal</command-name>' "$TRANSCRIPT" 2>/dev/null || true)"
 if [ -n "$SEL" ]; then
   G_ROW="$(hook_jq -R -r -n --argjson canon '{}' --arg lib "$LIB_REAL" --arg contract "$CONTRACT" --arg mode g -f "$VJQ" <<<"$SEL" 2>/dev/null || true)"
-  G_ACTIVE="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G"{print $2; exit}')"
+  G_ACTIVE="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G" && !d {print $2; d=1}')"
 fi
 SEL=""
 # The owner text comes from the transcript. Rewrite the owner file when it
 # differs (whitespace aside), so the runner's prompts and the hook's agree.
 # This runs before any early allow: the runner builds judge prompts while
 # the retro still says in progress.
-G_OWNER="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G"{print $3; exit}' | hook_jq -Rr '@base64d' 2>/dev/null || true)"
+G_OWNER="$(printf '%s\n' "$G_ROW" | awk -F'\t' '$1=="G" && !d {print $3; d=1}' | hook_jq -Rr '@base64d' 2>/dev/null || true)"
 if [ "$G_ACTIVE" = 1 ] && [ -n "$G_OWNER" ]; then
   norm_ws() { tr -s '[:space:]' ' ' | sed -E 's/^ //; s/ $//'; }
   [ -f "$OWNER" ] && [ "$(norm_ws <"$OWNER")" = "$(printf '%s' "$G_OWNER" | norm_ws)" ] ||
@@ -279,7 +289,7 @@ parse "$CANON"
 # An unofficial judge run (practice) uses up one round of the cap, so a
 # false match costs a round, not the goal.
 UROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="U"' | wc -l | tr -d ' ')"
-RUNNING="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="R"{print $2; exit}')"
+RUNNING="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="R" && !d {print $2; d=1}')"
 case "$RUNNING" in "" | *[!0-9]*) RUNNING=0 ;; esac
 if [ "$RUNNING" -gt 0 ]; then
   waits="$(count "$WAITS")"
@@ -317,7 +327,11 @@ fi
 
 # Rounds, frozen judge set, and frozen rubrics, from this goal's judge prompts.
 PROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="P"')"
-NR_ROUNDS="$(printf '%s\n' "$PROWS" | sed '/^$/d' | awk -F'\t' '!seen[$5]++' | wc -l | tr -d ' ')"
+# A full round judges every judge; a state that judged fewer is a focused
+# re-judge of the failing judge(s), counted against its own cap.
+read -r NR_ROUNDS NR_FOCUSED <<<"$(printf '%s\n' "$PROWS" | sed '/^$/d' | awk -F'\t' -v nj="${NJ:-0}" '!seen[$5 FS $3]++ { n[$5]++ } END { f = 0; p = 0; for (k in n) { if (n[k] >= nj) f++; else p++ } print f, p }')"
+[ "${NR_FOCUSED:-0}" -gt "$FOCUSED" ] &&
+  add "this goal used $NR_FOCUSED focused re-judges (a state judged by only some judges); the cap is $FOCUSED (RUN_GOAL_JUDGE_FOCUSED); run a full round instead"
 NR_ROUNDS=$((NR_ROUNDS + UROWS))
 [ "$NR_ROUNDS" -gt "$ROUNDS" ] &&
   add "this goal used $NR_ROUNDS judging rounds ($UROWS of them unofficial: a judge call without the prompt header, or claude -p/codex exec/ollama run in Bash, whose result holds a verdict); the cap is $ROUNDS (more rounds farm for a lucky score; only the owner can raise it, by typing a message that starts with: approve round $((NR_ROUNDS)))"
@@ -337,8 +351,8 @@ if [ -n "$PROWS" ]; then
     add "the goal contract changed after the first round; judge against the contract you started with"
   while IFS= read -r id; do
     [ -n "$id" ] && [ -f "$JUDGE_DIR/$id.md" ] || continue
-    first="$(printf '%s\n' "$PROWS" | awk -F'\t' -v j="$id" '$3==j{print $4; exit}')"
-    now="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$id" '$1==j{print $2; exit}')"
+    first="$(printf '%s\n' "$PROWS" | awk -F'\t' -v j="$id" '$3==j && !d {print $4; d=1}')"
+    now="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$id" '$1==j && !d {print $2; d=1}')"
     [ -z "$first" ] || [ "$first" = "$now" ] ||
       add "$id's rubric changed after its first round; put rubric changes in ## Calibration and merge them at the next goal"
   done <<<"$JUDGES"
@@ -363,7 +377,7 @@ done <<<"$(printf '%s\n' "$PROWS" | awk -F'\t' '$3 != "" { k = $3 " " $5; n[k]++
 # practice under another name.
 ODD="$(printf '%s\n' "$PROWS" | awk -F'\t' '$3 != "" {print $3}' | LC_ALL=C sort -u | { grep -vxF -f <(printf '%s\n' "$JUDGES") || true; } | tr '\n' ' ')"
 [ -z "${ODD// /}" ] || add "judge calls named ${ODD}which the contract's Judges: line does not list; judge only the contract's judges"
-RUNNER="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="T"{print $2; exit}')"
+RUNNER="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="T" && !d {print $2; d=1}')"
 RUNNER_JUDGES=0
 LOWEST=""
 MISSING=""
@@ -393,6 +407,13 @@ if [ -n "$TOKEN" ]; then
     awk -v s="$SESSION_ID" -v t="$TOKEN" -v sc="$score/10" \
       '/^## Calibration/{c=1} c && index($0, s) && index($0, t) && index($0, sc){f=1} END{exit !f}' "$cache" 2>/dev/null ||
       add "$id's ## Calibration section has no line with session $SESSION_ID, state $TOKEN, and $score/10"
+    # The runner writes these notes: a line for this state may carry only the
+    # verdict's score, so the record cannot show a score the judge never gave.
+    awk -v s="$SESSION_ID" -v t="$TOKEN" -v sc="$score" \
+      '/^## Calibration/{c=1; next} c && index($0, s) && index($0, t) { l = $0
+        while (match(l, /[0-9]+(\.[0-9]+)? *\/ *10/)) { v = substr(l, RSTART, RLENGTH); sub(/ *\/.*/, "", v)
+          if (v + 0 != sc + 0) bad = 1; l = substr(l, RSTART + RLENGTH) } } END { exit !bad }' "$cache" 2>/dev/null &&
+      add "$id's calibration line for state $TOKEN states a score other than $score/10; keep only the verdict's score there"
   done <<<"$JUDGES"
   [ -n "$MISSING" ] && add "no verdict for the current state $TOKEN from:$MISSING"
   NF="$(printf '%s\n' $USED_FAMILIES | sed '/^$/d' | wc -l | tr -d ' ')"
@@ -413,7 +434,7 @@ if [ -n "$TOKEN" ]; then
     elif [ "$no" -gt 1 ]; then
       add "the overseer was launched $no times on state $TOKEN (a re-roll); change the work, then judge all again"
     else
-      IFS=$'\t' read -r _ OID _ omodel otype omsg oprompt <<<"$OROWS"
+      IFS=$'\t' read -r _ OID _ omodel otype omsg otools oprompt <<<"$OROWS"
       canon_o="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="J"' | GOAL_STATE_TOKEN="$TOKEN" GOAL_CONTRACT_SHA="$NOW_CONTRACT" \
         RUN_GOAL_JUDGE_DIR="$JUDGE_DIR" bash "$__HOOK_LIB_DIR/goal-overseer-prompt.sh" "$CONTRACT" - 2>/dev/null || true)"
       got="$(printf '%s' "$oprompt" | hook_jq -Rr '@base64d' 2>/dev/null || true)"
@@ -421,30 +442,48 @@ if [ -n "$TOKEN" ]; then
         add "the overseer's prompt is not the exact output of goal-overseer-prompt.sh for this state"
       [ "$otype" = 1 ] || add "the overseer ran as a fork or a custom agent type; leave subagent_type out, or set it to general-purpose"
       [ "$omsg" = 1 ] && add "the overseer got a SendMessage after launch (a message can steer it); change the work, then judge all again"
-      ostate="$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" '$1=="W" && $2==o {print $3; exit}')"
+      ostate="$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" '$1=="W" && $2==o && !d {print $3; d=1}')"
       [ "$ostate" = "$TOKEN" ] || add "the overseer's verdict says State: ${ostate:-none}, not $TOKEN"
       [ -n "$RUNNER" ] && [ "$omodel" = "$RUNNER" ] &&
         add "the overseer ran on the runner's own model family ($RUNNER); set a different Agent model on it"
     fi
   fi
+  LOWN=0
+  LOWS=""
   while read -r id score; do
     [ -n "$id" ] || continue
-    eff="$score"
+    eff="$score"; ign=""
     if [ -n "$OID" ]; then
-      read -r r why <<<"$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" -v j="$id" '$1=="Q" && $2==o && $3==j {print $4, $5; exit}')"
+      read -r r why <<<"$(printf '%s\n' "$ROWS" | awk -F'\t' -v o="$OID" -v j="$id" '$1=="Q" && $2==o && $3==j && !d {print $4, $5; d=1}')"
       if [ -z "$r" ]; then
         add "the overseer gave no Ruling line for $id"
-      elif [ "$why" != 1 ]; then
+      elif [ "${why:-0}" = 0 ]; then
         add "the overseer's Ruling for $id has no reason; each ruling needs a one-line reason"
+      elif [ "${why:-0}" -lt 20 ] && awk -v s="$score" -v r="$r" 'BEGIN{exit !(r>s)}'; then
+        # A raise needs a real reason ("ok" lifted a 6 to 8): name the follow-up deduction.
+        add "the overseer raised $id with a reason under 20 characters; name the follow-up deduction it lifts"
+      elif [ "${otools:-}" = 0 ] && [ "$r" != "$score" ]; then
+        # A ruling must rest on reproduced evidence: an overseer that ran no
+        # tool calls cannot change a score, so the judge's score stands. No
+        # block here: a second overseer on the same state is a re-roll.
+        eff="$score"; ign=" (the overseer's change was not counted: it made no tool calls)"
       else
         eff="$(awk -v s="$score" -v r="$r" 'BEGIN { if (r > s + 2) r = s + 2; if (r < s - 2) r = s - 2; if (r < 0) r = 0; if (r > 10) r = 10; print r }')"
       fi
     fi
     if awk -v a="$eff" -v m="$MIN" 'BEGIN{exit !(a<m)}'; then
-      if [ "$eff" = "$score" ]; then add "$id scored $score/10"; else add "$id scored $eff/10 after the overseer (judge: $score/10)"; fi
+      if [ "$eff" = "$score" ]; then msg="$id scored $score/10$ign"; else msg="$id scored $eff/10 after the overseer (judge: $score/10)"; fi
+      LOWN=$((LOWN + 1))
+      awk -v a="$eff" -v m="$MIN" -v k="$SLACK" 'BEGIN{exit !(a<m-k)}' && LOWN=$((LOWN + 9))
+      LOWS="$LOWS$SEP$msg"
     fi
     if [ -z "$LOWEST" ] || awk -v a="$eff" -v b="$LOWEST" 'BEGIN{exit !(a<b)}'; then LOWEST="$eff"; fi
   done <<<"$SCORES"
+  # The 8, 8, 7 bar: with 3 or more judges, one judge may sit up to SLACK
+  # points below the minimum when every other judge meets it.
+  if [ "${LOWN:-0}" -gt 0 ] && ! { [ "$LOWN" = 1 ] && [ "${NJ:-0}" -ge 3 ] && [ "$SLACK" -gt 0 ]; }; then
+    PROBLEMS="$PROBLEMS$LOWS"
+  fi
 fi
 PROBLEMS="${PROBLEMS#"$SEP"}"
 PLAIN="${PROBLEMS//$SEP/; }"
@@ -453,7 +492,7 @@ PLAIN="${PROBLEMS//$SEP/; }"
 # states included, one line per tool_use id, so the pass rate is a fair base rate.
 printf '%s\n' "$ROWS" | awk -F'\t' '$1 == "V" && $11 == "1" && !seen[$2]++' | while IFS=$'\t' read -r _ tid hj hs _ hst hm _; do
   grep -qF -- "	$tid	" "$HISTORY" 2>/dev/null && continue
-  rs="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$hj" '$1==j{print $2; exit}')"
+  rs="$(printf '%s' "$RUBRIC_SHAS" | awk -v j="$hj" '$1==j && !d {print $2; d=1}')"
   { printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%F)" "$tid" "$SESSION_ID" "$hj" "$rs" "$hst" "$hm" "$hs" >>"$HISTORY"; } 2>/dev/null || true
 done
 
@@ -470,7 +509,9 @@ WROTE=0
 if [ "$blocks" -ge "$MAX_BLOCKS" ] || [ "$WROTE" = 0 ]; then
   # Bounded: a counter that cannot be written ends the loop now, as a give-up.
   [ "$WROTE" = 0 ] && PLAIN="the block counter cannot be written ($COUNTER); $PLAIN"
-  reason="$(printf '%s' "$PLAIN" | tr -d '\n' | cut -c1-300)"
+  # No brackets in the reason: a cut inside one would leave text the claim
+  # check reads as "met", and the downgraded line would block forever.
+  reason="$(printf '%s' "$PLAIN" | tr -d '\n()' | cut -c1-300)"
   src="$RETRO"; [ -f "$src" ] || src=/dev/null
   # Rewrite in place from memory (no temp file), so a read-only state folder
   # or a missing $TMPDIR still gets the downgrade.
@@ -486,12 +527,32 @@ if [ "$blocks" -ge "$MAX_BLOCKS" ] || [ "$WROTE" = 0 ]; then
 fi
 
 NEXT="${PROBLEMS%%"$SEP"*}"
+# Only low scores left: the next step is the iteration rule, not the score.
+if ! grep -qvE ' scored [0-9.]+/10' <<<"$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed '/^$/d')"; then
+  NLOW="$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | grep -cE ' scored [0-9.]+/10' || true)"
+  if [ "$NLOW" = 1 ]; then
+    # One judge under the bar: a focused re-judge, not a full round (step 5).
+    LOWID="${NEXT%% scored *}"; LOWID="${LOWID# }"
+    NEXT="fix every blocker the overseer listed in one batch, each with a test that fails first; file the follow-ups as tasks outside the judged paths before judging; then re-judge only $LOWID (focused re-judge; $NEXT)"
+  else
+    NEXT="fix every blocker the overseer listed in one batch, each with a test that fails first; file the follow-ups as tasks outside the judged paths before judging; then judge every judge again ($NEXT)"
+  fi
+fi
+# A focused re-judge that failed: lead with that judge, not the judges that
+# have not run on this state yet (judging them now spends a round on a failing state).
+LOWLINE="$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | grep -E ' scored [0-9.]+/10' | head -1 || true)"
+if [ -n "$LOWLINE" ] && [ "${NEXT#no verdict for the current state}" != "$NEXT" ]; then
+  LOWID="${LOWLINE%% scored *}"; LOWID="${LOWID# }"
+  NEXT="focused re-judge: $LOWLINE; fix its blockers and its Path to 8 items in one batch, each with a test that fails first, change the work, and re-judge only $LOWID; run the other judges and the overseer only after it reaches the bar"
+fi
 LIST="$(printf '%s' "$PROBLEMS" | tr "$SEP" '\n' | sed -E 's/^ +//; /^$/d' | awk '{ printf "  %d. %s\n", NR, $0 }')"
 RATE=""
 [ -f "$HISTORY" ] && RATE="$(awk -F'\t' -v m="$MIN" '{ n[$4]++; if ($8 + 0 >= m + 0) p[$4]++ }
   END { for (j in n) printf "%s %d/%d, ", j, p[j], n[j] }' "$HISTORY" 2>/dev/null | sed 's/, $//')"
 if [ -f "$RETRO" ] && awk "$CLAIM_AWK"' claim($0) { c = 1 } END { exit !c }' "$RETRO"; then
   WHY="The retro claims the goal is met, but there is no judge consensus yet."
+  awk "$CLAIM_AWK"' claim($0) && norm($0) ~ /^goal result[^a-z]*(partly|partially|not|unmet|failed|abandoned|cancelled|canceled|stopped|in progress|blocked|impossible|pending)/ { c = 1 } END { exit !c }' "$RETRO" &&
+    WHY="The retro's Goal result line starts as not met, but text after it reads as a claim. Put the reason in brackets: Goal result: partly met (<why>)."
 else
   WHY="No Goal result line says the goal is not met, so this Stop needs a judge consensus. Mid-goal (a question round, a wait), write Goal result: in progress (<why>) and stop again."
 fi

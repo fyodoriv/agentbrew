@@ -102,5 +102,27 @@ check "backslash nohup blocked" 2 "no\\hup sleep 100" false
 check "coproc blocked" 2 "coproc sleep 100" false
 check "wait before the detach is no watch" 2 "wait; nohup y &" false
 check "pgrep before the detach is no watch" 2 "pgrep foo; nohup y &" false
+# A quoted ampersand in a read-only search, or in a heredoc fed to an
+# interpreter's stdin script, is text, not a detach.
+check "grep with a quoted ampersand ok" 0 "grep -c '&gt;' file.txt" false
+check "rg with a quoted ampersand ok" 0 "rg -n 'a & b' src" false
+check "python stdin heredoc with an ampersand ok" 0 "python3 - <<'EOF'
+x = 1 & 2
+EOF" false
+check "python -c with an ampersand still blocked" 2 "python3 -c 'import os' &" false
+check "grep then a bare detach still blocked" 2 "grep -c 'x' f; nohup y &" false
+check "python heredoc then a detach still blocked" 2 "python3 - <<'EOF'
+x = 1
+EOF
+nohup y &" false
+# Quoted ampersands in sed, jq, a piped curl, and after a bare assignment are text.
+check "sed with a quoted ampersand ok" 0 "sed -n 's/a&b/x/p' f" false
+check "jq with a quoted ampersand ok" 0 "jq -r \".a & .b\" f.json" false
+check "curl piped to jq with a quoted ampersand ok" 0 "curl -s \"https://e.example.com/?a=1&b=2\" | jq ." false
+check "bare assignment then a quoted ampersand ok" 0 "X=1; echo \"a & b\"" false
+check "sed e flag with an ampersand still blocked" 2 "sed 's/x/sleep 9 \&/e' f" false
+check "assignment prefix to a command still blocked" 2 "EDITOR='x &' git commit" false
+check "bash -c with a quoted detach still blocked" 2 "bash -c \"sleep 9 &\"" false
+check "bare sleep detach still blocked" 2 "sleep 100 &" false
 [ "$FAIL" = 0 ] && echo "detached-start-needs-watch: all passed"
 exit $FAIL

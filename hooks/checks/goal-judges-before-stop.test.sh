@@ -24,17 +24,24 @@ trap 'rm -rf "$ROOT"' EXIT
 export RUN_GOAL_STATE_DIR="$ROOT/state"
 export RUN_GOAL_JUDGE_DIR="$ROOT/judges"
 export HOOK_DECISIONS_LOG="$ROOT/decisions.jsonl"
+# Older checks treat 7 as failing; the 8, 8, 7 checks pass RUN_GOAL_JUDGE_SLACK=1.
+export RUN_GOAL_JUDGE_SLACK=0
 mkdir -p "$RUN_GOAL_STATE_DIR" "$RUN_GOAL_JUDGE_DIR"
 
+# A running count on stderr every 25 checks, and each failure at once, so a
+# run cut by a time budget still shows how far it got.
+tick() { [ $(((PASS + FAIL) % 25)) -ne 0 ] || echo "  ... $((PASS + FAIL)) checks, $FAIL failed" >&2; }
 expect() {
   local label="$1" expected="$2" actual="$3"
   if [ "$actual" = "$expected" ]; then PASS=$((PASS + 1)); else
-    FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$label: expected $expected, got $actual")
+    FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$label: expected $expected, got $actual"); echo "  FAIL: $label" >&2
   fi
+  tick
 }
 check() { # label, command...
   local label="$1"; shift
-  if "$@"; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$label"); fi
+  if "$@"; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$label"); echo "  FAIL: $label" >&2; fi
+  tick
 }
 run() {
   jq -cn --arg s "$1" --arg p "$ROOT/$1.jsonl" '{hook_event_name:"Stop",session_id:$s,transcript_path:$p}' |
@@ -66,8 +73,8 @@ token() { # session; cached by a checksum of every input the state script reads
 }
 prompt() { GOAL_STATE_TOKEN="${3:-}" bash "$PROMPT_SH" "$RUN_GOAL_STATE_DIR/$1.contract.md" "$2"; }
 block_text() { # judge, score, state, [cache]
-  printf 'Findings.\n\nGOAL-JUDGE-VERDICT\nJudge: %s\nScore: %s/10\nCache: %s\nState: %s\n' \
-    "$1" "$2" "${4:-$RUN_GOAL_JUDGE_DIR/$1.md}" "$3"
+  printf '%s\n\nGOAL-JUDGE-VERDICT\nJudge: %s\nScore: %s/10\nCache: %s\nState: %s\n' \
+    "${REPORT:-Findings.}" "$1" "$2" "${4:-$RUN_GOAL_JUDGE_DIR/$1.md}" "$3"
 }
 call() { # session, tool, id, model, prompt, [extra input json]
   local x="${6:-}"; [ -n "$x" ] || x='{}'
@@ -103,8 +110,8 @@ oversee() { # session, [model], [ruling a b c], [prompt suffix], [extra input js
   st="$(token "$s")"
   p="$(GOAL_STATE_TOKEN="$st" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/$s.contract.md" "$ROOT/$s.jsonl")" || return 1
   call "$s" Agent "$id" "$m" "$p${6:-}" "${7:-}"
-  result "$s" "$id" "$(printf 'Checked the three reports.\n\nGOAL-OVERSEER-VERDICT\nState: %s\nRuling ja: %s/10 - kept\nRuling jb: %s/10 - kept\nRuling jc: %s/10 - kept\n' \
-    "$st" "${3:-9}" "${4:-9}" "${5:-9}")"
+  result "$s" "$id" "$(printf 'Checked the three reports.\n\nGOAL-OVERSEER-VERDICT\nState: %s\nRuling ja: %s/10 - kept; the deduction was a follow-up\nRuling jb: %s/10 - kept; the deduction was a follow-up\nRuling jc: %s/10 - kept; the deduction was a follow-up\n' \
+    "$st" "${3:-9}" "${4:-9}" "${5:-9}")${OUSAGE:-}"
 }
 run_out() { # session, [env] -> the hook's stdout and stderr
   jq -cn --arg s "$1" --arg p "$ROOT/$1.jsonl" '{hook_event_name:"Stop",session_id:$s,transcript_path:$p}' |
@@ -149,6 +156,125 @@ expect "a later Stop still allows" 0 "$(run ok)"
 goal low "Goal result: met (3/3 met)"; panel low 9 7 10
 expect "one judge under 8 blocks" 2 "$(run low)"
 expect "a lower minimum is honored" 0 "$(run low RUN_GOAL_JUDGE_MIN=7)"
+# The owner's 8, 8, 7 bar: one judge may sit one point under the minimum.
+goal s887 "Goal result: met (3/3 met)"; panel s887 8 8 7
+expect "8, 8, 7 allows with the default slack" 0 "$(run s887 RUN_GOAL_JUDGE_SLACK=1)"
+expect "8, 8, 7 blocks with no slack" 2 "$(run s887)"
+goal s877 "Goal result: met (3/3 met)"; panel s877 8 7 7
+expect "two judges at 7 block" 2 "$(run s877 RUN_GOAL_JUDGE_SLACK=1)"
+goal s996 "Goal result: met (3/3 met)"; panel s996 9 9 6
+expect "one judge at 6 blocks" 2 "$(run s996 RUN_GOAL_JUDGE_SLACK=1)"
+# Focused re-judge: after a fix, only the failing judge runs; a final full
+# round is still required, and the focused state does not use a full round.
+goal foc "Goal result: met (3/3 met)"; panel foc 9 6 9
+echo "v2" >"$ROOT/work-foc/app.txt"; judge foc jb 8 haiku
+expect "a focused re-judge alone blocks: every judge must judge the final state" 2 "$(run foc RUN_GOAL_JUDGE_ROUNDS=2)"
+echo "v3" >"$ROOT/work-foc/app.txt"; panel foc 9 8 9
+expect "the focused re-judge cap blocks" 2 "$(run foc "RUN_GOAL_JUDGE_ROUNDS=2 RUN_GOAL_JUDGE_FOCUSED=0")"
+expect "two full rounds and one focused re-judge fit a cap of 2 rounds" 0 "$(run foc RUN_GOAL_JUDGE_ROUNDS=2)"
+# Round-6 blocker 1: after a passing focused re-judge, the final round on the
+# same state runs only the other judges and the overseer, and can pass.
+goal foc2 "Goal result: met (3/3 met)"; panel foc2 9 6 9
+echo "v2" >"$ROOT/work-foc2/app.txt"; judge foc2 jb 8 haiku; judge foc2 ja 9 sonnet; judge foc2 jc 9 fable; oversee foc2 sonnet 9 8 9
+expect "a passing focused re-judge, then the other judges and the overseer on that state, allows" 0 "$(run foc2 RUN_GOAL_JUDGE_SLACK=1)"
+# Round-6 blocker 2: a failed focused re-judge leads with that judge, not the missing ones.
+goal fc "Goal result: met (3/3 met)"; panel fc 9 6 9
+echo "v2" >"$ROOT/work-fc/app.txt"; judge fc jb 6 haiku
+nx="$(run_out fc RUN_GOAL_JUDGE_SLACK=1 | grep '^Next step:')"
+check "a failed focused re-judge names that judge in the next step" grep -q 'jb' <<<"$nx"
+check "a failed focused re-judge does not lead with the missing verdicts" bash -c "! grep -q '^Next step: no verdict' <<<\"\$1\"" _ "$nx"
+# Round-7 blocker 2: after a full round with one judge under the bar, the next
+# step is a focused re-judge of that judge; with two or more, a full round.
+goal one1 "Goal result: met (3/3 met)"; panel one1 9 9 6
+nx="$(run_out one1 RUN_GOAL_JUDGE_SLACK=1 | grep '^Next step:')"
+check "one low judge after a full round: re-judge only that judge" grep -q 're-judge only jc' <<<"$nx"
+check "one low judge after a full round: not every judge again" bash -c "! grep -q 'judge every judge again' <<<\"\$1\"" _ "$nx"
+goal two2 "Goal result: met (3/3 met)"; panel two2 8 7 7
+nx="$(run_out two2 RUN_GOAL_JUDGE_SLACK=1 | grep '^Next step:')"
+check "two low judges after a full round: judge every judge again" grep -q 'judge every judge again' <<<"$nx"
+# Path to 8: a judge under 8 must promise the fixes; the overseer gets the promise next round.
+goal prom "Goal result: met (3/3 met)"
+check "the judge prompt asks for a Path to 8 promise" grep -q 'Path to 8:' <(prompt prom ja)
+# Helpful judges: worst bugs first, all in one round; only high-severity
+# blockers cap; an unfinished check is unverified, not a deduction.
+check "the judge prompt asks for the worst bugs first, all in this round" grep -q 'Find the worst bugs first and list every fix now' <(prompt prom ja)
+check "only a high-severity blocker caps a rubric line" grep -q 'Only a high-severity blocker caps a rubric line' <(prompt prom ja)
+check "an unfinished check is unverified, not a deduction" grep -q 'is unverified, not a deduction' <(prompt prom ja)
+check "every listed fix has a severity and a check, at any score" grep -q 'Every fix you list, at any score, names its severity' <(prompt prom ja)
+REPORT=$'Findings.\n\nPath to 8:\n1. fix the parser; check: run x, shows 0 failed' panel prom 9 6 9
+echo "v2" >"$ROOT/work-prom/app.txt"; judge prom ja 9; judge prom jb 8; judge prom jc 9
+op="$(GOAL_STATE_TOKEN="$(token prom)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom.contract.md" "$ROOT/prom.jsonl")"
+check "the overseer prompt quotes the earlier promise" grep -q '1. fix the parser; check: run x' <<<"$op"
+check "the overseer prompt holds judges to the promise" grep -q 'Hold each judge to its earlier Path to 8' <<<"$op"
+# Round 7: bold sub-labels stay in the promise, and an earlier inline mention
+# does not hide the real section.
+goal prom2 "Goal result: met (3/3 met)"
+REPORT=$'Findings.\n\n## Path to 8:\n1. Fix the parser.\n**Check:** run x\n2. Fix the doc' panel prom2 9 6 9
+echo "v2" >"$ROOT/work-prom2/app.txt"; judge prom2 ja 9; judge prom2 jb 8; judge prom2 jc 9
+op="$(GOAL_STATE_TOKEN="$(token prom2)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom2.contract.md" "$ROOT/prom2.jsonl")"
+check "a bold sub-label stays in the promise" grep -q '^\*\*Check:\*\* run x' <<<"$op"
+check "the promise keeps items after a bold sub-label" grep -q '^2\. Fix the doc' <<<"$op"
+goal prom3 "Goal result: met (3/3 met)"
+REPORT=$'Summary: 6/10 (see Path to 8: at the end)\n\n## Findings\nOne gap.\n\nPath to 8:\n1. fix the parser; check: run x' panel prom3 9 6 9
+echo "v2" >"$ROOT/work-prom3/app.txt"; judge prom3 ja 9; judge prom3 jb 8; judge prom3 jc 9
+op="$(GOAL_STATE_TOKEN="$(token prom3)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom3.contract.md" "$ROOT/prom3.jsonl")"
+check "the promise is the real section, not an inline mention" grep -q '^1\. fix the parser; check: run x' <<<"$op"
+check "an inline mention is not quoted as the promise" bash -c '! grep -q "^Summary: 6/10" <<<"$1"' _ "$op"
+# Iteration 1: an inner heading and a long list stay whole; a later prose
+# mention does not replace the real section.
+goal prom4 "Goal result: met (3/3 met)"
+long="$(for i in $(seq 1 45); do printf '%s. fix item %s; check: run t%s\n' "$i" "$i" "$i"; done)"
+REPORT=$'Findings.\n\nPath to 8:\n### High\n0. fix the head; check: run h\n'"$long"$'\n\nNote: see Path to 8: above.' panel prom4 9 6 9
+echo "v2" >"$ROOT/work-prom4/app.txt"; judge prom4 ja 9; judge prom4 jb 8; judge prom4 jc 9
+op="$(GOAL_STATE_TOKEN="$(token prom4)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom4.contract.md" "$ROOT/prom4.jsonl")"
+check "an inner heading does not cut the promise" grep -q '^0\. fix the head; check: run h' <<<"$op"
+check "a long promise is not cut at 40 lines" grep -q '^45\. fix item 45; check: run t45' <<<"$op"
+check "a later prose mention does not replace the promise" grep -q '^Path to 8:$' <<<"$op"
+# Iteration 3: a fenced check or a Check: paragraph does not end the promise.
+goal prom5 "Goal result: met (3/3 met)"
+REPORT=$'Findings.\n\nPath to 8:\n1. Fix the parser.\n\n```\nbash t.sh\n```\n\nCheck: bash t.sh shows 0 failed\n\n2. Fix the doc; check: run d' panel prom5 9 6 9
+echo "v2" >"$ROOT/work-prom5/app.txt"; judge prom5 ja 9; judge prom5 jb 8; judge prom5 jc 9
+op="$(GOAL_STATE_TOKEN="$(token prom5)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom5.contract.md" "$ROOT/prom5.jsonl")"
+check "a fenced check and a Check: paragraph keep the next item" grep -q '^2\. Fix the doc; check: run d' <<<"$op"
+check "the overseer lets only a high-severity blocker cap a score" grep -q 'Only a high-severity blocker caps a score' <<<"$op"
+# Round-13 follow-ups: a numbered promise heading is quoted; a judge keeps
+# its role across states; judged paths freeze at goal start; an overseer
+# with no tool calls cannot change a score.
+goal prom6 "Goal result: met (3/3 met)"
+REPORT=$'Findings.\n\n### 5. Path to 8:\n1. fix the lexer; check: run y' panel prom6 9 6 9
+echo "v2" >"$ROOT/work-prom6/app.txt"; judge prom6 ja 9; judge prom6 jb 8; judge prom6 jc 9
+op="$(GOAL_STATE_TOKEN="$(token prom6)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/prom6.contract.md" "$ROOT/prom6.jsonl")"
+check "a numbered Path to 8 heading is quoted" grep -q '^1\. fix the lexer; check: run y' <<<"$op"
+goal rolep "Goal result: met (3/3 met)"
+r1="$(prompt rolep ja gs2-aaaa | grep '^Your role this round:')"; r2="$(prompt rolep ja gs2-bbbb | grep '^Your role this round:')"
+check "a judge keeps one role across states of one goal" test -n "$r1" -a "$r1" = "$r2"
+goal pfrz "Goal result: met (3/3 met)"
+echo "freeze the paths" >"$RUN_GOAL_STATE_DIR/pfrz.owner.md"
+prompt pfrz ja gs2-aaaa >/dev/null
+sed -i.bak "s|^Judged paths: .*|Judged paths: $ROOT/elsewhere|" "$RUN_GOAL_STATE_DIR/pfrz.contract.md"
+check "an edited Judged paths line does not change the judged paths" grep -qF -- "- $ROOT/work-pfrz" <(prompt pfrz ja gs2-aaaa)
+check "the edited path is not shown to judges" bash -c '! grep -qF -- "$1" <<<"$2"' _ "- $ROOT/elsewhere" "$(prompt pfrz ja gs2-aaaa)"
+NOCAL=1 judge pfrz ja 8; NOCAL=1 judge pfrz jb 8; NOCAL=1 judge pfrz jc 8
+OPFRZ="$(GOAL_STATE_TOKEN="$(token pfrz)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/pfrz.contract.md" "$ROOT/pfrz.jsonl")"
+check "the overseer prompt uses the frozen judged paths" grep -qF -- "- $ROOT/work-pfrz" <<<"$OPFRZ"
+check "the overseer prompt hides the edited path" bash -c '! grep -qF -- "$1" <<<"$2"' _ "- $ROOT/elsewhere" "$OPFRZ"
+NOCAL=1 judge pfrz jc 7
+OPFRZ="$(GOAL_STATE_TOKEN="$(token pfrz)" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/pfrz.contract.md" "$ROOT/pfrz.jsonl")"
+check "the overseer prompt quotes a judge's latest report on the state" grep -qF -- "Score: 7/10" <<<"$OPFRZ"
+check "the overseer prompt drops the judge's older report on the state" test "$(grep -c '^Judge: jc' <<<"$OPFRZ")" = 1
+PTOK="$(token pfrz)"; PB64="$(printf 'Score: 8/10' | base64 | tr -d '\n')"
+PIPEROWS="$(for j in ja jb jc; do printf 'J\tm%s\t%s\t%s\t%s\n' "$j" "$j" "$PTOK" "$PB64"; done; for i in $(seq 1 20000); do printf 'J\tf%s\tzz\tnone\tAAAA\n' "$i"; done)"
+printf '%s\n' "$PIPEROWS" | GOAL_STATE_TOKEN="$PTOK" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/pfrz.contract.md" - >/dev/null 2>&1
+check "the overseer prompt exits 0, not 141 (SIGPIPE), with matching rows before 20000 others" test "$?" = 0
+rm -f "$RUN_GOAL_STATE_DIR/pfrz.owner.md" "$RUN_GOAL_STATE_DIR/pfrz.paths" "$RUN_GOAL_STATE_DIR/pfrz.contract.md.bak"
+goal otl "Goal result: met (3/3 met)"
+judge otl ja 9 sonnet; judge otl jb 6 haiku; judge otl jc 9 fable
+OUSAGE=$'\n<usage><tool_uses>0</tool_uses></usage>' oversee otl sonnet 9 8 9
+check "an overseer with no tool calls cannot raise a score" grep -q 'jb scored 6/10 (the overseer.s change was not counted' <(run_out otl RUN_GOAL_JUDGE_SLACK=1)
+goal otl2 "Goal result: met (3/3 met)"
+judge otl2 ja 9 sonnet; judge otl2 jb 6 haiku; judge otl2 jc 9 fable
+OUSAGE=$'\n<usage><tool_uses>4</tool_uses></usage>' oversee otl2 sonnet 9 8 9
+expect "an overseer that ran tools can raise a score" 0 "$(run otl2 RUN_GOAL_JUDGE_SLACK=1)"
 
 goal fewj "Goal result: met (3/3 met)" "Judges: ja, jb"; judge fewj ja 9 sonnet; judge fewj jb 9
 expect "a contract with two judges blocks" 2 "$(run fewj)"
@@ -167,6 +293,13 @@ sed -i.bak 's/capped at 9 on a hole/capped at 5 on a hole/' "$RUN_GOAL_JUDGE_DIR
 
 goal cal "Goal result: met (3/3 met)"; panel cal 9 9 9; calibrate cal ja 9 "- extra note added later"
 expect "calibration notes added after judging keep verdicts fresh" 0 "$(run cal)"
+
+# Round-4 cap: a calibration line for this state may state only the
+# verdict's score, so the runner's record cannot show a higher one.
+goal calx "Goal result: met (3/3 met)"; panel calx 9 9 9
+calibrate calx ja 9 "- 2026-11-23 session calx state $(token calx): 9/10, effective 10/10. Caught: x."
+expect "a calibration line with a second score blocks" 2 "$(run calx)"
+check "that block names the second score" grep -q "ja's calibration line for state .* states a score other than 9/10" <(run_out calx)
 
 goal shop "Goal result: met (3/3 met)"; panel shop 9 6 9
 sed -i.bak 's/^Judges: .*/Judges: ja, jd, jc/' "$RUN_GOAL_STATE_DIR/shop.contract.md"; judge_file jd
@@ -309,6 +442,16 @@ jq -cn --arg t "$note" '{type:"attachment",attachment:{type:"queued_command",pro
 jq -cn --arg t "$note" '{type:"user",message:{content:$t}}' >>"$ROOT/notify.jsonl"
 calibrate notify jc 8.5
 expect "a background judge's attachment notification counts once" 0 "$(run notify RUN_GOAL_JUDGE_MODELS=1)"
+
+goal tkjudge "Goal result: met (3/3 met)"; st="$(token tkjudge)"; judge tkjudge ja 9 sonnet; judge tkjudge jb 9
+call tkjudge Agent bgres "haiku" "$(prompt tkjudge jc)" '{"run_in_background":true}'
+result tkjudge bgres "Async agent launched successfully. agentId: tkres"
+note="<task-notification><task-id>tkres</task-id><tool-use-id>bgres</tool-use-id><result>Still waiting on my own test run; no score yet.</result></task-notification>"
+jq -cn --arg t "$note" '{type:"user",message:{content:$t}}' >>"$ROOT/tkjudge.jsonl"
+note="<task-notification><task-id>tkres</task-id><result>$(block_text jc 9 "$st")</result></task-notification>"
+jq -cn --arg t "$note" '{type:"user",message:{content:$t}}' >>"$ROOT/tkjudge.jsonl"
+calibrate tkjudge jc 9
+check "a resumed judge's final notification with only a task-id counts" grep -q "^Next step: no overseer ran" <<<"$(run_out tkjudge RUN_GOAL_JUDGE_MODELS=1)"
 
 goal bgbash "Goal result: met (3/3 met)"
 jq -cn '{type:"assistant",message:{content:[{type:"tool_use",id:"bgx",name:"Bash",input:{command:"sleep 99999",run_in_background:true}}]}}' >>"$ROOT/bgbash.jsonl"
@@ -471,6 +614,8 @@ out="$(run_out olenv RUN_GOAL_JUDGE_ROUNDS=1)"
 check "the block message names one next step" grep -q 'Next step: this goal used' <<<"$out"
 check "the block message numbers the problems" grep -q '1\. this goal used' <<<"$out"
 check "the block message names the honest exit" grep -q 'Honest exit: write Goal result: partly met' <<<"$out"
+goal lowx "Goal result: met (3/3 met)"; panel lowx 6 9 9
+check "a low score's next step is the one-batch blocker fix" grep -q 'Next step: fix every blocker the overseer listed in one batch' <(run_out lowx)
 goal roles "Goal result: met (3/3 met)"
 r1="$(prompt roles ja | grep '^Your role this round:')"; r2="$(prompt roles jb | grep '^Your role this round:')"; r3="$(prompt roles jc | grep '^Your role this round:')"
 check "each judge prompt names a role" test -n "$r1"
@@ -575,6 +720,12 @@ expect "sixth Stop allows after downgrading" 0 "$(run giveup)"
 check "give-up rewrites the claim to partly met" grep -q '^Goal result: partly met (judge consensus not reached: jb scored 5/10' "$RUN_GOAL_STATE_DIR/giveup.retro.md"
 check "give-up resets the block counter" test ! -e "$RUN_GOAL_STATE_DIR/giveup.judgeblocks"
 expect "a downgraded goal keeps passing" 0 "$(run giveup)"
+# A give-up reason cut at 300 characters inside a bracket must not read as a
+# met claim, or the downgraded line blocks forever (round 1, 2026-11-23).
+goal gfam "Goal result: met (3/3 met)"; judge gfam ja 9 sonnet; judge gfam jb 9 haiku; judge gfam jc 9 haiku
+for i in 1 2 3 4 5; do run gfam >/dev/null; done
+expect "a give-up whose reason is cut inside a bracket still ends the loop" 0 "$(run gfam)"
+check "that give-up line keeps no bracket from the cut reason" grep -qE '^Goal result: partly met \(judge consensus not reached: [^()]*\)$' "$RUN_GOAL_STATE_DIR/gfam.retro.md"
 
 goal gnoretro "x"; rm -f "$RUN_GOAL_STATE_DIR/gnoretro.retro.md"; panel gnoretro 9 5 9
 for i in 1 2 3 4 5; do run gnoretro >/dev/null; done
@@ -656,6 +807,10 @@ goal gwhy "Goal result: met (3/3 met)"; judge gwhy ja 6 sonnet; judge gwhy jb 9 
 oraw gwhy ow1 "" "$(printf 'Ruling ja: 8/10\nRuling jb: 9/10 - kept\nRuling jc: 9/10 - kept')"
 expect "an overseer raise with no reason blocks" 2 "$(run gwhy)"
 check "that block names the missing reason" grep -q "Ruling for ja has no reason" <(run_out gwhy)
+goal gok "Goal result: met (3/3 met)"; judge gok ja 6 sonnet; judge gok jb 9 haiku; judge gok jc 9 fable
+oraw gok ow4 "" "$(printf 'Ruling ja: 8/10 - ok\nRuling jb: 9/10 - kept\nRuling jc: 9/10 - kept')"
+expect "an overseer raise with a two-character reason blocks" 2 "$(run gok)"
+check "that block asks for a longer reason" grep -q "raised ja with a reason under 20 characters" <(run_out gok)
 goal gph "Goal result: met (3/3 met)"; judge gph ja 9 sonnet; judge gph jb 9 haiku; judge gph jc 9 fable
 oraw gph ow2 "" "$(printf 'Ruling ja: 9/10 - <one-line reason>\nRuling jb: 9/10 - kept\nRuling jc: 9/10 - kept')"
 expect "a placeholder reason counts as no reason" 2 "$(run gph)"

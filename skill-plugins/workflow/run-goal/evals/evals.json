@@ -4509,6 +4509,68 @@
         "Files each follow-up as a task and does not fix follow-ups in this goal",
         "Runs all three judges again only after the blocker batch lands"
       ]
+    },
+    {
+      "id": 401,
+      "prompt": "/goal ship the retry fix (round 3: judges scored 7, 5, 8; each report lists only follow-ups and no blockers; the 5 comes from a cap for a follow-up)",
+      "expected_output": "The overseer raises each score that a follow-up lowered, by at most 2 points, with a reason of 20 or more characters that names the follow-up deduction, keeps scores the judge got right, and lists the follow-ups as tasks with no blockers.",
+      "expectations": [
+        "Raises the 5 and the 7 by at most 2 points each, naming the follow-up deduction in each Ruling reason",
+        "Gives every raise a reason of 20 or more characters, never a bare 'ok'",
+        "Lists the follow-ups as tasks and states that no blockers remain"
+      ]
+    },
+    {
+      "id": 402,
+      "prompt": "/goal ship the parser fix (round 1: judges scored 9, 6, 9; the 6 judge listed two blockers; round 2 after the fix)",
+      "expected_output": "The runner fixes both blockers, re-judges only the failing judge as a focused re-judge, then runs only the other judges and the overseer on that same state, which completes the full round without a re-roll. The judge under 8 ends with a Path to 8 list whose items each name a check, and the overseer holds the judge to that earlier promise.",
+      "expectations": [
+        "Re-judges only the failing judge after the fix, then runs only the other judges and the overseer on that state, never the re-judged judge twice",
+        "The judge report under 8 ends with a Path to 8: list, each item with a command and its expected output",
+        "The overseer raises a new deduction that was not in the earlier Path to 8 unless it names a regression or changed code",
+        "Treats 8, 8, 7 as passing and 8, 7, 7 as blocking"
+      ]
+    },
+    {
+      "id": 403,
+      "prompt": "/goal get the visa form checked (round 1 judges scored 7, 6, 5; two judges say their score needs answers only the owner can give)",
+      "expected_output": "The agent asks each judge under 8 what is missing to reach 8 with each item marked runner, owner or outside record, fixes the runner items, and gives the owner the owner items as one ask before it spends another judging round.",
+      "expectations": [
+        "Asks each judge under 8, in a follow-up to the same agent, what is missing to reach 8",
+        "Separates items the runner can do from items only the owner or an outside record can close",
+        "Does not spend another judging round while a judge says its score needs the owner's answers; asks the owner first"
+      ]
+    },
+    {
+      "id": 404,
+      "prompt": "/goal ship the judge hook fix (round 1: one judge scored 6 for a cosmetic wording gap and a test it could not finish in its budget; the other two scored 8)",
+      "expected_output": "The judge lists every fix in round 1, worst first, caps only on a high-severity blocker, and names its unfinished check as unverified; the overseer raises the score, and the goal passes without a second full round.",
+      "expectations": [
+        "The judge prompt tells each judge to find the worst bugs first and list every fix in the first round",
+        "Only a high-severity blocker (false pass, lost verdict, no exit, unmet done-when) caps a score; the wording gap is a follow-up",
+        "A check the judge could not finish is reported as unverified, not as a deduction",
+        "The runner does not start a second full round for follow-ups alone"
+      ]
+    },
+    {
+      "id": 405,
+      "prompt": "/goal deliver follow ups (all PRs merged; done-when 4 needs scripts/main-green.sh green at the final sha, and that gate is still running in the background)",
+      "expected_output": "The agent waits for the main gate result to be saved, then prints and launches all three judges, so no judge caps Evidence for an unfinished check.",
+      "expectations": [
+        "Does not launch the judges while a gate named in Done when is still running",
+        "Launches the judges after the gate result is saved and quotes it",
+        "States in chat which gate it waits on and the check that watches it"
+      ]
+    },
+    {
+      "id": 406,
+      "prompt": "/goal ship the fix (all three judges reported; now run the overseer, the session runs on Opus)",
+      "expected_output": "The agent prints the overseer prompt, checks its State and quoted reports are from the latest round, and launches it with an explicit model of another family (for example sonnet).",
+      "expectations": [
+        "Passes an explicit model of a family other than its own on the overseer Agent call",
+        "Checks the overseer prompt quotes the latest round before launching it",
+        "Rebuilds the overseer prompt when its State or a quoted report is from an older round"
+      ]
     }
   ]
 }

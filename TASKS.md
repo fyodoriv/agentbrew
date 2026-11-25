@@ -1,6 +1,5 @@
 # Tasks
 
-
 <!-- policy: Run tests before every commit. Never skip CI checks.
              `npm run verify` must pass before every commit (AGENTS.md rule #1).
      policy: Maintain 95%+ coverage on statements, functions, and lines. Branch coverage target is 95%.
@@ -344,8 +343,6 @@
   - **Pivot**: if the real collector refuses the HEC request shape (any 4xx that a correct token and index do not fix), switch the overlay to `kind: file` plus the company log forwarder, and report the refused shape upstream.
   - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); Splunk documentation, "Format events for HTTP Event Collector".
 
-
-
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
      canvases/agentic-tooling-vs-agentbrew.canvas.tsx). Four moves that push
      agentbrew further into pure orchestration: two delegations that shrink the
@@ -364,6 +361,123 @@
      and is the precondition check Phase 3 re-runs before decommissioning rules. -->
 
 ## P1
+
+- [ ] Judge reports that skip the Blocker or Follow-up labels are caught
+  - **ID**: goal-judge-label-check
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, judge round 1 (devex-workflow-design follow-up). The rule that judges label each defect Blocker or Follow-up is prose only; nothing checks a report, and the Pivot "2 rounds in a row each raise new blockers" has no command that counts it. Also: the block message says "ja scored 6/10" but not the next step (fix every overseer blocker with a failing-first test, file follow-ups, judge all three again), and `goal-judge-prompt.sh` with no arguments prints an empty path instead of its usage line.
+  - **Files**: `hooks/lib/goal-judge-verdicts.jq`, `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-judge-prompt.sh`.
+  - **Output**: code
+  - **Acceptance**: a report with no Blocker or Follow-up label gets a named warning; a score under the bar prints the iteration step; the no-argument run prints usage.
+  - **Hypothesis**: rounds that end with unlabelled defects drop from 1 seen to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: the new cases pass with 0 failed.
+  - **Pivot**: if label checks reject more than 1 honest report in the 5 largest local transcripts, keep them as warnings only.
+  - **Anchor**: Krippendorff 2018, "Content Analysis", 4th ed. (coding reliability).
+
+- [ ] Judged paths in a goal contract are checked against the change
+  - **ID**: goal-judge-scope-check
+  - **Tags**: hooks, run-goal, evaluation
+  - **Details**: Found 2026-11-23, judge round 2 of the blocker-loop goal (llm-evaluation-methodology). The runner writes the contract's `Judged paths:` line and nothing compares it with the files the goal changed, so a runner can leave a changed file out of judging. Accepted as an exception for that goal: the runner always writes its own contract. Fix: the hook compares the judged paths with the goal's diff and blocks when a changed file is missing.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-state.sh`, `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: a contract whose judged paths omit a changed file blocks Stop with the file named.
+  - **Hypothesis**: changed files left out of judging drop from undetected to 0 in the suite fixture.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: the new case passes with 0 failed.
+  - **Pivot**: if the diff cannot be found for more than 1 in 5 real goals, list unjudged files in the block message instead of blocking.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge", arXiv:2306.05685.
+
+- [ ] A new /goal on the same contract cannot reset the judging-round cap
+  - **ID**: goal-judge-rounds-across-goals
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 6 (llm-evaluation-methodology). The round counter reads the transcript from the latest `/goal` line, so a runner can type a new `/goal` and get 3 fresh rounds on the same contract. Key the count to the contract hash instead.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test file.
+  - **Output**: code
+  - **Acceptance**: a new `/goal` after 3 failing rounds on the same contract still blocks.
+  - **Hypothesis**: goals that pass after a `/goal` restart drop from possible to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with a named restart case.
+  - **Success**: the restart case blocks and the suite shows 0 failed.
+  - **Pivot**: if keying by contract hash breaks legitimate new goals in more than 1 fixture, key by contract file path instead.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (gaming resistance).
+
+- [ ] A judge under the bar always leaves a complete Path to 8
+  - **ID**: goal-judge-path-to-eight
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 6. The hook does not check that a verdict under the bar has a "Path to 8:" section. The overseer extractor stops at any `# ` or `**X` line, so a bold item cuts the quoted promise. "Path to 8" and "under 8" ignore `RUN_GOAL_JUDGE_MIN`.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `hooks/lib/goal-judge-prompt.sh`, `hooks/lib/goal-overseer-prompt.sh`.
+  - **Output**: code
+  - **Acceptance**: a low verdict without the section blocks with "re-run that judge"; a bold list item stays in the quote; the heading follows the minimum.
+  - **Hypothesis**: rounds lost to a guessed fix list drop from 1 per goal to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with named cases for each part.
+  - **Success**: all named cases pass and the suite shows 0 failed.
+  - **Pivot**: if judges skip the section in more than 1 of 3 real rounds, move the list into the verdict block itself.
+  - **Anchor**: Basili, Caldiera, Rombach 1994 (GQM).
+
+- [ ] Judge block messages match the 8, 8, 7 bar and the focused re-judge
+  - **ID**: goal-judge-block-wording
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 6 (devex-workflow-design). After a full round with one low judge, the next step does not name the focused re-judge; "Every effective score needs 8/10" contradicts the slack rule; the header comment lacks `RUN_GOAL_JUDGE_SLACK` and `RUN_GOAL_JUDGE_FOCUSED`; a passing focused re-judge adds a "judges used 1 model family" noise line. Round 5 (devex): with no verdicts yet the next step repeats problem 1; a zero-blocker round with a low score has no stated step.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, `skill-plugins/workflow/run-goal/references/goal-judges.md`.
+  - **Output**: code
+  - **Acceptance**: each case above prints the right next step in a named test.
+  - **Hypothesis**: block messages that name the wrong next step drop from 5 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: 0 failed, with one named case per message.
+  - **Pivot**: if the message logic adds more than 0.2 s per Stop, move it into `hooks/lib/` with its own test.
+  - **Anchor**: Nielsen 1994, usability heuristics (error messages).
+
+- [ ] Honest goal-result lines with ordinary punctuation are allowed
+  - **ID**: goal-claim-honest-punctuation
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge rounds 5 and 6. These honest lines read as claims: apostrophes ("blocked on the owner's 2FA code"), "blocked on PR #12", colon text ("not met: owner approval needed"), ranges ("criteria 1-3 met"), and a bare score as a reason ("partly met; judges scored 6/10"). Each costs one of 5 blocks.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh` (CLAIM_AWK), `hooks/checks/goal-judge-claims.test.sh`.
+  - **Output**: code
+  - **Acceptance**: each line above allows, and every current claim case still blocks.
+  - **Hypothesis**: honest lines that block drop from 5 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
+  - **Success**: 0 failed with the 5 new honest cases.
+  - **Pivot**: if any widening lets a current claim case through, keep the line blocked and improve the hint instead.
+  - **Anchor**: Nygard 2018, "Release It!" (fail-safe defaults).
+
+- [ ] The contract filter keeps plain lines that mention judges and numbers
+  - **ID**: goal-judge-filter-plain-lines
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 5 and runner. The filter hides plain done-when lines: "At least 3 judges read the README", and a line quoting the owner words "re-judge 1" and "Path to 8". Require a score word next to the number before removing a line.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/checks/goal-judge-claims.test.sh`.
+  - **Output**: code
+  - **Acceptance**: both lines stay; all current removed cases still go.
+  - **Hypothesis**: plain lines hidden from judges drop from 2 reproduced to 0.
+  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
+  - **Success**: 0 failed with the 2 new kept cases.
+  - **Pivot**: if any change lets a current target form through, refuse score targets in the contract instead of filtering them.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (independence).
+
+- [ ] Newcomers can find the goal contract and judge docs from the error alone
+  - **ID**: goal-judge-newcomer-docs
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge rounds 5 and 6. `goal-judge-prompt.sh` with no contract prints only the missing path, with no hint how to make it or find the session id. `SKILL.md` does not mention the slack or focused settings. The full suite prints no final total. `goal-judges.md` does not say where follow-ups from a passing round go, or that all judge families are Claude models. Goal iteration 1 adds: the "at most nine judge runs" cost text ignores focused re-judges and the overseer; section 3 puts "fix every blocker" before "ask that judge"; the doc gives no measured time for each suite.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `skill-plugins/workflow/run-goal/SKILL.md`, `skill-plugins/workflow/run-goal/references/goal-judges.md`, `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: the error names how to create the contract; the docs cover each gap; the suite ends with one total line.
+  - **Hypothesis**: newcomer steps that fail or confuse in a first-time-user judge pass drop from 5 to 0.
+  - **Measurement**: `bash hooks/lib/goal-judge-prompt.sh no-such-session devex-workflow-design 2>&1 | rg -c "create the contract"` plus the next first-time-user judge report.
+  - **Success**: the command prints 1 and the judge report lists 0 of these items.
+  - **Pivot**: if a judge still reports 2 or more, add a worked example goal to `goal-judges.md`.
+  - **Anchor**: Nielsen 1994, usability heuristics (help and documentation).
+
+- [ ] A success claim inside a goal-result bracket reads as met
+  - **ID**: goal-judge-bracket-claims
+  - **Tags**: hooks, run-goal
+  - **Details**: Found 2026-11-23, judge round 7 (agent-harness-reliability); the overseer ruled it a follow-up. `Goal result: partly met (5 of 5 met)`, `(all done)` and `not met (merged)` read as not met, because the claim check strips brackets first. Reading inside brackets risks blocking honest reasons such as "(tests passed, PR unmerged)", so first measure how often honest retros use success words in brackets.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh` (CLAIM_AWK), `hooks/checks/goal-judge-claims.test.sh`.
+  - **Output**: code
+  - **Acceptance**: the bracketed claims above block; every honest line in the claims test still allows.
+  - **Hypothesis**: false met claims hidden in brackets drop from 3 reproduced to 0 with no new false block.
+  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`
+  - **Success**: 0 failed with the bracketed claim cases added.
+  - **Pivot**: if 1 or more honest retro lines from the goal-judge history would block, keep brackets free and require the not-met word alone instead.
+  - **Anchor**: Nygard 2018, "Release It!" (fail-safe defaults).
 
 - [ ] Agents can run one named case of the goal-judge hook suite
   - **ID**: goal-judge-suite-one-case
@@ -469,7 +583,6 @@
   - **Pivot**: if 2 or more of the next 10 eval-only PRs still conflict, or per-eval files break the frozen-prefix hash, use a git merge driver for `evals.json` instead.
   - **Anchor**: Forsgren, Humble, Kim 2018 (lead time for changes); Basili, Caldiera, Rombach 1994 (GQM).
 
-
 - [ ] A plain `agentbrew sync` deploys the hooks on current `main`, not an old pinned runtime
   - **ID**: sync-uses-current-hooks
   - **Tags**: hooks, sync, upgrade
@@ -561,7 +674,6 @@
   - **Success**: all three observation controls classify their exact lifecycle state; zero false completion, swallowed failures or private-marker disclosures; unchanged original assertions and 30,000 ms case limit; required gates pass without executing the exhausted lease probes. A repair still requires separate diagnosed/reproduced-boundary evidence and a committed hypothesis.
   - **Pivot**: any ambiguous boundary, missing record, altered timeout/assertion, disclosed payload or passing retry presented as a cause rejects the observation. Preserve the unknown and revise measurement; do not raise the timeout, replace real lifecycle work with a stub or run until green.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration; the actual terminal timeout and current in-process `Command.parseAsync` lifecycle fixture.
-
 
 - [ ] Deliver OpenCode 2 session hooks during a cold CLI start
   - **ID**: opencode-v2-cold-session-hooks
@@ -669,6 +781,214 @@
   - **Anchor**: Nielsen 1994, heuristic 9 (help users recognize, diagnose and recover from errors).
 
 ## P2
+
+- [ ] Allow a quoted-tag heredoc inside $() in the detached-start hook
+  - **ID**: detached-start-heredoc-in-subst
+  - **Tags**: hooks, devex
+  - **Details**: Round 14 devex judge: `gh pr create --body "$(cat <<'EOF' ... EOF)"` with an ampersand in the body is blocked, because any `$(` makes the text check fail closed. This is the most common way agents write PR and commit bodies, and the hook header says such bodies are not blocked.
+  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a `$(cat <<'EOF' ... EOF)` body with an ampersand passes; a real trailing ampersand after it stays blocked.
+  - **Hypothesis**: false blocks on PR and commit bodies drop from 1 known shape to 0.
+  - **Measurement**: `bash hooks/checks/detached-start-needs-watch.test.sh` (new cases).
+  - **Success**: all passed.
+  - **Pivot**: if 1 or more unsafe cases pass after 2 tries, keep the block and name the body-file exit in the block message.
+  - **Anchor**: Nielsen 1994, "Usability Engineering" (error prevention without false alarms).
+
+- [ ] Show judges one judged-paths list after a contract edit
+  - **ID**: goal-judge-prompt-one-path-list
+  - **Tags**: run-goal, judges, clarity
+  - **Details**: Round 14 devex judge: after a contract edit, the judge prompt shows the frozen list and also the edited `Judged paths:` line inside the quoted contract. The existing fixture greps only the `- ` form, so it misses this.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: after the edit, the prompt does not contain the edited path anywhere.
+  - **Hypothesis**: prompts with two path lists drop from every edited-contract case to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (fixture greps the bare path).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if 1 or more fixtures still show the edited path, drop the Judged paths line from the quoted contract entirely.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (position and anchoring bias).
+
+- [ ] Warn when the frozen judged-paths list wins over the contract
+  - **ID**: goal-judge-prompt-frozen-warning
+  - **Tags**: run-goal, judges, devex
+  - **Details**: Round 14 devex judge: when the contract's `Judged paths:` line differs from the frozen `.paths` file, the prompt script exits 0 with no message, so a user who edits the line gets no hint.
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: the script prints one stderr line naming the frozen file when the lists differ.
+  - **Hypothesis**: silent mismatches drop from 1 per edit to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (fixture checks stderr for `frozen`).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if the warning breaks 1 or more prompt-equality fixtures, write it to a log file instead.
+  - **Anchor**: Nielsen 1994, "Usability Engineering" (visibility of system status).
+
+- [ ] The overseer prompt quotes each judge's full report, not a later short note
+  - **ID**: goal-overseer-full-report
+  - **Tags**: run-goal, overseer, bug
+  - **Details**: Round 15 of the 2026-11-24 follow-up goal: a judge that finishes its own background work sends a second short notification with the same verdict. The overseer prompt takes the latest report, so it quotes the short note and drops the full report with its rubric lines.
+  - **Files**: `hooks/lib/goal-overseer-prompt.sh`, `hooks/lib/goal-judge-verdicts.jq`, their test.
+  - **Output**: code
+  - **Acceptance**: a fixture with a full report then a short note from one judge on one state yields an overseer prompt that holds the full report's rubric text.
+  - **Hypothesis**: overseer prompts missing a judge's rubric lines drop from 3 of 3 judges in round 15 to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (new fixture greps for the full report's rubric line).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if 1 or more same-state re-roll fixtures fail, keep the longest report per judge and state instead.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (judges need the full evidence).
+
+- [ ] The exit-141 fixture also checks the overseer prompt is not empty
+  - **ID**: goal-overseer-141-output-check
+  - **Tags**: run-goal, overseer, test
+  - **Details**: Round 15 harness judge: the SIGPIPE fixture checks only the exit code, so a script that exits 0 with no output still passes.
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: the fixture also greps the prompt for `Score: 8/10`.
+  - **Hypothesis**: vacuous passes of the exit-141 fixture drop from possible to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh`
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if the grep makes the fixture flaky in 1 or more of 5 runs, check byte count over 0 instead.
+  - **Anchor**: Meszaros 2007, "xUnit Test Patterns" (weak assertions).
+
+- [ ] goal-overseer-prompt.sh prints a usage line when run with no arguments
+  - **ID**: goal-overseer-usage-line
+  - **Tags**: run-goal, overseer, devex
+  - **Details**: Round 15 devex judge: `bash hooks/lib/goal-overseer-prompt.sh` with no arguments prints a raw `sed` file error before exit 2.
+  - **Files**: `hooks/lib/goal-overseer-prompt.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a no-argument call prints one line starting `goal-overseer-prompt: usage:` and nothing from `sed`; exit 2.
+  - **Hypothesis**: raw tool errors on a no-argument call drop from 1 to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (new fixture on stderr).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if the guard breaks 1 or more stdin-mode fixtures, check only for an empty first argument.
+  - **Anchor**: Nielsen 1994, "Usability Engineering" (help users recognize errors).
+
+- [ ] detached-start allows a quoted ampersand next to any command substitution
+  - **ID**: detached-start-quoted-amp-subst
+  - **Tags**: hooks, detached-start, bug
+  - **Details**: Round 15: a quoted ampersand in a python or sed string next to a `$( )` or a pipe is blocked as a detached start, with no heredoc. Task detached-start-heredoc-in-subst names only the heredoc shape.
+  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture with a quoted ampersand inside a string next to `$(pwd)` is allowed.
+  - **Hypothesis**: false detached-start blocks on quoted ampersands drop to 0.
+  - **Measurement**: `bash hooks/checks/detached-start-needs-watch.test.sh` (new fixture).
+  - **Success**: fixture passes; 0 failed.
+  - **Pivot**: if allowing it lets 1 or more real background-start fixtures through, keep the block and improve its hint.
+  - **Anchor**: Bash Reference Manual 2022, "Quoting" (quoted metacharacters lose meaning).
+
+- [ ] The goal-judges stop suite runs in under 5 minutes
+  - **ID**: goal-judges-suite-speed
+  - **Tags**: run-goal, tests, perf
+  - **Details**: Round 15 harness judge: `goal-judges-before-stop.test.sh` takes about 11 minutes wall time on this Mac, the top tool-time step this week.
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: the suite finishes in under 300 s and keeps every check.
+  - **Hypothesis**: suite wall time drops from about 660 s to under 300 s by sharing fixture setup.
+  - **Measurement**: `/usr/bin/time -p bash hooks/checks/goal-judges-before-stop.test.sh`
+  - **Success**: real under 300 s and 0 failed.
+  - **Pivot**: if real time stays over 500 s after sharing setup, split the suite and run the parts in parallel instead.
+  - **Anchor**: Forsgren, Humble, Kim 2018, "Accelerate" (fast feedback lowers lead time).
+
+- [ ] Fail closed when the overseer report has no usage note
+  - **ID**: goal-overseer-missing-usage-fails-open
+  - **Tags**: run-goal, overseer, bug
+  - **Details**: Round 14 of the 2026-11-24 follow-up goal: when the overseer's report has no usage note, its tool count is never checked, so a report made with no tool calls still passes.
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture overseer report with no usage note is rejected.
+  - **Hypothesis**: overseer reports accepted without a tool count drop from possible to 0.
+  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (new fixture).
+  - **Success**: fixture passes and the suite shows 0 failed.
+  - **Pivot**: if 1 or more of the next 5 real overseer runs lacks a usage note, count tool calls from the transcript instead.
+  - **Anchor**: Saltzer and Schroeder 1975, "The Protection of Information in Computer Systems" (fail-safe defaults).
+
+- [ ] Stop overseer report text from faking tool_uses
+  - **ID**: goal-overseer-fake-tool-uses
+  - **Tags**: run-goal, overseer, independence
+  - **Details**: With no usage trailer, a line like `tool_uses: 9` inside the overseer's own text is read as the count (round 14, overseer).
+  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: a fixture whose body says `tool_uses: 9` but has no trailer is not counted as 9.
+  - **Hypothesis**: spoofable tool counts drop from 1 known path to 0.
+  - **Measurement**: the new fixture in `goal-judges-before-stop.test.sh`.
+  - **Success**: fixture passes; suite 0 failed.
+  - **Pivot**: if 1 or more spoof fixtures still pass after the fix, read the count only from the harness transcript.
+  - **Anchor**: Saltzer and Schroeder 1975, "The Protection of Information in Computer Systems" (complete mediation).
+
+- [ ] Freeze judged paths for goals with no owner file
+  - **ID**: goal-judge-paths-no-owner-file
+  - **Tags**: run-goal, judges, independence
+  - **Details**: The `.paths` freeze only applies when an owner file exists, so a goal without one still lets the runner edit what is judged (round 14).
+  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/lib/goal-overseer-prompt.sh`, their test.
+  - **Output**: code
+  - **Acceptance**: a no-owner-file goal whose Judged paths line is edited later still yields the first list.
+  - **Hypothesis**: goals with editable judged paths drop from all no-owner-file goals to 0.
+  - **Measurement**: new fixture in `goal-judges-before-stop.test.sh`.
+  - **Success**: fixture passes; suite 0 failed.
+  - **Pivot**: if no stable first-save moment exists, freeze on the first judge run.
+  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (self-enhancement bias).
+
+- [ ] Clean up .paths files with the other goal state
+  - **ID**: goal-state-paths-cleanup
+  - **Tags**: run-goal, hygiene
+  - **Details**: `goal-set-loads-run-goal.sh` removes old contract and state files but not `.paths`, so a stale list can carry into a new goal with the same session id (round 14).
+  - **Files**: `hooks/checks/goal-set-loads-run-goal.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: after a new `/goal`, no `.paths` file from the old goal remains.
+  - **Hypothesis**: stale `.paths` files after a goal reset drop from 1 per reset to 0.
+  - **Measurement**: `bash hooks/checks/goal-set-loads-run-goal.test.sh` (new check).
+  - **Success**: check passes; suite 0 failed.
+  - **Pivot**: if cleanup lists keep drifting, glob all `<session>.*` state files instead.
+  - **Anchor**: Nygard 2018, "Release It!" (clean up stale state).
+
+- [ ] Say what to do next when a quoted ampersand is blocked
+  - **ID**: detached-start-quoted-amp-hint
+  - **Tags**: hooks, devex
+  - **Details**: The detached-start-needs-watch block message names no next step when the ampersand is inside quotes or a heredoc (round 14, devex).
+  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: the block message for a quoted ampersand names the fix (use `run_in_background`, or write the text with a file tool).
+  - **Hypothesis**: repeat blocks of the same command drop from about 2 to 1.
+  - **Measurement**: `bash hooks/checks/detached-start-needs-watch.test.sh` plus `node templates/scripts/agent-perf.mjs report` blocked-call counts over 7 days.
+  - **Success**: test passes and repeat blocks fall by half.
+  - **Pivot**: if the same command is still blocked twice in a row (count above 1), allow a quoted ampersand in known-safe commands instead.
+  - **Anchor**: Nielsen 1994, "Usability Engineering" (help users recover from errors).
+
+- [ ] Allow node -e and python -c with a quoted ampersand
+  - **ID**: detached-start-inline-code-amp
+  - **Tags**: hooks, devex
+  - **Details**: `node -e` and `python -c` scripts that hold a quoted ampersand are still blocked as detached starts (round 14).
+  - **Files**: `hooks/checks/detached-start-needs-watch.sh`, its test.
+  - **Output**: code
+  - **Acceptance**: an inline script with a quoted ampersand passes; a trailing unquoted ampersand stays blocked.
+  - **Hypothesis**: false blocks for inline code drop from 1 known shape to 0.
+  - **Measurement**: new cases in `detached-start-needs-watch.test.sh`.
+  - **Success**: cases pass; 0 failed.
+  - **Pivot**: if 1 or more safe-command cases still fail after 2 tries, keep the block and improve the hint only.
+  - **Anchor**: Nygard 2018, "Release It!" (avoid false alarms).
+
+- [ ] Document detached-start-needs-watch in hook-protocol.md
+  - **ID**: hook-protocol-detached-start
+  - **Tags**: docs, hooks
+  - **Details**: `docs/hook-protocol.md` does not mention detached-start-needs-watch (round 14, devex).
+  - **Files**: `docs/hook-protocol.md`.
+  - **Output**: docs
+  - **Acceptance**: the doc names the hook, what it blocks and the fix.
+  - **Hypothesis**: hooks missing from the doc drop from 1 to 0.
+  - **Measurement**: `grep -c detached-start-needs-watch docs/hook-protocol.md` is at least 1.
+  - **Success**: count at least 1.
+  - **Pivot**: if 1 or more hooks are missing from the doc again within 30 days, generate the list from `hooks/checks/`.
+  - **Anchor**: Parnas and Clements 1986, "A Rational Design Process" (keep docs current).
+
+- [ ] Fit the goal-judges stop suite in a judge's time budget
+  - **ID**: goal-judges-suite-judge-budget
+  - **Tags**: run-goal, speed
+  - **Details**: The full `goal-judges-before-stop.test.sh` run takes longer than a judge's budget, so judges cannot re-run it (round 14).
+  - **Files**: `hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Output**: code
+  - **Acceptance**: a judge can run the relevant part in under 2 minutes.
+  - **Hypothesis**: suite time for a judge drops from over 5 minutes to under 2.
+  - **Measurement**: `time bash hooks/checks/goal-judges-before-stop.test.sh`.
+  - **Success**: under 2 minutes.
+  - **Pivot**: if it stays above 3 minutes, split the suite into files.
+  - **Anchor**: Forsgren, Humble and Kim 2018, "Accelerate" (fast feedback).
 
 - [ ] run-goal eval 384 lists one follow-up per line
   - **ID**: run-goal-eval-384-one-follow-up-per-line
@@ -825,7 +1145,6 @@
   - **Success**: 6 of 6 when the gate is kept; the workflow file is absent when it is dropped.
   - **Pivot**: fewer than 5 of 6 after the gate is restored means agents do not load the rule; drop the gate.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate: a gate that always fails is ignored; Basili, Caldiera and Rombach (1994), GQM.
-
 
 - [ ] Detect duplicate Ollama servers before they split the local prompt cache
   - **ID**: ollama-single-server-readiness
@@ -1085,7 +1404,6 @@
   - **Success**: the time-span fixture passes and 100% of the existing violation fixtures still fail.
   - **Pivot**: more than 1 real-count fixture passes; then drop the exemption and reword prose instead.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM.
-
 
 ## P3
 
@@ -1352,7 +1670,6 @@
   - **Acceptance**: (a) a substantive RFC-style comment is posted on BOTH #268 and #455 with the 5-case taxonomy and the invariant statement; (b) the comment links to the exact `src/sync/skills-sync.ts` `cleanEntry` reference and explicitly states "not filing a PR"; (c) if any of the 4 open PRs (#609, #611, #869, #944) subsequently merges with a classifier design, close this task with a link to the merge in the commit message; (d) if the queue stays stuck for another 4 weeks post-comment, the escalation comment on #268 asking for architectural direction is posted.
   - **Research**: 2026-10-16 — #268, #455, #606, #609, and #611 are still open; #869 merged but only preserves dotfiles in copied skills; #944 closed. No classifier has landed. Both comment texts are staged in [`docs/audits/skills-cli-268-455-rfc-comment-draft.md`](docs/audits/skills-cli-268-455-rfc-comment-draft.md) with the posting steps; the only remaining step is the approved `gh issue comment`.
   - **Human-approval-required**: external-issue
-
 
 - [ ] Add machine-setup verification cases to third-party skills
   - **ID**: setup-goal-third-party-skill-retro

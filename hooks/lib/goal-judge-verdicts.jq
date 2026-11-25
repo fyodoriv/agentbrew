@@ -98,7 +98,12 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
        elif .type == "queue-operation" then (.content // empty | texts)
        else empty end
      | select(test("<task-notification>"))
-     | {id: ((capture("<tool-use-id>(?<id>[^<]+)</tool-use-id>").id) // ""), text: .} ]) as $notes
+     | {id: ((capture("<tool-use-id>(?<id>[^<]+)</tool-use-id>").id) // ""),
+        task: ((capture("<task-id>(?<t>[^<]+)</task-id>").t) // ""), text: .} ]) as $raw
+# A resumed agent's later notification can carry only its task-id; bind it
+# to the tool-use-id an earlier notification of the same task named.
+| ([ $raw[] | select(.id != "" and .task != "") | {key: .task, value: .id} ] | from_entries) as $task2id
+| ([ $raw[] | .id = (if .id == "" then ($task2id[.task] // "") else .id end) | del(.task) ]) as $notes
 | ($results + $notes | map(select(.id != ""))
    | group_by(.id) | map({key: .[0].id, value: (map(.text) | join("\n"))}) | from_entries) as $outs
 | ("[*_]*GOAL-JUDGE-VERDICT[*_]*[ \t]*\r?\n" + f("Judge") + "[ \t>*_-]*Score[*_]*:[*_ \t]*[0-9]") as $filled
@@ -139,12 +144,15 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
        | (($aid != "" and ($sent | index($aid)) != null)
           or ($call.name != "" and ($sent | index($call.name)) != null))) as $msg
     | ($outs[$id] // "") as $out
-    | (["O", $id, $call.state, $call.model, $call.typeok, (if $msg then "1" else "0" end), ($call.prompt | @base64)] | @tsv),
+    # Tool calls the overseer made, from its usage note ("-" when unknown:
+    # an empty field would collapse in the hook's tab-split read).
+    | ([ $out | scan("<tool_uses>([0-9]+)</tool_uses>|tool_uses:[ \t]*([0-9]+)") | map(select(. != null))[0] ] | last // "-") as $tools
+    | (["O", $id, $call.state, $call.model, $call.typeok, (if $msg then "1" else "0" end), $tools, ($call.prompt | @base64)] | @tsv),
       ( ($out | [splits("GOAL-OVERSEER-VERDICT")] | if length > 1 then last else "" end)
         | ( [ scan("(?m)^[ \t>*_-]*Ruling[ \t]+([A-Za-z0-9_.-]+)[*_]*:[*_ \t]*([0-9]+(?:\\.[0-9]+)?)[ \t]*/[ \t]*10[*_ \t]*(?:[-:\u2013\u2014][ \t]*)?([^\n]*)") ][]
             | (.[2] | gsub("^\\s+|\\s+$"; "")) as $why
             | ["Q", $id, (.[0] | ascii_downcase), .[1],
-               (if ($why | length) >= 2 and ($why | startswith("<") | not) then "1" else "0" end)] | @tsv ),
+               (if ($why | length) >= 2 and ($why | startswith("<") | not) then ($why | length | tostring) else "0" end)] | @tsv ),
           ( [ scan("(?m)^[ \t>*_-]*State:[*_ \t]*([A-Za-z0-9_.-]+)") ][0][0] // ""
             | ["W", $id, .] | @tsv ) ) ),
   ( ($results + $notes)[] | select($agents[.id] != null and ($agents[.id].overseer | not))

@@ -388,7 +388,7 @@
   - **Hypothesis**: open support asks with no owner drop from 1 to 0 once the owner sends the reply.
   - **Measurement**: `grep -c 'openai-support-attachments' TASKS.md` (1 while open; the owner deletes the task after sending, then 0).
   - **Success**: 0 within 7 days.
-  - **Pivot**: if Support answers again without a fix after the attachments, stop and file a new task with their answer.
+  - **Pivot**: if Support sends more than 1 more reply with no fix after the attachments, stop and file a new task with their answer.
   - **Anchor**: Forsgren, Humble, Kim 2018 (MTTR).
 
 - [ ] Judge reports that skip the Blocker or Follow-up labels are caught

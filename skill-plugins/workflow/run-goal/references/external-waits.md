@@ -39,8 +39,10 @@ Do not invent a goal-update tool, edit host storage, or spoof user origin.
 ## Start or reuse an owned wait
 
 1. Read the authoritative CI state once. Identify repository, PR, head SHA,
-   required check/run IDs, run attempt and current status. Apply the existing
-   disabled-CI check first; absent CI cannot become an indefinite wait.
+   required check/run IDs, run attempt and current status. Use the published
+   preview check name. Capture screenshots after it passes on the current
+   head. Apply the existing disabled-CI check first so absent CI cannot
+   become an indefinite wait.
 2. Inspect an existing watcher before starting another. Reuse its accepted
    native task handle or attach a supported wait to its completion. A bare
    PID, queued task record, claimed auto-fix service or timer is not proof

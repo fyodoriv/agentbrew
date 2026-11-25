@@ -55,6 +55,12 @@ for l in "Goal result: partly met: 5 of 5 met" "Goal result: stopped; 5 of 5 met
   "Goal result: not met: 4/4 met"; do
   want claim "$l"
 done
+# A completion claim still counts inside a bracketed reason.
+want claim "Goal result: partly met (5 of 5 met)"
+want claim "Goal result: partly met (all done)"
+want claim "Goal result: not met (merged)"
+want ok "Goal result: not met (tests passed, PR unmerged)"
+
 # The hook's give-up line strips brackets from its cut reason, so a cut
 # inside "family(ies) ( sonnet h" still reads as not met.
 reason="$(printf '%s' 'judges used 2 model family(ies) ( sonnet h' | tr -d '\n()')"

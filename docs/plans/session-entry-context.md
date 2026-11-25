@@ -28,3 +28,12 @@ with a fixed system tool path and a bounded subprocess lifetime. Keep state
 within one hook invocation; create no persistent session or project state.
 The reminder names the configured memory tools; it does not claim that recall
 ran or that a memory service is healthy.
+
+## First fixture result and measurement correction
+
+The missing adapter returned exit 127 in the exclusive queue. The first
+implementation supplied context, but the startup assertion failed. Its clock
+included a second observer interpreter startup. Preserve the one-second
+threshold. Measure the complete hook subprocess from one already-running
+observer and print that interval before deciding whether the adapter is fast
+enough. A failure of that corrected interval still rejects the candidate.

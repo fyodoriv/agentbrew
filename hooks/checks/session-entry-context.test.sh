@@ -16,20 +16,28 @@ invoke() {
 }
 
 payload="$(jq -nc --arg cwd "$fixture/repo/nested" '{hook_event_name:"SessionStart",cwd:$cwd}')"
-start="$(python3 -c 'import time; print(time.monotonic())')"
-result="$(invoke "$payload")"
-python3 - "$result" "$start" <<'PY'
+python3 - "$script" "$fixture/home" "$payload" <<'PY'
 import json
+import os
+import subprocess
 import sys
 import time
-out = sys.argv[1]
+environment = dict(os.environ, HOME=sys.argv[2])
+environment.pop("BASH_ENV", None)
+environment.pop("ENV", None)
+started = time.monotonic()
+result = subprocess.run(["/bin/bash", sys.argv[1]], input=sys.argv[3], env=environment, text=True, capture_output=True, timeout=2)
+elapsed = time.monotonic() - started
+assert result.returncode == 0, result.stderr
+out = result.stdout
 assert len(out.encode()) + 1 <= 2048
 context = json.loads(out)["hookSpecificOutput"]
 assert context["hookEventName"] == "SessionStart"
 text = context["additionalContext"]
 assert "AGENTS.md" in text and "Agentfile.yaml" in text
 assert "get_bootstrap_profile" in text and "memory_search" in text
-assert time.monotonic() - float(sys.argv[2]) < 1, "successful hook exceeded startup budget"
+print(f"successful hook subprocess: {elapsed:.3f}s")
+assert elapsed < 1, "successful hook exceeded startup budget"
 PY
 
 plain="$(jq -nc --arg cwd "$fixture/plain" '{hook_event_name:"SessionStart",cwd:$cwd}')"

@@ -107,16 +107,17 @@ TX_SAVE="$TX"
 TX="$ROOT/bg.jsonl"
 cp "$TX_SAVE" "$TX"
 touch "$RUN_GOAL_STATE_DIR/s4.contract.md"
-bg_launch() { # $1 tool_use id, $2 result text
-  jq -cn --arg i "$1" '{type:"assistant",message:{content:[{type:"tool_use",id:$i,name:"Agent",input:{prompt:"w"}}]}}' >>"$TX"
+bg_launch() { # id, result text, tool, background
+  jq -cn --arg i "$1" --arg tool "${3:-Agent}" --argjson bg "${4:-false}" \
+    '{type:"assistant",message:{content:[{type:"tool_use",id:$i,name:$tool,input:{prompt:"w",run_in_background:$bg}}]}}' >>"$TX"
   jq -cn --arg i "$1" --arg t "$2" '{type:"user",message:{content:[{type:"tool_result",tool_use_id:$i,content:[{type:"text",text:$t}]}]}}' >>"$TX"
 }
 bg_done() {
   jq -cn --arg i "$1" '{type:"user",message:{content:("<task-notification>\n<task-id>x</task-id>\n<tool-use-id>" + $i + "</tool-use-id>\n<status>completed</status>")}}' >>"$TX"
 }
 bg_launch toolu_a "Async agent launched successfully."
-bg_launch toolu_b "Async agent launched successfully."
-bg_launch toolu_c "Command running in background with ID: b1. Output is being written to: /x"
+bg_launch toolu_b "Async agent launched successfully." Task
+bg_launch toolu_c "Command running in background with ID: b1. Output is being written to: /x" Bash true
 expect "three running workers: no retro demanded" 0 "$(run s4)"
 expect "waiting does not count as a block" 0 "$(has s4.stopblocks)"
 bg_done toolu_a
@@ -124,6 +125,13 @@ bg_done toolu_b
 expect "one worker still running allows" 0 "$(run s4)"
 bg_done toolu_c
 expect "all workers done: retro demanded again" 2 "$(run s4)"
+touch "$RUN_GOAL_STATE_DIR/quoted_bash.contract.md"
+bg_launch toolu_quote "The source quotes Async agent launched successfully." Bash
+expect "a Bash result that quotes a launch still requires the retro" 2 "$(run quoted_bash)"
+bg_done toolu_quote
+touch "$RUN_GOAL_STATE_DIR/false_bash.contract.md"
+bg_launch toolu_false "Command running in background with ID: quoted" Bash
+expect "launch-like Bash output without a background request requires the retro" 2 "$(run false_bash)"
 TX="$TX_SAVE"
 
 # Clock goals have a numeric deadline in the session contract. The draft

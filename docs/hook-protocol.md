@@ -410,13 +410,11 @@ retro often passes mid-goal (an earlier version deleted it on the first
 passing Stop, so a goal lost its contract four times in one run and a skill
 used later was no longer checked). The next `/goal` replaces the contract,
 and files older than seven days are removed.
-It also allows, without counting a block, while the goal waits on
-background work: a launch in the transcript ("Async agent launched" or
-"running in background with ID") with no `<tool-use-id>` completion
-notification yet. The retro belongs at the end of the goal, not at each
-turn that only waits on workers. A resumed agent's later notification may
-carry only `<task-id>`; it binds to the `<tool-use-id>` that an earlier
-notification of the same task named, so a resumed judge's verdict counts.
+It also allows, without counting a block, while the goal waits on a worker.
+The hook matches each successful launch result to its Agent, Task, or
+explicitly backgrounded Bash call. The wait ends when a notification names
+that call's `<tool-use-id>`. The judge hook can also link a resumed agent's
+later `<task-id>`-only notice to an earlier notice for the same task.
 
 An earlier version read the transcript instead. Claude Code writes the
 transcript in batches, so a contract printed 6 to 8 seconds earlier was

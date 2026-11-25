@@ -368,28 +368,41 @@
 - [ ] A stuck macOS CI gate stops in time and leaves a log that names the slow step
   - **ID**: ci-macos-gate-overrun
   - **Tags**: ci, reliability, delivery
-  - **Details**: On 2026-11-25 the `verify (macos-latest)` job for PR #1303 sat in `Gate (npm run verify)` for 54 minutes (run 45644193000, job 139310606189; gate started 15:32:29Z, job cancelled 16:26:20Z). The job ran 55 minutes in all (15:31:20Z to 16:26:20Z), so its `timeout-minutes: 45` in `.github/workflows/ci.yml` cancelled it 10 minutes late, and GitHub kept no log (`gh api .../jobs/139310606189/logs` returns HTTP 404 BlobNotFound), so the slow step is unknown. The same day, 14 other macOS jobs ran 2-24 minutes (gate 13-22 minutes when it finished). Fix: give the gate step its own `timeout-minutes` below the job limit, and make the gate print a timestamped line as each sub-step starts and ends, then upload that log as an artifact with `if: always()`, so a cancelled run still shows where time went. Do not raise the timeout. Related: `hook-pr-merge-guard` blocks the merge itself.
+  - **Details**: On 2026-11-25 the `verify (macos-latest)` job for PR #1303 sat in `Gate (npm run verify)` for 54 minutes (run 45644193000, job 139310606189; gate started 15:32:29Z, job cancelled 16:26:20Z). The job ran 55 minutes in all (15:31:20Z to 16:26:20Z), so its `timeout-minutes: 45` in `.github/workflows/ci.yml` cancelled it 10 minutes late, and GitHub kept no log (`gh api .../jobs/139310606189/logs` returns HTTP 404 BlobNotFound), so the slow step is unknown. Before 17:30Z that day, 14 other macOS jobs ran 2-24 minutes (gate 13-22 minutes when it finished); later that day successful macOS jobs ran 28-39 minutes (run 45669049122: 39 minutes), so a step timeout must stay above 39 minutes. Fix: give the gate step its own `timeout-minutes` below the job limit, and make the gate print a timestamped line as each sub-step starts and ends, then upload that log as an artifact with `if: always()`, so a cancelled run still shows where time went. Do not raise the timeout. Related: `hook-pr-merge-guard` blocks the merge itself.
   - **Files**: `.github/workflows/ci.yml`, the gate script behind `npm run verify`, `docs/ci.md`.
   - **Output**: code
   - **Acceptance**: a test run where one gate sub-step sleeps past the step timeout ends with the step cancelled before the job timeout, and the uploaded log artifact names that sub-step with start and end times.
   - **Hypothesis**: macOS jobs that run over 40 minutes and leave no `gate-log` artifact drop from 1 in the 15 runs of 2026-11-25 to 0, because every overrun leaves a sub-step log.
-  - **Measurement**: `for r in $(gh run list --repo fyodoriv/agentbrew --workflow CI --limit 50 --created ">=${SINCE:-2026-11-25}" --json databaseId -q '.[].databaseId'); do long=$(gh api repos/fyodoriv/agentbrew/actions/runs/$r/jobs -q '[.jobs[]|select((.name|test("macos")) and .completed_at and (((.completed_at|fromdate)-(.started_at|fromdate))>2400))]|length'); arts=$(gh api repos/fyodoriv/agentbrew/actions/runs/$r/artifacts -q '[.artifacts[]|select(.name|test("gate-log"))]|length'); [ "$long" -gt 0 ] && [ "$arts" -eq 0 ] && echo "$r"; done | wc -l` (counts macOS jobs over 40 minutes with no `gate-log` artifact). Baseline with `SINCE=2026-11-25`: 1 (run 45644193000). After the fix ships, set `SINCE` to its merge date so the old run no longer counts.
-  - **Success**: 0 such jobs in the next 50 runs, and every over-40-minute job has a log artifact naming its slow sub-step.
+  - **Measurement**: `for r in $(gh run list --repo fyodoriv/agentbrew --workflow CI --limit 50 --created ">=${SINCE:-2026-11-25}" --json databaseId -q '.[].databaseId'); do long=$(gh api repos/fyodoriv/agentbrew/actions/runs/$r/jobs?filter=all -q '[.jobs[]|select((.name|test("macos")) and .completed_at and (((.completed_at|fromdate)-(.started_at|fromdate))>2400))]|length'); arts=$(gh api repos/fyodoriv/agentbrew/actions/runs/$r/artifacts -q '[.artifacts[]|select(.name|test("gate-log"))]|length'); [ "$long" -gt 0 ] && [ "$arts" -eq 0 ] && echo "$r"; done | wc -l` (counts macOS jobs over 40 minutes with no `gate-log` artifact). Baseline with `SINCE=2026-11-25`: 1 (run 45644193000). After the fix ships, set `SINCE` to its merge date so the old run no longer counts.
+  - **Success**: 0 such jobs in runs created on or after the fix's merge date (`SINCE=<merge date>`), and every over-40-minute job has a log artifact naming its slow sub-step.
   - **Pivot**: if the sub-step log adds more than 1 minute to the median macOS gate time, keep only the step timeout and log start/end lines for the top-level gate stages.
   - **Anchor**: GitHub Actions workflow syntax, `jobs.<job_id>.steps[*].timeout-minutes`, https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions; Forsgren, Humble, Kim 2018 (MTTR).
 
 - [ ] OpenAI support gets the Work network screenshot and logs it asked for (user-only step)
   - **ID**: openai-support-attachments
   - **Tags**: support, user-only
-  - **Details**: User-only step: an agent cannot do it. OpenAI Support (Celio) asked for a screenshot of the ChatGPT Work network setting and the app logs, to debug the Work network loss of 2026-11-25. The reply goes by email from the owner's own inbox; the connected Gmail is a different inbox. Steps: open Celio's email, reply with the text in `~/apps/tooling/openai-support-reply-2.txt`, attach `~/apps/tooling/openai-work-network-setting.jpg` and `~/apps/tooling/openai-support-logs-2026-11-25.zip` (logs scanned: no passwords, codes or keys), send. The reply text already has the failure time, the conversation IDs and /feedback ID 10bd583d-5135-4889-a0c5-c509461454dc. Full steps: `~/apps/tooling/openai-support-handoff.md`.
+  - **Details**: User-only step: an agent cannot do it. OpenAI Support (Celio) asked for a screenshot of the ChatGPT Work network setting and the app logs, to debug the Work network loss of 2026-11-25. The reply goes by email from the owner's own inbox; the connected Gmail is a different inbox. Steps: open Celio's email (OpenAI Support, received 2026-11-25, about ChatGPT Work network access), reply with the text in `~/apps/tooling/openai-support-reply-2.txt`, attach `~/apps/tooling/openai-work-network-setting.jpg` and `~/apps/tooling/openai-support-logs-2026-11-25.zip` (logs scanned: no passwords, codes or keys), send. The reply text already has the failure time, the conversation IDs and /feedback ID 10bd583d-5135-4889-a0c5-c509461454dc. Full steps: `~/apps/tooling/openai-support-handoff.md`.
   - **Files**: none in this repo.
   - **Output**: mixed
   - **Acceptance**: the reply with both attachments is in the owner's Sent folder.
   - **Hypothesis**: open support asks with no owner drop from 1 to 0 once the owner sends the reply.
-  - **Measurement**: `grep -c 'openai-support-attachments' TASKS.md` (1 while open; the owner deletes the task after sending, then 0).
+  - **Measurement**: the owner checks the Sent folder for the reply with both attachments (count of such replies: 0 now, 1 when done); then deletes this task, so `grep -c 'openai-support-attachments' TASKS.md` prints 0.
   - **Success**: 0 within 7 days.
   - **Pivot**: if Support sends more than 1 more reply with no fix after the attachments, stop and file a new task with their answer.
   - **Anchor**: Forsgren, Humble, Kim 2018 (MTTR).
+
+- [ ] The macOS overrun metric is cheap and eval 409 has a sibling case
+  - **ID**: ci-overrun-metric-cost
+  - **Tags**: ci, run-goal, evaluation
+  - **Details**: Found 2026-11-25 by the run-goal overseer (round 3). (1) The `ci-macos-gate-overrun` Measurement makes 2 API calls per run (about 100 for 50 runs, 41 s); one jobs call per run with the artifact list only for long jobs is enough. (2) Eval 409 covers a cancelled job with no log; add a sibling eval for a cancelled job that has a log, where the agent should read the log first. (3) Docs give two tasks-md lint commands (`shared-rules.md` without `--require-prereg`, `editing-rules.md` with it); pick one. (4) `skill-plugins/workflow/run-goal/evals/e.tmp` is a tracked empty file from 2026-11-11; delete it.
+  - **Files**: `TASKS.md`, `skill-plugins/workflow/run-goal/evals/evals.json`, `docs/shared-rules.md`, `skill-plugins/workflow/run-goal/evals/e.tmp`.
+  - **Output**: mixed
+  - **Acceptance**: the Measurement prints the same count with about half the API calls; a new eval id exists for the logged-cancel case; one lint command in the docs; `e.tmp` is gone.
+  - **Hypothesis**: API calls per overrun check drop from about 100 to about 50 with the same count.
+  - **Measurement**: `time (SINCE=2026-11-25 bash -c '<the task measurement>')` and count `gh api` calls in it.
+  - **Success**: 60 or fewer calls and the same count.
+  - **Pivot**: if the one-call form misses any job the two-call form finds (more than 0 mismatches), keep two calls.
+  - **Anchor**: GitHub REST API rate limits docs; Forsgren, Humble, Kim 2018.
 
 - [ ] Project entry reports the repository's declared task backend
   - **ID**: context-helper-task-backend-parity

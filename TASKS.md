@@ -353,6 +353,19 @@
 
 ## P1
 
+- [ ] Project entry reports the repository's declared task backend
+  - **ID**: context-helper-task-backend-parity
+  - **Tags**: session-entry, tasks, reliability
+  - **Details**: The global task-backend contract and detect-task-backend skill prefer `Agentfile.yaml`, then `.agents/tasks.config.yaml`, then tasks-md. The context helper still checks `.tasksmd.json` and the presence of `TASKS.md`; its skill contract pins that legacy behavior. The new startup adapter reuses this helper, so the existing mismatch can give an agent the wrong task destination. Reuse the canonical resolver rather than adding another parser. Preserve the startup hook's deadline and do not execute project-owned tools.
+  - **Files**: `templates/scripts/load-project-context.sh`, the load-project-context skill and contract tests, the canonical task-backend resolver.
+  - **Output**: code
+  - **Acceptance**: helper-invocation fixtures agree with the canonical resolver for an Agentfile declaration, the secondary config, no declaration, and conflicting legacy metadata. The startup path stays bounded and never creates a task file.
+  - **Hypothesis**: wrong task destinations shown at project entry drop from one source-confirmed precedence mismatch to zero across the registered descriptor matrix.
+  - **Measurement**: add real helper-invocation cases to `src/skills/load-project-context-contract.test.ts`, then run `npx vitest run src/skills/load-project-context-contract.test.ts` on hosted CI and compare each result with the canonical resolver. Check the startup hook's focused deadline fixture too.
+  - **Success**: zero destination mismatches across all four descriptor cases, zero task-file writes, and required CI passes.
+  - **Pivot**: any mismatch, project-code execution, or startup budget regression rejects the candidate; retain the original contract as unverified rather than inventing another backend parser.
+  - **Anchor**: `templates/AGENTS.md` Task backend; `skill-plugins/dev/detect-task-backend/SKILL.md`; the current helper's legacy backend branch.
+
 - [ ] Judge reports that skip the Blocker or Follow-up labels are caught
   - **ID**: goal-judge-label-check
   - **Tags**: hooks, run-goal, evaluation

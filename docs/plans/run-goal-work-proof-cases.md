@@ -15,3 +15,12 @@ fails the schema, correct the appendix before asking for delivery.
 **Anchor:** [#1296](https://github.com/fyodoriv/agentbrew/issues/1296),
 [#1270](https://github.com/fyodoriv/agentbrew/issues/1270), and
 [#1302](https://github.com/fyodoriv/agentbrew/issues/1302).
+
+## Schema check
+
+The structural comparison passed when eval 409 had two expectations. Hosted
+CI 45665618761 rejected the skill. The validator at
+`src/skills/validate.ts` requires three non-empty checks per case. The
+source-built CLI reproduced the failure before the fix. Run
+`agentbrew skills coverage --ci --threshold 90 --builtins --built-in-skill-root skill-plugins/workflow`
+with the structural comparison to check both schema and preservation.

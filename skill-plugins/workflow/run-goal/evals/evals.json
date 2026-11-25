@@ -4613,6 +4613,7 @@
       "expected_output": "The contract lists absolute paths to existing files and directories, including the worktree and the report file. The judge prompt runs without a judged path missing error.",
       "expectations": [
         "Replaces descriptive labels with absolute paths",
+        "Lists both the changed worktree and the report file for review",
         "Verifies that each judged file or directory exists before prompting the judges"
       ]
     },

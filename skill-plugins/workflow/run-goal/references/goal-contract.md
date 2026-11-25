@@ -36,6 +36,9 @@ Judged paths: <worktrees and output files the judges grade>
 
 ## Rules for good criteria
 
+- **One definition for a milestone.** When the sources define a percentage
+  differently, list the definitions and ask which applies before counting.
+  Then count the full eligible population in the live system of record.
 - **Checkable by a command or an artifact.** "Tests pass" is weak. "`npm test`
   exits 0 and `src/foo.test.ts` has a case for the empty input" is strong.
 - **Outcome, not activity.** "Wrote a fix" is an activity. "The 500 on

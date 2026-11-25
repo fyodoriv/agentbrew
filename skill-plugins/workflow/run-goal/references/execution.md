@@ -150,6 +150,12 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
 - **Setup in a scratch copy can move a machine-wide pointer:** a repo's setup script may rewrite a launcher, a symlink or a registration that the whole machine uses. Before you run setup in a scratch clone, read what it writes outside the clone. After it, re-read where the live command points (its `where` or `which` output) and repair it. In one run a scratch-clone setup repointed the app's launcher, so the live command used an empty data folder for a day.
 - **Old work folders before a removal:** when uncommitted work must go, save it first (a patch and an archive of untracked files, plus any ignored folder its tests need), then compare it with the current main item by item. A larger file on main is not proof that the old work landed. Turn what did not land into a task that describes the work, because the saved copy is local.
 
+For a checkout migration, read the refs just before and after the script.
+Stop on unexplained ref movement. Compare the parked refs and verified
+bundle with the intake list. If a
+scheduled job moved a ref, preserve its old tip from the reflog. Verify
+that a recovery bundle contains that tip before continuing.
+
 ## Skill discovery and command identity
 
 After an install or refresh can change relevant skills, use only operations

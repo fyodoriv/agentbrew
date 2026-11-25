@@ -4571,6 +4571,17 @@
         "Checks the overseer prompt quotes the latest round before launching it",
         "Rebuilds the overseer prompt when its State or a quoted report is from an older round"
       ]
+    },
+    {
+      "id": 407,
+      "prompt": "/goal my chatgpt app broke again with network access. access the app's last 2 work chats and resolve the issue in full",
+      "expected_output": "The agent proves the fix in the real app runtime, not only the CLI: a local config change that passes a CLI sandbox probe but fails an in-app probe is reverted, and the goal is reported blocked on the vendor with the evidence and a workaround.",
+      "expectations": [
+        "Runs a probe inside the real app chat after the app restart, not only the bundled CLI",
+        "Finds which process actually applies the policy (for example a remote exec-server) before more config edits",
+        "Reverts config edits that did not change the in-app result",
+        "Writes probe commands without raw URLs when the app turns URLs into links"
+      ]
     }
   ]
 }

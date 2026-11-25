@@ -168,6 +168,9 @@ account syncing/privacy to bypass that gap.
 For an intended slash command, compare matching live skills and commands.
 `agentbrew commands list --json` identifies the exact winning source and expected
 target readiness; it does not prove the requested current-session invocation.
+After sync, read the exact installed command file before claiming installation.
+If it is missing and the command comes from a plugin copy, refresh that copy,
+rerun sync, and check the installed path again.
 Record evidenced collisions or unknown precedence in Assumptions and Risks.
 Claude skill precedence is host-specific; do not apply it to Codex or cloud hosts.
 Use a real supported route or an authorized source correction, then verify the

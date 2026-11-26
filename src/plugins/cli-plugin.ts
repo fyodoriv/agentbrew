@@ -179,7 +179,7 @@ export function registerPluginCommands(program: Command): void {
     .command("test [dir]")
     .description("Run the core's static checks on a plugin checkout (schema, capabilities, MCP, leak patterns)")
     .action((dir?: string) => {
-      const problems = testPlugin(dir ?? process.cwd());
+      const problems = testPlugin(dir ?? process.cwd(), (warning) => console.warn(`⚠ ${warning}`));
       for (const p of problems) console.error(`✗ ${p}`);
       if (problems.length > 0) process.exitCode = 1;
       else console.log(`${ICON_SUCCESS} plugin test passed`);

@@ -2,10 +2,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fixtureDir } from "../test-utils/plugin-fixture.js";
+import schema from "./agentbrew-plugin.schema.json";
 import { migrateOverlay, scaffoldPlugin, testPlugin } from "./authoring.js";
-import { validateManifest } from "./manifest.js";
+import { readManifest, validateManifest } from "./manifest.js";
 
 function scratch(): string {
   return fixtureDir("plugin-author-");
@@ -62,6 +63,21 @@ describe("plugin test", () => {
     );
   });
 
+  it("reports a legacy catalog declaration without breaking manifest reads", () => {
+    const dir = scratch();
+    writeFileSync(
+      join(dir, "agentbrew-plugin.yaml"),
+      yaml.dump({ schema: 1, name: "example", version: "0.1.0", contributes: { catalog: "catalog-overlay.yaml" } }),
+    );
+    expect(readManifest(dir).contributes).toEqual({ catalog: "catalog-overlay.yaml" });
+    expect(schema.properties.contributes.properties).not.toHaveProperty("catalog");
+    const warn = vi.fn();
+    expect(testPlugin(dir, warn)).toEqual([]);
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      "contributes.catalog is ignored at runtime. Move the entries to supported plugin contributions.",
+    );
+  });
+
   it("reports an invalid manifest instead of throwing", () => {
     const dir = scratch();
     writeFileSync(join(dir, "agentbrew-plugin.yaml"), yaml.dump({ schema: 1, name: "acme" }));
@@ -96,12 +112,13 @@ describe("plugin migrate", () => {
         skills: "skill-plugins/dev",
         commands: "commands",
         memory_packs: "packs/team",
-        catalog: "catalog-overlay.yaml",
       },
     });
+    expect(manifest.contributes).not.toHaveProperty("catalog");
     expect(unmapped).toEqual([
       "sources: git@git.example.com:acme/skills.git (remote source; add it to the catalog instead)",
       "mcp: acme-jira (write mcp/servers.yaml with secret references and a pinned version)",
+      "catalogOverlay: ./catalog-overlay.yaml (map entries to supported plugin contributions)",
       "adapters: ./adapters/desktop (executable adapters are not allowed; needs a declarative mapping)",
       "detect: ./bin/detect.js (detect scripts are not run; use declarative signals)",
     ]);

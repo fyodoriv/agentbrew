@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join, relative, sep } from "node:path";
 import chalk from "chalk";
 import { getStateSources } from "./agentfile.js";
 import { formatItemCounts, getSourceCachePath, indexSource } from "./catalog/index-source.js";
@@ -18,7 +18,7 @@ import { recordSourceSha } from "./skills/skill-versions.js";
 import { requireState, saveState } from "./state.js";
 import { addMcpServer } from "./sync/mcp-sync.js";
 import { loadSharedRules, saveSharedRules } from "./sync/rules-sync.js";
-import type { AgentBrewState, Source, SourceItem } from "./types.js";
+import type { AgentBrewState, SkillSourceDir, Source, SourceItem } from "./types.js";
 import { ICON_SUCCESS } from "./ui/output.js";
 import { expandHome } from "./utils.js";
 
@@ -269,14 +269,34 @@ function registerSkillSourceDir(state: AgentBrewState, sourceUrl: string, items:
   const skillDirs = findSkillParentDirs(cachePath);
   let registered = 0;
   for (const dir of skillDirs) {
-    const dirLabel = dir === cachePath ? label : `${label}-${dir.split("/").slice(-1)[0]}`;
-    if (state.skillSourceDirs.some((d) => d.path === dir || d.label === dirLabel)) continue;
+    if (state.skillSourceDirs.some((entry) => entry.path === dir)) continue;
+    const dirLabel = skillDirectoryLabel(state.skillSourceDirs, label, cachePath, dir);
+    if (!dirLabel) continue;
     state.skillSourceDirs.push({ label: dirLabel, path: dir });
     registered++;
   }
   if (registered > 0) {
     console.log(chalk.dim(`  Registered skill source: ${label} (${skills.length} skills, ${registered} dir(s))`));
   }
+}
+
+function skillDirectoryLabel(
+  sources: SkillSourceDir[],
+  label: string,
+  cachePath: string,
+  directory: string,
+): string | undefined {
+  const preferred = directory === cachePath ? label : `${label}-${basename(directory)}`;
+  const owner = sources.find((entry) => entry.label === preferred);
+  if (!owner) return preferred;
+  if (owner.path !== cachePath && !owner.path.startsWith(cachePath + sep)) return;
+
+  const pathLabel = `${label}-${relative(cachePath, directory).replaceAll(sep, "-")}`;
+  let available = pathLabel;
+  for (let suffix = 2; sources.some((entry) => entry.label === available); suffix++) {
+    available = `${pathLabel}-${suffix}`;
+  }
+  return available;
 }
 
 /** Find directories within a repo that directly contain skill subdirectories (dirs with SKILL.md). */

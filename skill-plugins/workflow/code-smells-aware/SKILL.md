@@ -282,6 +282,9 @@ real users. The high-weight ones to internalize:
 
 ## Verify command
 
+Follow the repository's verification policy. When the gate runs only on hosted
+CI, read the result for the exact revision there.
+
 The `fyodoriv/code-smells` repo was archived on 2026-11-18. This skill now
 lives in agentbrew. The npm package is frozen at `0.2.11`, so always pin it.
 If `npx` cannot fetch it (offline, registry blocked), fall back to the repo's

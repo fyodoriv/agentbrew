@@ -230,6 +230,10 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
 
 ## 3. Iterate the work
 
+For replies that require a fact judge, run that judge again on any text
+you change before posting. Match the posted text to the judged version
+and the exact scope the operator approved.
+
 - Do not change the judged paths while judges run: a judge that re-reads a
   half-edited file reports garbage. Point `Judged paths:` at a checkout you
   leave alone (for example the merged `main`), and fix in another worktree.

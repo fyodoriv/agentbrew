@@ -153,5 +153,39 @@ re="$(grep -oE "/\^\[#\*_ >-\]\*[^/]*Path to 8:/" "$OV" | head -1)"
 for h in '### 5. Path to 8:' '**Path to 8:**' '## Path to 8:' '- **Path to 8:**' 'Path to 8:'; do
   if [ -n "$re" ] && printf '%s\n' "$h" | awk "$re {f=1} END {exit !f}"; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: promise heading '$h' is not matched"; fi
 done
+# The judge and overseer present only the frozen paths after an edit.
+paths_root="$(mktemp -d "${TMPDIR:-/tmp}/goal-paths.XXXXXX")"
+trap 'rm -rf "$paths_root"' EXIT
+printf '%s\n' 'Verify the original work.' >"$paths_root/frozen.owner.md"
+printf '%s\n' 'Rubric line.' >"$paths_root/ja.md"
+printf '%s\n' 'Judges: ja' "Judged paths: $paths_root/original" >"$paths_root/frozen.contract.md"
+paths_token=gs2-fixture
+GOAL_STATE_TOKEN="$paths_token" bash "$PROMPT_SH" "$paths_root/frozen.contract.md" ja "$paths_root" \
+  >"$paths_root/initial.out" 2>"$paths_root/initial.err"
+printf '%s\n' 'Judges: ja' "Judged paths: $paths_root/edited" >"$paths_root/frozen.contract.md"
+GOAL_STATE_TOKEN="$paths_token" bash "$PROMPT_SH" "$paths_root/frozen.contract.md" ja "$paths_root" \
+  >"$paths_root/judge.out" 2>"$paths_root/judge.err"
+encoded_report="$(printf '%s' 'Score: 8/10' | base64 | tr -d '\n')"
+printf 'J\tcall\tja\t%s\t%s\n' "$paths_token" "$encoded_report" |
+  GOAL_STATE_TOKEN="$paths_token" RUN_GOAL_JUDGE_DIR="$paths_root" bash "$OV" "$paths_root/frozen.contract.md" - \
+    >"$paths_root/overseer.out"
+
+for prompt_file in "$paths_root/judge.out" "$paths_root/overseer.out"; do
+  has "the prompt uses the frozen path" "$prompt_file" "- $paths_root/original"
+  if ! grep -qF "$paths_root/edited" "$prompt_file" && [ "$(grep -c '^Judged paths:$' "$prompt_file")" = 1 ]; then
+    PASS=$((PASS + 1))
+  else
+    FAIL=$((FAIL + 1))
+    echo "  FAIL: $(basename "$prompt_file") shows the edited path or an extra path list"
+  fi
+done
+if [ ! -s "$paths_root/initial.err" ] &&
+   [ "$(wc -l <"$paths_root/judge.err" | tr -d ' ')" = 1 ] &&
+   grep -qF "$paths_root/frozen.paths" "$paths_root/judge.err"; then
+  PASS=$((PASS + 1))
+else
+  FAIL=$((FAIL + 1))
+  echo "  FAIL: only the edit should warn once and name the frozen path file"
+fi
 echo "goal-judge-claims: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

@@ -232,6 +232,52 @@ describe("remove", () => {
     expect(vi.mocked(saveState)).toHaveBeenCalledWith(expect.objectContaining({ commandSourceDirs: [keep] }));
   });
 
+  describe("an exact registered command-source path", () => {
+    const source = { label: "fixture", path: "/fixture/source/commands", origin: "agentfile" as const };
+    const neighbor = { label: "fixture", path: "/fixture/other/commands", origin: "agentfile" as const };
+
+    beforeEach(() => {
+      mockLoadState.mockReturnValue(makeState({ commandSourceDirs: [source, neighbor] }));
+    });
+
+    it("drops only the matching registration", async () => {
+      const previousExitCode = process.exitCode;
+      try {
+        await remove(source.path, { yes: true });
+        expect(vi.mocked(saveState)).toHaveBeenCalledWith(expect.objectContaining({ commandSourceDirs: [neighbor] }));
+        expect(mockClean).not.toHaveBeenCalled();
+      } finally {
+        process.exitCode = previousExitCode;
+      }
+    });
+
+    it("previews the same path without writing state", async () => {
+      const previousExitCode = process.exitCode;
+      try {
+        await remove(source.path, { dryRun: true });
+        expect(console.log).toHaveBeenCalledWith(expect.stringContaining("Would remove command source"));
+        expect(console.log).toHaveBeenCalledWith(expect.stringContaining(source.path));
+        expect(vi.mocked(saveState)).not.toHaveBeenCalled();
+        expect(mockClean).not.toHaveBeenCalled();
+      } finally {
+        process.exitCode = previousExitCode;
+      }
+    });
+
+    it("keeps the registration when the confirmation is declined", async () => {
+      const previousExitCode = process.exitCode;
+      try {
+        mockConfirm.mockResolvedValue(false);
+        await remove(source.path);
+        expect(mockConfirm).toHaveBeenCalledOnce();
+        expect(vi.mocked(saveState)).not.toHaveBeenCalled();
+        expect(mockClean).not.toHaveBeenCalled();
+      } finally {
+        process.exitCode = previousExitCode;
+      }
+    });
+  });
+
   it("removing a built-in command turns built-in commands off first, so the follow-up sync does not put it back", async () => {
     mockLoadState.mockReturnValue(makeState());
     mockDetectItemTypes.mockReturnValue(["command"]);

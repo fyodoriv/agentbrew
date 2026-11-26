@@ -1,4 +1,3 @@
-
 # Unregister a command source by its path
 
 [Issue #905](https://github.com/fyodoriv/agentbrew/issues/905) reports

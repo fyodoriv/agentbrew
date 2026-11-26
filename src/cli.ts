@@ -136,15 +136,15 @@ function configureProgramRoot(program: Command): void {
     })
     .hook("preSubcommand", (_thisCommand, subcommand) => {
       const isJson = process.argv.includes("--json");
+      const subcommandName = subcommand.name();
       const childToken = _thisCommand.args[1];
-      const nestedCommand =
-        subcommand.name() === "env"
-          ? subcommand.commands.find(
-              (command) => command.name() === childToken || command.aliases().includes(childToken),
-            )
-          : undefined;
-      if (!isJson && subcommand.name() !== "sync") {
-        printMotd(subcommand.name(), nestedCommand?.name() === "sanitize" ? console.error : console.log);
+      const nestedCommand = subcommand.commands.find(
+        (command) => command.name() === childToken || command.aliases().includes(childToken),
+      );
+      const route = `${subcommandName} ${nestedCommand?.name() ?? ""}`;
+      const dataOnStdout = route === "env sanitize" || route === "plugin migrate";
+      if (!isJson && subcommandName !== "sync") {
+        printMotd(subcommandName, dataOnStdout ? console.error : console.log);
       }
     })
     .configureHelp({

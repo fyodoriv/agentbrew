@@ -805,7 +805,7 @@
   - **Output**: code
   - **Hypothesis**: Routing migration's status line to stderr makes the full stdout parse as one manifest and keeps operational warnings visible.
   - **Measurement**: Run `npm exec -- vitest run src/plugins/migration-output.test.ts` on hosted CI. The fixture invokes the real CLI entry with synthetic state and parses the full output with the YAML reader.
-  - **Success**: 1 parseable manifest, 0 startup lines on migration stdout, and 1 visible unmapped-overlay receipt on stderr. The ordinary plugin control keeps its startup line on stdout.
+  - **Success**: 1 parseable manifest and 1 visible unmapped-overlay receipt on stderr. The migration stdout startup-line count is 0. The ordinary plugin control keeps its startup line on stdout.
   - **Pivot**: Stop if any existing plugin command's output stream changes, or if stderr loses a migration warning.
   - **Anchor**: The active CLI generated output that failed YAML parsing at line 3. The [root command output hook at 110544b4](https://github.com/fyodoriv/agentbrew/blob/110544b4bb2c19df4048211864c0161000db0417/src/cli.ts#L137-L149) shows where it prints startup status.
 

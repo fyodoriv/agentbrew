@@ -101,6 +101,7 @@ import {
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import { catalogRuleDrift } from "./catalog/install-other.js";
 import { loadSyncErrors } from "./core/errors.js";
 import { readDesktopMcpFailures } from "./drift-checks/claude-desktop-mcp.js";
@@ -136,6 +137,24 @@ beforeEach(() => {
 });
 
 describe("status", () => {
+  it("lists both registered skill folders in verbose status", async () => {
+    mockLoadState.mockReturnValue({ agents: [], sources: [], mcpServers: [], catalogVersion: "0.1.0" });
+    mockGetSkillSources.mockReturnValue([
+      { label: "mixed-skills", path: "/tmp/mixed/skills", scanner: (path) => [join(path, "first")] },
+      { label: "mixed-.agents-skills", path: "/tmp/mixed/.agents/skills", scanner: (path) => [join(path, "second")] },
+    ]);
+
+    try {
+      await status({ verbose: true });
+
+      const output = stripVTControlCharacters(vi.mocked(console.log).mock.calls.flat().join("\n"));
+      expect(output).toContain("mixed-skills: first");
+      expect(output).toContain("mixed-.agents-skills: second");
+    } finally {
+      mockGetSkillSources.mockReturnValue([]);
+    }
+  });
+
   it("shows known MCP checkout lag in verbose status", async () => {
     mockLoadState.mockReturnValue({ agents: [], sources: [], mcpServers: [], catalogVersion: "0.1.0" });
     vi.mocked(knownGitCheckoutLag).mockReturnValueOnce([{ name: "fixture", behind: 2 }]);

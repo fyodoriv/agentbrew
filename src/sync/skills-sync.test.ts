@@ -45,6 +45,7 @@ vi.mock("../state.js", () => ({
   saveState: vi.fn(),
 }));
 
+import * as sourceIndex from "../catalog/index-source.js";
 import { loadState } from "../state.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import {
@@ -189,6 +190,41 @@ describe("syncSkills", () => {
     expect(existsSync(join(claudeSkillsDir, "installed-skill"))).toBe(true);
     expect(existsSync(join(claudeSkillsDir, "available-only"))).toBe(false);
     expect(existsSync(join(claudeSkillsDir, "legacy-skill"))).toBe(true);
+  });
+
+  it("deploys selected skills from both folders of a tracked remote source", async () => {
+    const cache = join(testDir, "remote");
+    const standard = join(cache, "skills");
+    const alternate = join(cache, ".agents", "skills");
+    createSkill(standard, "first");
+    createSkill(alternate, "second");
+    createSkill(alternate, "unselected");
+    vi.spyOn(sourceIndex, "getSourceCacheDir").mockReturnValue(cache);
+    mockLoadState.mockReturnValue({
+      agents: [],
+      sources: [
+        {
+          url: "example/mixed",
+          type: "github",
+          skillsInstalled: ["first", "second"],
+          availableItems: [],
+          addedAt: new Date().toISOString(),
+        },
+      ],
+      mcpServers: [],
+      catalogVersion: "0.1.0",
+      skillSourceDirs: [
+        { label: "mixed-skills", path: standard },
+        { label: "mixed-.agents-skills", path: alternate },
+      ],
+    });
+
+    const result = await syncSkills({ quiet: true });
+
+    expect(result.bySource).toMatchObject({ "mixed-skills": 1, "mixed-.agents-skills": 1 });
+    expect(readlinkSync(join(claudeSkillsDir, "first"))).toBe(join(standard, "first"));
+    expect(readlinkSync(join(claudeSkillsDir, "second"))).toBe(join(alternate, "second"));
+    expect(existsSync(join(claudeSkillsDir, "unselected"))).toBe(false);
   });
 
   it("respects source priority (tasks.md > agentbrew > minsky)", async () => {

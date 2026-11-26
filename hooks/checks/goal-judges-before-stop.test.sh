@@ -443,6 +443,32 @@ jq -cn --arg t "$note" '{type:"user",message:{content:$t}}' >>"$ROOT/notify.json
 calibrate notify jc 8.5
 expect "a background judge's attachment notification counts once" 0 "$(run notify RUN_GOAL_JUDGE_MODELS=1)"
 
+goal fullreport "Goal result: met (3/3 met)"; st="$(token fullreport)"
+judge fullreport ja 9; judge fullreport jb 9
+call fullreport Agent fulljudge "fable" "$(prompt fullreport jc)" '{"run_in_background":true}'
+result fullreport fulljudge "Async agent launched successfully."
+cp "$ROOT/fullreport.jsonl" "$ROOT/report-late.jsonl"
+full="$(REPORT='Rubric: reproduced the output and checked the small cases.' block_text jc 9 "$st")"
+note="<task-notification><tool-use-id>fulljudge</tool-use-id><result>$full</result></task-notification>"
+full_row="$(jq -cn --arg t "$note" '{type:"attachment",attachment:{type:"queued_command",prompt:$t}}')"
+printf '%s\n' "$full_row" >>"$ROOT/fullreport.jsonl"
+GOAL_STATE_TOKEN="$st" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/fullreport.contract.md" "$ROOT/fullreport.jsonl" >"$ROOT/fullreport.before"
+check "the full judge report has its rubric" grep -Fq 'Rubric: reproduced the output' "$ROOT/fullreport.before"
+short="$(REPORT='Done.' block_text jc 9 "$st")"
+note="<task-notification><tool-use-id>fulljudge</tool-use-id><result>$short</result></task-notification>"
+short_row="$(jq -cn --arg t "$note" '{type:"user",message:{content:$t}}')"
+printf '%s\n' "$short_row" >>"$ROOT/fullreport.jsonl"
+GOAL_STATE_TOKEN="$st" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/fullreport.contract.md" "$ROOT/fullreport.jsonl" >"$ROOT/fullreport.same"
+check "a short duplicate verdict keeps the full judge report" cmp -s "$ROOT/fullreport.before" "$ROOT/fullreport.same"
+changed="$(REPORT='This longer note gives a different score and cannot replace the report for the first verdict.' block_text jc 10 "$st")"
+note="<task-notification><tool-use-id>fulljudge</tool-use-id><result>$changed</result></task-notification>"
+jq -cn --arg t "$note" '{type:"user",message:{content:$t}}' >>"$ROOT/fullreport.jsonl"
+GOAL_STATE_TOKEN="$st" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/fullreport.contract.md" "$ROOT/fullreport.jsonl" >"$ROOT/fullreport.changed"
+check "a notification with a different score keeps the report for the first verdict" cmp -s "$ROOT/fullreport.before" "$ROOT/fullreport.changed"
+printf '%s\n' "$short_row" "$full_row" >>"$ROOT/report-late.jsonl"
+GOAL_STATE_TOKEN="$st" bash "$OVERSEER_SH" "$RUN_GOAL_STATE_DIR/fullreport.contract.md" "$ROOT/report-late.jsonl" >"$ROOT/fullreport.late"
+check "a more detailed copy of the same verdict supplies the report" cmp -s "$ROOT/fullreport.before" "$ROOT/fullreport.late"
+
 goal tkjudge "Goal result: met (3/3 met)"; st="$(token tkjudge)"; judge tkjudge ja 9 sonnet; judge tkjudge jb 9
 call tkjudge Agent bgres "haiku" "$(prompt tkjudge jc)" '{"run_in_background":true}'
 result tkjudge bgres "Async agent launched successfully. agentId: tkres"

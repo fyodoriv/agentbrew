@@ -837,19 +837,6 @@
   - **Pivot**: if the warning breaks 1 or more prompt-equality fixtures, write it to a log file instead.
   - **Anchor**: Nielsen 1994, "Usability Engineering" (visibility of system status).
 
-- [ ] The overseer prompt quotes each judge's full report, not a later short note
-  - **ID**: goal-overseer-full-report
-  - **Tags**: run-goal, overseer, bug
-  - **Details**: Round 15 of the 2026-11-24 follow-up goal: a judge that finishes its own background work sends a second short notification with the same verdict. The overseer prompt takes the latest report, so it quotes the short note and drops the full report with its rubric lines.
-  - **Files**: `hooks/lib/goal-overseer-prompt.sh`, `hooks/lib/goal-judge-verdicts.jq`, their test.
-  - **Output**: code
-  - **Acceptance**: a fixture with a full report then a short note from one judge on one state yields an overseer prompt that holds the full report's rubric text.
-  - **Hypothesis**: overseer prompts missing a judge's rubric lines drop from 3 of 3 judges in round 15 to 0.
-  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` (new fixture greps for the full report's rubric line).
-  - **Success**: fixture passes; 0 failed.
-  - **Pivot**: if 1 or more same-state re-roll fixtures fail, keep the longest report per judge and state instead.
-  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (judges need the full evidence).
-
 - [ ] The exit-141 fixture also checks the overseer prompt is not empty
   - **ID**: goal-overseer-141-output-check
   - **Tags**: run-goal, overseer, test

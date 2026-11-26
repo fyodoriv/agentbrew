@@ -367,7 +367,9 @@ verdict. A plain criterion such as "At least 3 judges read the README" stays
 in the prompt. After the judges, one overseer Agent call per state must run, on a
 family other than the runner's, with the exact output of
 `goal-overseer-prompt.sh` (it quotes each judge's report from the
-transcript). Its `Ruling <judge>: N/10` lines set each effective score,
+transcript). When one judge call repeats the same verdict, the prompt keeps
+the copy with the most report text. The first verdict still sets the score.
+Its `Ruling <judge>: N/10` lines set each effective score,
 clamped to 2 points from the judge's own; each ruling needs a one-line
 reason, and the verdict's `State:` must be the current token. A second
 overseer on one state is a re-roll. Judges and the overseer work to a

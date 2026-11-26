@@ -17,6 +17,11 @@ agentbrew install vercel-labs/agent-skills      # add a GitHub repo as source
 agentbrew install react-best-practices         # install from that source
 ```
 
+A Git source can put skills in top-level `.agents/skills/<name>/SKILL.md`.
+Agentbrew indexes them and can install each skill by its frontmatter name.
+When another recognized layout already provides the same name, Agentbrew
+keeps that existing match.
+
 ## Global vs local install
 
 Skills can be installed at two scopes:

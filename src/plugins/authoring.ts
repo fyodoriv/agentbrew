@@ -55,8 +55,8 @@ export function scaffoldPlugin(dir: string, name: string): void {
   );
 }
 
-/** Every problem the core would refuse in this plugin checkout. Empty means it passes. */
-export function testPlugin(dir: string): string[] {
+/** Problems the plugin author can fix before release. Empty means it passes. */
+export function testPlugin(dir: string, warn?: (message: string) => void): string[] {
   let manifest: PluginManifest;
   try {
     const parsed = yaml.load(readFileSync(join(dir, MANIFEST_FILE), "utf-8"));
@@ -67,6 +67,9 @@ export function testPlugin(dir: string): string[] {
     return [`manifest cannot be read: ${e instanceof Error ? e.message : String(e)}`];
   }
   const problems: string[] = [];
+  if (manifest.contributes?.catalog !== undefined) {
+    warn?.("contributes.catalog is ignored at runtime. Move the entries to supported plugin contributions.");
+  }
   const guard = (fn: () => string[]) => {
     try {
       problems.push(...fn());
@@ -116,7 +119,6 @@ function mapContributions(agentfile: Agentfile, unmapped: string[]): Record<stri
   if (commands[0]) contributes.commands = rel(commands[0]);
   const packs = strings(agentfile.memoryPacks);
   if (packs[0]) contributes.memory_packs = rel(packs[0]);
-  if (typeof agentfile.catalogOverlay === "string") contributes.catalog = rel(agentfile.catalogOverlay);
   return contributes;
 }
 
@@ -124,6 +126,9 @@ function mapContributions(agentfile: Agentfile, unmapped: string[]): Record<stri
 function listUnsupported(agentfile: Agentfile, mcpNames: string[], unmapped: string[]): void {
   for (const n of mcpNames) {
     unmapped.push(`mcp: ${n} (write mcp/servers.yaml with secret references and a pinned version)`);
+  }
+  if (typeof agentfile.catalogOverlay === "string") {
+    unmapped.push(`catalogOverlay: ${agentfile.catalogOverlay} (map entries to supported plugin contributions)`);
   }
   for (const a of strings(agentfile.adapters)) {
     unmapped.push(`adapters: ${a} (executable adapters are not allowed; needs a declarative mapping)`);

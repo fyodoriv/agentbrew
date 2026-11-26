@@ -482,19 +482,6 @@
   - **Pivot**: if the message logic adds more than 0.2 s per Stop, move it into `hooks/lib/` with its own test.
   - **Anchor**: Nielsen 1994, usability heuristics (error messages).
 
-- [ ] Honest goal-result lines with ordinary punctuation are allowed
-  - **ID**: goal-claim-honest-punctuation
-  - **Tags**: hooks, run-goal
-  - **Details**: Found 2026-11-23, judge rounds 5 and 6. These honest lines read as claims: apostrophes ("blocked on the owner's 2FA code"), "blocked on PR #12", colon text ("not met: owner approval needed"), ranges ("criteria 1-3 met"), and a bare score as a reason ("partly met; judges scored 6/10"). Each costs one of 5 blocks.
-  - **Files**: `hooks/checks/goal-judges-before-stop.sh` (CLAIM_AWK), `hooks/checks/goal-judge-claims.test.sh`.
-  - **Output**: code
-  - **Acceptance**: each line above allows, and every current claim case still blocks.
-  - **Hypothesis**: honest lines that block drop from 5 reproduced to 0.
-  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
-  - **Success**: 0 failed with the 5 new honest cases.
-  - **Pivot**: if any widening lets a current claim case through, keep the line blocked and improve the hint instead.
-  - **Anchor**: Nygard 2018, "Release It!" (fail-safe defaults).
-
 - [ ] Newcomers can find the goal contract and judge docs from the error alone
   - **ID**: goal-judge-newcomer-docs
   - **Tags**: hooks, run-goal

@@ -9,6 +9,10 @@ running anything. Print the project type and exact gate selected. Prefer its
 own documented gate (`verify`, `check`, `lint:ci`, `make check`, a gate script)
 over a bare linter or a guessed list of commands. Never install tools or alter
 source just to make verification green without the user's task authorizing it.
+If the project runs its gate only on hosted CI, find the run for the exact
+revision and wait for it with `gh run watch <run-id> --exit-status`.
+If you waited in the background, read the completed run again with that
+command in the foreground so the verification hook can see its result.
 
 ## Select the gate
 

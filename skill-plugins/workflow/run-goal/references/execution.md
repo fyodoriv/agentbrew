@@ -354,6 +354,16 @@ start it again after the edits; never report its result for the new code.
   session (worktree, PR, merge), not filed as a task. A memory saying the
   sandbox blocks the repo is a claim: try the write first.
 
+## Outgoing message scope
+
+Send only when the governing rules allow it. Approval covers only the
+message, recipients, and destination the user named. Follow-ups, nudges, and
+pings need their own approval. A retry never expands that scope. If a retry
+follows an uncertain send result, verify what happened before attempting
+the same send again. If delivery is still unknown, keep the retry pending.
+If a sent message needs a correction, leave the sent message as it is and
+write a new draft for the user to review.
+
 ## Mid-goal changes
 
 - A new request from the user mid-goal joins the goal: add it to the
@@ -363,9 +373,8 @@ start it again after the edits; never report its result for the new code.
   and stop all work on it.
   A request to remove something also gets a guard test that fails if it
   comes back (code, config and docs). Do not start a separate session for it unless the user asks.
-  A new rule mid-goal also covers what you already did in this run: fix
-  your past output too (for example, merge your back-to-back replies into
-  one).
+  Apply a new mid-goal rule to earlier work where the governing rules
+  permit edits. For sent messages, follow [Outgoing message scope](#outgoing-message-scope).
 - Your own measurement can disprove a suggestion you adopted in the
   contract (a what-if model shows it costs more). First check the model
   against a figure the app or tool itself prints. Then mark the suggestion

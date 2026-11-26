@@ -104,11 +104,18 @@ describe("optional judged delivery safeguards", () => {
   });
 
   it("offers the catalog install through both Agentbrew start paths", () => {
-    const docs = ["commands/agentbrew.md", "skill-plugins/dev/agentbrew-status/SKILL.md"];
-    for (const doc of docs) {
-      const instructions = readFileSync(join(process.cwd(), doc), "utf-8");
-      expect(instructions).toContain("`agentbrew install chat-drafts-only`");
+    const command = readFileSync(join(process.cwd(), "commands/agentbrew.md"), "utf-8");
+    const skillRoot = join(process.cwd(), "skill-plugins/dev/agentbrew-status");
+    const skill = readFileSync(join(skillRoot, "SKILL.md"), "utf-8");
+    const setupPath = "references/setup-overview.md";
+    expect(skill).toContain(`](${setupPath})`);
+    const setup = readFileSync(join(skillRoot, setupPath), "utf-8");
+
+    expect(command).toContain("`agentbrew install chat-drafts-only`");
+    expect(skill).toContain("`agentbrew install chat-drafts-only`");
+    for (const instructions of [command, setup]) {
       expect(instructions).toContain("`agentbrew install status-footer`");
+      expect(instructions).toContain("`agentbrew sync --only rules`");
     }
   });
 

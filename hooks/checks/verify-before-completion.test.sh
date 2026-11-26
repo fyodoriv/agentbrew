@@ -76,14 +76,15 @@ assert_exit_code "Test 8 (MINSKY_PIPELINE → bypass)" 0 "$T8"
 
 check_result() {
   local label="$1" expected="$2" command="$3" result_id="${4:-}" error="${5:-false}" output="${6:-All checks passed}"
-  local transcript="$TMP/result.jsonl" call
+  local transcript="$TMP/result.jsonl" call input
   call="$(jq -cn --arg cmd "$command" '{message:{content:[{type:"tool_use",name:"Bash",id:"test",input:{command:$cmd}}]}}')"
   printf '%s\n' "$EDIT_TS" "$call" > "$transcript"
   if [ -n "$result_id" ]; then
     jq -cn --arg id "$result_id" --argjson error "$error" --arg output "$output" \
       '{message:{content:[{type:"tool_result",tool_use_id:$id,is_error:$error,content:$output}]}}' >> "$transcript"
   fi
-  assert_exit_code "$label" "$expected" "$(run_hook "{\"hook_event_name\":\"Stop\",\"transcript_path\":\"$transcript\"}")"
+  input="$(jq -cn --arg transcript "$transcript" '{hook_event_name:"Stop",transcript_path:$transcript}')"
+  assert_exit_code "$label" "$expected" "$(run_hook "$input")"
 }
 
 check_result "a refused test gives no verification" 2 "npx vitest run" test true "PreToolUse hook refused the command"

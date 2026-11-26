@@ -172,14 +172,15 @@ describe("addSource", () => {
     expect((saved.sources ?? [])[0]).toMatchObject({ bootstrapScript: "scripts/bootstrap.sh" });
   });
 
-  it("keeps both skill folders from one source without changing an existing label or selection", async () => {
+  it.each(["single", "mixed", "other source"])("preserves skill labels and selection for %s", async (layout) => {
     const url = "example/mixed";
     const cache = "/tmp/example-mixed-cache";
     const standard = `${cache}/skills`;
     const alternate = `${cache}/.agents/skills`;
+    const priorPath = layout === "other source" ? `${cache}-peer/skills` : standard;
     const state = {
       ...makeState(),
-      skillSourceDirs: [{ label: "mixed-skills", path: standard }],
+      skillSourceDirs: [{ label: "mixed-skills", path: priorPath }],
     };
     state.sources.push({
       url,
@@ -189,7 +190,7 @@ describe("addSource", () => {
       addedAt: "2026-01-01T00:00:00Z",
     });
     const folders = new Map([
-      [cache, [".agents", "skills"]],
+      [cache, layout === "single" ? ["skills"] : [".agents", "skills"]],
       [`${cache}/.agents`, ["skills"]],
       [standard, ["chosen"]],
       [alternate, ["available"]],
@@ -209,9 +210,9 @@ describe("addSource", () => {
     try {
       await addSource(url, {});
 
-      expect(state.skillSourceDirs.map(({ path }) => path)).toEqual([standard, alternate]);
-      expect(state.skillSourceDirs[0].label).toBe("mixed-skills");
-      expect(new Set(state.skillSourceDirs.map(({ label }) => label)).size).toBe(2);
+      const expected = [{ label: "mixed-skills", path: priorPath }];
+      if (layout === "mixed") expected.push({ label: "mixed-.agents-skills", path: alternate });
+      expect(state.skillSourceDirs).toEqual(expected);
       expect(state.sources[0].skillsInstalled).toEqual(["chosen"]);
 
       const registered = state.skillSourceDirs.map((dir) => ({ ...dir }));

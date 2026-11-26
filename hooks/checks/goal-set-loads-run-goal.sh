@@ -36,8 +36,8 @@
 # **State** (session-file scope): when it adds context, this hook writes
 # `<state dir>/<session_id>.pending` and names `<session_id>.contract.md` in
 # the context, so goal-contract-before-edit can hold file edits until the
-# contract is saved there. `/goal clear` (and its aliases) deletes both
-# files; contract files older than seven days are deleted here. See
+# contract is saved there. A new goal or `/goal clear` removes the prior
+# goal's frozen paths file. This hook also prunes old contract files. See
 # goal-contract-before-edit.sh for the rest of the lifecycle.
 
 set -euo pipefail
@@ -78,7 +78,7 @@ CONDITION="${CONDITION%"${CONDITION##*[![:space:]]}"}"
 case "$(printf '%s' "$CONDITION" | tr '[:upper:]' '[:lower:]')" in
   "" | clear | stop | off | reset | none | cancel)
     if [ -n "$SESSION_ID" ] && [ -n "$CONDITION" ]; then
-      rm -f "$STATE_DIR/$SESSION_ID.pending" "$STATE_DIR/$SESSION_ID.contract.md" "$STATE_DIR/$SESSION_ID.stopblocks" "$STATE_DIR/$SESSION_ID.judgeblocks" "$STATE_DIR/$SESSION_ID.judgewaits" "$STATE_DIR/$SESSION_ID.owner.md"
+      rm -f "$STATE_DIR/$SESSION_ID.pending" "$STATE_DIR/$SESSION_ID.contract.md" "$STATE_DIR/$SESSION_ID.stopblocks" "$STATE_DIR/$SESSION_ID.judgeblocks" "$STATE_DIR/$SESSION_ID.judgewaits" "$STATE_DIR/$SESSION_ID.paths" "$STATE_DIR/$SESSION_ID.owner.md"
     fi
     verdict_allow "$HOOK_ID" "goal cleared or status"
     ;;
@@ -114,7 +114,7 @@ fi
 CONTEXT="A goal was just set with /goal. Before any other work, load the run-goal skill (Skill tool, name run-goal) and follow it in order. After read-only intake, your first message is the goal contract (done-when criteria with proof, metric with baseline, success and pivot, suggestions); make no edit before it is in the chat.$SAVE_STEP Then ask at most one round of questions. Before execution, create a plan artifact in outputs; update the same artifact at each milestone and reuse it on resume. For private data or unavailable output tools, use a private local report and state the limitation. Work without interruptions until the goal is met or hopelessly blocked, print a Goal check line with evidence for each criterion, and finish with the final report, the retro, and updates to the skills you used. The goal is met only when three expert judges each score the final state 8/10 or more: name them in the contract (Judges: and Judged paths: lines, from the cache ~/.config/agentbrew/goal-judges) and run them last: one fresh-context Agent call per judge whose prompt is the unchanged output of bash $__HOOK_LIB_DIR/goal-judge-prompt.sh <contract path> <judge id>; follow run-goal references/goal-judges.md.$RETRO_STEP"
 
 if [ -n "$SESSION_ID" ] && mkdir -p "$STATE_DIR" 2>/dev/null; then
-  rm -f "$STATE_DIR/$SESSION_ID.contract.md" "$STATE_DIR/$SESSION_ID.retro.md" "$STATE_DIR/$SESSION_ID.stopblocks" "$STATE_DIR/$SESSION_ID.judgeblocks" "$STATE_DIR/$SESSION_ID.judgewaits"
+  rm -f "$STATE_DIR/$SESSION_ID.contract.md" "$STATE_DIR/$SESSION_ID.retro.md" "$STATE_DIR/$SESSION_ID.stopblocks" "$STATE_DIR/$SESSION_ID.judgeblocks" "$STATE_DIR/$SESSION_ID.judgewaits" "$STATE_DIR/$SESSION_ID.paths"
   : >"$STATE_DIR/$SESSION_ID.pending" 2>/dev/null || true
   # The owner's words for the judge prompts; goal-judges-before-stop
   # rewrites this file from the transcript if it differs.

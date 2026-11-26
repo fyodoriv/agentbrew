@@ -96,6 +96,26 @@ counters_gone "/goal clear clears the judge block and wait counters"
 if [ ! -e "$RUN_GOAL_STATE_DIR/s.owner.md" ]; then PASS=$((PASS + 1)); else
   FAIL=$((FAIL + 1)); FAIL_DETAILS+=("/goal clear removes the owner file"); fi
 
+# Frozen paths belong to the previous goal, even when the session is reused.
+paths_check() {
+  local label="$1" path="$2" expected="$3" actual=0
+  [ -e "$RUN_GOAL_STATE_DIR/$path" ] && actual=1
+  if [ "$actual" = "$expected" ]; then PASS=$((PASS + 1)); else
+    FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$label: expected file present=$expected, got $actual")
+  fi
+}
+printf '%s\n' old >"$RUN_GOAL_STATE_DIR/s.paths"
+printf '%s\n' active >"$RUN_GOAL_STATE_DIR/peer.contract.md"
+printf '%s\n' active >"$RUN_GOAL_STATE_DIR/peer.paths"
+touch -t 200001010000 "$RUN_GOAL_STATE_DIR/peer.paths"
+check "new goal with stale paths" "/goal new path scope" 1
+paths_check "new goal clears the previous frozen paths" s.paths 0
+paths_check "new goal preserves another active session's older frozen paths" peer.paths 1
+printf '%s\n' old >"$RUN_GOAL_STATE_DIR/s.paths"
+check "clear with stale paths" "/goal clear" 0
+paths_check "goal clear clears the previous frozen paths" s.paths 0
+paths_check "goal clear preserves another active session's older frozen paths" peer.paths 1
+
 # Malformed stdin must not block the prompt.
 MALFORMED_CODE=$(printf 'not json' | RUN_GOAL_SKILL_DIR="$INSTALLED" bash "$SCRIPT" >/dev/null 2>&1; echo $?)
 if [ "$MALFORMED_CODE" = "0" ]; then PASS=$((PASS + 1)); else

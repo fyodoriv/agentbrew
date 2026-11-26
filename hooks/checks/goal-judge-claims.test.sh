@@ -91,7 +91,8 @@ n2="$(grep -c 'judge scores removed' <<<"$out2" || true)"
 if [ "$n2" = 8 ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $n2 of 8 new score targets removed"; grep -v 'judge scores removed' <<<"$out2" | sed 's/^/    kept: /'; fi
 printf '%s\n' 'Judges read 3 files; the sidebar lists them' 'File one task per follow-up the judge lists above the verdict' \
   'Each judge labels every defect; the runner fixes all in one batch, on target' 'Judges: sre-2, devex-bar, llm-eval' \
-  'Judged paths: /a/wt/ab-judge2/target/x.sh' '2. The judge prompt keeps the README line -> proof: test 3' >"$tc"
+  'Judged paths: /a/wt/ab-judge2/target/x.sh' '2. The judge prompt keeps the README line -> proof: test 3' \
+  'At least 3 judges read the README' 'Quote the owner words "re-judge 1" and "Path to 8" in the report.' >"$tc"
 out3="$(bash "$PROMPT_SH" --contract-text "$tc")"
 rm -f "$tc"
 n3="$(grep -c 'judge scores removed' <<<"$out3" || true)"

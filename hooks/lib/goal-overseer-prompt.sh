@@ -25,6 +25,11 @@
 
 set -uo pipefail
 
+if [ -z "${1:-}" ]; then
+  echo "goal-overseer-prompt: usage: <contract path> <transcript path or ->" >&2
+  exit 2
+fi
+
 LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTRACT="${1:-}"
 SRC="${2:-}"

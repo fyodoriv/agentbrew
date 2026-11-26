@@ -834,6 +834,6 @@ p="$(prompt rsha jc "$st" | sed -E 's/^Rubric-SHA: .*/Rubric-SHA: 00000000000000
 call rsha Agent rs1 fable "$p"; result rsha rs1 "$(block_text jc 9 "$st")"
 expect "a judge prompt with a changed Rubric-SHA header does not count" 2 "$(run rsha)"
 
-echo "goal-judges-before-stop: $PASS passed, $FAIL failed"
 for d in "${FAIL_DETAILS[@]+"${FAIL_DETAILS[@]}"}"; do echo "  FAIL: $d"; done
+echo "goal-judges-before-stop: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

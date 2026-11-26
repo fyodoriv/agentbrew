@@ -34,12 +34,20 @@ contract is back or the retro says not met.
 | `RUN_GOAL_JUDGE_FOCUSED` | 4 | focused re-judges allowed per goal (a state judged by only some judges) |
 | `RUN_GOAL_JUDGE_DIR` | `~/.config/agentbrew/goal-judges` | the judge cache lives elsewhere |
 
-**Cost**: one round is three fresh subagents reading the judged paths; a
-goal gets at most three rounds, so at most nine judge runs, unless the owner types a message that starts with "approve round N" or "approve N more rounds": then the cap is N. When rounds run out with a judge below 8, ask the owner in one line whether to approve another round; never ask them to edit settings. A round takes
-about 3 to 6 minutes of wall time with the judges in parallel. Each judge
-and the overseer work to a budget stated in their prompts: about 10 minutes
-and a capped number of tool calls (see `goal-judge-prompt.sh`), running a long test suite only when a defect
-depends on it.
+**Cost.** Three default full rounds with three judges allow up to nine
+judge calls in full rounds. Each complete panel also runs one overseer, so
+allow up to three overseer calls for those rounds. The default also allows
+four separate focused re-judges. When a focused re-judge passes, finish the
+panel on that state with the remaining judges and the overseer. If the goal
+needs more full rounds, the owner can type "approve round N" or
+"approve N more rounds". The current Agent tool runs the Claude model
+families listed in the table.
+A full round takes about 3 to 6 minutes with judges in parallel. The prompts
+give each judge and the overseer about 10 minutes and a tool-call budget.
+
+**Tests.** One macOS CI job ran the focused claims suite in 0.47 seconds
+and the full Stop suite in 6 minutes 45 seconds. Use the focused suite for
+fast feedback. [Hosted job](https://github.com/fyodoriv/agentbrew/actions/runs/45869716692/job/140081832409)
 
 ## 1. Pick the judges (in the contract, before any work)
 
@@ -209,10 +217,11 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
    One Ruling line per judge. The hook uses each ruling as that judge's
    effective score, moved at most 2 points from the judge's own score. A
    round with no overseer, an edited overseer prompt, a second overseer on
-   one state, or an overseer on your own model family cannot pass. Fix the
-   overseer's blockers first: that is how a round stays short.
-5. **Focused re-judge.** When only one judge is under the bar, fix its
-   blockers and re-judge only that judge, as often as needed (each run
+   one state, or an overseer on your own model family cannot pass. Follow
+   [the iteration steps](#3-iterate-the-work) before fixing a blocker.
+5. **Focused re-judge.** When only one judge is under the bar, check its
+   path to a passing score first. Fix the confirmed blockers and re-judge
+   only that judge, as often as needed (each run
    needs a changed state; `RUN_GOAL_JUDGE_FOCUSED` caps them). A focused
    re-judge does not use a full round. When it reaches the bar, finish the
    round on that same state: run only the other judges, then the overseer.
@@ -229,6 +238,9 @@ Ruling <judge id>: <0-10>/10 - <one-line reason>
    runnable check.
 
 ## 3. Iterate the work
+
+When a Stop message suggests fixing blockers, use the steps below to check
+that the fix can reach a passing score.
 
 For replies that require a fact judge, run that judge again on any text
 you change before posting. Match the posted text to the judged version
@@ -250,15 +262,24 @@ and the exact scope the operator approved.
   follow-up deduction it lifts; `ok` blocks. A keep or a lower needs any
   one-line reason.
 
-- Any judge under the bar: fix **every** blocker the overseer listed, in one
-  batch, each with a test that fails before the fix. File each follow-up as
+- After a round with a judge under the bar, ask that judge (a follow-up message to the
+  same agent, not a new judge run) what is missing to reach 8. Have it mark each
+  item: the runner can do it now, only the owner can do it, or it needs an outside
+  record. Ask whether the runner items alone reach 8. When a judge says no, do not
+  spend the next round: give the owner that judge's owner items as the one ask, and
+  judge again after the answers.
+- When the judge confirms the runner's work can reach the bar, fix every
+  blocker the overseer listed in one batch. First add a test that fails
+  for each blocker. File each follow-up as
   a task before the next round, and do not fix follow-ups in this goal
   unless the owner asks for them.
 - Where and when to file follow-ups: in the task backend of the repo the
   follow-up is about (`TASKS.md` or the repo's declared backend), or in the
   retro for a goal with no repo. File them **before** the judges run: a task
-  added to a judged repo changes the state token, so filing after a passing
-  round makes its verdicts stale and spends a round.
+  added to a judged repo changes the state token. Record a follow-up that
+  a passing round first finds in the retro. File it in the repo's declared
+  task backend after the Stop hook accepts the result. Use the next session
+  if the task write changes the judged paths.
   Judges help the runner: they find the worst bugs first and list every fix
   in round 1, give each blocker a severity, and only a high-severity blocker
   (a false pass, a lost verdict, no exit, an unmet done-when) caps a score.
@@ -267,12 +288,6 @@ and the exact scope the operator approved.
   that only misses a field standard is a follow-up. The overseer raises a
   score lowered by a low blocker or a follow-up. This keeps each round's
   new findings from moving the bar.
-- After a round with a judge under the bar, ask that judge (a follow-up message to the
-  same agent, not a new judge run) what is missing to reach 8. Have it mark each
-  item: the runner can do it now, only the owner can do it, or it needs an outside
-  record. Ask whether the runner items alone reach 8. When a judge says no, do not
-  spend the next round: give the owner that judge's owner items as the one ask, and
-  judge again after the answers.
 - Then judge the new state: with one judge under the bar, re-judge only that judge (focused re-judge, step 5); with two or more, run **all three** judges again. Judging one judge twice on one state is a re-roll and fails.
   A launch counts, not a verdict: a judge stopped before its verdict and
   launched again on the same state is a re-roll too.

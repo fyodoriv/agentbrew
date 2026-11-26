@@ -379,7 +379,7 @@ with actuals and update the estimation method as described in
    writable change in this session (gate, PR, merge, cite the PR); when a
    tried write is refused, cite the task with its error; never bypass it.
 6. **Remember**: store reusable lessons in memory, if the agent has memory.
-7. **Judge consensus** (every goal, last): met only when each contract judge, run fresh on the final state with the exact `goal-judge-prompt.sh` prompt on a model family other than yours, scores 8/10 or more within three rounds (the owner can type "approve round N" to allow more); the `goal-judges-before-stop` hook holds every Stop until then, and mid-goal Stops (a question, a wait) need `Goal result: in progress (<why>)` in the retro file first. Steps: [references/goal-judges.md](references/goal-judges.md).
+7. **Judge consensus** (every goal, last): met only when each contract judge, run fresh on the final state with the exact `goal-judge-prompt.sh` prompt on a model family other than yours, meets the pass rule within three default full rounds (the owner can type "approve round N" to allow more); the `goal-judges-before-stop` hook holds every Stop until then, and mid-goal Stops (a question, a wait) need `Goal result: in progress (<why>)` in the retro file first. Steps and the slack and focused re-judge settings are in [the judge guide](references/goal-judges.md).
 8. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)` in the retro file,
    run `scripts/export-goals.py`, and refresh the one Goals dashboard: [references/dashboard.md](references/dashboard.md).
 

@@ -100,6 +100,14 @@ out3="$(bash "$PROMPT_SH" --contract-text "$tc")"
 rm -f "$tc"
 n3="$(grep -c 'judge scores removed' <<<"$out3" || true)"
 if [ "$n3" = 0 ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $n3 plain lines hidden"; fi
+# The earlier scratch file is gone. Check the normal prompt entry point.
+missing_rc=0
+missing_message="$(bash "$PROMPT_SH" "$tc" ja 2>&1)" || missing_rc=$?
+if [ "$missing_rc" = 2 ] && [ "$(grep -cF 'create the contract' <<<"$missing_message" || true)" = 1 ]; then
+  PASS=$((PASS + 1))
+else
+  FAIL=$((FAIL + 1)); echo "  FAIL: missing contract gives no single recovery hint"
+fi
 # Goal iteration 2: a bare "reach N" score target goes; "reach N users" stays.
 tc="$(mktemp "${TMPDIR:-/tmp}/gjc.XXXXXX")"
 printf '%s\n' '1. Reach 8.0 within two rounds.' 'Reach 8 after one iteration' 'Goal: reach 9.' >"$tc"

@@ -956,11 +956,11 @@ checks signatures and capabilities. Offline lookups keep the installed list
 and mark tag information unavailable. An unknown name suggests a close
 registered name, including a matching source repo name.
 
-An update replaces only its locked plugin checkout. If a selected user-owned
-skill source has higher priority and the same skill name, the command warns
-that this source still wins. It leaves that checkout unchanged. Review its
-owner with `agentbrew status --verbose`, then run `agentbrew sync --only skills`
-to refresh deployed copies from the intended source.
+An update replaces only its locked plugin checkout. It compares each plugin
+skill with the selected source that takes precedence. One warning summarizes
+the number of winning copies that differ or could not be compared. Use
+`agentbrew status --verbose` to review the sources, then run
+`agentbrew sync --only skills` to refresh deployed copies.
 
 - The ref must be an annotated tag with an SSH signature (`git tag -s` with `gpg.format=ssh`). Lightweight or unsigned tags are refused.
 - agentbrew fetches exactly `refs/tags/<ref>`, so a branch with the same name never wins. It verifies that one tag object and installs its commit. It refuses a name that looks like a 40- or 64-hex object ID. It also refuses a signed tag object whose own name differs from `<ref>` (an old release published under a new name). Only an SSH signature counts. An OpenPGP or X.509 signature is refused, even from a key in your gpg keyring, and so is a tag message with any other line that starts with `-----BEGIN `. Nothing is checked out until the signature passes. This holds for `add`, `update`, and `rollback`.

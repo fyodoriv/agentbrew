@@ -277,6 +277,88 @@ describe("plugin update guidance", () => {
 });
 
 describe("plugin update duplicate skill source", () => {
+  it("does not warn when the actual winning skill copy is identical", async () => {
+    f = pluginFixture({ ...MANIFEST, contributes: { skills: "skills/" } }, KEY);
+    const text = "---\nname: greet\ndescription: greet\n---\nupdated body\n";
+    f.release("v1.0.0", { "skills/greet/SKILL.md": text.replace("updated", "prior") });
+    addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub });
+    const first = join(home, "first-skills");
+    const second = join(home, "second-skills");
+    for (const path of [first, second]) mkdirSync(join(path, "greet"), { recursive: true });
+    writeFileSync(join(first, "greet/SKILL.md"), text);
+    writeFileSync(join(second, "greet/SKILL.md"), text.replace("updated", "different"));
+    saveState({
+      ...defaultState(),
+      sources: [first, second].map((url) => ({
+        availableItems: [],
+        addedAt: "2026-11-01T00:00:00Z",
+        type: "local",
+        url,
+        skillsInstalled: ["greet"],
+      })),
+    });
+    f.release("v2.0.0", { "skills/greet/SKILL.md": text });
+    const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const program = new Command().exitOverride();
+      registerPluginCommands(program);
+      await program.parseAsync(["node", "agentbrew", "plugin", "update", "acme", "v2.0.0", "--yes"]);
+
+      expect(readLock().plugins?.[0]?.ref).toBe("v2.0.0");
+      expect(warnings.mock.calls.flat().join("\n")).not.toContain("higher-priority source");
+    } finally {
+      warnings.mockRestore();
+    }
+  });
+
+  it("summarizes two differing winning skill trees without changing their files", async () => {
+    f = pluginFixture({ ...MANIFEST, contributes: { skills: "skills/" } }, KEY);
+    const greet = "---\nname: greet\ndescription: greet\n---\nupdated body\n";
+    const review = "---\nname: review\ndescription: review\n---\nunchanged body\n";
+    f.release("v1.0.0", { "skills/greet/SKILL.md": greet.replace("updated", "prior") });
+    addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub });
+    const legacy = join(home, "summary-skills");
+    mkdirSync(join(legacy, "greet"), { recursive: true });
+    mkdirSync(join(legacy, "review"), { recursive: true });
+    const original = greet.replace("updated", "legacy");
+    writeFileSync(join(legacy, "greet/SKILL.md"), original);
+    writeFileSync(join(legacy, "review/SKILL.md"), review);
+    writeFileSync(join(legacy, "review/reference.md"), "legacy reference\n");
+    saveState({
+      ...defaultState(),
+      sources: [
+        {
+          availableItems: [],
+          addedAt: "2026-11-01T00:00:00Z",
+          type: "local",
+          url: legacy,
+          skillsInstalled: ["greet", "review"],
+        },
+      ],
+    });
+    f.release("v2.0.0", {
+      "skills/greet/SKILL.md": greet,
+      "skills/review/SKILL.md": review,
+      "skills/review/reference.md": "plugin reference\n",
+    });
+    const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const program = new Command().exitOverride();
+      registerPluginCommands(program);
+      await program.parseAsync(["node", "agentbrew", "plugin", "update", "acme", "v2.0.0", "--yes"]);
+
+      expect(readLock().plugins?.[0]?.ref).toBe("v2.0.0");
+      expect(readFileSync(join(legacy, "greet/SKILL.md"), "utf-8")).toBe(original);
+      expect(readFileSync(join(legacy, "review/reference.md"), "utf-8")).toBe("legacy reference\n");
+      const summaries = warnings.mock.calls.flat().filter((message) => message.includes("higher-priority source"));
+      expect(summaries).toHaveLength(1);
+      expect(summaries[0]).toContain("2 skills");
+      expect(summaries[0]).toContain("agentbrew status --verbose");
+    } finally {
+      warnings.mockRestore();
+    }
+  });
+
   it("updates the locked skills but warns instead of modifying an independent source", async () => {
     const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
     f = pluginFixture({ ...MANIFEST, contributes: { skills: "skills/" } }, KEY);
@@ -299,7 +381,9 @@ describe("plugin update duplicate skill source", () => {
     expect(process.exitCode).toBeUndefined();
     expect(readFileSync(join(pluginDir("acme"), "skills/greet/SKILL.md"), "utf-8")).toContain("new");
     expect(readFileSync(join(legacy, "greet/SKILL.md"), "utf-8")).toBe(oldText);
-    expect(warnings.mock.calls.flat().join("\n")).toContain("higher-priority source legacy-skills");
+    const warning = warnings.mock.calls.flat().join("\n");
+    expect(warning).toContain("1 skill");
+    expect(warning).toContain("agentbrew status --verbose");
     warnings.mockRestore();
   });
 });

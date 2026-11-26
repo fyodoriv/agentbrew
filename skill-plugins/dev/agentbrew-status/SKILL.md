@@ -44,6 +44,9 @@ For "show my setup", "what commands can I type", or "what does /x do", see
 [the setup map and command examples](references/setup-overview.md).
 
 To send your own chats, use `agentbrew install chat-drafts-only`.
+
+To turn on a footer for running work, watched answers, and your next action,
+use `agentbrew install status-footer`, then `agentbrew sync --only rules`.
 Preview with `agentbrew sync --dry-run`.
 
 ## Diagnose Drift

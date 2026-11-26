@@ -251,11 +251,11 @@ The first `agentbrew rules init` can seed shared rules from an existing agent’
 `remove` records the name only when the server is in agentbrew's registry; a server that is only in an agent config is not recorded. So remove it from that config, or `agentbrew install` it and then `agentbrew remove` it.
 
 **Optional delivery safeguards:** install `judged-drafts`, `functional-judge`,
-`pr-evidence-labels`, `explain-before-showing`, `human-review-blockers`, or
-`judge-operator-audience` with `agentbrew install <name>`, then sync. These rules
-cover draft checks, feature proof, clear evidence labels, manual UI review,
-and approval before sharing results. They are off until selected; read their
-text with `agentbrew catalog show <name>`.
+`pr-evidence-labels`, `explain-before-showing`, `human-review-blockers`,
+`judge-operator-audience`, or `status-footer` with `agentbrew install <name>`,
+then sync. These rules cover draft checks, feature proof, clear evidence labels,
+manual UI review, approval before sharing results, and live status. They are
+off until selected. Read their text with `agentbrew catalog show <name>`.
 
 To send your own chat messages, run `agentbrew install chat-drafts-only`, then
 sync. Agents save judged drafts for you and suggest edits to sent messages.

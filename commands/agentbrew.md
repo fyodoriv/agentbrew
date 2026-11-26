@@ -30,6 +30,10 @@ When the user wants Claude Bash scripts to protect shared Git work, use the [Git
 
 When the user asks to send chat messages themselves, enable the optional rule with `agentbrew install chat-drafts-only`. Preview with `agentbrew sync --dry-run`, then run the approved sync.
 
+When the user asks to turn on a footer for running work, watched answers, and
+their next action, use `agentbrew install status-footer`, then
+`agentbrew sync --only rules`.
+
 Every other action: run `agentbrew actions --json`. It lists every command (generated from the CLI), its arguments, and three notes:
 
 - `terminal_only`: only the user can run it. Give them the exact command for their own terminal.

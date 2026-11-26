@@ -21,9 +21,9 @@ describe("plugin update source warnings", () => {
     const sources = [source("legacy", ["greet", "other"], ["greet"]), source("plugin-acme", ["greet"])];
     const warnings = pluginSkillShadows("acme", sources);
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain("greet");
-    expect(warnings[0]).toContain("legacy");
-    expect(warnings[0]).toContain("source was not changed");
+    expect(warnings[0]).toContain("1 skill");
+    expect(warnings[0]).toContain("plugin acme");
+    expect(warnings[0]).toContain("agentbrew status --verbose");
   });
 
   it("ignores unselected duplicates, lower priority sources and an absent plugin", () => {

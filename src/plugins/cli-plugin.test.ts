@@ -381,7 +381,9 @@ describe("plugin update duplicate skill source", () => {
     expect(process.exitCode).toBeUndefined();
     expect(readFileSync(join(pluginDir("acme"), "skills/greet/SKILL.md"), "utf-8")).toContain("new");
     expect(readFileSync(join(legacy, "greet/SKILL.md"), "utf-8")).toBe(oldText);
-    expect(warnings.mock.calls.flat().join("\n")).toContain("higher-priority source legacy-skills");
+    const warning = warnings.mock.calls.flat().join("\n");
+    expect(warning).toContain("1 skill");
+    expect(warning).toContain("agentbrew status --verbose");
     warnings.mockRestore();
   });
 });

@@ -41,10 +41,14 @@ describe("fresh-reader review", () => {
   });
 
   it("requires proof that the agent opened the exact item before asking the user to act", () => {
-    expect(rule).toMatch(/ask the user to check, review, or edit something, open the exact item before sending the ask/);
+    expect(rule).toMatch(/open the exact item as part of that reply, before you send the ask/);
     expect(rule).toMatch(/Use the host's editor for a file and its browser for a page or PR/);
-    expect(rule).toMatch(/give the judge the observed result of opening the item/);
-    expect(rule).toMatch(/Return FAIL if the item did not open/);
+    expect(rule).toMatch(
+      /Give the separate live judge who checks the closing ask the observed result of opening the item/,
+    );
+    expect(rule).toMatch(
+      /return FAIL if the item did not open\. If the host cannot open it, report the limitation and hold the ask/,
+    );
   });
 
   it("rechecks each revision and holds unreviewed work", () => {

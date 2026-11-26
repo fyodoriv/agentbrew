@@ -28,6 +28,7 @@ Repo roots: README is the human front door; agent instructions live in skills, r
 ## Scope discipline
 
 - Make the smallest change that satisfies the request.
+- When judging a change, reject a new test suite, manifest, script, or CI step when an existing one can do the job.
 - Do not refactor, reformat, or “clean up” adjacent code unless asked.
 - If you notice unrelated work, say `NOTICED BUT NOT TOUCHING: ...` or file a TASKS.md entry when the repo policy requires scout tasks.
 - Do not add comments unless asked or the code is otherwise unclear; preserve existing comments.

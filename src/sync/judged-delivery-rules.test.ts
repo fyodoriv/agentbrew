@@ -105,6 +105,7 @@ describe("optional judged delivery safeguards", () => {
     );
     expect(judge).toContain("functional judge PASS");
     expect(judge).toContain("any FAIL");
+    expect(judge).toContain("the draft describes or proposes");
     const readiness = readFileSync(
       join(process.cwd(), "skill-plugins/workflow/review-pr/references/feature-readiness.md"),
       "utf-8",

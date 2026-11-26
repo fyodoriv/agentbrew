@@ -40,6 +40,13 @@ describe("fresh-reader review", () => {
     );
   });
 
+  it("requires proof that the agent opened the exact item before asking the user to act", () => {
+    expect(rule).toMatch(/ask the user to check, review, or edit something, open the exact item before sending the ask/);
+    expect(rule).toMatch(/Use the host's editor for a file and its browser for a page or PR/);
+    expect(rule).toMatch(/give the judge the observed result of opening the item/);
+    expect(rule).toMatch(/Return FAIL if the item did not open/);
+  });
+
   it("rechecks each revision and holds unreviewed work", () => {
     expect(rule).toMatch(/Revise and judge again until the exact artifact gets PASS/);
     expect(rule).toMatch(/If a fresh subagent is unavailable or the artifact still fails, hold the artifact/);

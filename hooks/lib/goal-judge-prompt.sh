@@ -60,6 +60,11 @@ CONTRACT="${1:-}"
 ID="${2:-}"
 JUDGE_DIR="${3:-${RUN_GOAL_JUDGE_DIR:-$HOME/.config/agentbrew/goal-judges}}"
 
+if [ ! -f "$CONTRACT" ]; then
+  printf '%s\n' 'goal-judge-prompt: create the contract with /goal. Pass the session contract path shown in its context or the Stop message. See the judge guide in the run-goal skill.' >&2
+  exit 2
+fi
+
 # The hook passes the token it just computed, so a Stop hashes the work once.
 # A wrong token only yields a prompt the hook will not match.
 TOKEN="${GOAL_STATE_TOKEN:-}"

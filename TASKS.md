@@ -495,19 +495,6 @@
   - **Pivot**: if any widening lets a current claim case through, keep the line blocked and improve the hint instead.
   - **Anchor**: Nygard 2018, "Release It!" (fail-safe defaults).
 
-- [ ] Newcomers can find the goal contract and judge docs from the error alone
-  - **ID**: goal-judge-newcomer-docs
-  - **Tags**: hooks, run-goal
-  - **Details**: Found 2026-11-23, judge rounds 5 and 6. `goal-judge-prompt.sh` with no contract prints only the missing path, with no hint how to make it or find the session id. `SKILL.md` does not mention the slack or focused settings. The full suite prints no final total. `goal-judges.md` does not say where follow-ups from a passing round go, or that all judge families are Claude models. Goal iteration 1 adds: the "at most nine judge runs" cost text ignores focused re-judges and the overseer; section 3 puts "fix every blocker" before "ask that judge"; the doc gives no measured time for each suite.
-  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `skill-plugins/workflow/run-goal/SKILL.md`, `skill-plugins/workflow/run-goal/references/goal-judges.md`, `hooks/checks/goal-judges-before-stop.test.sh`.
-  - **Output**: code
-  - **Acceptance**: the error names how to create the contract; the docs cover each gap; the suite ends with one total line.
-  - **Hypothesis**: newcomer steps that fail or confuse in a first-time-user judge pass drop from 5 to 0.
-  - **Measurement**: `bash hooks/lib/goal-judge-prompt.sh no-such-session devex-workflow-design 2>&1 | rg -c "create the contract"` plus the next first-time-user judge report.
-  - **Success**: the command prints 1 and the judge report lists 0 of these items.
-  - **Pivot**: if a judge still reports 2 or more, add a worked example goal to `goal-judges.md`.
-  - **Anchor**: Nielsen 1994, usability heuristics (help and documentation).
-
 - [ ] Agents can run one named case of the goal-judge hook suite
   - **ID**: goal-judge-suite-one-case
   - **Tags**: hooks, run-goal, speed

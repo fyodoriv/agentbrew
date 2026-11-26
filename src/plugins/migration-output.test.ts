@@ -12,6 +12,7 @@ const repo = join(import.meta.dirname, "../..");
 const entry = join(repo, "src/cli.ts");
 const loader = pathToFileURL(join(repo, "node_modules/tsx/dist/loader.mjs")).href;
 const { version } = JSON.parse(readFileSync(join(repo, "package.json"), "utf8"));
+const CLI_FIXTURE_TIMEOUT_MS = 65_000;
 
 function fixtureCli() {
   const home = fixtureDir("agentbrew-migration-output-");
@@ -48,7 +49,7 @@ function fixtureCli() {
 }
 
 describe("plugin command output from the real CLI", () => {
-  it("writes only the manifest to migration stdout", { timeout: 65_000 }, async () => {
+  it("writes only the manifest to migration stdout", { timeout: CLI_FIXTURE_TIMEOUT_MS }, async () => {
     const cli = fixtureCli();
     writeFileSync(join(cli.home, "Agentfile.yaml"), "name: fixture\ncatalogOverlay: ./catalog-overlay.yaml\n");
     const result = await cli.run(["migrate", cli.home]);
@@ -58,7 +59,7 @@ describe("plugin command output from the real CLI", () => {
     expect(yaml.load(result.stdout)).toMatchObject({ schema: 1, name: "fixture", contributes: {} });
   });
 
-  it("keeps the plugin check status on stdout", { timeout: 65_000 }, async () => {
+  it("keeps the plugin check status on stdout", { timeout: CLI_FIXTURE_TIMEOUT_MS }, async () => {
     const cli = fixtureCli();
     writeFileSync(join(cli.home, "agentbrew-plugin.yaml"), "schema: 1\nname: fixture\nversion: 0.1.0\n");
     const result = await cli.run(["test", cli.home]);

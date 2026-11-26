@@ -119,6 +119,10 @@ metric does not finish a goal whose original shipping criteria are pending.
 
 ## Changes, failures and expiry
 
+A watch that exits zero after a connection error has lost its
+observation. Read the same run from the authority and resume a bounded
+watch if the run is still active.
+
 Keep one wait record owned by the goal invocation and target revision. Its
 lifecycle ends on verified terminal completion, cancellation or replacement.
 An expired/missing handle leaves liveness and notification unknown. Inspect

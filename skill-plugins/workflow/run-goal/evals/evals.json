@@ -4318,14 +4318,14 @@
     },
     {
       "id": 384,
-      "prompt": "/goal ship follow ups  (previous message ended: **Follow-ups:** file a task for flaky Gifts UI tests; fix 6 failing doctor checks; keep the plugin skill in step with the repo skill; plan loyalty points, gift prices and careerbrew bets)",
-      "expected_output": "A contract with one done-criterion per follow-up, owner-choice items asked in one round, non-fitting items dropped with a reason, and open follow-ups as the metric (baseline 4, target 0).",
+      "prompt": "/goal ship follow ups\n\nPrevious message ended with:\n\n**Follow-ups:**\n- File a task for flaky Gifts UI tests.\n- Fix 6 failing doctor checks.\n- Keep the plugin skill in step with the repo skill.\n- Plan loyalty points.\n- Plan gift prices.\n- Plan careerbrew bets.",
+      "expected_output": "A contract with one done-criterion per follow-up, owner-choice items asked in one round, non-fitting items dropped with a reason, and open follow-ups as the metric (baseline 6, target 0).",
       "expectations": [
         "Does not ask what 'ship follow ups' means",
         "Lists each follow-up from the Follow-ups line as its own done-criterion",
         "Asks only owner-dependent items in a single question round",
         "Drops items that do not fit with a stated reason instead of silently dropping them",
-        "Uses open follow-ups count as the metric with baseline and target 0"
+        "Uses open follow-ups count as the metric with baseline 6 and target 0"
       ]
     },
     {

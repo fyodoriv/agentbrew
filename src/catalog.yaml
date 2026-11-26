@@ -2051,10 +2051,21 @@ rules:
     category: workflow
     recommended: false
     content: |
-      In a chat thread or channel, never post a second message in a row when
-      your own last message there is under 24 hours old. Edit that message to
-      merge the new content, or delete it and post one merged message. This is
-      the chat twin of one comment per place on a PR.
+      In a chat thread or channel, merge a same-day update into your own last
+      message under 24 hours old if readers have yet to act. This avoids a
+      second message in a row. When the rules allow direct editing and the
+      user authorized the exact change, make the approved edit yourself.
+      If an edit is unavailable and the user authorizes both actions, perform
+      the approved deletion and post one merged message yourself. Apply any
+      stricter draft rule.
+
+      Prepare a new draft for review if a reader already acted on the last
+      message, such as approving it, answering it, or completing the ask.
+      For a nudge or follow-up on a later calendar day in the user's timezone,
+      prepare a new draft even if the original is under 24 hours old. The draft judge
+      rejects an edit in either case. Verify the message date and reader
+      activity before choosing an edit. Use the existing send approval rules
+      for the new message.
 
   - name: chat-drafts-only
     description: "Keep chat sends with the user and save approved drafts for them."

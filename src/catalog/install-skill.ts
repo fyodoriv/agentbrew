@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
+import { existsSync, lstatSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
 import { registerSkillSourceDir } from "../add-source.js";
@@ -9,6 +9,7 @@ import { detectSourceType } from "../git-source-url.js";
 import { lockSource } from "../lock.js";
 import { INSTALLED_SKILLS_DIR, INSTALLED_SKILLS_LABEL } from "../paths.js";
 import { copySkillDirectory, projectSkillRelativePath } from "../skills/copy-skill-directory.js";
+import { sameSkillTree } from "../skills/same-skill-tree.js";
 import { recordSourceSha } from "../skills/skill-versions.js";
 import { loadState, saveState } from "../state.js";
 import type { AgentBrewState, Source } from "../types.js";
@@ -55,24 +56,6 @@ export function copySkillFromCache(cachePath: string, skillName: string): string
   return destination;
 }
 
-/** True when two directory trees hold the same names, file bytes, and symlink targets. */
-function sameTree(a: string, b: string): boolean {
-  const left = lstatSync(a, { throwIfNoEntry: false });
-  const right = lstatSync(b, { throwIfNoEntry: false });
-  if (!left || !right) return false;
-  if (left.isSymbolicLink() || right.isSymbolicLink()) {
-    return left.isSymbolicLink() && right.isSymbolicLink() && readlinkSync(a) === readlinkSync(b);
-  }
-  if (left.isDirectory() !== right.isDirectory()) return false;
-  if (!left.isDirectory()) {
-    return left.size === right.size && left.mode === right.mode && readFileSync(a).equals(readFileSync(b));
-  }
-  const names = readdirSync(a).sort();
-  const other = readdirSync(b).sort();
-  if (names.length !== other.length || names.some((name, i) => name !== other[i])) return false;
-  return names.every((name) => sameTree(join(a, name), join(b, name)));
-}
-
 /**
  * True when the installed copy of a skill already matches its source cache,
  * so a refresh can skip the delete-and-copy.
@@ -80,7 +63,7 @@ function sameTree(a: string, b: string): boolean {
 export function isInstalledSkillCurrent(cachePath: string, skillName: string): boolean {
   const skillDir = findSkillDirInCache(cachePath, skillName);
   if (!skillDir) return false;
-  return sameTree(skillDir, join(installedSkillsPath, skillName));
+  return sameSkillTree(skillDir, join(installedSkillsPath, skillName));
 }
 
 /** Installs a skill from a registered source. */

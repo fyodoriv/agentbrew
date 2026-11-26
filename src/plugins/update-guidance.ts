@@ -2,8 +2,9 @@ import { execFileSync } from "node:child_process";
 import { basename, isAbsolute, relative } from "node:path";
 import type { PluginLockEntry } from "../lock.js";
 import { cacheGitEnv } from "../mcp/git-ref.js";
+import { sameSkillTree } from "../skills/same-skill-tree.js";
 import { findClosestMatches } from "../suggest.js";
-import type { getSkillSources } from "../sync/skills-sync.js";
+import { collectSkills, type getSkillSources } from "../sync/skills-sync.js";
 import { pluginDir, pluginsRoot } from "./store.js";
 
 type SkillSource = ReturnType<typeof getSkillSources>[number];
@@ -60,7 +61,15 @@ export function unknownPluginMessage(name: string, plugins: PluginLockEntry[]): 
   return `Plugin "${name}" is not installed.${matches.length ? ` Did you mean ${matches.join(" or ")}?` : ""} Run agentbrew plugin list for registered names.`;
 }
 
-/** Sources before the plugin win by existing sync precedence; never mutate their checkouts. */
+function hasSameContent(a: string, b: string): boolean {
+  try {
+    return sameSkillTree(a, b, { compareSymlinkTargets: false });
+  } catch {
+    return false;
+  }
+}
+
+/** Count differences against the selected winning copies. */
 export function pluginSkillShadows(name: string, sources: SkillSource[]): string[] {
   const ownIndex = sources.findIndex((source) => {
     const rel = relative(pluginDir(name), source.path);
@@ -68,15 +77,23 @@ export function pluginSkillShadows(name: string, sources: SkillSource[]): string
   });
   if (ownIndex < 0) return [];
   const own = sources[ownIndex];
-  const names = new Set(own.scanner(own.path).map((path) => basename(path)));
-  return sources.slice(0, ownIndex).flatMap((source) =>
-    source
-      .scanner(source.path)
-      .map((path) => basename(path))
-      .filter((skill) => names.has(skill) && (!source.installedSkillNames || source.installedSkillNames.has(skill)))
-      .map(
-        (skill) =>
-          `Skill ${skill} still comes from higher-priority source ${source.label}, not updated plugin ${name}. Review its ownership with agentbrew status --verbose; this source was not changed.`,
-      ),
+  const { skills: pluginSkills } = collectSkills([{ label: own.label, skillPaths: own.scanner(own.path) }]);
+  const { skills: winners } = collectSkills(
+    sources.slice(0, ownIndex).map((source) => ({
+      label: source.label,
+      skillPaths: source
+        .scanner(source.path)
+        .filter((path) => !source.installedSkillNames || source.installedSkillNames.has(basename(path))),
+    })),
   );
+  let different = 0;
+  for (const [skill, plugin] of pluginSkills) {
+    const winner = winners.get(skill);
+    if (winner && !hasSameContent(winner.sourcePath, plugin.sourcePath)) different++;
+  }
+  if (different === 0) return [];
+  const summary = different === 1 ? "1 skill has a different copy" : `${different} skills have different copies`;
+  return [
+    `${summary} in higher-priority sources than in plugin ${name}. Review skill sources with agentbrew status --verbose.`,
+  ];
 }

@@ -42,7 +42,6 @@
         "hooks": { "$ref": "#/$defs/relPath" },
         "mcp_servers": { "$ref": "#/$defs/relPath" },
         "memory_packs": { "$ref": "#/$defs/relPath" },
-        "catalog": { "$ref": "#/$defs/relPath" },
         "leak_patterns": { "$ref": "#/$defs/relPath" },
         "options": { "type": "object" },
         "native": { "type": "object" }

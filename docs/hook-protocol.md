@@ -389,6 +389,9 @@ it blocks. A failed counter write never turns a block into an allow. After five 
 `partly met (judge consensus not reached: ...)`, resets its counters, and
 allows. `goal-contract-before-edit` pre-approves Write and Edit of judge
 files and of `<session>.answer.md` while a contract exists.
+An explicit completion count, `all done`, or `merged` as a standalone
+bracketed reason keeps the judge check active. A reason that reports
+one completed step and states what remains can still mark the goal incomplete.
 Procedure: `skill-plugins/workflow/run-goal/references/goal-judges.md`.
 
 `goal-retro-before-stop` (Stop) closes the goal. While the session's

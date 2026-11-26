@@ -521,19 +521,6 @@
   - **Pivot**: if a judge still reports 2 or more, add a worked example goal to `goal-judges.md`.
   - **Anchor**: Nielsen 1994, usability heuristics (help and documentation).
 
-- [ ] A success claim inside a goal-result bracket reads as met
-  - **ID**: goal-judge-bracket-claims
-  - **Tags**: hooks, run-goal
-  - **Details**: Found 2026-11-23, judge round 7 (agent-harness-reliability); the overseer ruled it a follow-up. `Goal result: partly met (5 of 5 met)`, `(all done)` and `not met (merged)` read as not met, because the claim check strips brackets first. Reading inside brackets risks blocking honest reasons such as "(tests passed, PR unmerged)", so first measure how often honest retros use success words in brackets.
-  - **Files**: `hooks/checks/goal-judges-before-stop.sh` (CLAIM_AWK), `hooks/checks/goal-judge-claims.test.sh`.
-  - **Output**: code
-  - **Acceptance**: the bracketed claims above block; every honest line in the claims test still allows.
-  - **Hypothesis**: false met claims hidden in brackets drop from 3 reproduced to 0 with no new false block.
-  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`
-  - **Success**: 0 failed with the bracketed claim cases added.
-  - **Pivot**: if 1 or more honest retro lines from the goal-judge history would block, keep brackets free and require the not-met word alone instead.
-  - **Anchor**: Nygard 2018, "Release It!" (fail-safe defaults).
-
 - [ ] Agents can run one named case of the goal-judge hook suite
   - **ID**: goal-judge-suite-one-case
   - **Tags**: hooks, run-goal, speed

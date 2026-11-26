@@ -241,7 +241,7 @@ When only an external wait remains, use the supported [quiet wait](references/ex
   (update the contract, every artifact built on the old default, and the
   goal check lines).
 - Approvals the user already gave in this session, in standing rules, or in
-  the contract cover their whole class of action. Do not ask again.
+  the contract cover their whole class of action. Do not ask again. For an outgoing message, follow [Outgoing message scope](references/execution.md#outgoing-message-scope).
 - An action that the rules say needs fresh approval (destructive, public,
   outside the workspace, spending money) and that the contract does not
   cover: park it. Do all the other work first. Ask about it at the end, in

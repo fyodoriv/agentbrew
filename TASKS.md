@@ -495,19 +495,6 @@
   - **Pivot**: if any widening lets a current claim case through, keep the line blocked and improve the hint instead.
   - **Anchor**: Nygard 2018, "Release It!" (fail-safe defaults).
 
-- [ ] The contract filter keeps plain lines that mention judges and numbers
-  - **ID**: goal-judge-filter-plain-lines
-  - **Tags**: hooks, run-goal
-  - **Details**: Found 2026-11-23, judge round 5 and runner. The filter hides plain done-when lines: "At least 3 judges read the README", and a line quoting the owner words "re-judge 1" and "Path to 8". Require a score word next to the number before removing a line.
-  - **Files**: `hooks/lib/goal-judge-prompt.sh`, `hooks/checks/goal-judge-claims.test.sh`.
-  - **Output**: code
-  - **Acceptance**: both lines stay; all current removed cases still go.
-  - **Hypothesis**: plain lines hidden from judges drop from 2 reproduced to 0.
-  - **Measurement**: `bash hooks/checks/goal-judge-claims.test.sh`.
-  - **Success**: 0 failed with the 2 new kept cases.
-  - **Pivot**: if any change lets a current target form through, refuse score targets in the contract instead of filtering them.
-  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (independence).
-
 - [ ] Newcomers can find the goal contract and judge docs from the error alone
   - **ID**: goal-judge-newcomer-docs
   - **Tags**: hooks, run-goal

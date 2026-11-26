@@ -967,19 +967,6 @@
   - **Pivot**: if it stays above 3 minutes, split the suite into files.
   - **Anchor**: Forsgren, Humble and Kim 2018, "Accelerate" (fast feedback).
 
-- [ ] run-goal eval 384 lists one follow-up per line
-  - **ID**: run-goal-eval-384-one-follow-up-per-line
-  - **Tags**: run-goal, evals
-  - **Details**: Eval 384 (the `/goal ship follow ups` question-round case) joins three plans with "and" in one follow-up, so its "baseline 4" depends on how a reader counts. Rewrite the prompt with one follow-up per line and a baseline that matches the count. A fresh-context review of PR #1256 found it. Check first that the eval-mutation tests in `src/skills/run-goal-owner-and-proof.test.ts` allow an edit past the frozen first 245 evals; if they do not, add a replacement eval and mark 384 superseded.
-  - **Files**: `skill-plugins/workflow/run-goal/evals/evals.json`
-  - **Output**: docs
-  - **Acceptance**: the eval prompt lists each follow-up on its own line, and its expected baseline equals that count.
-  - **Hypothesis**: graders disagree less on eval 384: count disagreements across 3 grader runs drop from about 1 in 3 to 0.
-  - **Measurement**: `npm run eval:agent-artifacts` run 3 times on hosted CI, comparing the eval 384 verdicts.
-  - **Success**: 3 of 3 runs give the same verdict.
-  - **Pivot**: below 2 of 3 matching verdicts, split the eval into one case per expectation.
-  - **Anchor**: Cohen 1960, "A coefficient of agreement for nominal scales".
-
 - [ ] A goal retro knows which rule wins when a repo rule limits where skill updates go
   - **ID**: run-goal-retro-repo-rule-precedence
   - **Tags**: skills, run-goal, retro

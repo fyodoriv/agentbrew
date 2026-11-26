@@ -5,6 +5,7 @@ vi.mock("node:fs", () => ({
   existsSync: vi.fn(),
   mkdirSync: vi.fn(),
   readFileSync: vi.fn(),
+  readdirSync: vi.fn(),
 }));
 
 vi.mock("node:child_process", () => ({
@@ -44,7 +45,7 @@ vi.mock("./skills/skill-versions.js", () => ({
 }));
 
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { getSourceCachePath, indexSource } from "./catalog/index-source.js";
 import { loadState, saveState } from "./state.js";
 import { addMcpServer } from "./sync/mcp-sync.js";
@@ -60,6 +61,7 @@ const mockExecFileSync = vi.mocked(execFileSync);
 const mockLoadState = vi.mocked(loadState);
 const mockSaveState = vi.mocked(saveState);
 const mockReadFileSync = vi.mocked(readFileSync);
+const mockReaddirSync = vi.mocked(readdirSync);
 const mockCopyFileSync = vi.mocked(copyFileSync);
 const mockMkdirSync = vi.mocked(mkdirSync);
 const mockAddMcpServer = vi.mocked(addMcpServer);
@@ -168,6 +170,61 @@ describe("addSource", () => {
 
     const saved = mockSaveState.mock.calls[0][0];
     expect((saved.sources ?? [])[0]).toMatchObject({ bootstrapScript: "scripts/bootstrap.sh" });
+  });
+
+  it.each(["single", "mixed", "other source"])("preserves skill labels and selection for %s", async (layout) => {
+    const url = "example/mixed";
+    const cache = "/tmp/example-mixed-cache";
+    const standard = `${cache}/skills`;
+    const alternate = `${cache}/.agents/skills`;
+    const priorPath = layout === "other source" ? `${cache}-peer/skills` : standard;
+    const state = {
+      ...makeState(),
+      skillSourceDirs: [{ label: "mixed-skills", path: priorPath }],
+    };
+    state.sources.push({
+      url,
+      type: "github",
+      skillsInstalled: ["chosen"],
+      availableItems: [],
+      addedAt: "2026-01-01T00:00:00Z",
+    });
+    const folders = new Map([
+      [cache, layout === "single" ? ["skills"] : [".agents", "skills"]],
+      [`${cache}/.agents`, ["skills"]],
+      [standard, ["chosen"]],
+      [alternate, ["available"]],
+    ]);
+    mockLoadState.mockReturnValue(state);
+    mockGetSourceCachePath.mockReturnValue(cache);
+    mockIndexSource.mockReturnValue([
+      { name: "chosen", description: "Selected skill", type: "skill" },
+      { name: "available", description: "Unselected skill", type: "skill" },
+    ]);
+    mockExistsSync.mockImplementation(
+      (path) => path === `${standard}/chosen/SKILL.md` || path === `${alternate}/available/SKILL.md`,
+    );
+    mockReaddirSync.mockImplementation(
+      (path) => (folders.get(String(path)) ?? []).map((name) => ({ name, isDirectory: () => true })) as never,
+    );
+    try {
+      await addSource(url, {});
+
+      const expected = [{ label: "mixed-skills", path: priorPath }];
+      if (layout === "mixed") expected.push({ label: "mixed-.agents-skills", path: alternate });
+      expect(state.skillSourceDirs).toEqual(expected);
+      expect(state.sources[0].skillsInstalled).toEqual(["chosen"]);
+
+      const registered = state.skillSourceDirs.map((dir) => ({ ...dir }));
+      await addSource(url, {});
+      expect(state.skillSourceDirs).toEqual(registered);
+      expect(state.sources[0].skillsInstalled).toEqual(["chosen"]);
+    } finally {
+      mockGetSourceCachePath.mockReset();
+      mockIndexSource.mockReset();
+      mockExistsSync.mockReset();
+      mockReaddirSync.mockReset();
+    }
   });
 
   it("registers a bootstrap-only source even when no items are found", async () => {

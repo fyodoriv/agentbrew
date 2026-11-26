@@ -363,7 +363,8 @@ for none; two launches of one judge on one state are a re-roll, even when
 the first run was stopped before its verdict. The prompt drops contract lines
 about judge scores and the contract's `## After judging` section, so a target
 cannot anchor a judge and no judge scores a step that can only follow its
-verdict. After the judges, one overseer Agent call per state must run, on a
+verdict. A plain criterion such as "At least 3 judges read the README" stays
+in the prompt. After the judges, one overseer Agent call per state must run, on a
 family other than the runner's, with the exact output of
 `goal-overseer-prompt.sh` (it quotes each judge's report from the
 transcript). Its `Ruling <judge>: N/10` lines set each effective score,

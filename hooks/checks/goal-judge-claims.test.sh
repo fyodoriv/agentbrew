@@ -85,14 +85,17 @@ rm -f "$tc"
 tc="$(mktemp "${TMPDIR:-/tmp}/gjc.XXXXXX")"
 printf '%s\n' 'Success: every judge scores 8+' 'Success: judges give no less than 8' 'Pass: a passing grade of eight' \
   'Raise judge score to nine' 'Pass mark: 8' 'The judge score must exceed seven' 'Goal: score ≥ 9' \
-  'Success: every judge reaches 8' >"$tc"
+  'Success: every judge reaches 8' 'Each judge >= 8' 'Each judge must assign at least 8' \
+  'Require 8 or better from each judge' 'At least 3 judges must assign at least 8' \
+  'At least 3 judges give 8' >"$tc"
 out2="$(bash "$PROMPT_SH" --contract-text "$tc")"
 n2="$(grep -c 'judge scores removed' <<<"$out2" || true)"
-if [ "$n2" = 8 ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $n2 of 8 new score targets removed"; grep -v 'judge scores removed' <<<"$out2" | sed 's/^/    kept: /'; fi
+if [ "$n2" = 13 ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); echo "  FAIL: $n2 of 13 score targets removed"; grep -v 'judge scores removed' <<<"$out2" | sed 's/^/    kept: /'; fi
 printf '%s\n' 'Judges read 3 files; the sidebar lists them' 'File one task per follow-up the judge lists above the verdict' \
   'Each judge labels every defect; the runner fixes all in one batch, on target' 'Judges: sre-2, devex-bar, llm-eval' \
   'Judged paths: /a/wt/ab-judge2/target/x.sh' '2. The judge prompt keeps the README line -> proof: test 3' \
-  'At least 3 judges read the README' 'Quote the owner words "re-judge 1" and "Path to 8" in the report.' >"$tc"
+  'At least 3 judges read the README' 'At least 3 judges read 2 files' 'At least 3 judges score the README' \
+  'Quote the owner words "re-judge 1" and "Path to 8" in the report.' >"$tc"
 out3="$(bash "$PROMPT_SH" --contract-text "$tc")"
 rm -f "$tc"
 n3="$(grep -c 'judge scores removed' <<<"$out3" || true)"

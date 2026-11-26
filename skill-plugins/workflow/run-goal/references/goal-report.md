@@ -37,6 +37,12 @@ verified scope. For a rolling backlog, report dated counts by type and say
 the total is unknown. Keep partial work and blockers visible. Use a percentage
 only when the numerator and denominator count the same units.
 
+Write a clock time in a report only when you read it from a clock. Run
+`date`, or take the time from the tool-call log, and give the time zone.
+Never write "about 11:00" from memory: a judge who compares the report with
+the log finds the gap and stops trusting the other rows. When a row says
+"read today", give the time of that read.
+
 For a nonempty `Needed from you` line, name four details in plain words.
 Describe the item and link it or the place to act. Explain why the user
 needs to decide.

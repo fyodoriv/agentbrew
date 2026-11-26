@@ -246,6 +246,10 @@ describe("registerCoreCommands", () => {
   // ── remove ────────────────────────────────────────────────────────────
 
   describe("remove command", () => {
+    beforeEach(() => {
+      mockRemove.mockResolvedValue("mcp");
+    });
+
     it("calls remove and autoSync", async () => {
       const program = buildProgram();
       await program.parseAsync(["node", "test", "remove", "my-server"]);
@@ -265,6 +269,22 @@ describe("registerCoreCommands", () => {
       await program.parseAsync(["node", "test", "remove", "my-server", "--dry-run"]);
       expect(mockRemove).toHaveBeenCalledWith("my-server", { dryRun: true, yes: undefined });
       expect(mockAutoSync).not.toHaveBeenCalled();
+      expect(mockRemoveFromAgentfile).not.toHaveBeenCalled();
+    });
+
+    it("skips sync and Agentfile updates after a declined removal", async () => {
+      mockRemove.mockResolvedValueOnce(undefined);
+      const program = buildProgram();
+      await program.parseAsync(["node", "test", "remove", "/fixture/commands"]);
+      expect(mockAutoSync).not.toHaveBeenCalled();
+      expect(mockRemoveFromAgentfile).not.toHaveBeenCalled();
+    });
+
+    it("syncs after unregistering a command source without editing MCP settings", async () => {
+      mockRemove.mockResolvedValueOnce("command-source");
+      const program = buildProgram();
+      await program.parseAsync(["node", "test", "remove", "/fixture/commands", "--yes"]);
+      expect(mockAutoSync).toHaveBeenCalledOnce();
       expect(mockRemoveFromAgentfile).not.toHaveBeenCalled();
     });
 
@@ -291,6 +311,7 @@ describe("registerCoreCommands", () => {
       process.exitCode = undefined;
       mockRemove.mockImplementation(async () => {
         process.exitCode = 1;
+        return "mcp";
       });
       const program = buildProgram();
       await program.parseAsync(["node", "test", "remove", "nonexistent-item"]);

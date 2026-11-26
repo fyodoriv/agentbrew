@@ -11,7 +11,10 @@ it exactly matches a command source record.
   in a different directory stays registered.
 - **Measurement:** Run `npm exec -- vitest run src/remove.test.ts src/commands/cli-core.test.ts`
   in hosted CI. Exercise the absolute path, dry run, declined confirmation,
-  missing match, and another source with the same label.
+  missing match, and another source with the same label. Check that an active
+  global or current-project declaration and an inaccessible owner block
+  removal. Check that direct removal reaches sync without an MCP config edit.
+  If the same path also names a local source, refuse to remove either record.
 - **Success:** The explicit accepted operation drops exactly one
   registration. The same-label neighbor is retained. Dry run, a decline,
   and an unknown path write zero settings and delete zero source files.

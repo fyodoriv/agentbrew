@@ -96,7 +96,7 @@ export function registerCoreCommands(program: Command): void {
   program
     .command("remove [name]")
     .alias("uninstall")
-    .description("Remove an MCP server, source, skill, or command (auto-detects type)")
+    .description("Remove an MCP server, source, skill, or command. Use the full path for a command source.")
     .option("--dry-run", "Preview what would be removed without applying")
     .option("-y, --yes", "Skip confirmation prompt")
     .option("-P, --project", "Remove from project Agentfile only (not global)")
@@ -105,7 +105,7 @@ export function registerCoreCommands(program: Command): void {
         cliMissingArg(
           "Item name",
           "agentbrew remove <name>",
-          "Removes any item type: MCP server, source, skill, or command.",
+          "Removes an MCP server, source, skill, command, or command-source path.",
           "Run `agentbrew status` to see what's registered.",
         );
         return;
@@ -117,13 +117,13 @@ export function registerCoreCommands(program: Command): void {
       }
       const { remove } = await import("../remove.js");
       const { autoSync } = await import("../sync-runner.js");
-      await remove(name, { dryRun: options.dryRun, yes: options.yes });
+      const removed = await remove(name, { dryRun: options.dryRun, yes: options.yes });
       // Skip autoSync + Agentfile mutation if remove() signalled "not found"
       // via process.exitCode. Running autoSync on a failed remove re-installs
       // everything from the Agentfile — the exact opposite of what the user
       // asked for. See fix/install-remove-unknown-no-sync.
-      if (!options.dryRun && !process.exitCode) {
-        removeFromAgentfile(globalAgentfileDir(), name);
+      if (removed && !options.dryRun && !process.exitCode) {
+        if (removed !== "command-source") removeFromAgentfile(globalAgentfileDir(), name);
         await autoSync();
       }
     });

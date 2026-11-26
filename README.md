@@ -440,7 +440,7 @@ Sync never overwrites a command you created or edited in `~/.config/agentbrew/co
 
 A sync removes dirs that the same Agentfile no longer declares. This covers the global Agentfile, `--agentfile`, and the project Agentfile in the current directory. `--no-prune` turns it off.
 
-Dirs from other Agentfiles or added by hand are never removed. State written before ownership existed is kept as is, and a dir that is still declared is claimed on the next sync. So remove an old dropped dir by hand once.
+Sync keeps dirs owned by other Agentfiles or added by hand. It also keeps dirs registered before ownership tracking and claims them if the declaration still exists. To clear an old command source after removing its declaration, run `agentbrew remove <registered-command-directory>` before the next sync. Add `--dry-run` to preview the exact path. The command keeps the source files. Old agent-directory registrations still need manual cleanup.
 
 **Commands that a repo owns.** Never hand-copy a repo-owned command into `~/.config/agentbrew/commands/`. Declare the repo's command folder in that repo's `Agentfile.yaml` (for example `commands: [./commands]`). Then run `agentbrew sync` in the repo, or list its parent folder in `workspaceRoots` (see [Workspaces](#workspaces)). A hand copy is a second source with no owner, and it drifts from the repo's version.
 

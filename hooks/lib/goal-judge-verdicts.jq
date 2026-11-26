@@ -21,7 +21,8 @@
 #               keep the runner's own model from holding a judge majority
 #   M <tool_use_id>   a result with more than one verdict block (ignored)
 #   J <tool_use_id> <judge> <state> <report, base64>
-#               the judge's report as the overseer prompt quotes it
+#               one report per judge call, quoting the most detailed copy of
+#               its first verdict
 #   O <tool_use_id> <state> <model> <type_ok> <messaged> <prompt, base64>
 #               one per overseer call (GOAL-OVERSEER-PROMPT header)
 #   Q <tool_use_id> <judge> <score>
@@ -57,6 +58,12 @@ def nocheck: gsub("(?<s>^|[;&|\n])[ \t]*(ba|z)?sh[ \t]+-n[ \t][^;&|\n]*"; "\(.s)
 def header($k): (capture("(?m)^" + $k + ":[ \t]*(?<v>[^\r\n]*)").v // "") | trim;
 # A field line in a verdict block; tolerates list, quote, and bold marks.
 def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\r?\n|(?=<)|$)";
+def judge_verdicts:
+  [ scan("[*_]*GOAL-JUDGE-VERDICT[*_]*[ \t]*\r?\n" + f("Judge") + f("Score") + f("Cache") + f("State"))
+    | map(trim | gsub("^`|`$"; "")) ];
+def judge_report_length:
+  (capture("<result>(?<body>[\\s\\S]*?)</result>").body // .)
+  | split("GOAL-JUDGE-VERDICT")[0] | trim | length;
 
 [ inputs | fromjson? ] as $all
 | ([ range(0; $all | length) as $i | $all[$i]
@@ -130,6 +137,19 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
      | {key: .id, value: ((.text | capture("agentId:[ \t]*(?<a>[A-Za-z0-9_-]+)").a) // "")} ] | from_entries) as $agentid
 | ([ $rows[] | select(.type == "assistant" and (.isSidechain // false | not)) | .message.model // empty | strings
      | select(. != "<synthetic>") ] | last // "" | family) as $runner
+| ([ ($results + $notes)[] | select($agents[.id] != null and ($agents[.id].overseer | not))
+     | . + {verdicts: (.text | judge_verdicts)} ] | to_entries) as $judge_outputs
+# Keep the same verdict that Stop reads first for this call. A repeat can
+# supply more report text only if all four verdict fields match.
+| (reduce ($judge_outputs[] | select(.value.verdicts | length == 1)) as $entry ({};
+    $entry.value as $output
+    | .[$output.id] as $report
+    | ($output.text | judge_report_length) as $length
+    | if $report == null then
+        .[$output.id] = {index: $entry.key, verdict: $output.verdicts[0], text: $output.text, length: $length}
+      elif $output.verdicts[0] == $report.verdict and $length > $report.length then
+        .[$output.id] |= . + {text: $output.text, length: $length}
+      else . end)) as $judge_reports
 | "G\t\(if $active then 1 else 0 end)\t\($lastargs | @base64)",
   "T\t\($runner)",
   "R\t\(($launched - $done) | length)",
@@ -155,10 +175,8 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
                (if ($why | length) >= 2 and ($why | startswith("<") | not) then ($why | length | tostring) else "0" end)] | @tsv ),
           ( [ scan("(?m)^[ \t>*_-]*State:[*_ \t]*([A-Za-z0-9_.-]+)") ][0][0] // ""
             | ["W", $id, .] | @tsv ) ) ),
-  ( ($results + $notes)[] | select($agents[.id] != null and ($agents[.id].overseer | not))
-    | .id as $id | $agents[$id] as $call | .text as $text
-    | [ .text | scan("[*_]*GOAL-JUDGE-VERDICT[*_]*[ \t]*\r?\n" + f("Judge") + f("Score") + f("Cache") + f("State")) ] as $raw
-    | [ $raw[] | map(trim | gsub("^`|`$"; "")) ] as $v
+  ( $judge_outputs[] | .key as $index | .value
+    | .id as $id | $agents[$id] as $call | .verdicts as $v
     | if ($v | length) > 1 then "M\t\($id)"
       elif ($v | length) == 1 then
         $v[0] as $x
@@ -175,7 +193,10 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
            (if ($call.prompt | test("^\\s*GOAL-JUDGE-PROMPT v[0-9]"))
                and ($call.prompt | contains("\nJudge-Id: " + $judge + "\n"))
                and ($call.prompt | contains("\nState: " + $x[3] + "\n")) then "1" else "0" end)] | @tsv,
-          # J: the judge's report as the overseer reads it.
-          (["J", $id, $judge, $x[3], ($text | trim | @base64)] | @tsv)
+          # Keep one J row at the first verdict's position, even when a later
+          # copy had more detail.
+          (if $judge_reports[$id].index == $index then
+             ["J", $id, $judge, $x[3], ($judge_reports[$id].text | trim | @base64)] | @tsv
+           else empty end)
       else empty end )
   end

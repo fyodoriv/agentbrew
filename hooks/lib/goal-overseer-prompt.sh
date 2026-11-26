@@ -14,8 +14,8 @@
 #   bash goal-overseer-prompt.sh <contract path> <transcript path>
 #   bash goal-overseer-prompt.sh <contract path> -   (J rows on stdin; the hook)
 # A J row is: J <tab> <tool_use_id> <tab> <judge id> <tab> <state> <tab> <report, base64>
-# (from goal-judge-verdicts.jq). The latest report per judge on the current
-# state is used: a later report on the same state replaces the earlier one.
+# goal-judge-verdicts.jq keeps one report per judge call. The latest call
+# with a report for the current state supplies each judge's text.
 # Judges are listed in the order of the contract's Judges: line. Each awk here
 # reads all of its input: an awk that exits on the first match made the whole
 # script exit 141 (SIGPIPE) with no output on a large transcript.

@@ -156,7 +156,40 @@ function claim(l,  r) { l = norm(l)
 # What may follow a not-met or waiting word: counts go first ("3/5 met",
 # "3 of 5 criteria met"), then any success word left claims met ("blocked
 # on 2FA and done"), then one "on|by|until|for <what>" tail may stay.
-function rest(r,  n, t, a, b) { r = unparen(r); t = r; while (match(t, /[0-9]+ *(of|\/) *[0-9]+/)) { a = substr(t, RSTART, RLENGTH); b = a; sub(/ *(of|\/).*/, "", a); sub(/.*(of|\/) */, "", b); if (a + 0 == b + 0 && a + 0 > 0 && substr(t, RSTART + RLENGTH) ~ /^ *(criteria|criterion|items?|steps?|parts?)? *(are |is )?met/) return 1; t = substr(t, RSTART + RLENGTH) } n = "(criteria|criterion|items?|steps?|parts?)"
+function all_met_count(text, standalone,  count, completed, total, tail, ending) {
+  ending = "^ *(criteria|criterion|items?|steps?|parts?)? *(are |is )?met"
+  ending = ending (standalone ? "[[:space:]]*[.!]?[[:space:]]*$" : "([^[:alnum:]_]|$)")
+  while (match(text, /[0-9]+ *(of|\/) *[0-9]+/)) {
+    if (standalone && substr(text, 1, RSTART - 1) !~ /^[[:space:]]*$/) return 0
+    count = substr(text, RSTART, RLENGTH)
+    tail = substr(text, RSTART + RLENGTH)
+    completed = total = count
+    sub(/ *(of|\/).*/, "", completed)
+    sub(/.*(of|\/) */, "", total)
+    if (completed + 0 == total + 0 && completed + 0 > 0 && tail ~ ending) return 1
+    if (standalone) return 0
+    text = tail
+  }
+  return 0
+}
+# A standalone completion statement or a full count inside a reason still claims success.
+function bracketed_completion(text,  part, before, after) {
+  while (match(text, /\([^()]*\)/)) {
+    part = substr(text, RSTART + 1, RLENGTH - 2)
+    before = substr(text, 1, RSTART - 1)
+    after = substr(text, RSTART + RLENGTH)
+    if (part ~ /^[[:space:]]*(all done|merged)[[:space:]]*[.!]?[[:space:]]*$/ ||
+        all_met_count(part, 1)) return 1
+    # An inner qualifier keeps the outer statement from matching on its own.
+    text = before " ? " after
+  }
+  return 0
+}
+function rest(r,  n) {
+  if (bracketed_completion(r)) return 1
+  r = unparen(r)
+  if (all_met_count(r, 0)) return 1
+  n = "(criteria|criterion|items?|steps?|parts?)"
   gsub("(" n ")? *[0-9]+( *(,|and|&|or) *[0-9]+)* *((of|/) *[0-9]+ *)?(" n " *)?(are |is )?(not met|met|done|blocked|open|left)", "", r)
   gsub(/(the )?rest (is |are )?(blocked|open|left|pending|not met)|lowest( score)? [0-9.]+ *\/ *10/, "", r)
   if (success(r)) return 1

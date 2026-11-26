@@ -29,9 +29,22 @@ export interface PluginManifest {
 
 export type ManifestResult = { ok: true; manifest: PluginManifest } | { ok: false; errors: string[] };
 
-const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
+// Keep reading signed manifests made before the authoring schema dropped catalog.
+const validate = new Ajv2020({ allErrors: true, strict: false }).compile({
+  ...schema,
+  properties: {
+    ...schema.properties,
+    contributes: {
+      ...schema.properties.contributes,
+      properties: {
+        ...schema.properties.contributes.properties,
+        catalog: { $ref: "#/$defs/relPath" },
+      },
+    },
+  },
+});
 
-/** Check a parsed manifest against `agentbrew-plugin.schema.json`. */
+/** Check a parsed manifest, including the legacy catalog field. */
 export function validateManifest(value: unknown): ManifestResult {
   if (validate(value)) return { ok: true, manifest: value as unknown as PluginManifest };
   const errors = (validate.errors ?? []).map((e) => `${e.instancePath || "/"} ${e.message ?? "is invalid"}`);

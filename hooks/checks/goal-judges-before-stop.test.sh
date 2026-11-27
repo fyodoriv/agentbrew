@@ -322,6 +322,25 @@ expect "a fourth judging round blocks (round cap 3)" 2 "$(run farm)"
 expect "RUN_GOAL_JUDGE_ROUNDS=4 allows four rounds" 0 "$(run farm RUN_GOAL_JUDGE_ROUNDS=4)"
 check "the round-cap block says how the owner raises it" grep -q 'approve round 4' <(run_out farm)
 owner_says() { jq -cn --arg t "$2" '{type:"user",message:{role:"user",content:$t}}' >>"$ROOT/$1.jsonl"; }
+
+goal restart "Goal result: met (3/3 met)"
+new_goal_row restart "deliver the export"
+for v in 1 2 3; do
+  panel restart 9 7 9
+  echo "v$v-edit" >"$ROOT/work-restart/app.txt"
+done
+new_goal_row restart "deliver the export"
+expect "an unchanged contract still requires fresh verdicts after a restart" 2 "$(run restart)"
+panel restart 9 9 9
+expect "an unchanged contract keeps the round cap after a restart" 2 "$(run restart)"
+check "the restart block counts four rounds" grep -q 'used 4 judging rounds' <(run_out restart)
+owner_says restart "approve round 4"
+expect "owner approval after restart allows a fourth round" 0 "$(run restart)"
+new_goal_row restart "deliver the revised export"
+printf 'Export only the current month.\n' >>"$RUN_GOAL_STATE_DIR/restart.contract.md"
+run restart >/dev/null
+panel restart 9 9 9
+expect "a changed contract starts with a fresh round cap" 0 "$(run restart)"
 cp "$ROOT/farm.jsonl" "$ROOT/farm-base.jsonl"
 owner_says farm "approve round 4"
 expect "the owner's 'approve round 4' allows a fourth round" 0 "$(run farm)"

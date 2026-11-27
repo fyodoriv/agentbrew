@@ -20,7 +20,8 @@ describe("docs/shared-rules.md — measure every task", () => {
     const line = rule("**Measure every task (IRON LAW):**");
     for (const field of FIELDS) expect(line).toContain(`\`${field}\``);
     expect(line).toMatch(/at every priority/);
-    expect(line).toContain("npx @tasks-md/lint --require-prereg TASKS.md");
+    expect(line).toMatch(/npx --yes @tasks-md\/lint@[0-9.]+ --require-prereg TASKS\.md/);
+    expect(sharedRules.match(/@tasks-md\/lint/g)).toHaveLength(1);
   });
 
   it("asks for a number that shows the effect in use", () => {

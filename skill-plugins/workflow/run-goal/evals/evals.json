@@ -4832,6 +4832,18 @@
         "Keep C on its existing queue acquisition with no second heavy-run wrapper.",
         "Stop before D's local test would start. Follow its hosted policy and never skip or turn off its hook."
       ]
+    },
+    {
+      "id": 437,
+      "prompt": "A macOS CI job ran past its timeout and GitHub cancelled it. The job still has a readable log. The owner asks you to work the remaining follow-ups. How do you decide what to do with this run?",
+      "expected_output": "Read the available job log first. Report the failing or last started step with its evidence, compare the timing with recent runs of the same job, and decide whether the issue is a reproducible failure or an isolated overrun. Check the jobs API when the log leaves timing unclear. Keep the affected delivery open until its required checks pass. Base any fix or retry on what the log shows.",
+      "files": [],
+      "expectations": [
+        "Reads the available cancelled-job log before choosing a fix or retry",
+        "Names the last running or failed step and checks recent comparable jobs",
+        "Uses the jobs API for timing details if the log is insufficient",
+        "Keeps delivery open until the required checks pass"
+      ]
     }
   ]
 }

@@ -13,3 +13,16 @@ The original Stop command was registered. The active script still matched the pr
 **Pivot:** Stop the new content check if it reports 1 or more user-owned copies as stale. Require positive file ownership before reporting drift.
 
 **Anchor:** [Original registered-hook rollout](https://github.com/fyodoriv/agentbrew/pull/1342) and [published registration check](https://github.com/fyodoriv/agentbrew/blob/662381a4402a970504a6a811b1a7cb6df63e222e/src/hooks/verify-cli.ts).
+
+## Observed result (2026-11-27)
+
+The [Ubuntu baseline](https://github.com/fyodoriv/agentbrew/actions/runs/46072585015)
+missed the tracked stale script. On the
+[accepted revision](https://github.com/fyodoriv/agentbrew/actions/runs/46075590522),
+Ubuntu and macOS each passed 27 hook drift tests, six deployment tests,
+and four CLI tests.
+
+The scratch verifier reported one stale tracked script. Sync restored
+the source bytes, and the verifier reported zero drift afterward. The
+user-owned command and script stayed intact. The exact tree merged as
+`9b4c2e47`.

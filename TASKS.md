@@ -365,19 +365,6 @@
 
 ## P1
 
-- [ ] Report stale managed hook files during hook verification
-  - **ID**: hook-verify-deployed-content
-  - **Tags**: hooks, sync, verification
-  - **Details**: On 2026-11-27, `agentbrew hooks verify --agent claude-code --json` returned zero drift while the active Stop hook still matched the previous accepted source. The command checked its registration. A direct byte comparison found the stale deployed script. Keep the registration and file checks distinct in the result.
-  - **Files**: `src/drift-checks/hooks.ts`, `src/hooks/verify-cli.ts`, their tests, and the hook verification guide.
-  - **Output**: code
-  - **Acceptance**: A correctly registered managed script with stale bytes produces an actionable drift entry. A current managed script and a user-owned hook produce no content warning. A verified repair yields equal source and deployed bytes.
-  - **Hypothesis**: A correctly registered stale script goes from 0 reported content changes to 1. There are 0 content warnings for the current script and user-owned control.
-  - **Measurement**: In hosted CI run `npx vitest run src/drift-checks/hooks.test.ts src/hooks/verify-cli.test.ts`. Check the new exact stale-script case and both unchanged controls.
-  - **Success**: 1 actionable entry for the stale script, 0 false warnings, and 0 byte differences after a controlled sync.
-  - **Pivot**: If 1 user-owned hook is mistaken for a managed script, keep the existing registration check and require exact ownership before adding content detection.
-  - **Anchor**: [Agentbrew #1342](https://github.com/fyodoriv/agentbrew/pull/1342) and the [shipped verification check](https://github.com/fyodoriv/agentbrew/blob/662381a4402a970504a6a811b1a7cb6df63e222e/src/hooks/verify-cli.ts).
-
 - [ ] A stuck macOS CI gate stops in time and leaves a log that names the slow step
   - **ID**: ci-macos-gate-overrun
   - **Tags**: ci, reliability, delivery

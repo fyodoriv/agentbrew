@@ -1,9 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, isAbsolute, join } from "node:path";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { keepsClaudePermissions } from "../core/claude-permissions.js";
 import { logSkipped } from "../core/logger.js";
-import { defaultDeployDir } from "../hooks/deploy.js";
-import { loadManagedHooksFromManifest } from "../hooks/manifest.js";
+import {
+  defaultDeployDir,
+  readDeployedHookIds,
+  readRegularHookFile,
+  resolveHookScriptSource,
+} from "../hooks/deploy.js";
+import { loadManagedHooksFromManifest, manifestEntryToManagedHook, type ResolvedManifest } from "../hooks/manifest.js";
 import { loadManifest } from "../manifest.js";
 import { loadState } from "../state.js";
 import { filterHooksForTarget } from "../sync/hooks-sync.js";
@@ -198,11 +203,17 @@ function hookKeyForAgent(_agent: HooksAgent, hook: ManagedHook): string {
   return hookKey(hook.event, hook.matcher);
 }
 
-function managedKeysForAgent(manifest: ReturnType<typeof loadManifest>, agent: HooksAgent): Set<string> {
-  const perAgent = manifest.managedHookKeysByAgent?.[agent.name];
-  if (perAgent !== undefined) return new Set(perAgent);
-  if (agent.name === "claude-code") return new Set(manifest.managedHookKeys ?? []);
-  return new Set();
+interface ManagedHookOwnership {
+  keys: Set<string>;
+  ids: Set<string> | undefined;
+}
+
+function managedOwnershipForAgent(manifest: ReturnType<typeof loadManifest>, agent: HooksAgent): ManagedHookOwnership {
+  const keys =
+    manifest.managedHookKeysByAgent?.[agent.name] ??
+    (agent.name === "claude-code" ? manifest.managedHookKeys : undefined);
+  const ids = manifest.managedHookIdsByAgent?.[agent.name];
+  return { keys: new Set(keys), ids: ids && new Set(ids) };
 }
 
 function resolveHooksFilePath(agent: HooksAgent): string {
@@ -236,14 +247,73 @@ function findAgentbrewRepoRoot(): string | undefined {
   return undefined;
 }
 
-function loadManifestManagedHooks(): ManagedHook[] {
-  const repoRoot = process.env.AGENTBREW_REPO_ROOT ?? findAgentbrewRepoRoot() ?? process.cwd();
+function loadManifestManagedHooks(repoRoot: string, deployDir: string) {
   try {
-    return loadManagedHooksFromManifest(repoRoot, defaultDeployDir()).managed;
+    return loadManagedHooksFromManifest(repoRoot, deployDir);
   } catch (err) {
     logSkipped("drift/hooks/loadManifestManagedHooks", err);
-    return [];
+    return undefined;
   }
+}
+
+interface TrackedHookScript {
+  id: string;
+  hook: ManagedHook;
+  source: string;
+  deployed: string;
+}
+
+function trackedHookScripts(repoRoot: string, deployDir: string, manifest?: ResolvedManifest): TrackedHookScript[] {
+  if (!manifest?.hooks.length) return [];
+  const ownedIds = new Set(readDeployedHookIds(deployDir));
+  const offByDefault = new Set(manifest.offByDefault);
+  return manifest.hooks
+    .filter((entry) => ownedIds.has(entry.id) && !offByDefault.has(entry.id) && basename(entry.id) === entry.id)
+    .map((entry) => ({
+      id: entry.id,
+      hook: manifestEntryToManagedHook(entry, deployDir),
+      source: resolveHookScriptSource(repoRoot, entry),
+      deployed: join(deployDir, `${entry.id}.sh`),
+    }));
+}
+
+function hookScriptIsStale(script: TrackedHookScript): boolean {
+  try {
+    const source = readRegularHookFile(script.source);
+    const deployed = readRegularHookFile(script.deployed);
+    return source !== undefined && deployed !== undefined && !source.equals(deployed);
+  } catch (err) {
+    logSkipped("drift/hooks/hookScriptIsStale", err);
+    return false;
+  }
+}
+
+function hookScriptDrift(
+  agentName: string,
+  scripts: TrackedHookScript[],
+  targetHooks: ManagedHook[],
+  deployed: HooksByEvent,
+  ownership: ManagedHookOwnership,
+): DriftItem[] {
+  if (scripts.length === 0) return [];
+  const registered = new Set(
+    targetHooks
+      .filter(
+        (hook) =>
+          ownership.keys.has(hookKey(hook.event, hook.matcher)) &&
+          (!ownership.ids || ownership.ids.has(hookIdentity(hook))) &&
+          isHookPresent(deployed[hook.event], hook),
+      )
+      .map(hookIdentity),
+  );
+  return scripts
+    .filter((script) => registered.has(hookIdentity(script.hook)) && hookScriptIsStale(script))
+    .map((script) => ({
+      agent: agentName,
+      type: "hooks",
+      detail: `stale deployed hook script: ${script.id} — Run: agentbrew sync --only hooks`,
+      diff: { updated: [script.id] },
+    }));
 }
 
 function mergeManagedHooks(stateHooks: ManagedHook[], manifestHooks: ManagedHook[]): ManagedHook[] {
@@ -293,7 +363,12 @@ function missingHooksFileDrift(agent: HooksAgent, targetHooks: ManagedHook[]): D
   ];
 }
 
-function hooksDriftForAgent(agent: HooksAgent, managedHooks: ManagedHook[], managedKeys: Set<string>): DriftItem[] {
+function hooksDriftForAgent(
+  agent: HooksAgent,
+  managedHooks: ManagedHook[],
+  ownership: ManagedHookOwnership,
+  scripts: TrackedHookScript[],
+): DriftItem[] {
   if (!agent.hooksFile) return [];
   const targetHooks = filterHooksForTarget(managedHooks, agent.name);
   const filePath = resolveHooksFilePath(agent);
@@ -301,8 +376,12 @@ function hooksDriftForAgent(agent: HooksAgent, managedHooks: ManagedHook[], mana
 
   const settings = readSettingsFromFile(filePath);
   const deployed = readHooksForAgent(settings, agent);
-  const missing = targetHooks.length > 0 ? findMissingHooks(agent, deployed, targetHooks, managedKeys) : [];
-  return [...missingHooksDrift(agent.name, missing), ...permissionDefaultsDrift(agent.name, settings)];
+  const missing = targetHooks.length > 0 ? findMissingHooks(agent, deployed, targetHooks, ownership.keys) : [];
+  return [
+    ...missingHooksDrift(agent.name, missing),
+    ...hookScriptDrift(agent.name, scripts, targetHooks, deployed, ownership),
+    ...permissionDefaultsDrift(agent.name, settings),
+  ];
 }
 
 /** Check hooks drift for all agents with hooks support. */
@@ -315,12 +394,16 @@ export function checkHooksDrift(): DriftItem[] {
   const hookAgents = AGENT_DEFINITIONS.filter((agent) => agent.hooksFile && detectedNames.has(agent.name));
   if (hookAgents.length === 0) return [];
 
-  const managedHooks = mergeManagedHooks(state.hooks ?? [], loadManifestManagedHooks());
+  const repoRoot = process.env.AGENTBREW_REPO_ROOT ?? findAgentbrewRepoRoot() ?? process.cwd();
+  const deployDir = defaultDeployDir();
+  const manifestHooks = loadManifestManagedHooks(repoRoot, deployDir);
+  const managedHooks = mergeManagedHooks(state.hooks ?? [], manifestHooks?.managed ?? []);
+  const scripts = trackedHookScripts(repoRoot, deployDir, manifestHooks?.resolved);
 
   const drift: DriftItem[] = [];
 
   for (const agent of hookAgents) {
-    drift.push(...hooksDriftForAgent(agent, managedHooks, managedKeysForAgent(manifest, agent)));
+    drift.push(...hooksDriftForAgent(agent, managedHooks, managedOwnershipForAgent(manifest, agent), scripts));
   }
 
   return drift;

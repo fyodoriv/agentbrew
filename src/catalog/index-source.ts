@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import chalk from "chalk";
 import { getGitTimeout, gitExec } from "../core/git-retry.js";
-import { realignDivergedCache } from "./cache-realign.js";
+import { checkoutRewrittenCache, realignDivergedCache } from "./cache-realign.js";
 import {
   assertSourceCheckoutLease,
   isUnknownSourceGitTermination,
@@ -731,27 +731,31 @@ export function formatItemCounts(items: SourceItem[]): string {
 /** Most cached sources `prefetchCachedSources` pulls at once. */
 const PREFETCH_CONCURRENCY = 8;
 
-function pullAsync(cachePath: string, env: NodeJS.ProcessEnv, source?: string): Promise<boolean> {
+function sourceGitNetworkAsync(
+  cachePath: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  source?: string,
+): Promise<boolean> {
   return withSourceCheckoutLeases(
     [{ path: cachePath, source }],
     () =>
       new Promise((resolvePull, rejectPull) => {
         assertSourceCheckoutLease(cachePath);
-        execFile(
-          "git",
-          ["pull", "--ff-only", "--quiet"],
-          { cwd: cachePath, env, timeout: getGitTimeout(30_000) },
-          (error) => {
-            try {
-              if (error) noteSourceGitFailure(cachePath, error);
-              resolvePull(!error);
-            } catch (failure) {
-              rejectPull(failure);
-            }
-          },
-        );
+        execFile("git", args, { cwd: cachePath, env, timeout: getGitTimeout(30_000) }, (error) => {
+          try {
+            if (error) noteSourceGitFailure(cachePath, error);
+            resolvePull(!error);
+          } catch (failure) {
+            rejectPull(failure);
+          }
+        });
       }),
   );
+}
+
+function pullAsync(cachePath: string, env: NodeJS.ProcessEnv, source?: string): Promise<boolean> {
+  return sourceGitNetworkAsync(cachePath, ["pull", "--ff-only", "--quiet"], env, source);
 }
 
 async function settleSourceWorkers(workers: Promise<void>[]): Promise<void> {
@@ -804,6 +808,51 @@ export interface SourcePullOutcome {
 
 type PullGit = (path: string, ...args: string[]) => string;
 
+interface RewriteCandidate {
+  path: string;
+  branch: string;
+  upstream: string;
+  previousUpstream: string;
+  before: string;
+}
+
+async function findRewrittenTip(
+  candidate: RewriteCandidate,
+  source: Source,
+  env: NodeJS.ProcessEnv,
+  git: PullGit,
+): Promise<string | undefined> {
+  const { path, branch, upstream, previousUpstream, before } = candidate;
+  const tip = git(path, "rev-parse", upstream);
+  if (tip === before) return;
+  if (before !== previousUpstream) {
+    const history = git(path, "reflog", "show", "--format=%H", upstream);
+    if (!history) return;
+    const tips = history.split("\n");
+    // A fresh clone can create the tracking ref before its first reflog entry.
+    if (!tips.includes(before) && git(path, "rev-parse", `${upstream}@{${tips.length}}`) !== before) return;
+  }
+  try {
+    git(path, "merge-base", before, tip);
+    return;
+  } catch (error) {
+    if ((error as { status?: number }).status !== 1) throw error;
+  }
+  // The tracking ref may have moved during an earlier attempt. Confirm its
+  // exact configured branch before using the cached ref to move the checkout.
+  const name = branch.slice("refs/heads/".length);
+  const remote = git(path, "config", "--get-all", `branch.${name}.remote`);
+  const mergeRef = git(path, "config", "--get-all", `branch.${name}.merge`);
+  if (remote !== "origin" || !mergeRef.startsWith("refs/heads/") || mergeRef.includes("\n")) return;
+  const fetched = await sourceGitNetworkAsync(
+    path,
+    ["fetch", "--no-tags", "--quiet", "origin", mergeRef],
+    env,
+    source.url,
+  );
+  return fetched && git(path, "rev-parse", "FETCH_HEAD") === tip ? tip : undefined;
+}
+
 function recordCleanCheckoutReceipt(outcome: SourcePullOutcome, path: string, git: PullGit): boolean {
   delete outcome.sha;
   if (git(path, "status", "--porcelain", "--untracked-files=normal")) {
@@ -844,10 +893,40 @@ async function refreshExistingSource(
   const upstream = git(path, "rev-parse", "--symbolic-full-name", "@{upstream}");
   if (!branch.startsWith("refs/heads/") || !upstream.startsWith("refs/remotes/origin/")) return;
   const before = outcome.sha;
-  if (!(await pullAsync(path, env, source.url))) throw new Error("Explicit source pull failed.");
+  const previousUpstream = git(path, "rev-parse", upstream);
+  if (!(await pullAsync(path, env, source.url)))
+    return refreshRewrittenCache(source, outcome, { path, branch, upstream, previousUpstream, before }, env, git);
   if (!recordCleanCheckoutReceipt(outcome, path, git)) return;
   outcome.status = before === outcome.sha ? "unchanged" : "refreshed";
   outcome.reason = "Verified source checkout HEAD after fast-forward refresh.";
+}
+
+async function refreshRewrittenCache(
+  source: Source,
+  outcome: SourcePullOutcome,
+  candidate: RewriteCandidate,
+  env: NodeJS.ProcessEnv,
+  git: PullGit,
+): Promise<void> {
+  const { path, branch, upstream, before } = candidate;
+  const target = await findRewrittenTip(candidate, source, env, git);
+  assertOwnRepo(path, env);
+  assertCacheOrigin(path, toGitUrl(source), env);
+  if (
+    !target ||
+    git(path, "symbolic-ref", "--quiet", "HEAD") !== branch ||
+    git(path, "rev-parse", "--symbolic-full-name", "@{upstream}") !== upstream ||
+    git(path, "rev-parse", upstream) !== target ||
+    git(path, "rev-parse", "HEAD") !== before ||
+    git(path, "status", "--porcelain", "--untracked-files=normal")
+  ) {
+    throw new Error("Explicit source pull failed.");
+  }
+  checkoutRewrittenCache(path, branch.slice("refs/heads/".length), before, target, env);
+  if (!recordCleanCheckoutReceipt(outcome, path, git)) return;
+  if (outcome.sha !== target) throw new Error("Cache rewrite produced an unexpected revision.");
+  outcome.status = "refreshed";
+  outcome.reason = "history rewritten upstream; cache realigned";
 }
 
 function recoverCheckoutReceipt(outcome: SourcePullOutcome, git: PullGit): void {
@@ -922,8 +1001,7 @@ async function refreshSourceForPull(source: Source): Promise<SourcePullOutcome> 
       return outcome;
     }
     recoverCheckoutReceipt(outcome, git);
-    outcome.reason =
-      "Fast-forward refresh failed; retained checkout. Check origin access and branch divergence, then retry sync --pull.";
+    outcome.reason = "Source refresh failed. Check the checkout and origin before retrying sync --pull.";
   } finally {
     // Later skill copies must read this decision's bytes, never retry with realignment.
     sessionFetched.add(`${source.url}:HEAD`);

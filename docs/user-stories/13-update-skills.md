@@ -57,6 +57,12 @@ When you install a skill, agentbrew records the exact git commit SHA in `~/.conf
 - `agentbrew sync --pull` fetches latest and updates the lock file
 - The lock file is human-readable YAML — you can inspect it to see what's pinned
 
+When a source replaces its history, `agentbrew sync --pull` can move a clean
+managed cache from a known former upstream tip to the verified new tip. It
+reports the switch and saves the previous commit on a local `salvage/` branch.
+If the cache has local changes or an unrelated local commit, preserve that
+work before retrying the pull.
+
 ## When a source goes offline
 
 If a source repo is deleted or archived:

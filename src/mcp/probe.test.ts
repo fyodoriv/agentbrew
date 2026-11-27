@@ -484,6 +484,43 @@ describe("probeMcpServer", () => {
     expect(r.status).toBe("init_error");
   });
 
+  it.each([
+    {
+      label: "an anonymous Bearer challenge",
+      challenge: 'Bearer resource_metadata="https://example.com/.well-known/oauth-protected-resource"',
+      headers: undefined,
+      expected: "needs_auth",
+    },
+    { label: "a bare unauthorized response", challenge: undefined, headers: undefined, expected: "init_error" },
+    {
+      label: "a Basic challenge",
+      challenge: 'Basic realm="fixture"',
+      headers: undefined,
+      expected: "init_error",
+    },
+    {
+      label: "a rejected configured token",
+      challenge: 'Bearer error="invalid_token"',
+      headers: { authorization: "Bearer fixture-placeholder" },
+      expected: "init_error",
+    },
+  ])("classifies $label during remote initialize", async ({ challenge, headers, expected }) => {
+    const fetchImpl = async () =>
+      new Response(null, {
+        status: 401,
+        headers: challenge ? { "WWW-Authenticate": challenge } : undefined,
+      });
+
+    const result = await probeMcpServer(
+      "remote",
+      "test-agent",
+      { url: "https://example.com/mcp", headers },
+      { fetchImpl },
+    );
+
+    expect(result.status).toBe(expected);
+  });
+
   it("skips entries with neither command nor url", async () => {
     const r = await probeMcpServer("malformed", "test-agent", {});
     expect(r.status).toBe("skipped_no_command");

@@ -16,12 +16,17 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      gate_timeout_probe:
+        description: Run a macOS timeout probe that is expected to fail
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}${{ inputs.gate_timeout_probe && '-timeout-probe' || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -31,11 +36,11 @@ env:
 
 jobs:
   verify:
-    name: verify (${{ matrix.os }})
+    name: ${{ inputs.gate_timeout_probe && 'verify timeout probe' || 'verify' }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: ${{ fromJSON(inputs.gate_timeout_probe && '["macos-latest"]' || '["ubuntu-latest", "macos-latest"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
@@ -51,12 +56,15 @@ jobs:
           # No npm cache: measured slower than a cold `npm ci` (docs/ci.md).
 
       - name: Check lockfile integrity before install
+        if: ${{ !inputs.gate_timeout_probe }}
         run: node scripts/check-lockfile-integrity.mjs --github-actions
 
       - name: Install
+        if: ${{ !inputs.gate_timeout_probe }}
         run: npm ci
 
       - name: Install test tools
+        if: ${{ !inputs.gate_timeout_probe }}
         # git-filter-repo: the test of scripts/sanitize-history.sh needs it.
         run: |
           if [ "$RUNNER_OS" = "macOS" ]; then
@@ -69,6 +77,7 @@ jobs:
           fi
 
       - name: Cache Playwright browsers
+        if: ${{ !inputs.gate_timeout_probe }}
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -77,6 +86,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Identify the gate cache runner image
+        if: ${{ !inputs.gate_timeout_probe }}
         id: gate-image
         run: |
           if [ -z "${ImageOS:-}" ] || [ -z "${ImageVersion:-}" ] || [ -z "${RUNNER_ARCH:-}" ]; then
@@ -97,8 +107,33 @@ jobs:
           restore-keys: |
             ${{ steps.gate-image.outputs.scope }}-
 
-      - name: Point the gate at the step cache
-        run: echo "AGENTBREW_GATE_CACHE_DIR=$RUNNER_TEMP/gate-cache" >> "$GITHUB_ENV"
+      - name: Prepare the gate trace and cache
+        run: |
+          printf 'AGENTBREW_GATE_TRACE=%s/gate-trace.tsv\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'AGENTBREW_GATE_CACHE_DIR=%s/gate-cache\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          : > "$RUNNER_TEMP/gate-trace.tsv"
+
+      - name: Prepare the timeout probe
+        if: inputs.gate_timeout_probe
+        run: |
+          printf 'probe-sleep sleep 75\n' > "$RUNNER_TEMP/gate-probe.plan"
+          printf 'VERIFY_PLAN=%s/gate-probe.plan\nNO_CACHE=1\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
 
       - name: Gate (npm run verify)
+        timeout-minutes: ${{ inputs.gate_timeout_probe && 1 || 40 }}
         run: npm run verify
+
+      - name: Record an interrupted gate step
+        if: always() && env.AGENTBREW_GATE_TRACE != ''
+        run: |
+          step=$(awk -F '\t' 'END { if ($2 == "start" && $3 ~ /^[A-Za-z0-9_-]+$/) print $3 }' "$AGENTBREW_GATE_TRACE")
+          if [ -n "$step" ]; then
+            printf '%s\tend\t%s\tinterrupted\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$step" >> "$AGENTBREW_GATE_TRACE"
+          fi
+
+      - name: Upload the gate trace
+        if: always() && env.AGENTBREW_GATE_TRACE != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gate-log-${{ matrix.os }}-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/gate-trace.tsv

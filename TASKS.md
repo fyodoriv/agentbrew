@@ -376,7 +376,7 @@
   - **Measurement**: In hosted CI run `npx vitest run src/drift-checks/hooks.test.ts src/hooks/verify-cli.test.ts`. Check the new exact stale-script case and both unchanged controls.
   - **Success**: 1 actionable entry for the stale script, 0 false warnings, and 0 byte differences after a controlled sync.
   - **Pivot**: If 1 user-owned hook is mistaken for a managed script, keep the existing registration check and require exact ownership before adding content detection.
-  - **Anchor**: PR #1342 and the shipped check in `src/hooks/verify-cli.ts` at 52d5a387.
+  - **Anchor**: [Agentbrew #1342](https://github.com/fyodoriv/agentbrew/pull/1342) and the [shipped verification check](https://github.com/fyodoriv/agentbrew/blob/662381a4402a970504a6a811b1a7cb6df63e222e/src/hooks/verify-cli.ts).
 
 - [ ] A stuck macOS CI gate stops in time and leaves a log that names the slow step
   - **ID**: ci-macos-gate-overrun

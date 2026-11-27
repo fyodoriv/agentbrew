@@ -42,3 +42,19 @@ Reject unqualified repositories, other hosts and implicit host
 selection before making a query. Use the explicit public host
 in the query so an ambient setting cannot redirect the read.
 [GitHub CLI environment](https://cli.github.com/manual/gh_help_environment).
+
+## Keep the fixture on its private GitHub CLI
+
+- **Hypothesis**: Configure the test process so endpoint path setup keeps
+  its fake GitHub CLI first, even on a Mac with a Dotfiles checkout.
+- **Measurement**: From an owner-like shell, run
+  `bash hooks/checks/pr-merge-preflight.test.sh` with a regular Dotfiles
+  checkout available. Read the fixture's read-count and merge assertions.
+- **Success**: All 20 fixture rows pass, the numbered ready PR makes exactly
+  one fixture read, and every row makes zero real GitHub or merge calls.
+- **Pivot**: If any row fails or the real CLI can outrank the fixture, stop
+  before delivery and isolate the test subprocess more narrowly.
+- **Anchor**: The numbered-ready control reproduced exit 2 instead of 0 on
+  the owner Mac. Loading endpoint paths moved the fixture CLI out of first
+  place. The companion `a-pr-is-not-ready.test.sh` sets a private Dotfiles
+  directory for its test subprocesses.

@@ -41,7 +41,8 @@ check() {
   : > "$GH_FIXTURE_RECEIPT"
   payload="$(jq -nc --arg command "$command" \
     '{hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {command: $command}}')"
-  GH_FIXTURE_MODE="$mode" GH_FIXTURE_RESPONSE="$response" bash "$script" \
+  env -u BASH_ENV -u ENV DOTFILES_DIR="$scratch" \
+    GH_FIXTURE_MODE="$mode" GH_FIXTURE_RESPONSE="$response" bash "$script" \
     <<< "$payload" > "$scratch/output" 2>&1 || status=$?
   if [ "$status" -ne "$expected" ] || [ "$(grep -Fxc view "$GH_FIXTURE_RECEIPT" || true)" -ne "$reads" ]; then
     printf '%s: expected status %s and %s read(s), got status %s.\n' "$name" "$expected" "$reads" "$status" >&2

@@ -326,6 +326,16 @@ start it again after the edits; never report its result for the new code.
   Mac on 2026-11-15, and the user had to force it off. While the queue
   waits (for example for a real-time app), push the branch for hosted CI,
   run only single-file checks directly, and say which steps wait.
+- Before `git commit` or `git push`, locate its hook with
+  `git rev-parse --git-path hooks/pre-commit` or
+  `git rev-parse --git-path hooks/pre-push`. Follow any launcher, such as
+  Husky, to the script it runs. If the hook starts heavy work with no
+  queue and local testing is allowed, run `heavy-run git commit …` or
+  `heavy-run git push …` from that checkout. If all heavy work queues, use the
+  usual Git command. If heavy steps mix queued and unqueued work, or the
+  hook would start a local heavy suite in a hosted-only repo, stop before the
+  Git command and use the supported delivery path. Keep the hook enabled.
+  Report the blocker if the repo has no supported path.
 - `git symbolic-ref HEAD refs/heads/NEW` leaves an unborn branch, so every
   file shows as staged. Follow it with `git reset --soft <base>`.
 - Fetch the base branch and diff it against your start point before the

@@ -27,9 +27,13 @@
 import { execFileSync } from "node:child_process";
 import {
   chmodSync,
+  closeSync,
+  constants,
   copyFileSync,
   existsSync,
+  fstatSync,
   mkdirSync,
+  openSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -105,9 +109,20 @@ const RETIRED_VERIFIER_IDS = [
   "stability-task-priority",
 ];
 
-function readDeployedIds(deployDir: string): string[] {
+export function readRegularHookFile(path: string): Buffer | undefined {
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
-    const parsed: unknown = JSON.parse(readFileSync(join(deployDir, DEPLOYED_IDS_FILE), "utf8"));
+    return fstatSync(fd).isFile() ? readFileSync(fd) : undefined;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+export function readDeployedHookIds(deployDir: string): string[] {
+  try {
+    const content = readRegularHookFile(join(deployDir, DEPLOYED_IDS_FILE));
+    if (!content) return [];
+    const parsed: unknown = JSON.parse(content.toString("utf8"));
     return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
   } catch {
     return [];
@@ -118,7 +133,7 @@ function readDeployedIds(deployDir: string): string[] {
  *  then record the current IDs for the next run. */
 function pruneStaleScripts(deployDir: string, entries: ManifestHookEntry[]): string[] {
   const current = new Set(entries.map((entry) => entry.id));
-  const owned = new Set([...readDeployedIds(deployDir), ...RETIRED_VERIFIER_IDS]);
+  const owned = new Set([...readDeployedHookIds(deployDir), ...RETIRED_VERIFIER_IDS]);
   const pruned: string[] = [];
   for (const id of owned) {
     if (current.has(id)) continue;
@@ -167,7 +182,7 @@ function deployOneHook(
   deployDir: string,
   skipSyntaxCheck: boolean,
 ): { deployed: boolean; error?: string } {
-  const sourcePath = resolveSource(repoRoot, entry);
+  const sourcePath = resolveHookScriptSource(repoRoot, entry);
   if (!existsSync(sourcePath)) {
     return { deployed: false, error: `source not found: ${sourcePath}` };
   }
@@ -254,7 +269,7 @@ function deployLibDir(repoRoot: string, libDeployDir: string, log?: Logger): voi
 /** Resolve a manifest entry's `script` field to an absolute path. Tries
  *  canonical (agentbrew/hooks/) first, then overlay (~/.config/agentbrew/
  *  hooks-overlay/) — overlay entries reference overlay-local scripts. */
-function resolveSource(repoRoot: string, entry: ManifestHookEntry): string {
+export function resolveHookScriptSource(repoRoot: string, entry: ManifestHookEntry): string {
   const canonical = resolveScriptSource(repoRoot, entry.script);
   if (existsSync(canonical)) return canonical;
   return resolveOverlayScriptSource(entry.script);

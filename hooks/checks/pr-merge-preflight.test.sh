@@ -14,15 +14,23 @@ set -euo pipefail
 printf '%s\n' "$@" >> "$GH_FIXTURE_RECEIPT"
 if [ "$1" = api ]; then
   [ "${2:-}" = --hostname ] && [ "${3:-}" = github.com ] || exit 96
-  [ "${4:-}" = repos/fixture/repo/git/ref/heads/main ] ||
-    [ "${4:-}" = repos/fixture/alternate/git/ref/heads/main ] || exit 95
-  printf '{"ref":"refs/heads/main","object":{"sha":"%s","type":"commit"}}' "$GH_FIXTURE_BASE_SHA"
+  case "$GH_FIXTURE_MODE" in
+    no-ref) exit 1 ;;
+    slow-ref) exec sleep 20 ;;
+  esac
+  case "${4:-}" in
+    repos/fixture/repo/git/ref/heads/main|repos/fixture/alternate/git/ref/heads/main) ref=main ;;
+    repos/fixture/repo/git/ref/heads/feat%2Fcheckout) ref=feat/checkout ;;
+    *) exit 95 ;;
+  esac
+  printf '{"ref":"refs/heads/%s","object":{"sha":"%s","type":"commit"}}' "$ref" "$GH_FIXTURE_BASE_SHA"
   exit 0
 fi
 [ "$1" = pr ] && [ "$2" = view ] || exit 97
 case "$GH_FIXTURE_MODE" in
   unavailable) exit 1 ;;
   timeout) exec sleep 20 ;;
+  slow-ref) sleep 3 ;;
 esac
 printf '%s' "$GH_FIXTURE_RESPONSE"
 MOCK
@@ -102,3 +110,11 @@ check 'bounded timeout' 2 1 "$explicit" '' timeout
 [ "$((SECONDS-started))" -le 8 ]
 
 check 'base ref advanced beyond the passing PR snapshot' 2 1 "$explicit" "$ready" status "$advanced_sha"
+check 'current base with a slash' 0 1 "$explicit" "$(jq -c '.baseRefName = "feat/checkout"' <<< "$ready")"
+grep -Fxq repos/fixture/repo/git/ref/heads/feat%2Fcheckout "$GH_FIXTURE_RECEIPT"
+check 'ref lookup unavailable' 2 1 "$explicit" "$ready" no-ref
+check 'malformed live base' 2 1 "$explicit" "$ready" status bad-sha
+
+started=$SECONDS
+check 'both reads share the same timeout' 2 1 "$explicit" "$ready" slow-ref
+[ "$((SECONDS-started))" -le 7 ]

@@ -85,7 +85,7 @@
       "expectations": [
         "Treats mid-session repo switch as a trigger to run load-project-context again",
         "Runs the canonical script from the new repo root before next-task or planning",
-        "Detects task backend via .tasksmd.json when present",
+        "Uses the new repo’s declared backend or runs detect-task-backend if the helper omits it",
         "Does not reuse prior-repo VISION/TASKS context for the new checkout"
       ]
     },

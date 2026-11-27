@@ -3,16 +3,19 @@
 // ~/.config/agentbrew/scripts/ after `agentbrew sync`.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // @ts-expect-error — pure-ESM .mjs sibling; vitest resolves it via Node ESM.
 import { checkPrVisionTrace } from "../../scripts/check-pr-vision-trace.mjs";
 import { resolveTaskBackend } from "../core/task-backend.js";
+import { syncHelperScripts } from "./helper-scripts.js";
 
-const SCRIPTS_DIR = resolve(import.meta.dirname, "..", "..", "templates", "scripts");
+const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..");
+const SCRIPTS_DIR = join(PROJECT_ROOT, "templates", "scripts");
 
+let fixture: string;
 let repo: string;
 
 function write(relativePath: string, content = "# doc\n"): void {
@@ -21,25 +24,41 @@ function write(relativePath: string, content = "# doc\n"): void {
   writeFileSync(path, content);
 }
 
-// Drop GIT_DIR and friends (set inside git hooks) so `git rev-parse` sees the fixture, not this repo.
+// Keep inherited Git settings out of fixture commands.
 const SCRIPT_ENV = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
 
+function installContextHelper(projectRoot = PROJECT_ROOT) {
+  const home = join(fixture, "home");
+  const targetDir = join(home, ".config", "agentbrew", "scripts");
+  syncHelperScripts({
+    projectRoot,
+    manifest: { hashes: {} },
+    dryRun: false,
+    targetDir,
+    sources: { "load-project-context.sh": "templates/scripts/load-project-context.sh" },
+  });
+  return { home, script: join(targetDir, "load-project-context.sh") };
+}
+
 function runScript(script: string, args: string[] = [], cwd = repo) {
-  const result = spawnSync("bash", [join(SCRIPTS_DIR, script), ...args], {
+  const path = script === "load-project-context.sh" ? installContextHelper().script : join(SCRIPTS_DIR, script);
+  const result = spawnSync("bash", [path, ...args], {
     cwd,
     encoding: "utf-8",
     // The ceiling stops git from finding a repo that encloses the temp dir.
-    env: { ...SCRIPT_ENV, GIT_CEILING_DIRECTORIES: dirname(repo) },
+    env: { ...SCRIPT_ENV, GIT_CEILING_DIRECTORIES: fixture },
   });
   return { status: result.status, out: `${result.stdout}${result.stderr}` };
 }
 
 beforeEach(() => {
-  repo = mkdtempSync(join(tmpdir(), "helper-script-repo-"));
+  fixture = mkdtempSync(join(tmpdir(), "helper-script-repo-"));
+  repo = join(fixture, "project");
+  mkdirSync(repo);
 });
 
 afterEach(() => {
-  rmSync(repo, { recursive: true, force: true });
+  rmSync(fixture, { recursive: true, force: true });
 });
 
 describe("load-project-context.sh", () => {
@@ -54,8 +73,7 @@ describe("load-project-context.sh", () => {
     write("docs/architecture-overview.md");
     write("docs/random-notes.md");
     write("docs/competition/skills-cli.md");
-    write("Agentfile.yaml", "version: 1\n");
-    write(".tasksmd.json", '{ "backend": "github-issues" }\n');
+    write("Agentfile.yaml", githubDescriptor);
 
     const { status, out } = runScript("load-project-context.sh");
 
@@ -105,6 +123,78 @@ describe("load-project-context.sh", () => {
     expect(status).toBe(0);
     expect(out).toContain(`task backend: ${expected}`);
     expect(existsSync(join(repo, "TASKS.md"))).toBe(false);
+  });
+
+  it("reports the packaged resolver's answer through the restricted startup hook", () => {
+    const { home } = installContextHelper(join(PROJECT_ROOT, "dist"));
+    expect(spawnSync("/usr/bin/git", ["init", "-q"], { cwd: repo, env: SCRIPT_ENV }).status).toBe(0);
+    write("README.md");
+    write("Agentfile.yml", githubDescriptor);
+    write("preload.cjs", 'throw new Error("project preload must not run");');
+
+    const result = spawnSync("/bin/bash", [join(PROJECT_ROOT, "hooks/checks/session-entry-context.sh")], {
+      cwd: repo,
+      encoding: "utf-8",
+      env: { ...SCRIPT_ENV, HOME: home, NODE_OPTIONS: `--require=${join(repo, "preload.cjs")}` },
+      input: JSON.stringify({ hook_event_name: "SessionStart", cwd: repo }),
+    });
+
+    expect(result.status).toBe(0);
+    const listing = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+    expect(listing).toContain("task backend: github-issues");
+    expect(listing).toContain("Agentfile: Agentfile.yml");
+    expect(existsSync(join(repo, "TASKS.md"))).toBe(false);
+  });
+
+  it("never looks up backend or scanning tools on the project PATH", () => {
+    const { script } = installContextHelper();
+    write("README.md");
+    write("Agentfile.yaml", githubDescriptor);
+    for (const tool of ["git", "node", "tr"]) {
+      write(`bin/${tool}`, "#!/bin/sh\ntouch project-tool-ran\nexit 1\n");
+      chmodSync(join(repo, "bin", tool), 0o755);
+    }
+    write("preload.cjs", 'throw new Error("project preload must not run");');
+    const result = spawnSync("/bin/bash", [script], {
+      cwd: repo,
+      encoding: "utf-8",
+      env: {
+        ...SCRIPT_ENV,
+        PATH: `${join(repo, "bin")}:/usr/bin:/bin`,
+        NODE_OPTIONS: `--require=${join(repo, "preload.cjs")}`,
+      },
+    });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("task backend: github-issues");
+    expect(existsSync(join(repo, "project-tool-ran"))).toBe(false);
+  });
+
+  it("keeps the listing when an Agentfile is a named pipe", () => {
+    const { script } = installContextHelper();
+    write("README.md");
+    expect(spawnSync("/usr/bin/mkfifo", ["Agentfile.yaml"], { cwd: repo }).status).toBe(0);
+    const result = spawnSync("/bin/bash", [script], {
+      cwd: repo,
+      encoding: "utf-8",
+      env: SCRIPT_ENV,
+      timeout: 2_000,
+    });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("README.md");
+    expect(result.stdout).toContain("task backend: TASKS.md");
+  });
+
+  it("keeps the listing and omits the backend when the resolver is unavailable", () => {
+    write("README.md");
+    write(".tasksmd.json", '{"backend":"github-issues"}\n');
+    const result = spawnSync("/bin/bash", [join(SCRIPTS_DIR, "load-project-context.sh")], {
+      cwd: repo,
+      encoding: "utf-8",
+      env: { ...SCRIPT_ENV, resolved_backend: "github-issues" },
+    });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("README.md");
+    expect(result.stdout).not.toContain("task backend:");
   });
 
   it("prints a graceful message when the directory has no canonical docs", () => {

@@ -65,8 +65,9 @@ describe("load-project-context skill contract", () => {
       "User stories (from `user-stories/` or `docs/user-stories/`)",
       "Active work queue (from `TASKS.md`",
       "## Task Backend Detection",
-      "detect the repo's task backend by checking for `.tasksmd.json`",
-      "backend: github-issues",
+      "Use the helper's task backend line",
+      "`.agents/tasks.config.yaml`",
+      "`detect-task-backend` before working with the queue.",
       "trace it to a user story OR a VISION goal",
       "surface the conflict BEFORE making changes",
       "treat them as hard constraints for the session.",
@@ -193,7 +194,7 @@ describe("load-project-context skill contract", () => {
     requireTerms(expectationText(evalById(8)), [
       "Treats mid-session repo switch as a trigger to run load-project-context again",
       "Runs the canonical script from the new repo root before next-task or planning",
-      "Detects task backend via .tasksmd.json when present",
+      "Uses the new repo’s declared backend or runs detect-task-backend if the helper omits it",
       "Does not reuse prior-repo VISION/TASKS context for the new checkout",
     ]);
   });

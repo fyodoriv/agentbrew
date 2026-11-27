@@ -34,6 +34,23 @@ function resolveUpstream(cachePath: string, env: NodeJS.ProcessEnv): string {
   }
 }
 
+/** Preserve the former tip before switching a verified, clean managed checkout. */
+export function checkoutRewrittenCache(
+  path: string,
+  branch: string,
+  before: string,
+  target: string,
+  env: NodeJS.ProcessEnv,
+): void {
+  const salvageRef = `refs/heads/salvage/upstream-rewrite-${before}`;
+  const saved = git(path, ["for-each-ref", "--format=%(objectname)", salvageRef], env);
+  if (saved !== before) {
+    git(path, ["update-ref", salvageRef, before, ""], env);
+  }
+  // Checkout refuses to overwrite conflicting files, including ignored paths.
+  git(path, ["checkout", "--quiet", "--no-overwrite-ignore", "-B", branch, target], env);
+}
+
 /**
  * Realign a source cache that cannot fast-forward, for example after the
  * upstream history was rewritten. The cache is disposable, so it is reset to

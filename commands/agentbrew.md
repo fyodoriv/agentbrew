@@ -24,6 +24,8 @@ To change a setting the user asks for, run `agentbrew config` (each setting, its
 
 When the user asks to add Chrome's Modern Web Guidance, use `agentbrew install modern-web-guidance` for browser features and Chrome extensions.
 
+When the user asks to clear a stale command directory after removing its Agentfile entry, preview `agentbrew remove <registered-command-directory> --dry-run` and use the same command without `--dry-run` to remove the registration. The source files stay on disk.
+
 When Claude starts without the project document list, use the opt-in `session-entry-context` hook described in the [hook guide](https://github.com/fyodoriv/agentbrew/blob/main/docs/hook-protocol.md#manifest-schema). Preview its approved overlay change with `agentbrew sync --dry-run`, then deploy with `agentbrew sync` and start a new session. Its memory reminder does not replace actual recall.
 
 When the user wants Claude Bash scripts to protect shared Git work, use the [Git script guard](https://github.com/fyodoriv/agentbrew/blob/main/docs/hook-protocol.md#guard-git-calls-from-scripts). Preview the opted-in hook with `agentbrew sync --dry-run`, then apply the approved setup with `agentbrew sync` and start a new session.

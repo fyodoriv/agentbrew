@@ -31,6 +31,20 @@ for l in "Goal result: partly met (lowest 6/10)" "Goal result: not met" "Goal re
   "Goal result: partly met (lowest 6/10 (round 13))" "Goal result: failed (could not reproduce)"; do
   want ok "$l"
 done
+for l in "Goal result: blocked on the owner's 2FA code" "Goal result: blocked on PR #12" \
+  "Goal result: not met: owner approval needed" "Goal result: partly met: criteria 1-3 met" \
+  "Goal result: partly met; judges scored 6/10"; do
+  want ok "$l"
+done
+for l in "Goal result: blocked on the owner's 2FA code and done" "Goal result: blocked on PR #12 and merged" \
+  "Goal result: blocked on PR #12 and merged today" "Goal result: blocked on PR #12 then merged" \
+  "Goal result: blocked on the owner's 2FA code then merged" \
+  "Goal result: blocked on PR #12 (merged today)" "Goal result: blocked on the owner's 2FA code (merged today)" \
+  "Goal result: partly met: criteria 1-3 met (merged today)" \
+  "Goal result: not met: owner approval needed and shipped" "Goal result: partly met: criteria 1-3 met, all done" \
+  "Goal result: partly met; judges scored 9/10"; do
+  want claim "$l"
+done
 # Round-2 blockers: a success word after "on|by|until|for" still claims;
 # the documented count forms and a not-met reason tail still allow.
 for l in "Goal result: blocked on 2FA and done" "Goal result: in progress on the merge and it is met" \

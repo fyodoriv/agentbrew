@@ -146,13 +146,22 @@ readonly CLAIM_AWK='function norm(l) { l = tolower(l); gsub(/[*_`]/, "", l); sub
 function result(l) { return norm(l) ~ /^goal result([^a-z]|$)/ }
 function claim(l,  r) { l = norm(l)
   if (l !~ /^goal result([^a-z]|$)/) return 0
-  r = substr(l, 12); sub(/^[^a-z]*/, "", r); gsub(/-/, " ", r)
+  r = substr(l, 12); sub(/^[^a-z]*/, "", r)
+  if (punctuated_incomplete(r)) return 0
+  gsub(/-/, " ", r)
   if (r ~ /^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)([^a-z]|$)/) {
     sub(/^(partly met|partially met|not met|not yet met|unmet|failed|abandoned|cancelled|canceled|stopped)/, "", r)
     return rest(r) }
   if (r !~ /^(in progress|blocked|impossible|pending)([^a-z]|$)/) return 1
   sub(/^(in progress|blocked|impossible|pending)/, "", r)
   return rest(r) }
+# Match the whole result before any reasons or counts are removed.
+function punctuated_incomplete(r) {
+  return r ~ /^blocked on (pr|issue) #[0-9]+[[:space:].]*$/ ||
+    r ~ /^blocked on (the )?[a-z0-9]+\047s (2fa code|approval)[[:space:].]*$/ ||
+    r ~ /^not met:[[:space:]]*(owner|user) approval (needed|required)[[:space:].]*$/ ||
+    r ~ /^partly met:[[:space:]]*criteria +[0-9]+ *- *[0-9]+ +(are +)?met[[:space:].]*$/ ||
+    r ~ /^partly met;[[:space:]]*judges? scored [0-7](\.[0-9]+)? *\/ *10[[:space:].]*$/ }
 # What may follow a not-met or waiting word: counts go first ("3/5 met",
 # "3 of 5 criteria met"), then any success word left claims met ("blocked
 # on 2FA and done"), then one "on|by|until|for <what>" tail may stay.

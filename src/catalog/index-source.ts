@@ -825,8 +825,13 @@ async function findRewrittenTip(
   const { path, branch, upstream, previousUpstream, before } = candidate;
   const tip = git(path, "rev-parse", upstream);
   if (tip === before) return;
-  if (before !== previousUpstream && !git(path, "reflog", "show", "--format=%H", upstream).split("\n").includes(before))
-    return;
+  if (before !== previousUpstream) {
+    const history = git(path, "reflog", "show", "--format=%H", upstream);
+    if (!history) return;
+    const tips = history.split("\n");
+    // A fresh clone can create the tracking ref before its first reflog entry.
+    if (!tips.includes(before) && git(path, "rev-parse", `${upstream}@{${tips.length}}`) !== before) return;
+  }
   try {
     git(path, "merge-base", before, tip);
     return;

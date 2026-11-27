@@ -4820,6 +4820,18 @@
         "Where no clock read exists, write that the time is unknown. Never invent or round a time from memory.",
         "Make this change before the judges run, not after a judge reports it."
       ]
+    },
+    {
+      "id": 436,
+      "prompt": "Simulated planning only. Do not run any Git command. Four worktrees are ready to ship. A uses Husky and its active pre-commit launches a full local suite. B has a pre-push at a custom core.hooksPath that launches its full local suite. C already starts its full suite through heavy-run from the active hook. D uses the same bare local suite as A, but its policy requires hosted-only tests. Local tests are allowed in A, B, and C. What do you check and what commands or next steps do you give before each operation?",
+      "expected_output": "Read the effective hooks path and follow launchers to the scripts that run. Warn about the unqueued suite before each Git action. Use heavy-run git commit for A and heavy-run git push for B. Give C its usual Git command because the hook acquires the only slot. For D, stop before the Git command and find the repository's supported hosted delivery path. Preserve hook checks in all four cases.",
+      "files": [],
+      "expectations": [
+        "Inspect the effective hooks, including the Husky launcher and B's custom path, before recommending a Git command.",
+        "Give A heavy-run git commit and B heavy-run git push from their respective checkouts.",
+        "Keep C on its existing queue acquisition with no second heavy-run wrapper.",
+        "Stop before D's local test would start. Follow its hosted policy and never skip or turn off its hook."
+      ]
     }
   ]
 }

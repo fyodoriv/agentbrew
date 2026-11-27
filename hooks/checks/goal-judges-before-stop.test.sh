@@ -325,6 +325,11 @@ owner_says() { jq -cn --arg t "$2" '{type:"user",message:{role:"user",content:$t
 
 goal restart "Goal result: met (3/3 met)"
 new_goal_row restart "deliver the export"
+judge restart ja 9
+judge restart jb 7
+outsider_prompt="$(prompt restart jc | sed 's/^Judge-Id: jc$/Judge-Id: outsider/')"
+call restart Agent historical-outsider fable "$outsider_prompt"
+echo "after-partial-panel" >"$ROOT/work-restart/app.txt"
 for v in 1 2 3; do
   panel restart 9 7 9
   echo "v$v-edit" >"$ROOT/work-restart/app.txt"
@@ -333,7 +338,8 @@ new_goal_row restart "deliver the export"
 expect "an unchanged contract still requires fresh verdicts after a restart" 2 "$(run restart)"
 panel restart 9 9 9
 expect "an unchanged contract keeps the round cap after a restart" 2 "$(run restart)"
-check "the restart block counts four rounds" grep -q 'used 4 judging rounds' <(run_out restart)
+check "the restart counts four full rounds and ignores the partial panel with an unrelated judge" \
+  grep -q 'used 4 judging rounds' <(run_out restart)
 owner_says restart "approve round 4"
 expect "owner approval after restart allows a fourth round" 0 "$(run restart)"
 new_goal_row restart "deliver the revised export"

@@ -478,6 +478,16 @@ write a new draft for the user to review.
   "not acquired by Runner" means the runner pool was full. That is not a
   test result and not a pass. Rerun the failed jobs once and read the real
   result: one goal's rerun then found a true perf-gate failure.
+- A green job is not proof that it made its outputs. Before you use a job's
+  result, list every output it must make (an artifact, a record, a file).
+  Check that each one exists, then read it. A missing output is a failure,
+  even when the job is green. One measurement job passed while a step's
+  records were missing: its script exited 1, and it built only one of the
+  two programs that the step needed.
+- A workflow step that pipes into `tee` hides the exit status of the
+  command before the pipe. The default `bash -e` shell of GitHub Actions has
+  no `pipefail`. Start such a step with `set -o pipefail`, or set
+  `shell: bash` (GitHub then adds `-o pipefail`).
 - A new part that a local health check covers (a hook the doctor scans, a
   file a lint rule reads) can pass CI and then fail that check after apply.
   Run the health check after apply, and add a CI test with the same rule in

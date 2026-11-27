@@ -1,8 +1,10 @@
+import { lstatSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
 import { ExitPromptError } from "@inquirer/core";
 import { confirm } from "@inquirer/prompts";
 import chalk from "chalk";
 import { removeSource } from "./add-source.js";
-import { getConfigServers, getStateSources } from "./agentfile.js";
+import { AGENTFILE_NAMES, getConfigServers, getStateSources, globalAgentfileDir, loadAgentfile } from "./agentfile.js";
 import { readClaudePluginRecords, removeClaudePlugin } from "./catalog/claude-plugin.js";
 import { removeRuleFromSharedRules } from "./catalog/install-other.js";
 import { loadCatalog } from "./catalog/types.js";
@@ -13,13 +15,14 @@ import { formatSuggestion } from "./suggest.js";
 import { builtinCommandNames, userOverridesBuiltin } from "./sync/builtin-commands.js";
 import { removeMcpServer } from "./sync/mcp-sync.js";
 
-type ItemType = "mcp" | "source" | "skill" | "command" | "rule" | "claude-plugin";
+type ItemType = "mcp" | "source" | "skill" | "command" | "command-source" | "rule" | "claude-plugin";
 
 const TYPE_LABELS: Record<ItemType, string> = {
   mcp: "MCP server",
   source: "source",
   skill: "skill",
   command: "command",
+  "command-source": "command source",
   rule: "rule",
   "claude-plugin": "Claude Code plugin",
 };
@@ -35,16 +38,18 @@ interface RemoveOptions {
 }
 
 /** Find what type of item `name` matches — checks MCP servers, sources, then deployed skills/commands/rules. */
-function resolveItem(name: string): ResolvedItem | undefined {
+function resolveItem(name: string): ResolvedItem | "ambiguous-path" | undefined {
   const state = requireState();
   if (!state) return undefined;
 
   const servers = getConfigServers();
   const mcpMatch = servers.find((s) => s.name === name);
-  if (mcpMatch) return { type: "mcp", name: mcpMatch.name };
-
   const sourceMatch = getStateSources(state).find((s) => s.url === name);
+  const commandSourceMatch = state.commandSourceDirs?.some((source) => source.path === name);
+  if (commandSourceMatch && (mcpMatch || sourceMatch)) return "ambiguous-path";
+  if (mcpMatch) return { type: "mcp", name: mcpMatch.name };
   if (sourceMatch) return { type: "source", name: sourceMatch.url };
+  if (commandSourceMatch) return { type: "command-source", name };
 
   const cleanTypes = detectItemTypes(name);
   if (cleanTypes.includes("skill")) return { type: "skill", name };
@@ -83,9 +88,10 @@ function showNotFound(name: string): void {
   const candidates = [
     ...getConfigServers().map((s) => s.name),
     ...(state?.sources ?? []).map((s) => s.url),
+    ...(state?.commandSourceDirs ?? []).map((source) => source.path),
     ...catalog.rules.map((r) => r.name),
   ];
-  console.error(chalk.red(`'${name}' not found as an MCP server, source, skill, command, or rule.`));
+  console.error(chalk.red(`'${name}' not found as an MCP server, source, skill, command, command source, or rule.`));
   const suggestion = formatSuggestion(name, candidates);
   if (suggestion) {
     console.log(suggestion);
@@ -109,7 +115,13 @@ function showDryRun(resolved: ResolvedItem): void {
   console.log();
 }
 
-async function executeRemoval(resolved: ResolvedItem): Promise<void> {
+async function executeRemoval(resolved: ResolvedItem, dryRun: boolean): Promise<ItemType | undefined> {
+  if (resolved.type === "command-source" && !checkCommandSourceDeclaration(resolved.name)) return;
+  if (dryRun) {
+    showDryRun(resolved);
+    return;
+  }
+
   switch (resolved.type) {
     case "mcp":
       await removeMcpServer(resolved.name);
@@ -125,6 +137,9 @@ async function executeRemoval(resolved: ResolvedItem): Promise<void> {
       dropCommandSource(resolved.name);
       await clean(resolved.name, { type: "command", yes: true });
       break;
+    case "command-source":
+      dropCommandSource(resolved.name, "path");
+      break;
     case "rule":
       reportRuleRemoval(resolved.name);
       break;
@@ -138,6 +153,43 @@ async function executeRemoval(resolved: ResolvedItem): Promise<void> {
       }
       break;
   }
+  return resolved.type;
+}
+
+function readCommandSourceAgentfile(directory: string) {
+  const hasAgentfile = AGENTFILE_NAMES.some((name) => lstatSync(join(directory, name), { throwIfNoEntry: false }));
+  if (!hasAgentfile) return undefined;
+  const agentfile = loadAgentfile(directory);
+  if (!agentfile) throw new Error("Agentfile unavailable");
+  return agentfile;
+}
+
+function checkCommandSourceDeclaration(path: string): boolean {
+  const state = requireState();
+  const matchingSources = state?.commandSourceDirs?.filter((source) => source.path === path);
+  if (!matchingSources?.length) return false;
+
+  const directories = new Set([
+    globalAgentfileDir(),
+    process.cwd(),
+    ...matchingSources.flatMap((source) => (source.agentfile ? [source.agentfile] : [])),
+  ]);
+  for (const directory of directories) {
+    try {
+      const agentfile = readCommandSourceAgentfile(directory);
+      if (
+        !agentfile?.commands?.some((declared) => (isAbsolute(declared) ? declared : join(directory, declared)) === path)
+      ) {
+        continue;
+      }
+      console.error(chalk.red(`  Remove the commands entry for ${path} from the Agentfile in ${directory} first.`));
+    } catch {
+      console.error(chalk.red(`  Could not verify the Agentfile in ${directory}.`));
+    }
+    process.exitCode = 1;
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -159,14 +211,14 @@ function turnOffIfBuiltin(name: string): void {
   }
 }
 
-/** Drop the Agentfile command source whose label matches, so sync stops deploying its commands. */
-function dropCommandSource(label: string): void {
+/** Unregister a command source so sync stops deploying its commands. */
+function dropCommandSource(name: string, field: "label" | "path" = "label"): void {
   const state = requireState();
   const dirs = state?.commandSourceDirs;
-  if (!state || !dirs?.some((d) => d.label === label)) return;
-  state.commandSourceDirs = dirs.filter((d) => d.label !== label);
+  if (!state || !dirs?.some((dir) => dir[field] === name)) return;
+  state.commandSourceDirs = dirs.filter((dir) => dir[field] !== name);
   saveState(state);
-  console.log(chalk.green(`  Dropped command source ${label}`));
+  console.log(chalk.green(`  Dropped command source ${name}`));
 }
 
 /** Print the result of a rule removal in the same shape the `rules remove` subcommand uses. */
@@ -183,23 +235,25 @@ function reportRuleRemoval(name: string): void {
 }
 
 /** Unified remove — auto-detects MCP server, source, skill, command, or catalog rule and removes it. */
-export async function remove(name: string, options?: RemoveOptions): Promise<void> {
+export async function remove(name: string, options?: RemoveOptions): Promise<ItemType | undefined> {
   const resolved = resolveItem(name);
 
+  if (resolved === "ambiguous-path") {
+    console.error(
+      chalk.red(`  ${name} matches more than one registration. Run agentbrew status --verbose to inspect them.`),
+    );
+    process.exitCode = 1;
+    return;
+  }
   if (!resolved) {
     showNotFound(name);
     return;
   }
 
-  if (options?.dryRun) {
-    showDryRun(resolved);
-    return;
-  }
-
-  if (!options?.yes) {
+  if (!options?.dryRun && !options?.yes) {
     const confirmed = await confirmRemoval(TYPE_LABELS[resolved.type], resolved.name);
     if (!confirmed) return;
   }
 
-  await executeRemoval(resolved);
+  return executeRemoval(resolved, options?.dryRun ?? false);
 }

@@ -386,7 +386,7 @@
   - **Output**: code
   - **Acceptance**: a test run where one gate sub-step sleeps past the step timeout ends with the step cancelled before the job timeout, and the uploaded log artifact names that sub-step with start and end times.
   - **Hypothesis**: macOS jobs that run over 40 minutes and leave no `gate-log` artifact drop from 1 in the 15 runs of 2026-11-25 to 0, because every overrun leaves a sub-step log.
-  - **Measurement**: Run `SINCE=2026-11-25 bash scripts/count-macos-gate-overruns.sh` to reproduce the historical count. After delivery, set `SINCE` to the merge date. The command counts runs with a macOS verification job lasting over 40 minutes whose runner-and-attempt trace is missing.
+  - **Measurement**: Run `CREATED=2026-11-25T00:00:00Z..2026-11-25T17:30:00Z bash scripts/count-macos-gate-overruns.sh` for the historical cohort. After delivery, run `SINCE=<merge date> bash scripts/count-macos-gate-overruns.sh` for the latest 50 runs. The command counts runs with a macOS verification job lasting over 40 minutes whose runner-and-attempt trace is missing.
   - **Success**: 0 such jobs in runs created on or after the fix's merge date (`SINCE=<merge date>`), and every over-40-minute job has a log artifact naming its slow sub-step.
   - **Pivot**: if the sub-step log adds more than 1 minute to the median macOS gate time, keep only the step timeout and log start/end lines for the top-level gate stages.
   - **Anchor**: GitHub Actions workflow syntax, `jobs.<job_id>.steps[*].timeout-minutes`, https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions; Forsgren, Humble, Kim 2018 (MTTR).

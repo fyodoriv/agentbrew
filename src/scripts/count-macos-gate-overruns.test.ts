@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, it } from "vitest";
 
-it("queries artifacts only for long runs and matches the macOS attempt", () => {
+it("queries artifacts only for long runs and counts an uploaded trace for the macOS attempt after it expires", () => {
   const scratch = mkdtempSync(join(tmpdir(), "gate-attempts-"));
   const apiCalls = join(scratch, "calls");
   const gh = String.raw`#!/bin/bash
@@ -30,7 +30,7 @@ esac
 if [[ "$2" == */jobs\?* ]]; then
   printf '{"jobs":[{"name":"verify (macos-latest)","started_at":"2026-11-25T01:00:00Z","completed_at":"%s","run_attempt":2}]}\n' "$end" | jq -r "$query"
 else
-  printf '{"artifacts":[{"name":"%s","expired":false}]}\n' "$name" | jq -r "$query"
+  printf '{"artifacts":[{"name":"%s","expired":true}]}\n' "$name" | jq -r "$query"
 fi
 `;
 

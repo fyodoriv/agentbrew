@@ -6,6 +6,8 @@ const sharedRules = readFileSync(join(process.cwd(), "docs", "shared-rules.md"),
 const template = readFileSync(join(process.cwd(), "templates", "AGENTS.md"), "utf-8");
 const gate = readFileSync(join(process.cwd(), "scripts", "verify-changed.sh"), "utf-8");
 
+const TASK_LINT = /npx --yes @tasks-md\/lint@[0-9.]+ --require-prereg TASKS\.md/;
+
 const FIELDS = ["Hypothesis", "Measurement", "Success", "Pivot", "Anchor"];
 
 function rule(marker: string): string {
@@ -20,7 +22,7 @@ describe("docs/shared-rules.md — measure every task", () => {
     const line = rule("**Measure every task (IRON LAW):**");
     for (const field of FIELDS) expect(line).toContain(`\`${field}\``);
     expect(line).toMatch(/at every priority/);
-    expect(line).toMatch(/npx --yes @tasks-md\/lint@[0-9.]+ --require-prereg TASKS\.md/);
+    expect(line.match(TASK_LINT)?.[0]).toBe(gate.match(TASK_LINT)?.[0]);
     expect(sharedRules.match(/@tasks-md\/lint/g)).toHaveLength(1);
   });
 
@@ -40,6 +42,6 @@ describe("docs/shared-rules.md — measure every task", () => {
   });
 
   it("is enforced by this repo's gate on every task block", () => {
-    expect(gate).toMatch(/@tasks-md\/lint@[0-9.]+ --require-prereg TASKS\.md/);
+    expect(gate).toMatch(TASK_LINT);
   });
 });

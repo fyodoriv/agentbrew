@@ -1,7 +1,9 @@
+import { lstatSync, type Stats } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(),
+  lstatSync: vi.fn(),
   readFileSync: vi.fn(),
   mkdirSync: vi.fn(),
 }));
@@ -28,8 +30,11 @@ vi.mock("./add-source.js", () => ({
 }));
 
 vi.mock("./agentfile.js", () => ({
+  AGENTFILE_NAMES: ["Agentfile.yaml"],
   getConfigServers: vi.fn(() => []),
   getStateSources: vi.fn(() => []),
+  globalAgentfileDir: vi.fn(() => "/fixture"),
+  loadAgentfile: vi.fn(),
 }));
 
 vi.mock("./clean.js", () => ({
@@ -63,7 +68,7 @@ vi.mock("@inquirer/prompts", () => ({
 import { ExitPromptError } from "@inquirer/core";
 import { confirm } from "@inquirer/prompts";
 import { removeSource } from "./add-source.js";
-import { getConfigServers, getStateSources } from "./agentfile.js";
+import { getConfigServers, getStateSources, loadAgentfile } from "./agentfile.js";
 import { removeRuleFromSharedRules } from "./catalog/install-other.js";
 import { loadCatalog } from "./catalog/types.js";
 import { clean, detectItemTypes } from "./clean.js";
@@ -230,6 +235,119 @@ describe("remove", () => {
     mockDetectItemTypes.mockReturnValue(["command"]);
     await remove("my-app", { yes: true });
     expect(vi.mocked(saveState)).toHaveBeenCalledWith(expect.objectContaining({ commandSourceDirs: [keep] }));
+  });
+
+  describe("an exact registered command-source path", () => {
+    const source = { label: "fixture", path: "/fixture/source/commands", origin: "agentfile" as const };
+    const neighbor = { label: "fixture", path: "/fixture/other/commands", origin: "agentfile" as const };
+
+    beforeEach(() => {
+      mockLoadState.mockReturnValue(makeState({ commandSourceDirs: [source, neighbor] }));
+      vi.mocked(lstatSync).mockReturnValue(undefined);
+      vi.mocked(loadAgentfile).mockReturnValue(undefined);
+    });
+
+    it("drops only the matching registration", async () => {
+      const previousExitCode = process.exitCode;
+      try {
+        await remove(source.path, { yes: true });
+        expect(vi.mocked(saveState)).toHaveBeenCalledWith(expect.objectContaining({ commandSourceDirs: [neighbor] }));
+        expect(mockClean).not.toHaveBeenCalled();
+      } finally {
+        process.exitCode = previousExitCode;
+      }
+    });
+
+    it("previews the same path without writing state", async () => {
+      const previousExitCode = process.exitCode;
+      try {
+        await remove(source.path, { dryRun: true });
+        expect(console.log).toHaveBeenCalledWith(expect.stringContaining("Would remove command source"));
+        expect(console.log).toHaveBeenCalledWith(expect.stringContaining(source.path));
+        expect(vi.mocked(saveState)).not.toHaveBeenCalled();
+        expect(mockClean).not.toHaveBeenCalled();
+      } finally {
+        process.exitCode = previousExitCode;
+      }
+    });
+
+    it("keeps the registration when the confirmation is declined", async () => {
+      const previousExitCode = process.exitCode;
+      try {
+        mockConfirm.mockResolvedValue(false);
+        expect(await remove(source.path)).toBeUndefined();
+        expect(mockConfirm).toHaveBeenCalledOnce();
+        expect(vi.mocked(saveState)).not.toHaveBeenCalled();
+        expect(mockClean).not.toHaveBeenCalled();
+      } finally {
+        process.exitCode = previousExitCode;
+      }
+    });
+
+    it("keeps a legacy registration the global Agentfile still declares", async () => {
+      vi.mocked(lstatSync).mockImplementation((path) =>
+        path === "/fixture/Agentfile.yaml" ? ({} as Stats) : undefined,
+      );
+      vi.mocked(loadAgentfile).mockReturnValue({ commands: ["./source/commands"] });
+      const previousExitCode = process.exitCode;
+      try {
+        await remove(source.path, { yes: true });
+        expect(process.exitCode).toBe(1);
+        expect(vi.mocked(saveState)).not.toHaveBeenCalled();
+      } finally {
+        process.exitCode = previousExitCode;
+      }
+    });
+
+    it("keeps a legacy registration the current project still declares", async () => {
+      vi.mocked(lstatSync).mockImplementation((path) =>
+        path === `${process.cwd()}/Agentfile.yaml` ? ({} as Stats) : undefined,
+      );
+      vi.mocked(loadAgentfile).mockImplementation((directory) =>
+        directory === process.cwd() ? { commands: [source.path] } : undefined,
+      );
+      const previousExitCode = process.exitCode;
+      try {
+        await remove(source.path, { yes: true });
+        expect(process.exitCode).toBe(1);
+        expect(vi.mocked(saveState)).not.toHaveBeenCalled();
+      } finally {
+        process.exitCode = previousExitCode;
+      }
+    });
+
+    it("keeps an owned registration if its Agentfile cannot be read", async () => {
+      const ownedSource = { ...source, agentfile: "/fixture/project" };
+      mockLoadState.mockReturnValue(makeState({ commandSourceDirs: [ownedSource, neighbor] }));
+      vi.mocked(lstatSync).mockImplementation((path) => {
+        if (path === "/fixture/project/Agentfile.yaml")
+          throw Object.assign(new Error("Permission denied"), { code: "EACCES" });
+        return undefined;
+      });
+      const previousExitCode = process.exitCode;
+      try {
+        await remove(source.path, { dryRun: true });
+        expect(process.exitCode).toBe(1);
+        expect(vi.mocked(saveState)).not.toHaveBeenCalled();
+      } finally {
+        process.exitCode = previousExitCode;
+      }
+    });
+
+    it("keeps both registrations when the path also names a local source", async () => {
+      mockGetStateSources.mockReturnValue([
+        { url: source.path, type: "local", skillsInstalled: [], availableItems: [], addedAt: "" },
+      ]);
+      const previousExitCode = process.exitCode;
+      try {
+        await remove(source.path, { yes: true });
+        expect(process.exitCode).toBe(1);
+        expect(mockRemoveSource).not.toHaveBeenCalled();
+        expect(vi.mocked(saveState)).not.toHaveBeenCalled();
+      } finally {
+        process.exitCode = previousExitCode;
+      }
+    });
   });
 
   it("removing a built-in command turns built-in commands off first, so the follow-up sync does not put it back", async () => {

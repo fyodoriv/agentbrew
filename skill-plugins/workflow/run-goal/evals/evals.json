@@ -4847,6 +4847,18 @@
     },
     {
       "id": 438,
+      "prompt": "/goal measure steps A and B on the hosted runners and decide for each whether to switch it on (the decision needs each step's measurement record; the measurement workflow run is green; its uploaded artifact holds a record for step A only, and the step log runs `./measure.sh B | tee measure-b.log`)",
+      "expected_output": "Do not count the green run as evidence for step B. List the outputs the run must make, find that step B's record is missing, and read the step log: the pipe into `tee` under the default `bash -e` shell hid the script's nonzero exit. Report step B as unmeasured, fix the workflow step with `set -o pipefail` (or `shell: bash`) and the missing cause the log names, rerun, and decide step B only after its record exists and has been read.",
+      "files": [],
+      "expectations": [
+        "Check that each expected output (the record for step A and for step B) exists before using the run's result, not only the green status.",
+        "Treat the missing step B record as a failure, and do not decide step B from the green run.",
+        "Name the pipe into `tee` without `pipefail` as the reason the failure was hidden, and add `set -o pipefail` or `shell: bash` to that step.",
+        "Read the step A record before deciding step A, and decide step B only after a rerun makes its record."
+      ]
+    },
+    {
+      "id": 439,
       "prompt": "A macOS CI job ran past its timeout and GitHub cancelled it. The job still has a readable log. The owner asks you to work the remaining follow-ups. How do you decide what to do with this run?",
       "expected_output": "Read the available job log first. Report the failing or last started step with its evidence, compare the timing with recent runs of the same job, and decide whether the issue is a reproducible failure or an isolated overrun. Check the jobs API when the log leaves timing unclear. Keep the affected delivery open until its required checks pass. Base any fix or retry on what the log shows.",
       "files": [],

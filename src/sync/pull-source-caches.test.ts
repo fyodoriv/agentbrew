@@ -326,10 +326,19 @@ describe("explicit pull source bytes (#780)", () => {
     expect(readFileSync(join(cache, "skills", "fixture", "SKILL.md"), "utf-8")).toContain("new fixture bytes");
   });
 
-  it("realigns an unchanged managed cache after an unrelated upstream rewrite (#987)", async () => {
+  it.each([
+    { priorFetches: false, history: "first observed by this pull" },
+    { priorFetches: true, history: "observed by two earlier fetches" },
+  ])("realigns a managed cache after a rewrite $history (#987)", async ({ priorFetches }) => {
     const { repo, source, cache } = fixture();
     const old = git(cache, "rev-parse", "HEAD");
-    const next = rewriteOrigin(repo);
+    let next = rewriteOrigin(repo);
+    if (priorFetches) {
+      git(cache, "fetch", "--quiet", "origin");
+      next = commit(repo, "later rewritten fixture bytes");
+      git(cache, "fetch", "--quiet", "origin");
+      expect(git(cache, "rev-parse", "@{upstream}")).toBe(next);
+    }
     const receipts = [];
     for (let attempt = 0; attempt < 3; attempt++) {
       const [outcome] = await indexAllSources([source], { explicitPull: true });
@@ -373,6 +382,36 @@ describe("explicit pull source bytes (#780)", () => {
     expect(outcome?.sha).toBeUndefined();
     expect(git(cache, "rev-parse", "HEAD")).toBe(old);
     expect(readFileSync(skill, "utf-8")).toBe("local fixture edit\n");
+  });
+
+  it("preserves an ignored file that collides with rewritten upstream content (#987)", async () => {
+    const { repo, source, cache } = fixture();
+    const old = git(cache, "rev-parse", "HEAD");
+    rewriteOrigin(repo);
+    writeFileSync(join(repo, "incoming.txt"), "upstream tracked content\n");
+    git(repo, "add", "incoming.txt");
+    git(repo, "-c", "core.hooksPath=/dev/null", "commit", "--quiet", "-m", "add incoming path");
+    writeFileSync(join(cache, ".git", "info", "exclude"), "/incoming.txt\n");
+    const ignored = join(cache, "incoming.txt");
+    writeFileSync(ignored, "local ignored content\n");
+    expect(git(cache, "status", "--porcelain")).toBe("");
+    const [outcome] = await indexAllSources([source], { explicitPull: true });
+    expect(outcome).toMatchObject({ status: "failed", sha: old });
+    expect(git(cache, "rev-parse", "HEAD")).toBe(old);
+    expect(readFileSync(ignored, "utf-8")).toBe("local ignored content\n");
+  });
+
+  it("retains the cache when a previously fetched replacement branch disappears (#987)", async () => {
+    const { repo, source, cache } = fixture();
+    const old = git(cache, "rev-parse", "HEAD");
+    const next = rewriteOrigin(repo);
+    git(cache, "fetch", "--quiet", "origin");
+    expect(git(cache, "rev-parse", "@{upstream}")).toBe(next);
+    git(repo, "switch", "--quiet", "rewritten");
+    git(repo, "update-ref", "-d", "refs/heads/main", next);
+    const [outcome] = await indexAllSources([source], { explicitPull: true });
+    expect(outcome).toMatchObject({ status: "failed", sha: old });
+    expect(git(cache, "rev-parse", "HEAD")).toBe(old);
   });
 
   it("never records remote HEAD as the revision of older deployed cache bytes", async () => {

@@ -28,8 +28,13 @@ defines the checkout identity, concurrency and receipt controls.
 ## Boundaries
 
 Use the existing checkout lease and validate cache ownership and origin
-before the pull. Realign only when that pull updated the configured tracking
-ref to an unrelated history and the clean checked-out branch still points
-to the previous tracked commit. Preserve the previous revision and use the
-ordinary post-operation receipt check. A failed network call, a local
-divergence, or an ambiguous tracking state retains the existing refusal.
+before the pull. A fresh remote result must confirm the configured tracking
+branch. An earlier attempted refresh may have moved its tracking ref
+already. In that case, the same ref's history must identify the unchanged
+cache tip. Preserve that tip and use the ordinary post-operation receipt
+check.
+
+Repeat the three-read measurement with two origin updates fetched before
+the explicit pull. Require the same receipts. Also require zero changes
+to ignored files that would collide with incoming tracked paths, and zero
+checkout changes when the exact upstream branch disappears.

@@ -4832,6 +4832,30 @@
         "Keep C on its existing queue acquisition with no second heavy-run wrapper.",
         "Stop before D's local test would start. Follow its hosted policy and never skip or turn off its hook."
       ]
+    },
+    {
+      "id": 437,
+      "prompt": "/goal find out if this repo can get an Nx-style remote build cache for free, then build the best option (the hosted gate's slowest part takes about 30 minutes on macOS; a Rust build-cache trial two weeks ago showed no gain; the repo keeps a cache only when it saves at least 10% of its steps' time)",
+      "expected_output": "Before picking a cache, split the slowest part's time from its job log into compile time (cargo's Finished lines) and test-run time. With compile at 6 to 10% and serial test binaries at about 80%, report that even a perfect cache saves under the 10% keep rule, so no cache is built. Record the measurement and the scored free options in the docs, and pre-register the real lever (running the test binaries in parallel) as a task with Hypothesis, Measurement, Success, Pivot and Anchor.",
+      "files": [],
+      "expectations": [
+        "Time each part of the slowest job from the hosted log before choosing a lever, not only the job total.",
+        "Compute the cache's best-case saving (the compile share) and compare it with the repo's keep rule before building anything.",
+        "Do not add a cache whose ceiling is under the keep rule; never reuse a cached test pass for a step the docs say always reruns.",
+        "Name the lever where the time goes (serial test execution) and file it as a pre-registered task, or build it when the goal says to deliver follow-ups."
+      ]
+    },
+    {
+      "id": 438,
+      "prompt": "/goal measure steps A and B on the hosted runners and decide for each whether to switch it on (the decision needs each step's measurement record; the measurement workflow run is green; its uploaded artifact holds a record for step A only, and the step log runs `./measure.sh B | tee measure-b.log`)",
+      "expected_output": "Do not count the green run as evidence for step B. List the outputs the run must make, find that step B's record is missing, and read the step log: the pipe into `tee` under the default `bash -e` shell hid the script's nonzero exit. Report step B as unmeasured, fix the workflow step with `set -o pipefail` (or `shell: bash`) and the missing cause the log names, rerun, and decide step B only after its record exists and has been read.",
+      "files": [],
+      "expectations": [
+        "Check that each expected output (the record for step A and for step B) exists before using the run's result, not only the green status.",
+        "Treat the missing step B record as a failure, and do not decide step B from the green run.",
+        "Name the pipe into `tee` without `pipefail` as the reason the failure was hidden, and add `set -o pipefail` or `shell: bash` to that step.",
+        "Read the step A record before deciding step A, and decide step B only after a rerun makes its record."
+      ]
     }
   ]
 }

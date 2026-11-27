@@ -1,7 +1,9 @@
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(),
+  lstatSync: vi.fn(),
   readFileSync: vi.fn(),
 }));
 
@@ -13,7 +15,8 @@ vi.mock("../state.js", () => ({
   loadState: vi.fn(),
 }));
 
-vi.mock("../hooks/manifest.js", () => ({
+vi.mock("../hooks/manifest.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../hooks/manifest.js")>()),
   loadManagedHooksFromManifest: vi.fn(() => ({ managed: [], resolved: { hooks: [] } })),
 }));
 
@@ -55,8 +58,9 @@ vi.mock("../utils.js", async (importOriginal) => {
   };
 });
 
-import { existsSync, readFileSync } from "node:fs";
-import { loadManagedHooksFromManifest } from "../hooks/manifest.js";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
+import { defaultDeployDir } from "../hooks/deploy.js";
+import { loadManagedHooksFromManifest, manifestEntryToManagedHook } from "../hooks/manifest.js";
 import { loadManifest } from "../manifest.js";
 import { loadState } from "../state.js";
 import { checkHooksDrift } from "./hooks.js";
@@ -69,6 +73,7 @@ const mockLoadManagedHooks = vi.mocked(loadManagedHooksFromManifest);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -212,6 +217,61 @@ describe("checkHooksDrift", () => {
 
     const drift = checkHooksDrift();
     expect(drift).toEqual([]);
+  });
+
+  it.each([
+    { name: "a managed stale copy", owned: true, current: false, expected: ["example-stop"] },
+    { name: "a managed current copy", owned: true, current: true, expected: [] },
+    { name: "a user-owned copy at the same path", owned: false, current: false, expected: [] },
+  ])("reports deployed content drift for $name", ({ owned, current, expected }) => {
+    const repoRoot = "/fixture";
+    const deployDir = defaultDeployDir();
+    const entry = {
+      id: "example-stop",
+      event: "Stop",
+      description: "Example",
+      script: "checks/example-stop.sh",
+      tier: "deterministic",
+      verdict: "warn",
+    } as const;
+    const hook = manifestEntryToManagedHook(entry, deployDir);
+    const source = "#!/bin/bash\nprintf 'current\\n'\n";
+    const files = new Map([
+      [join(repoRoot, "hooks", entry.script), source],
+      [join(deployDir, `${entry.id}.sh`), current ? source : "#!/bin/bash\nprintf 'old\\n'\n"],
+      [join(deployDir, ".agentbrew-deployed-hooks.json"), JSON.stringify(owned ? [entry.id] : [])],
+      [
+        "/home/test/.claude/settings.json",
+        JSON.stringify({
+          hooks: { Stop: [{ hooks: [{ type: "command", command: hook.command }] }] },
+          permissions: { defaultMode: "bypassPermissions" },
+          skipAutoPermissionPrompt: true,
+        }),
+      ],
+    ]);
+
+    vi.stubEnv("AGENTBREW_REPO_ROOT", repoRoot);
+    mockLoadState.mockReturnValue({ agents: [{ name: "claude-code", detected: true }], hooks: [] } as never);
+    mockLoadManifest.mockReturnValue({ hashes: {}, managedHookKeys: ["Stop:*"] });
+    mockLoadManagedHooks.mockReturnValueOnce({
+      managed: [hook],
+      resolved: { hooks: [entry], disabledByOverlay: [], enabledByOverlay: [], offByDefault: [], overrides: [] },
+    });
+    mockExistsSync.mockImplementation((path) => files.has(String(path)));
+    vi.mocked(lstatSync).mockImplementation(() => ({ isFile: () => true }) as never);
+    mockReadFileSync.mockImplementation((path, options) => {
+      const value = files.get(String(path));
+      if (value === undefined) throw new Error(`Unexpected fixture read: ${path}`);
+      return options ? value : Buffer.from(value);
+    });
+
+    const drift = checkHooksDrift();
+    expect(
+      drift
+        .filter((item) => item.detail.includes("stale deployed hook script"))
+        .flatMap((item) => item.diff?.updated ?? []),
+    ).toEqual(expected);
+    expect(drift.some((item) => item.detail.includes("missing hook(s)"))).toBe(false);
   });
 
   it("should skip agents without hooksFile", () => {

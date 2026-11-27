@@ -723,7 +723,7 @@ Every drift item ends with its fix (`— fix: <command>`). Each command run, syn
 
 When the global CLI runs from a git checkout (for example after `npm link`), `agentbrew status` also checks that its `dist/` is current. Each build writes `dist/build-info.json` with the commit it came from. If the checkout later moved to a commit that changes `src/`, `templates/`, `package.json`, `package-lock.json`, or `tsup.config.ts`, status reports `CLI build: stale` with the rebuild command. `agentbrew sync` prints the same warning before its status line or any sync work. Sync help and invalid options do not run that status check. The warning needs a build that includes this check; rebuild an older CLI once to enable it. `agentbrew status --fix` rebuilds inside a Git checkout.
 
-For a standalone CLI copy, `status` warns when the build commit is missing. It can also compare a recorded commit with the saved `origin/main` in a known local Agentbrew checkout. This comparison uses local Git data. Reinstall the copy through its original installation source. For a standard installation, see [Install Agentbrew](INSTALL.md).
+For a standalone CLI copy, `status` warns when the build commit is missing. It can also compare a recorded commit with the saved `origin/main` in a known local Agentbrew checkout. The comparison uses local Git data and includes the hooks shipped with the CLI. Reinstall the copy through its original installation source. For a standard installation, see [Install Agentbrew](INSTALL.md).
 
 The `Auto-repair` line in `agentbrew status` shows what the scheduler really does, not only whether its file exists. It says `active` only after a successful run in the last 90 minutes. Other states:
 

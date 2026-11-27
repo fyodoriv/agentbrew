@@ -29,6 +29,10 @@ export const BUILD_INPUTS = [
 
 export const BUILD_INFO_FILE = "build-info.json";
 
+// A standalone package carries its own hook files. Source builds read the
+// checkout's hooks directly. Match the hook file rules in package.json.
+const SNAPSHOT_INPUTS = [...BUILD_INPUTS, "hooks", ":(exclude,glob)hooks/**/*.test.sh"];
+
 function git(root: string, args: string[], env?: NodeJS.ProcessEnv): { status: number | null; out: string } {
   const result = spawnSync("git", ["-C", root, ...args], { encoding: "utf-8", timeout: 5000, env });
   return { status: result.status, out: (result.stdout ?? "").trim() };
@@ -76,7 +80,7 @@ function changedSnapshotHead(built: string, sourceRoots: readonly string[]): str
     if (remote.status !== 0 || !remote.out) continue;
     if (built === remote.out) return;
     if (readGit("merge-base", "--is-ancestor", built, remote.out).status !== 0) continue;
-    const changed = readGit("diff", "--quiet", "--no-ext-diff", built, remote.out, "--", ...BUILD_INPUTS);
+    const changed = readGit("diff", "--quiet", "--no-ext-diff", built, remote.out, "--", ...SNAPSHOT_INPUTS);
     if (changed.status === 0) return;
     if (changed.status === 1) return remote.out;
   }

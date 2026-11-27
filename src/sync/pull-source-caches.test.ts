@@ -95,6 +95,15 @@ function fixture(name = "origin"): { repo: string; source: Source; cache: string
   return { repo, source, cache: cache! };
 }
 
+function rewriteOrigin(repo: string): string {
+  const before = git(repo, "rev-parse", "HEAD");
+  git(repo, "switch", "--quiet", "--orphan", "rewritten");
+  const next = commit(repo, "rewritten fixture bytes");
+  git(repo, "update-ref", "refs/heads/main", next, before);
+  git(repo, "switch", "--quiet", "main");
+  return next;
+}
+
 interface GatedGitCall {
   path: string;
   checkoutKey: string;
@@ -315,6 +324,55 @@ describe("explicit pull source bytes (#780)", () => {
     await indexAllSources([source], { explicitPull: true });
     expect(git(cache, "rev-parse", "HEAD")).toBe(next);
     expect(readFileSync(join(cache, "skills", "fixture", "SKILL.md"), "utf-8")).toContain("new fixture bytes");
+  });
+
+  it("realigns an unchanged managed cache after an unrelated upstream rewrite (#987)", async () => {
+    const { repo, source, cache } = fixture();
+    const old = git(cache, "rev-parse", "HEAD");
+    const next = rewriteOrigin(repo);
+    const receipts = [];
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const [outcome] = await indexAllSources([source], { explicitPull: true });
+      receipts.push({
+        status: outcome?.status,
+        sha: outcome?.sha,
+        head: git(cache, "rev-parse", "HEAD"),
+        newBytes: readFileSync(join(cache, "skills", "fixture", "SKILL.md"), "utf-8").includes(
+          "rewritten fixture bytes",
+        ),
+        reportedRewrite: outcome?.reason.includes("history rewritten upstream; cache realigned"),
+      });
+    }
+    expect(receipts).toEqual([
+      { status: "refreshed", sha: next, head: next, newBytes: true, reportedRewrite: true },
+      { status: "unchanged", sha: next, head: next, newBytes: true, reportedRewrite: false },
+      { status: "unchanged", sha: next, head: next, newBytes: true, reportedRewrite: false },
+    ]);
+    expect(source.commitSha).toBe(next);
+    expect(git(cache, "for-each-ref", "--format=%(objectname)", "refs/heads/salvage")).toBe(old);
+  });
+
+  it("preserves a cache with a local commit after an unrelated upstream rewrite (#987)", async () => {
+    const { repo, source, cache } = fixture();
+    const local = commit(cache, "local fixture commit");
+    rewriteOrigin(repo);
+    const [outcome] = await indexAllSources([source], { explicitPull: true });
+    expect(outcome).toMatchObject({ status: "failed", sha: local });
+    expect(git(cache, "rev-parse", "HEAD")).toBe(local);
+    expect(git(cache, "for-each-ref", "--format=%(objectname)", "refs/heads/salvage")).toBe("");
+  });
+
+  it("preserves a dirty cache after an unrelated upstream rewrite (#987)", async () => {
+    const { repo, source, cache } = fixture();
+    const old = git(cache, "rev-parse", "HEAD");
+    const skill = join(cache, "skills", "fixture", "SKILL.md");
+    writeFileSync(skill, "local fixture edit\n");
+    rewriteOrigin(repo);
+    const [outcome] = await indexAllSources([source], { explicitPull: true });
+    expect(outcome?.status).toBe("skipped");
+    expect(outcome?.sha).toBeUndefined();
+    expect(git(cache, "rev-parse", "HEAD")).toBe(old);
+    expect(readFileSync(skill, "utf-8")).toBe("local fixture edit\n");
   });
 
   it("never records remote HEAD as the revision of older deployed cache bytes", async () => {

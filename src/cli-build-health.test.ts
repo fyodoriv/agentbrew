@@ -159,6 +159,29 @@ describe("checkCliBuildDrift", () => {
     expect(checkCliBuildDrift(copy, [root])).toHaveLength(1);
   });
 
+  it.each(["hooks/manifest.yaml", "hooks/checks/sample.sh"])("detects a packaged change to %s in a copy", (path) => {
+    const built = commitFile(path, "old fixture");
+    const remote = commitFile(path, "new fixture");
+    git("update-ref", "refs/remotes/origin/main", remote);
+    const copy = join(root, "snapshot");
+    recordBuild(built, copy);
+    recordBuild(built);
+    const drift = checkCliBuildDrift(copy, [root]);
+    expect(drift).toHaveLength(1);
+    expect(drift[0]?.detail).toContain(built.slice(0, 8));
+    expect(drift[0]?.detail).toContain(remote.slice(0, 8));
+    expect(checkCliBuildDrift(root, [root])).toEqual([]);
+  });
+
+  it("ignores changes to hook test files excluded from the package", () => {
+    const built = commitFile("hooks/checks/sample.sh", "runtime fixture");
+    const remote = commitFile("hooks/checks/sample.test.sh", "unpublished test fixture");
+    git("update-ref", "refs/remotes/origin/main", remote);
+    const copy = join(root, "snapshot");
+    recordBuild(built, copy);
+    expect(checkCliBuildDrift(copy, [root])).toEqual([]);
+  });
+
   it("keeps standalone copies clear when current, docs-only behind, or unqualified", () => {
     const built = commitFile("src/cli.ts", "v1");
     const remote = commitFile("docs/notes.md", "doc only");

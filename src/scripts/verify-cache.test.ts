@@ -113,6 +113,36 @@ describe("scripts/verify.sh cache", () => {
     expect(runs()).toBe(0);
   });
 
+  it("records successful, cached and failed steps without exposing command arguments", () => {
+    const { repo, run } = scratchRepo("bash count.sh fixture-marker");
+    const trace = join(repo, ".metrics", "gate-trace.tsv");
+    const env = { AGENTBREW_GATE_TRACE: trace };
+    expect(run(env).status).toBe(0);
+    expect(run(env).status).toBe(0);
+    writeFileSync(join(repo, "plan.txt"), "broken bash missing-script.sh fixture-marker\n");
+    expect(run(env).status).not.toBe(0);
+
+    expect(readdirSync(join(repo, ".metrics"))).toContain("gate-trace.tsv");
+    const data = readFileSync(trace, "utf-8");
+    expect(data).not.toContain("fixture-marker");
+    expect(data).not.toContain("missing-script.sh");
+    const rows = data
+      .trim()
+      .split("\n")
+      .map((line) => line.split("\t"));
+    for (const [timestamp] of rows) {
+      expect(timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+    }
+    expect(rows.map((row) => row.slice(1))).toEqual([
+      ["start", "count"],
+      ["end", "count", "ok"],
+      ["start", "count"],
+      ["end", "count", "cached"],
+      ["start", "broken"],
+      ["end", "broken", "failed"],
+    ]);
+  });
+
   it("keys the lockfile-sync step on the package files only", () => {
     const { repo, run, runs } = scratchRepo();
     writeFileSync(join(repo, "plan.txt"), "lockfile-sync bash count.sh\n");

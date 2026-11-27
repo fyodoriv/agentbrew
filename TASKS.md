@@ -365,6 +365,20 @@
 
 ## P1
 
+- [ ] Find why stale-lock recovery can send the same telemetry events twice
+  - **ID**: telemetry-stale-lock-recovery-duplicates
+  - **Tags**: telemetry, stability, concurrency
+  - **Details**: On 2026-11-26 the macOS gate for #1333 failed at `src/core/telemetry-race.test.ts:150`. It expected 0 repeated synthetic events and saw 3. The change did not touch telemetry. Capture the exact lock and cursor order with loopback-only test data before changing the implementation. Record transition order and synthetic lock identities only.
+  - **Files**: `src/core/telemetry.ts`, `src/core/telemetry-race.test.ts`, `src/core/telemetry.test.ts`, `docs/observability.md`.
+  - **Output**: code
+  - **Acceptance**: Reproduce one concrete ordering that lets a repeated event through. Make that order a regression test. Preserve consent, cursor progress, stale-lock recovery, and failed-request retry.
+  - **Hypothesis**: Correcting the ownership failure in the reproduced order reduces repeated synthetic events from 3 observed to 0.
+  - **Measurement**: Run `npm exec vitest -- run src/core/telemetry-race.test.ts src/core/telemetry.test.ts` in hosted macOS CI for reproduction and three fix checks. Keep the standard full gates.
+  - **Success**: 1 deterministic failing order before the fix. Then the repeated-event count is 0 in each of 3 consecutive hosted invocations, and the existing assertions pass.
+  - **Pivot**: If 3 focused runs give no ordered reproduction, keep implementation unchanged and add test-only evidence to the next hosted full gate before trying a fix.
+  - **Anchor**: [macOS job 140133769869](https://github.com/fyodoriv/agentbrew/actions/runs/45885065484/job/140133769869) and the existing telemetry concurrency suite.
+
+
 - [ ] A stuck macOS CI gate stops in time and leaves a log that names the slow step
   - **ID**: ci-macos-gate-overrun
   - **Tags**: ci, reliability, delivery

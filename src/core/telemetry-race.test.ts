@@ -24,23 +24,60 @@ const STALE_AGE_MS = 120_000;
 
 /** One sender process. It waits for a round on stdin, starts at the given instant, and sends twice. */
 const WORKER = `
+import { readFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 const { send } = await import(${JSON.stringify(pathToFileURL(join(ROOT, "src/core/telemetry.ts")).href)});
+function read(path) {
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    return undefined;
+  }
+}
+function cursor(path) {
+  try {
+    return JSON.parse(read(path) ?? "{}").sent;
+  } catch {
+    return undefined;
+  }
+}
 process.stdout.write("READY\\n");
 for await (const line of createInterface({ input: process.stdin })) {
   const { dir, at } = JSON.parse(line);
   process.env.AGENTBREW_TELEMETRY_STATE = dir + "/telemetry.json";
   process.env.AGENTBREW_EVENTS_FILE = dir + "/events.jsonl";
   while (Date.now() < at) {}
-  const first = await send("1.0.0");
-  const second = await send("1.0.0");
-  process.stdout.write(JSON.stringify({ sent: first.sent + second.sent }) + "\\n");
+  const requests = [];
+  const snapshot = () => ({
+    time: Date.now(),
+    lock: read(dir + "/telemetry.json.lock"),
+    guard: read(dir + "/telemetry.json.lock.steal"),
+    sent: cursor(dir + "/telemetry.json"),
+  });
+  const fetchImpl = async (input, options) => {
+    const request = { before: snapshot() };
+    requests.push(request);
+    try {
+      return await fetch(input, options);
+    } finally {
+      request.after = snapshot();
+    }
+  };
+  const first = await send("1.0.0", { fetchImpl });
+  const second = await send("1.0.0", { fetchImpl });
+  process.stdout.write(JSON.stringify({ pid: process.pid, sent: first.sent + second.sent, requests }) + "\\n");
 }
 `;
 
 interface Sender {
   child: ChildProcess;
   next: () => Promise<string>;
+}
+
+interface RoundResult {
+  pid: number;
+  sent: number;
+  requests: unknown[];
 }
 
 let server: Server;
@@ -139,15 +176,24 @@ afterAll(async () => {
 describe("telemetry send lock under a real race", () => {
   it("many sends at once against a stale lock and a stale guard post each event exactly once", async () => {
     let sent = 0;
+    const sendResults: RoundResult[][] = [];
     for (let round = 0; round < ROUNDS; round += 1) {
       const dir = seedRound(round);
       const at = Date.now() + 20;
       for (const sender of senders) sender.child.stdin?.write(`${JSON.stringify({ dir, at })}\n`);
       const results = await Promise.all(senders.map((sender) => sender.next()));
-      for (const result of results) sent += (JSON.parse(result) as { sent: number }).sent;
+      const received = results.map((result) => JSON.parse(result) as RoundResult);
+      sendResults.push(received);
+      for (const result of received) sent += result.sent;
     }
-    const repeated = [...seen.values()].filter((count) => count > 1).length;
-    expect(repeated).toBe(0);
+    const repeated = [...seen.entries()].filter(([, count]) => count > 1);
+    if (repeated.length > 0) {
+      const rounds = new Set(repeated.map(([timestamp]) => Math.floor((Date.parse(timestamp) - SEED_START) / 1000)));
+      for (const round of rounds) {
+        console.error("Duplicate synthetic telemetry in round", round, JSON.stringify(sendResults[round]));
+      }
+    }
+    expect(repeated.length).toBe(0);
     // Every event arrived, and the senders' own counts agree with the server.
     expect(seen.size).toBe(ROUNDS * EVENTS_PER_ROUND);
     expect(sent).toBe(ROUNDS * EVENTS_PER_ROUND);

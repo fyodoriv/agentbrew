@@ -3,12 +3,13 @@
 // ~/.config/agentbrew/scripts/ after `agentbrew sync`.
 
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // @ts-expect-error — pure-ESM .mjs sibling; vitest resolves it via Node ESM.
 import { checkPrVisionTrace } from "../../scripts/check-pr-vision-trace.mjs";
+import { resolveTaskBackend } from "../core/task-backend.js";
 
 const SCRIPTS_DIR = resolve(import.meta.dirname, "..", "..", "templates", "scripts");
 
@@ -75,6 +76,35 @@ describe("load-project-context.sh", () => {
     expect(out).toContain("Agentfile: Agentfile.yaml");
     expect(out).toContain("task backend: github-issues");
     expect(out.indexOf("README.md")).toBeLessThan(out.indexOf("AGENTS.md"));
+  });
+
+  const githubDescriptor = "task_backend: github-issues\nrepo: fixture/example\nproject: 1\n";
+
+  it.each([
+    {
+      label: "Agentfile takes precedence over fallback config",
+      files: { "Agentfile.yaml": githubDescriptor, ".agents/tasks.config.yaml": "task_backend: tasks-md\n" },
+    },
+    {
+      label: "fallback config supplies the backend",
+      files: { ".agents/tasks.config.yaml": githubDescriptor },
+    },
+    { label: "no descriptor defaults to the task file", files: {} },
+    {
+      label: "legacy metadata cannot override the Agentfile default",
+      files: { "Agentfile.yaml": "version: 1\n", ".tasksmd.json": '{"backend":"github-issues"}\n' },
+    },
+  ])("routes tasks like the shared resolver when $label", ({ files }) => {
+    write("README.md");
+    for (const [path, content] of Object.entries(files)) write(path, content);
+    const { backend } = resolveTaskBackend(repo);
+    const expected = backend === "github-issues" ? "github-issues" : "TASKS.md";
+
+    const { status, out } = runScript("load-project-context.sh");
+
+    expect(status).toBe(0);
+    expect(out).toContain(`task backend: ${expected}`);
+    expect(existsSync(join(repo, "TASKS.md"))).toBe(false);
   });
 
   it("prints a graceful message when the directory has no canonical docs", () => {

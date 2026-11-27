@@ -576,6 +576,19 @@ listed in `~/.config/agent-gh-allowlist.txt` pass `gh pr create` and
   PR body. `gh-pr-agent-artifacts-require-tests` enforces this for `gh pr
   create` / `gh pr edit`.
 
+## Check deployed hook scripts
+
+Run `agentbrew hooks verify --agent claude-code --json` to check the
+registered commands and their tracked script copies. A stale deployed script
+gets its own drift entry with the hook ID. The check compares regular files
+for active manifest entries that the deployment inventory tracks. It uses
+the agent's exact managed hook IDs when available. Older records use the
+managed event group and the deployment inventory. User-owned copies stay
+untouched.
+
+Run `agentbrew sync --only hooks` to refresh a tracked copy, then run verify
+again. Registration drift remains a separate entry.
+
 ## Adding a hook
 
 1. Add or update the script under `hooks/checks/`.

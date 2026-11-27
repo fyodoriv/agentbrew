@@ -1,9 +1,12 @@
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("node:fs", () => ({
+vi.mock("node:fs", async (importOriginal) => ({
+  constants: (await importOriginal<typeof import("node:fs")>()).constants,
+  closeSync: vi.fn(),
   existsSync: vi.fn(),
-  lstatSync: vi.fn(),
+  fstatSync: vi.fn(),
+  openSync: vi.fn(),
   readFileSync: vi.fn(),
 }));
 
@@ -58,7 +61,7 @@ vi.mock("../utils.js", async (importOriginal) => {
   };
 });
 
-import { existsSync, lstatSync, readFileSync } from "node:fs";
+import { existsSync, fstatSync, openSync, readFileSync } from "node:fs";
 import { defaultDeployDir } from "../hooks/deploy.js";
 import { loadManagedHooksFromManifest, manifestEntryToManagedHook } from "../hooks/manifest.js";
 import { loadManifest } from "../manifest.js";
@@ -220,10 +223,18 @@ describe("checkHooksDrift", () => {
   });
 
   it.each([
-    { name: "a managed stale copy", owned: true, current: false, expected: ["example-stop"] },
-    { name: "a managed current copy", owned: true, current: true, expected: [] },
-    { name: "a user-owned copy at the same path", owned: false, current: false, expected: [] },
-  ])("reports deployed content drift for $name", ({ owned, current, expected }) => {
+    { name: "a managed stale copy", owned: true, registered: true, current: false, expected: ["example-stop"] },
+    { name: "a managed current copy", owned: true, registered: true, current: true, expected: [] },
+    { name: "a user-owned copy at the same path", owned: false, registered: true, current: false, expected: [] },
+    { name: "a tracked copy with a user-owned command", owned: true, registered: false, current: false, expected: [] },
+    {
+      name: "a legacy managed stale copy",
+      owned: true,
+      registered: undefined,
+      current: false,
+      expected: ["example-stop"],
+    },
+  ])("reports deployed content drift for $name", ({ owned, registered, current, expected }) => {
     const repoRoot = "/fixture";
     const deployDir = defaultDeployDir();
     const entry = {
@@ -236,9 +247,10 @@ describe("checkHooksDrift", () => {
     } as const;
     const hook = manifestEntryToManagedHook(entry, deployDir);
     const source = "#!/bin/bash\nprintf 'current\\n'\n";
+    const deployedPath = join(deployDir, `${entry.id}.sh`);
     const files = new Map([
       [join(repoRoot, "hooks", entry.script), source],
-      [join(deployDir, `${entry.id}.sh`), current ? source : "#!/bin/bash\nprintf 'old\\n'\n"],
+      [deployedPath, current ? source : "#!/bin/bash\nprintf 'old\\n'\n"],
       [join(deployDir, ".agentbrew-deployed-hooks.json"), JSON.stringify(owned ? [entry.id] : [])],
       [
         "/home/test/.claude/settings.json",
@@ -252,15 +264,25 @@ describe("checkHooksDrift", () => {
 
     vi.stubEnv("AGENTBREW_REPO_ROOT", repoRoot);
     mockLoadState.mockReturnValue({ agents: [{ name: "claude-code", detected: true }], hooks: [] } as never);
-    mockLoadManifest.mockReturnValue({ hashes: {}, managedHookKeys: ["Stop:*"] });
+    mockLoadManifest.mockReturnValue({
+      hashes: {},
+      managedHookKeys: ["Stop:*"],
+      managedHookIdsByAgent:
+        registered === undefined
+          ? undefined
+          : { "claude-code": [`Stop:* ${registered ? hook.command : "echo other"}`] },
+    });
     mockLoadManagedHooks.mockReturnValueOnce({
       managed: [hook],
       resolved: { hooks: [entry], disabledByOverlay: [], enabledByOverlay: [], offByDefault: [], overrides: [] },
     });
     mockExistsSync.mockImplementation((path) => files.has(String(path)));
-    vi.mocked(lstatSync).mockImplementation(() => ({ isFile: () => true }) as never);
+    const descriptorPaths: string[] = [];
+    vi.mocked(openSync).mockImplementation((path) => descriptorPaths.push(String(path)) - 1);
+    vi.mocked(fstatSync).mockImplementation(() => ({ isFile: () => true }) as never);
     mockReadFileSync.mockImplementation((path, options) => {
-      const value = files.get(String(path));
+      const filePath = typeof path === "number" ? descriptorPaths[path] : String(path);
+      const value = files.get(filePath);
       if (value === undefined) throw new Error(`Unexpected fixture read: ${path}`);
       return options ? value : Buffer.from(value);
     });
@@ -272,6 +294,7 @@ describe("checkHooksDrift", () => {
         .flatMap((item) => item.diff?.updated ?? []),
     ).toEqual(expected);
     expect(drift.some((item) => item.detail.includes("missing hook(s)"))).toBe(false);
+    expect(descriptorPaths.includes(deployedPath)).toBe(owned && registered !== false);
   });
 
   it("should skip agents without hooksFile", () => {

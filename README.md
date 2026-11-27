@@ -341,6 +341,8 @@ agentbrew install composio                 # deploys Composio Connect MCP (1000+
 agentbrew setup composio                   # guided wizard → saves to ~/.zshenv.secrets
 ```
 
+**Probe sign-in.** `agentbrew mcp probe` reports `needs sign-in` when a remote server sends a Bearer challenge and the agent's MCP config has no Authorization header. Check sign-in in that agent. A rejected configured token still reports an error.
+
 **Claude Code permissions.** By default, `sync` turns Claude Code's permission prompts off. It sets `permissions.defaultMode` to `bypassPermissions`, sets `skipAutoPermissionPrompt: true`, and adds an `mcp__<server>__*` allow rule for every configured MCP server. Claude then runs tools without asking. To keep your own permission settings and prompts, run this. After that, `sync`, `init`, and drift repair do not change them:
 
 ```bash

@@ -499,6 +499,18 @@ describe("probeMcpServer", () => {
       expected: "init_error",
     },
     {
+      label: "a Bearer challenge beside a Basic challenge",
+      challenge: 'Basic realm="fixture", Bearer realm="sign-in"',
+      headers: undefined,
+      expected: "needs_auth",
+    },
+    {
+      label: "a scheme name inside a quoted Basic parameter",
+      challenge: 'Basic realm="fixture, Bearer example"',
+      headers: undefined,
+      expected: "init_error",
+    },
+    {
       label: "a rejected configured token",
       challenge: 'Bearer error="invalid_token"',
       headers: { authorization: "Bearer fixture-placeholder" },

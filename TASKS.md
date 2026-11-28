@@ -808,7 +808,7 @@
   - **Measurement**: `bash hooks/checks/goal-retro-before-stop.test.sh` plus one case per reproduced shape.
   - **Success**: all 4 shapes exit 2, `Next task: none, because <reason>` exits 0, and the suite shows 0 failed.
   - **Pivot**: if more than 1 legitimate closeout from the last 10 real retros would block, keep the whole-value placeholder match and only add the newest-section read.
-  - **Anchor**: Myers, "The Art of Software Testing" (equivalence classes and boundary values).
+  - **Anchor**: Myers 1979, "The Art of Software Testing" (equivalence classes and boundary values).
 
 - [ ] Allow a quoted-tag heredoc inside $() in the detached-start hook
   - **ID**: detached-start-heredoc-in-subst

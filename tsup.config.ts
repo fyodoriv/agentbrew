@@ -26,7 +26,7 @@ if (stageOutput) {
 }
 
 export default defineConfig({
-  entry: ["src/cli.ts", "src/storybook-screenshot.ts"],
+  entry: ["src/cli.ts", "src/project-context-task-backend.ts", "src/storybook-screenshot.ts"],
   format: ["esm"],
   target: "node20",
   splitting: false,

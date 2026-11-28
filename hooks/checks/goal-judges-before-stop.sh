@@ -102,9 +102,8 @@
 # lenient runner-written judge file (the rubric floor, the cap-below-bar and
 # steering checks, and the field-standard rule limit it), a paraphrased
 # practice run with no marker, steering phrased in words the steering
-# check does not list, up to three rounds bought by small real edits, rounds
-# counted per /goal command (a new /goal on the same work starts a new cap),
-# and a runner that edits the installed hook files. A block counter that
+# check does not list, up to three rounds bought by small real edits, and
+# a runner that edits the installed hook files. A block counter that
 # cannot be written falls back to $TMPDIR, then gives up (partly met) at once,
 # so the hook never blocks forever; a wait counter that cannot be written
 # never excuses a met claim.
@@ -117,7 +116,7 @@
 #   - RUN_GOAL_JUDGE_MIN: lowest passing score. Default 8.
 #   - RUN_GOAL_JUDGE_COUNT: judges needed. Default 3.
 #   - RUN_GOAL_JUDGE_MODELS: different judge model families needed. Default 3.
-#   - RUN_GOAL_JUDGE_ROUNDS: judging rounds allowed per goal. Default 3.
+#   - RUN_GOAL_JUDGE_ROUNDS: judging rounds allowed per contract. Default 3.
 #     The owner can raise it for one goal from chat: a message of their own,
 #     after the /goal line, that starts with "approve round N" (cap N) or
 #     "approve N more rounds" (cap +N). Tool results, hook feedback, meta and
@@ -255,7 +254,7 @@ VJQ="$__HOOK_LIB_DIR/goal-judge-verdicts.jq"
 # and the owner's words), so a session with no goal exits after that grep;
 # then one full jq pass.
 parse() { [ -z "$TRANSCRIPT" ] || ROWS="$(hook_jq -R -r -n --argjson canon "$1" --arg lib "$LIB_REAL" \
-  --arg contract "$CONTRACT" --arg mode all -f "$VJQ" <"$TRANSCRIPT" 2>/dev/null || true)"; }
+  --arg contract "$CONTRACT" --arg contract_sha "$NOW_CONTRACT" --arg mode all -f "$VJQ" <"$TRANSCRIPT" 2>/dev/null || true)"; }
 G_ACTIVE=0
 G_ROW=""
 SEL=""
@@ -371,7 +370,17 @@ fi
 PROWS="$(printf '%s\n' "$ROWS" | awk -F'\t' '$1=="P"')"
 # A full round judges every judge; a state that judged fewer is a focused
 # re-judge of the failing judge(s), counted against its own cap.
-read -r NR_ROUNDS NR_FOCUSED <<<"$(printf '%s\n' "$PROWS" | sed '/^$/d' | awk -F'\t' -v nj="${NJ:-0}" '!seen[$5 FS $3]++ { n[$5]++ } END { f = 0; p = 0; for (k in n) { if (n[k] >= nj) f++; else p++ } print f, p }')"
+# Earlier scopes supply only full rounds on the same contract.
+read -r NR_ROUNDS NR_FOCUSED <<<"$(printf '%s\n' "$ROWS" | awk -F'\t' -v nj="${NJ:-0}" '
+  $1 == "H" && $2 >= nj { full++ }
+  $1 == "P" && !seen[$5 FS $3]++ { judges[$5]++ }
+  END {
+    for (state in judges) {
+      if (judges[state] >= nj) full++
+      else focused++
+    }
+    print full+0, focused+0
+  }')"
 [ "${NR_FOCUSED:-0}" -gt "$FOCUSED" ] &&
   add "this goal used $NR_FOCUSED focused re-judges (a state judged by only some judges); the cap is $FOCUSED (RUN_GOAL_JUDGE_FOCUSED); run a full round instead"
 NR_ROUNDS=$((NR_ROUNDS + UROWS))

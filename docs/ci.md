@@ -71,6 +71,16 @@ using a cached pass. The task lint checks the queue and allowlist and declines
 cache reuse for untracked ignored inputs or unresolved file types. Tools that
 read the installed dependency graph keep their current cache policy.
 
+Hosted CI allows 40 minutes for the verification step and 45 minutes for the
+job. Open the run's `gate-log-<runner>-attempt-<number>` artifact to see UTC
+timestamps and outcomes for each gate step. If a step was interrupted, its
+end row gives the time the runner recorded the interruption. A runner that
+stops or uses the full job budget may be unable to upload the trace.
+
+To check timeout reporting, dispatch CI on a branch with `gate_timeout_probe`
+enabled. The macOS probe should fail at its one-minute step limit and upload
+the trace under a separate check name.
+
 The last gate line reports `verify: passed; N of M steps from cache`. To run
 every step, delete the entries with `gh cache delete --all`. This also removes
 the browser cache.

@@ -35,7 +35,12 @@ contract is back or the retro says not met.
 | `RUN_GOAL_JUDGE_DIR` | `~/.config/agentbrew/goal-judges` | the judge cache lives elsewhere |
 
 **Cost**: one round is three fresh subagents reading the judged paths; a
-goal gets at most three rounds, so at most nine judge runs, unless the owner types a message that starts with "approve round N" or "approve N more rounds": then the cap is N. When rounds run out with a judge below 8, ask the owner in one line whether to approve another round; never ask them to edit settings. A round takes
+contract gets at most three full rounds by default. Restarting an unchanged
+contract in the same session keeps those rounds. The latest goal still needs
+its own verdicts. After the latest goal command, the owner can raise the cap
+by starting a message with "approve round N" or "approve N more rounds".
+When rounds run out with a judge below 8, ask the owner in one line whether
+to approve another round. A round takes
 about 3 to 6 minutes of wall time with the judges in parallel. Each judge
 and the overseer work to a budget stated in their prompts: about 10 minutes
 and a capped number of tool calls (see `goal-judge-prompt.sh`), running a long test suite only when a defect
@@ -349,9 +354,8 @@ hook can make these harder, not impossible):
   `goal-judge-history.tsv` holds a verdict for that judge under another
   rubric, the new `Rubric <sha>:` line must cite one of those scored states,
   wherever it sits in the file. Check its reason against the evidence.
-- The round cap counts per `/goal` command: a new `/goal` on the same work
-  starts a new cap. The score history keeps every round, so the pass rate
-  shows it.
+- Earlier unofficial runs and focused re-judges stay scoped to their goal
+  command. Full panels with the same contract hash use the shared cap.
 - Files a judge leaves in the judged paths (test output, coverage, logs that
   are not gitignored) change the state token, so its verdict goes stale and
   the next round uses one of the three. Gitignore such output first.

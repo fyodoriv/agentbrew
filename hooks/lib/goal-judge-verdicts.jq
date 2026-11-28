@@ -1,10 +1,11 @@
 # Used by hooks/checks/goal-judges-before-stop.sh with
 # `jq -R -r -n --argjson canon <{judge id: canonical prompt}> --arg lib <hook lib dir> --arg contract <contract path>
-# --arg mode <all|g>`. Mode g prints only the G row (the hook runs it on the
+# --arg mode <all|g> [--arg contract_sha <current contract hash>]`. Mode g prints only the G row (the hook runs it on the
 # grep-selected /goal command lines, so the full transcript is parsed once).
 # Input: a Claude Code transcript, read as raw lines (a torn last line is
-# skipped, not fatal). Only rows after the last `/goal <condition>` command
-# count, so an earlier goal's judges never count for this one.
+# skipped, not fatal). Verdicts come from the latest `/goal <condition>`.
+# When a contract hash is supplied, earlier panels on that contract also
+# count toward the round cap.
 # Output, tab-separated:
 #   G <active> <owner text, base64>
 #               active is 1 when the last `/goal` command with an argument
@@ -16,6 +17,8 @@
 #               one per judge call whose prompt has the GOAL-JUDGE-PROMPT
 #               header, in transcript order (rounds, frozen set, rubrics, and
 #               contract)
+#   H <n>       number of distinct named judges called on one state in one
+#               earlier goal scope, using the current contract hash
 #   V <tool_use_id> <judge> <score> <cache> <state> <model> <prompt_ok> <type_ok> <messaged> <header_ok>
 #   T <family>  the runner's model family (its last turn), so the hook can
 #               keep the runner's own model from holding a judge majority
@@ -55,6 +58,8 @@ def family: ascii_downcase as $m
 # Drop `sh -n <file>` / `bash -n <file>` segments: a syntax check runs nothing.
 def nocheck: gsub("(?<s>^|[;&|\n])[ \t]*(ba|z)?sh[ \t]+-n[ \t][^;&|\n]*"; "\(.s)");
 def header($k): (capture("(?m)^" + $k + ":[ \t]*(?<v>[^\r\n]*)").v // "") | trim;
+def judge_prompt: test("^\\s*GOAL-JUDGE-PROMPT v[0-9]");
+def judge_id: if judge_prompt then (header("Judge-Id") | ascii_downcase) else "" end;
 # A field line in a verdict block; tolerates list, quote, and bold marks.
 def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\r?\n|(?=<)|$)";
 
@@ -64,7 +69,8 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
      | select(test("^\\s*<command-name>/goal</command-name>"))
      | select((capture("<command-args>(?<a>[\\s\\S]*?)</command-args>").a // "" | trim | ascii_downcase)
               | IN("", "clear", "stop", "off", "reset", "none", "cancel") | not)
-     | $i ] | last // 0) as $start
+     | $i ]) as $goal_starts
+| ($goal_starts | last // 0) as $start
 | ([ $all[] | select(.type == "user") | .message.content | strings
      | select(test("^\\s*<command-name>/goal</command-name>"))
      | (capture("<command-args>(?<a>[\\s\\S]*?)</command-args>").a // "" | trim)
@@ -81,7 +87,7 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
      | ((.input.model // "") | tostring) as $m
      | {key: .id, value: {
          prompt: $p,
-         judge: (if ($p | test("^\\s*GOAL-JUDGE-PROMPT v[0-9]")) then ($p | header("Judge-Id") | ascii_downcase) else "" end),
+         judge: ($p | judge_id),
          overseer: ($p | test("^\\s*GOAL-OVERSEER-PROMPT v[0-9]")),
          rubric: ($p | header("Rubric-SHA")), state: ($p | header("State")),
          contract: ($p | header("Contract-SHA")),
@@ -134,6 +140,17 @@ def f($k): "[ \t>*_-]*" + $k + "[*_]*:[*_ \t]*([^\r\n<*_][^\r\n<]*?)[*_ \t]*(?:\
   "T\t\($runner)",
   "R\t\(($launched - $done) | length)",
   ( $unofficial[] | "U\t\(.)" ),
+  ( ($ARGS.named.contract_sha // "") as $current_sha
+    | select($current_sha != "")
+    | ([0] + $goal_starts | unique) as $bounds
+    | range(0; ($bounds | length) - 1) as $i
+    | [ $all[$bounds[$i]:$bounds[$i+1]][]
+        | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use")
+        | select(.name == "Agent" or .name == "Task") | .input.prompt | strings
+        | select(judge_prompt and header("Contract-SHA") == $current_sha)
+        | {judge: judge_id, state: header("State")}
+        | select($canon[.judge] != null and .state != "") ]
+    | group_by(.state)[] | map(.judge) | unique | ["H", length] | @tsv ),
   ( $agents | to_entries[] | select(.value.judge != "")
     | ["P", .key, .value.judge, .value.rubric, .value.state, .value.contract] | @tsv ),
   # O: one per overseer call; Q: its rulings, from the last verdict block in

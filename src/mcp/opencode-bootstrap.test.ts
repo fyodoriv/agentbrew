@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import Ajv from "ajv";
 import { describe, expect, it } from "vitest";
-import { buildOpencodeProviderConfig, computeOllamaEnv, opencodeMajorFromVersion } from "./opencode-bootstrap.js";
+import {
+  buildOpencodeProviderConfig,
+  computeOllamaEnv,
+  localOllamaProcesses,
+  opencodeMajorFromVersion,
+} from "./opencode-bootstrap.js";
 
 // Trimmed copy of https://opencode.ai/config.json (see its $comment).
 const schema = JSON.parse(
@@ -152,10 +157,48 @@ describe("buildOpencodeProviderConfig", () => {
     });
   });
 
+  it("pins both macOS launch paths to the endpoint used by OpenCode", () => {
+    type Profile = Parameters<typeof computeOllamaEnv>[0];
+    expect(computeOllamaEnv({ os: "darwin", arch: "x64", totalMemoryGB: 16 } as Profile).OLLAMA_HOST).toBe(
+      "http://localhost:11434",
+    );
+    expect(computeOllamaEnv({ os: "darwin", arch: "arm64", totalMemoryGB: 32 } as Profile).OLLAMA_HOST).toBe(
+      "http://localhost:11434",
+    );
+    expect(computeOllamaEnv({ os: "linux", totalMemoryGB: 16 } as Profile).OLLAMA_HOST).toBeUndefined();
+  });
+
   it("reads installed V1 and V2 version strings and rejects unknown versions", () => {
     expect(opencodeMajorFromVersion("1.19.5")).toBe(1);
     expect(opencodeMajorFromVersion("opencode v2.2.6")).toBe(2);
     expect(() => opencodeMajorFromVersion("not-a-version")).toThrow();
     expect(() => opencodeMajorFromVersion("opencode v3.0.0")).toThrow();
+  });
+});
+
+describe("local Ollama process evidence", () => {
+  it("counts one server once when it appears in both probes", () => {
+    const listeners = "p101\nf4\np101\nf5\n";
+    const commands = "  101 /Applications/Ollama Test.app/Contents/Resources/ollama serve\n  112 ollama runner";
+    expect(localOllamaProcesses(listeners, commands)).toEqual({
+      listening: new Set(["101"]),
+      serving: new Set(["101"]),
+    });
+  });
+
+  it("reports a competing server even if only one can listen", () => {
+    const commands = "101 ollama serve\n202 ./bin/ollama serve\n203 ollama list";
+    expect(localOllamaProcesses("p101\nf3\n", commands)).toEqual({
+      listening: new Set(["101"]),
+      serving: new Set(["101", "202"]),
+    });
+  });
+
+  it("keeps an unrelated listener visible and ignores client commands", () => {
+    expect(localOllamaProcesses("p301\nf3\n", "112 ollama list")).toEqual({
+      listening: new Set(["301"]),
+      serving: new Set(),
+    });
+    expect(localOllamaProcesses("", "112 ollama runner")).toEqual({ listening: new Set(), serving: new Set() });
   });
 });

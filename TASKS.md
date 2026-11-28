@@ -375,7 +375,7 @@
   - **Hypothesis**: Using the provisioned toolchain cuts the number of failed native cache cases from 2 of 2 in the captured DNS outage to 0 of 2 under a test-only outage.
   - **Measurement**: In hosted macOS CI, run `npm exec -- vitest run src/source-build-capability.test.ts -t 'actual Cargo cache'` with a fixture-only unavailable Rust distribution endpoint. Check the two assertions and count attempted update requests. Run the normal full gate.
   - **Success**: Both native cache cases execute and pass. The measured builds make zero Rust distribution requests. The full gate passes.
-  - **Pivot**: If either case skips, still invokes the distribution host, or changes a cache assertion, keep it open and trace how Cargo resolves the provisioned toolchain.
+  - **Pivot**: If 1 or more cases skip, still invoke the distribution host, or change a cache assertion, keep the task open and trace how Cargo resolves the provisioned toolchain.
   - **Anchor**: [macOS job 140912307095](https://github.com/fyodoriv/agentbrew/actions/runs/46123313265/job/140912307095) and the native cache fixture at line 599.
 
 - [ ] A stuck macOS CI gate stops in time and leaves a log that names the slow step

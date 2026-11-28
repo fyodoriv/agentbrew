@@ -32,6 +32,12 @@ fresh subagent judge. The judge has not seen the reasoning behind the draft.
    If the optional human-review or audience-order rule is enabled, the user
    has confirmed the required check or proof page before this draft is saved.
 
+7. When the optional chat-merge-recent-message rule applies, reject an edit if
+   a reader already acted on the original. Also reject an edit for a nudge or
+   follow-up on a later calendar day in the user's timezone, even within
+   24 hours. Check the original timestamp and reader activity in the source.
+   The new message still follows the existing send approval rules.
+
 ## Judge answer
 
 The first line is `APPROVED` or `REJECTED`. Any other first line counts as

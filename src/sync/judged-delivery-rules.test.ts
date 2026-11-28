@@ -24,7 +24,17 @@ const safeguards = {
   "human-review-blockers": ["running app", "never marks", "confirms in chat", "Human check"],
   "judge-operator-audience": ["Gate 1", "Gate 2", "Gate 3", "proof page", "no draft", "audience"],
   "recommended-option-first": ["recommended option first", "Recommended", "fresh-reader judge fails", "first thoughts"],
-  "chat-merge-recent-message": ["second message in a row", "24 hours", "Edit that message", "one merged message"],
+  "chat-merge-recent-message": [
+    "second message in a row",
+    "24 hours",
+    "make the approved edit yourself",
+    "approved deletion and post one merged message yourself",
+    "Prepare a new draft for review",
+    "reader already acted",
+    "later calendar day",
+    "draft judge",
+    "send approval rules",
+  ],
   "chat-drafts-only": [
     "The user sends the draft",
     "independent draft judge",
@@ -96,6 +106,16 @@ describe("optional judged delivery safeguards", () => {
       const instructions = readFileSync(join(process.cwd(), doc), "utf-8");
       expect(instructions).toContain("`agentbrew install chat-drafts-only`");
     }
+  });
+
+  it("checks both new-message cases when judging drafts under chat merge", () => {
+    const judge = readFileSync(
+      join(process.cwd(), "skill-plugins/workflow/review-pr/references/draft-judge.md"),
+      "utf-8",
+    ).replace(/\s+/g, " ");
+    expect(judge).toContain("When the optional chat-merge-recent-message rule applies");
+    expect(judge).toContain("reject an edit if a reader already acted");
+    expect(judge).toContain("nudge or follow-up on a later calendar day");
   });
 
   it("holds review asks with functional failures and keeps human checks unclaimed", () => {

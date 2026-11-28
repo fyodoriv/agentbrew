@@ -260,6 +260,9 @@ text with `agentbrew catalog show <name>`.
 To send your own chat messages, run `agentbrew install chat-drafts-only`, then
 sync. Agents save judged drafts for you and suggest edits to sent messages.
 
+The optional `chat-merge-recent-message` rule keeps already acted-on messages
+in place. It uses a new draft for later-day nudges, even within 24 hours.
+
 **Built-in skills stay built-in.** A name that ships in agentbrew's own `skill-plugins/dev/` and has no catalog entry (in `agentbrew install` or an Agentfile `skills:` list) always resolves to agentbrew's copy. agentbrew never searches the registry or your sources for it, and `sync --pull` never installs a team source's `recommended` skill with that name. To replace a built-in on purpose, name the source: `agentbrew install <name> --from <source>`. An Agentfile `skills:` entry always resolves as a skill, never as a catalog rule, MCP server, or CLI tool with the same name. `agentbrew install load-project-context` installs the catalog rule and says that a built-in skill shares the name (agentbrew always deploys that skill).
 
 **Upstream skill creator.** `agentbrew install skill-creator` selects the optional Anthropic `anthropics/skills` workflow. It preserves existing owner destinations and the native Codex creator. These are different skill bodies; see [creator selection and owner conflicts](docs/skill-directories.md#catalog-owner-conflicts) before replacing one.

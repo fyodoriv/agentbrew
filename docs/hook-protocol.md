@@ -319,7 +319,10 @@ claims. A count where every item is met (`5 of 5 met`) is also a
 claim. An overseer ruling that raises a score needs a reason of 20 or
 more characters. An overseer whose usage note shows no tool calls cannot
 change a score; the judge's score stands. Judged paths freeze at goal start
-in `<session id>.paths`, and each judge keeps one role for the whole goal. A calibration line for the current state that states any
+in `<session id>.paths`. Judge and overseer prompts show the selected paths
+once, above the contract. If a contract edit changes the path list, the judge
+prompt keeps the frozen list and names its file on stderr. Each judge keeps
+one role for the whole goal. A calibration line for the current state that states any
 score other than the judge's verdict blocks. When only low scores are left,
 the block's `Next step:` is the one-batch blocker fix. The hook blocks Stop until each judge on the
 contract's `Judges:` line has exactly one `GOAL-JUDGE-VERDICT` block (Judge,

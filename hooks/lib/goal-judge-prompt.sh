@@ -16,7 +16,7 @@
 #
 # The prompt holds the judge's rubric verbatim (its file up to `## Calibration`;
 # the runner writes the calibration notes, so the judge never reads them), the
-# state token from goal-state.sh, the judged paths, and the contract verbatim.
+# state token from goal-state.sh, the judged paths, and the filtered contract.
 # The hook reads the `Judge-Id`, `Rubric-SHA`, `Contract-SHA`, and `State`
 # header lines of earlier prompts to freeze the judge set, the rubrics, and the
 # contract at the goal's first round and to count rounds.
@@ -32,15 +32,15 @@ set -uo pipefail
 # with a number and "or more", ">=", "8+", "no less than", "minimum",
 # or "above|target|bar|exceed|reach 8", ...) or a bare "reach 8.0" (a score-sized
 # number at the end or before "within", "in", "after") is replaced, so no target
-# anchors a judge. Words match whole ("sidebar" and "on target" stay), and
-# the Judges: and Judged paths: lines always stay. The overseer prompt uses
-# the same text.
+# anchors a judge. Keep reviewer names. Omit contract path metadata because
+# the judge and overseer prompts show the selected list above the contract.
 contract_text() {
   awk '{ l = tolower($0) }
     l ~ /^#+[ \t]*after judging/ { skip = 1; print "(the After judging section is left out: those steps happen after the judges pass; do not score them)"; next }
     /^#/ { skip = 0 }
     skip { next }
-    l ~ /^[-*_ ]*judge(s|d paths):/ { print; next }
+    l ~ /^[-*_ ]*judged paths:/ { next }
+    l ~ /^[-*_ ]*judges:/ { print; next }
     # Ignore reviewer counts when detecting scores. Print the original line.
     { gsub(/(^|[^a-z])(at least|at most|no fewer than|no less than) +([0-9]+|one|two|three|four|five|six|seven|eight|nine|ten) +judges?([^a-z]|$)/, " judges ", l) }
     l ~ /([0-9]|(^|[^a-z])(one|two|three|four|five|six|seven|eight|nine|ten)) *(\/|out of|of) *(10|ten)([^a-z]|$)/ ||
@@ -97,11 +97,17 @@ PATHS="$(sed -nE 's/^[-*_ ]*Judged paths:[*_ ]*(.*)$/\1/p' "$CONTRACT" | head -1
 # file), and later prompts read that file, so a contract edited mid-goal
 # cannot narrow what is judged. With no owner file, the contract line is used.
 PATHS_FILE="${CONTRACT%.contract.md}.paths"
-if [ "$OWNER_FILE" != "$CONTRACT" ] && [ -f "$OWNER_FILE" ] && [ -n "$PATHS" ]; then
-  if [ ! -f "$PATHS_FILE" ] || [ "$OWNER_FILE" -nt "$PATHS_FILE" ]; then
+if [ "$OWNER_FILE" != "$CONTRACT" ] && [ -f "$OWNER_FILE" ]; then
+  if [ -n "$PATHS" ] && { [ ! -f "$PATHS_FILE" ] || [ "$OWNER_FILE" -nt "$PATHS_FILE" ]; }; then
     printf '%s\n' "$PATHS" >"$PATHS_FILE" 2>/dev/null || true
   fi
-  [ -s "$PATHS_FILE" ] && PATHS="$(cat "$PATHS_FILE")"
+  if [ -s "$PATHS_FILE" ] && [ ! "$OWNER_FILE" -nt "$PATHS_FILE" ]; then
+    frozen_paths="$(cat "$PATHS_FILE")"
+    if [ "$PATHS" != "$frozen_paths" ]; then
+      printf 'goal-judge-prompt: using frozen judged paths from %s\n' "$PATHS_FILE" >&2
+    fi
+    PATHS="$frozen_paths"
+  fi
 fi
 
 cat <<EOF
@@ -145,7 +151,7 @@ Owner request (verbatim from the /goal command):
 
 $OWNER_TEXT
 
-Goal contract (verbatim, written by the runner):
+Goal contract (written by the runner):
 
 $(contract_text "$CONTRACT")
 

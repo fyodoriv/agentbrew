@@ -306,6 +306,8 @@ agent saves its contract there with Write. `goal-contract-before-edit`
 when it has "Done when", "Metric", and "Pivot", and blocks other file edits
 until it exists. A valid contract file, `/goal clear`, or a marker older
 than one day ends the block.
+The frozen paths file belongs to one goal within the session. A new goal
+or a clear command removes it. Other sessions keep their frozen paths.
 
 `goal-judges-before-stop` (Stop) is success-gated. While a goal contract
 exists, Stop passes only with a judge consensus or a retro whose every

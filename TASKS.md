@@ -915,19 +915,6 @@
   - **Pivot**: if no stable first-save moment exists, freeze on the first judge run.
   - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (self-enhancement bias).
 
-- [ ] Clean up .paths files with the other goal state
-  - **ID**: goal-state-paths-cleanup
-  - **Tags**: run-goal, hygiene
-  - **Details**: `goal-set-loads-run-goal.sh` removes old contract and state files but not `.paths`, so a stale list can carry into a new goal with the same session id (round 14).
-  - **Files**: `hooks/checks/goal-set-loads-run-goal.sh`, its test.
-  - **Output**: code
-  - **Acceptance**: after a new `/goal`, no `.paths` file from the old goal remains.
-  - **Hypothesis**: stale `.paths` files after a goal reset drop from 1 per reset to 0.
-  - **Measurement**: `bash hooks/checks/goal-set-loads-run-goal.test.sh` (new check).
-  - **Success**: check passes; suite 0 failed.
-  - **Pivot**: if cleanup lists keep drifting, glob all `<session>.*` state files instead.
-  - **Anchor**: Nygard 2018, "Release It!" (clean up stale state).
-
 - [ ] Say what to do next when a quoted ampersand is blocked
   - **ID**: detached-start-quoted-amp-hint
   - **Tags**: hooks, devex

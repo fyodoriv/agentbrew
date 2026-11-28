@@ -24,6 +24,9 @@ Judges: <id> N/10, <id> N/10, <id> N/10 (state <token>), or `pending`.
 **What went wrong**: <bullets> · **What to improve**: <bullets>
 **Assumptions**: <each marked "my choice" (why, what data would replace it), "from <source>", or "you said">
 **Skills updated**: <every skill used, run-goal included → its edit or new eval + PR, or the task for a third-party skill>
+Accomplished: <what exactly was done: PRs, commits, files, numbers>
+Why useful: <what it changes for the owner, in plain words>
+Next task: <the one most useful next task, and why it beats the others>
 **Goal progress:** <verified work done, work left, background jobs, agent waits, and next check>
 **Needed from you:** <the review or the one action, or "nothing">
 ```
@@ -54,6 +57,12 @@ Before sending the ask, get an independent read against the live item.
 The reader fails a bare ID, a missing link, an unclear owner action, an
 unexplained choice, or a missing recommendation. Revise the ask until it
 passes. Use `**Needed from you:** nothing` when no user action is needed.
+
+The three closeout lines (`Accomplished:`, `Why useful:`, `Next task:`) end
+every finished goal: the report, the closing chat message, and the retro file.
+Name one next task, not a menu; pick the one with the most value per hour,
+and say why. The next-action picker below starts from it. A placeholder
+(`pending`, `none`, `<...>`) does not count.
 
 ## Choose what happens next
 

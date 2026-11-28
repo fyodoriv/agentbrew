@@ -46,7 +46,7 @@ version: 1
 hooks:
   # ── Phase 0 golden-path proof (ships with foundation) ──────────────────
   - id: background-suite-fail-fast
-    description: Block a backgrounded test suite with no fail-fast limit (a broken setup fails unseen for hours)
+    description: Block a backgrounded test suite with no fail-fast limit, and a full-run CI wait (gh run watch, gh pr checks --watch); name lib/ci-watch-fail-fast.sh, which ends on the first failed job
     event: PreToolUse
     matcher: Bash
     script: checks/background-suite-fail-fast.sh

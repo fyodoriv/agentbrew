@@ -4857,6 +4857,18 @@
         "Name the pipe into `tee` without `pipefail` as the reason the failure was hidden, and add `set -o pipefail` or `shell: bash` to that step.",
         "Read the step A record before deciding step A, and decide step B only after a rerun makes its record."
       ]
+    },
+    {
+      "id": 439,
+      "prompt": "/goal make the export button download a CSV, with tests, and ship it (the PR is merged, the judges scored 9, 8 and 9, and the retro file lists every skill used with its PR)",
+      "expected_output": "Before the last Stop, add the closeout to the retro file and end the closing chat message with the same closeout lines: Accomplished: the merged PR and what it changed; Why useful: what the owner can now do that they could not before; Next task: one named task with the reason it is the most useful next step. Do not write a placeholder such as 'none' or 'pending', and do not list a menu instead of one task.",
+      "files": [],
+      "expectations": [
+        "The retro file gets non-empty Accomplished:, Why useful: and Next task: lines once the Goal result is final.",
+        "The closing chat message ends with the same closeout lines.",
+        "Next task names exactly one task and says why it beats the others.",
+        "No placeholder (none, pending, TBD, <...>) stands in for any closeout line."
+      ]
     }
   ]
 }

@@ -1,4 +1,5 @@
 // Pattern: Declarative desired-state configuration (Burgess 1995, "A site configuration engine" (CFEngine)). See VISION.md "Pattern conformance index".
+
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import chalk from "chalk";
@@ -6,6 +7,7 @@ import yaml from "js-yaml";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { LOCAL_SKILL_DIRECTORY_ORIGIN } from "./agentfile-skill-directories.js";
 import { loadCatalog } from "./catalog/types.js";
+import { AGENTFILE_NAMES } from "./core/agentfile-names.js";
 import { fixDeprecatedMemoryServerArgs } from "./mcp/mcpm-hygiene.js";
 import { MEMORY_MANAGED_SERVER_NAME, MEMORY_MANAGED_SOURCE } from "./memory/constants.js";
 import { SHARED_RULES_PATH } from "./paths.js";
@@ -102,7 +104,7 @@ export interface Agentfile {
 // ── Agentfile names (checked in priority order) ───────────────────────────────
 
 /** Agentfile names checked in priority order — .yaml first for tooling compatibility. */
-export const AGENTFILE_NAMES = ["Agentfile.yaml", "Agentfile.yml", "Agentfile"];
+export { AGENTFILE_NAMES } from "./core/agentfile-names.js";
 
 // ── Parsing ───────────────────────────────────────────────────────────────────
 

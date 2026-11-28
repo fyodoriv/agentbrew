@@ -1,8 +1,8 @@
-import { existsSync, readFileSync } from "node:fs";
+import { closeSync, constants, existsSync, fstatSync, openSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
 import yaml from "js-yaml";
-import { AGENTFILE_NAMES } from "../agentfile.js";
+import { AGENTFILE_NAMES } from "./agentfile-names.js";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -101,6 +101,16 @@ function processConfig(config: AgentfileTaskBackendConfig, configSource: string)
   return { backend, repo, project };
 }
 
+function readTaskConfig(path: string): unknown {
+  const file = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK);
+  try {
+    if (!fstatSync(file).isFile()) throw new Error("The task config must be a regular file.");
+    return yaml.load(readFileSync(file, "utf-8"));
+  } finally {
+    closeSync(file);
+  }
+}
+
 /**
  * Resolve the task backend for a given repo path.
  * Reads from Agentfile.yaml (or .agents/tasks.config.yaml as fallback).
@@ -119,7 +129,7 @@ export function resolveTaskBackend(repoPath: string): TaskBackendDescriptor {
     if (!existsSync(agentfilePath)) continue;
     let raw: unknown;
     try {
-      raw = yaml.load(readFileSync(agentfilePath, "utf-8"));
+      raw = readTaskConfig(agentfilePath);
     } catch (error) {
       console.error(chalk.yellow(`⚠ Failed to parse ${name}: ${errorMessage(error)}`));
       break;
@@ -133,8 +143,7 @@ export function resolveTaskBackend(repoPath: string): TaskBackendDescriptor {
   const tasksConfigPath = join(repoPath, ".agents", "tasks.config.yaml");
   if (existsSync(tasksConfigPath)) {
     try {
-      const content = readFileSync(tasksConfigPath, "utf-8");
-      const config = yaml.load(content) as AgentfileTaskBackendConfig;
+      const config = readTaskConfig(tasksConfigPath) as AgentfileTaskBackendConfig;
       return processConfig(config, ".agents/tasks.config.yaml");
     } catch (error) {
       console.error(chalk.yellow(`⚠ Failed to parse .agents/tasks.config.yaml: ${errorMessage(error)}`));

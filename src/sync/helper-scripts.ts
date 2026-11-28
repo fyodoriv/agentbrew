@@ -8,7 +8,7 @@
  * or a file an org overlay installs — is kept and reported, never replaced.
  */
 import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
@@ -17,6 +17,7 @@ import type { Manifest } from "../manifest.js";
 import { contentHash, isUserModified } from "../manifest.js";
 import { HELPER_SCRIPTS_DIR } from "../paths.js";
 import { expandHome } from "../utils.js";
+import { resolveSchedulerNode } from "./scheduler-paths.js";
 
 /**
  * Deployed script name → source path relative to the agentbrew project root.
@@ -79,6 +80,20 @@ function planHelperScript(target: string, content: string, manifest: Manifest): 
   return isUserModified(target, manifest) ? "kept-user-file" : "updated";
 }
 
+function withProjectContextResolver(content: string, projectRoot: string): string {
+  const placeholder = "task_backend_resolver=()";
+  if (!content.includes(placeholder)) return content;
+
+  const entry = "project-context-task-backend.js";
+  const resolver = [resolve(projectRoot, entry), resolve(projectRoot, "dist", entry)].find((path) => existsSync(path));
+  if (!resolver) return content;
+
+  const command = [resolveSchedulerNode({ env: {} }), resolver]
+    .map((part) => `'${part.replaceAll("'", "'\\''")}'`)
+    .join(" ");
+  return content.replace(placeholder, () => `task_backend_resolver=(${command})`);
+}
+
 /** Install or update the helper scripts; return one result per shipped script. */
 export function syncHelperScripts(options: SyncHelperScriptsOptions): HelperScriptResult[] {
   const { projectRoot, manifest, dryRun } = options;
@@ -95,7 +110,8 @@ export function syncHelperScripts(options: SyncHelperScriptsOptions): HelperScri
     }
     const target = join(targetDir, name);
     try {
-      const content = paths.map((path) => readFileSync(path, "utf-8")).join("\n");
+      const source = paths.map((path) => readFileSync(path, "utf-8")).join("\n");
+      const content = name === "load-project-context.sh" ? withProjectContextResolver(source, projectRoot) : source;
       const action = planHelperScript(target, content, manifest);
       if (!dryRun && (action === "installed" || action === "updated")) {
         mkdirSync(targetDir, { recursive: true });

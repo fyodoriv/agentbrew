@@ -11,3 +11,10 @@
 Use scratch scripts and inert input. The fixture counts calls to the named
 recording shims and observes when the runner stops. Field timing for a real
 managed session is separate evidence.
+
+## Baseline
+
+Ubuntu job `140818021236` ran 13 startup checks. At line 89, the shorter
+deadline produced no error. At line 96, the excess launch fixture also
+produced no error. The other 11 startup checks passed.
+[Baseline run](https://github.com/fyodoriv/agentbrew/actions/runs/46093017130).

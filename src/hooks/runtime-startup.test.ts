@@ -49,7 +49,7 @@ describe("managed hook startup", () => {
     return path;
   }
 
-  function bash(args: string[], input = "", overrides: NodeJS.ProcessEnv = {}) {
+  function bash(args: string[], input = "", overrides: NodeJS.ProcessEnv = {}, deadlineMs = 5000) {
     return spawnSync("/bin/bash", args, {
       cwd: scratch,
       env: {
@@ -61,7 +61,8 @@ describe("managed hook startup", () => {
         ...overrides,
       },
       input,
-      timeout: 5000,
+      timeout: deadlineMs,
+      killSignal: "SIGKILL",
       encoding: "utf8",
     });
   }
@@ -77,8 +78,20 @@ describe("managed hook startup", () => {
 
   const guardBudget = { deadlineMs: 1000, recordedLaunches: 2 };
 
-  function runGuardFixture(args: string[], input: string, _budget: typeof guardBudget): number | null {
-    return bash(args, input).status;
+  function runGuardFixture(args: string[], input: string, budget: typeof guardBudget): number {
+    writeFileSync(recording, "");
+    const result = bash(args, input, { HOME: scratch }, budget.deadlineMs);
+    if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT") {
+      throw new Error(`Guard fixture timed out after ${budget.deadlineMs} ms`);
+    }
+    if (result.error) throw result.error;
+    if (result.status === null) throw new Error(`Guard fixture stopped without a decision (${result.signal})`);
+
+    const count = readFileSync(recording, "utf8").split("\n").filter(Boolean).length;
+    if (count > budget.recordedLaunches) {
+      throw new Error(`Guard fixture recorded ${count} launches (limit ${budget.recordedLaunches})`);
+    }
+    return result.status;
   }
 
   it("keeps a timely fixture result", () => {

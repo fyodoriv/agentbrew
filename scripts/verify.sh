@@ -29,11 +29,27 @@ metrics_dir="${AGENTBREW_METRICS_DIR:-.metrics}"
 common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || echo "$metrics_dir")"
 cache_dir="${AGENTBREW_GATE_CACHE_DIR:-$common_dir/agentbrew-gate-cache}"
 timings="$metrics_dir/gate-timings.jsonl"
+gate_trace="${AGENTBREW_GATE_TRACE:-}"
+# Child gates must not append to this gate's trace.
+unset AGENTBREW_GATE_TRACE
 mkdir -p "$cache_dir" "$metrics_dir"
 find "$cache_dir" -type f -mtime +14 -delete 2>/dev/null || true
 
 now_ms() { node -e 'console.log(Date.now())'; }
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+trace_step() {
+  [ -n "$gate_trace" ] || return 0
+  local phase="$1" name="$2" outcome="${3:-}"
+  case "$name" in
+    ''|*[!a-zA-Z0-9_-]*) return 0 ;;
+  esac
+  if [ "$phase" = start ]; then
+    printf '%s\tstart\t%s\n' "$(ts)" "$name" >>"$gate_trace"
+  else
+    printf '%s\tend\t%s\t%s\n' "$(ts)" "$name" "$outcome" >>"$gate_trace"
+  fi
+}
 
 # input_hash [paths...]: one hash over the path and content of every file the
 # repo holds, or of the files under the given paths only (then origin/main is
@@ -157,6 +173,7 @@ step() {
   local name="$1"
   shift
   steps=$((steps + 1))
+  trace_step start "$name"
   local scope key="" base="$inputs" paths
   scope="$(cache_scope "$name" "$@")"
   if [ -n "$scope" ]; then
@@ -170,6 +187,7 @@ step() {
   if [ -n "$key" ] && [ "${NO_CACHE:-0}" != 1 ] && [ -f "$cache_dir/$name/$key" ]; then
     cached_steps=$((cached_steps + 1))
     touch "$cache_dir/$name/$key"
+    trace_step end "$name" cached
     echo "--- $name: cached (inputs unchanged since it passed)"
     printf '{"ts":"%s","event":"step","step":"%s","ms":0,"ok":true,"cached":true}\n' "$(ts)" "$name" >>"$timings"
     return 0
@@ -185,6 +203,7 @@ step() {
   [ "$rc" = 0 ] || ok=false
   printf '{"ts":"%s","event":"step","step":"%s","ms":%s,"ok":%s,"cached":false}\n' "$(ts)" "$name" "$ms" "$ok" >>"$timings"
   if [ "$rc" != 0 ]; then
+    trace_step end "$name" failed
     [ -z "$key" ] || rm -f "$cache_dir/$name/$key"
     echo "--- $name: FAILED in ${ms} ms (rc=$rc)"
     finish false
@@ -193,6 +212,7 @@ step() {
   if [ -n "$key" ] && [ "$(cache_scope "$name" "$@")" = "$scope" ]; then
     mkdir -p "$cache_dir/$name" && : >"$cache_dir/$name/$key"
   fi
+  trace_step end "$name" ok
   echo "--- $name: ok in ${ms} ms"
 }
 

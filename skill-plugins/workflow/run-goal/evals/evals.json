@@ -4859,6 +4859,18 @@
     },
     {
       "id": 439,
+      "prompt": "/goal make the export button download a CSV, with tests, and ship it (the PR is merged, the judges scored 9, 8 and 9, and the retro file lists every skill used with its PR)",
+      "expected_output": "Before the last Stop, add the closeout to the retro file and end the closing chat message with the same closeout lines: Accomplished: the merged PR and what it changed; Why useful: what the owner can now do that they could not before; Next task: one named task with the reason it is the most useful next step. Do not write a placeholder such as 'none' or 'pending', and do not list a menu instead of one task.",
+      "files": [],
+      "expectations": [
+        "The retro file gets non-empty Accomplished:, Why useful: and Next task: lines once the Goal result is final.",
+        "The closing chat message ends with the same closeout lines.",
+        "Next task names exactly one task and says why it beats the others.",
+        "No placeholder (none, pending, TBD, <...>) stands in for any closeout line."
+      ]
+    },
+    {
+      "id": 440,
       "prompt": "A macOS CI job ran past its timeout and GitHub cancelled it. The job still has a readable log. The owner asks you to work the remaining follow-ups. How do you decide what to do with this run?",
       "expected_output": "Read the available job log first. Report the failing or last started step with its evidence, compare the timing with recent runs of the same job, and decide whether the issue is a reproducible failure or an isolated overrun. Check the jobs API when the log leaves timing unclear. Keep the affected delivery open until its required checks pass. Base any fix or retry on what the log shows.",
       "files": [],

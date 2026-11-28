@@ -2148,6 +2148,24 @@ rules:
       for other people before Gate 2 passes. Then follow the agreed audience order;
       each audience step needs the user's OK. A judged draft does not waive Gate 2.
 
+  - name: status-footer
+    description: "End messages with live work, watched answers, and the next user action."
+    category: workflow
+    recommended: false
+    content: |
+      End every message to the user with a status footer. Use the user's
+      configured footer when they have one. Otherwise use these lines:
+      Still running: name each active job and what it waits for.
+      Watching: name each thread, pull request, document, or person you watch.
+      Say how you check and when the next check runs. Examples include a
+      monitor, a scheduled check, and a per-turn check.
+      Needed from you: name the exact action, or say nothing is needed.
+      Use "nothing" for an empty line. Check each listed job and watch live.
+      For a pending answer, check replies and reactions on your request.
+      A clear reply or reaction from the person asked counts as an answer.
+      A status judge fails a missing footer, an invented watch, or a
+      blocker the person has already answered.
+
   - name: memory-first-research
     description: "Use shared recall and save dated research. Don't use for context-free deterministic CLI actions."
     category: workflow

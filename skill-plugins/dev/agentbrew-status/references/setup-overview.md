@@ -55,6 +55,12 @@ skill is added or renamed. Never keep a second copy in a skill.
 For one command, answer from its own `SKILL.md`: what it does, its
 `argument-hint` forms with an example each, and whether it runs by itself.
 
+## Live status footer
+
+When the user asks to track active work, watched answers, and their next
+action, run `agentbrew install status-footer`, then
+`agentbrew sync --only rules`.
+
 ## Runtime and skill ownership
 
 A detected agent directory does not prove the app runs. Check the runtime

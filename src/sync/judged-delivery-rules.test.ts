@@ -23,6 +23,16 @@ const safeguards = {
   "explain-before-showing": ["What it means", "2 to 6", "Proposed action", "no post needed", "commitments"],
   "human-review-blockers": ["running app", "never marks", "confirms in chat", "Human check"],
   "judge-operator-audience": ["Gate 1", "Gate 2", "Gate 3", "proof page", "no draft", "audience"],
+  "status-footer": [
+    "configured footer",
+    "Still running:",
+    "Watching:",
+    "document",
+    "Needed from you:",
+    "Check each listed job and watch live",
+    "check replies and reactions",
+    "invented watch",
+  ],
   "recommended-option-first": ["recommended option first", "Recommended", "fresh-reader judge fails", "first thoughts"],
   "chat-merge-recent-message": ["second message in a row", "24 hours", "Edit that message", "one merged message"],
   "chat-drafts-only": [
@@ -51,13 +61,14 @@ describe("optional judged delivery safeguards", () => {
 
   it("installs selected safeguards and deploys them to both primary hosts", async () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
+    const ownerFooter = "Use my existing footer labels: Follow-ups, Waiting on, and Needed from you.";
     const hosts = [
       { name: "claude-code", path: join(homedir(), ".claude/CLAUDE.md") },
       { name: "codex", path: join(homedir(), ".codex/AGENTS.md") },
     ];
     for (const host of hosts) {
       mkdirSync(dirname(host.path), { recursive: true });
-      writeFileSync(host.path, `${host.name} owner text\n`);
+      writeFileSync(host.path, `${host.name} owner text\n${ownerFooter}\n`);
     }
     saveState({
       ...defaultState(),
@@ -82,7 +93,9 @@ describe("optional judged delivery safeguards", () => {
     for (const host of hosts) {
       const deployed = readFileSync(host.path, "utf-8");
       expect(deployed).toContain(`${host.name} owner text`);
+      expect(deployed).toContain(ownerFooter);
       expect(deployed.split("<!-- rule: chat-drafts-only -->")).toHaveLength(2);
+      expect(deployed.split("<!-- rule: status-footer -->")).toHaveLength(2);
       for (const rule of rules) expect(deployed).toContain(rule.content.trim());
       expect(deployed).toContain("Request only named reviewers.");
       expect(deployed).toContain("Keep the PR in draft if a team could receive a request or the rules are unclear.");
@@ -91,10 +104,18 @@ describe("optional judged delivery safeguards", () => {
   });
 
   it("offers the catalog install through both Agentbrew start paths", () => {
-    const docs = ["commands/agentbrew.md", "skill-plugins/dev/agentbrew-status/SKILL.md"];
-    for (const doc of docs) {
-      const instructions = readFileSync(join(process.cwd(), doc), "utf-8");
-      expect(instructions).toContain("`agentbrew install chat-drafts-only`");
+    const command = readFileSync(join(process.cwd(), "commands/agentbrew.md"), "utf-8");
+    const skillRoot = join(process.cwd(), "skill-plugins/dev/agentbrew-status");
+    const skill = readFileSync(join(skillRoot, "SKILL.md"), "utf-8");
+    const setupPath = "references/setup-overview.md";
+    expect(skill).toContain(`](${setupPath})`);
+    const setup = readFileSync(join(skillRoot, setupPath), "utf-8");
+
+    expect(command).toContain("`agentbrew install chat-drafts-only`");
+    expect(skill).toContain("`agentbrew install chat-drafts-only`");
+    for (const instructions of [command, setup]) {
+      expect(instructions).toContain("`agentbrew install status-footer`");
+      expect(instructions).toContain("`agentbrew sync --only rules`");
     }
   });
 

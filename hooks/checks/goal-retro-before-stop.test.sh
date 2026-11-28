@@ -253,6 +253,45 @@ expect "host-served claim blocks when a symlinked plugin folder ships the SKILL.
 rm -rf "$HOSTHOME/.claude/plugins"
 TX="$TX_SAVE"
 
+# Closeout: a finished goal (a final Goal result) also needs Accomplished:,
+# Why useful: and Next task: lines; a mid-goal "in progress" retro does not.
+SKILLS_OK='- write-changelog: fixed, commit 4a0ac04\n- run-goal: new eval, PR #130\n'
+TX_SAVE="$TX"
+TX="$ROOT/closeout.jsonl"
+jq -cn '{type:"assistant",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"run-goal"}}]}}' >"$TX"
+touch "$RUN_GOAL_STATE_DIR/close1.contract.md"
+printf -- '%b' "${SKILLS_OK}Goal result: met (3/3 met)\n" >"$RUN_GOAL_STATE_DIR/close1.retro.md"
+expect "final Goal result without closeout blocks" 2 "$(run close1)"
+out="$(jq -cn --arg p "$TX" '{hook_event_name:"Stop",session_id:"close1",transcript_path:$p}' | bash "$SCRIPT" 2>&1)"
+case "$out" in *"Accomplished:"*"Why useful:"*"Next task:"*) r=1 ;; *) r=0 ;; esac
+expect "closeout block names every missing line" 1 "$r"
+printf -- '%b' "${SKILLS_OK}Goal result: met (3/3 met)\nAccomplished: merged PR #9 that adds X\nWhy useful: the owner no longer does Y by hand\n" >"$RUN_GOAL_STATE_DIR/close1.retro.md"
+out="$(jq -cn --arg p "$TX" '{hook_event_name:"Stop",session_id:"close1",transcript_path:$p}' | bash "$SCRIPT" 2>&1)"
+case "$out" in *"missing: Next task:"*) r=1 ;; *) r=0 ;; esac
+expect "closeout without Next task blocks and names only it" 1 "$r"
+rm -f "$RUN_GOAL_STATE_DIR/close1.stopblocks"
+printf -- '%b' "${SKILLS_OK}Goal result: met (3/3 met)\n**Accomplished**: merged PR #9 that adds X\n- **Why useful:** the owner no longer does Y by hand\nNext task: Z, because it unblocks W\n" >"$RUN_GOAL_STATE_DIR/close1.retro.md"
+expect "closeout with bold labels and list markers allows" 0 "$(run close1)"
+for placeholder in "<the next task>" "pending" "TBD" "none" "nothing." "N/A"; do
+  touch "$RUN_GOAL_STATE_DIR/close2.contract.md"; rm -f "$RUN_GOAL_STATE_DIR/close2.stopblocks"
+  printf -- '%bNext task: %s\n' "${SKILLS_OK}Goal result: partly met (2/3)\nAccomplished: A\nWhy useful: B\n" "$placeholder" >"$RUN_GOAL_STATE_DIR/close2.retro.md"
+  expect "placeholder Next task '$placeholder' blocks" 2 "$(run close2)"
+done
+touch "$RUN_GOAL_STATE_DIR/close3.contract.md"
+printf -- '%b' "${SKILLS_OK}Goal result: in progress (waiting on CI)\n" >"$RUN_GOAL_STATE_DIR/close3.retro.md"
+expect "in-progress retro needs no closeout" 0 "$(run close3)"
+touch "$RUN_GOAL_STATE_DIR/close4.contract.md"
+printf -- '%b' "${SKILLS_OK}" >"$RUN_GOAL_STATE_DIR/close4.retro.md"
+expect "retro with no Goal result line needs no closeout yet" 0 "$(run close4)"
+touch "$RUN_GOAL_STATE_DIR/close5.contract.md"
+printf -- '%b' "${SKILLS_OK}Goal result: blocked (needs a token)\nAccomplished: A\nWhy useful: B\nNext task: C\n" >"$RUN_GOAL_STATE_DIR/close5.retro.md"
+expect "blocked goal with full closeout allows" 0 "$(run close5)"
+touch "$RUN_GOAL_STATE_DIR/close6.contract.md"
+for _ in 1 2 3; do run close6 >/dev/null; done
+printf -- '%b' "${SKILLS_OK}Goal result: met\n" >"$RUN_GOAL_STATE_DIR/close6.retro.md"
+expect "closeout gives up after three blocks like the skills check" 0 "$(run close6)"
+TX="$TX_SAVE"
+
 echo "goal-retro-before-stop.test.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then
   for detail in "${FAIL_DETAILS[@]}"; do echo "  FAIL: $detail"; done

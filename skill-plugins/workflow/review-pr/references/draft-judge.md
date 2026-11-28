@@ -31,6 +31,8 @@ fresh subagent judge. The judge has not seen the reasoning behind the draft.
    current head. Reject a missing feature verdict, missing proof, or any FAIL.
    If the optional human-review or audience-order rule is enabled, the user
    has confirmed the required check or proof page before this draft is saved.
+7. If the draft describes or proposes a new test suite, manifest, script, or CI step,
+   reject it when an existing one can do the job. Name the existing path.
 
 ## Judge answer
 

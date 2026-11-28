@@ -6,6 +6,7 @@ not give the judge the author's reasoning. It runs each feature for real.
 For UI work, check every panel and component under every value of each input,
 filter, and dropdown. Capture each state and inspect the screenshot. A control
 that changes nothing visible fails unless its specified behavior explains it.
+Reject a new test suite, manifest, script, or CI step when an existing one can do the job. Name the existing path in the failure.
 
 The judge returns PASS or FAIL per feature, with the screenshot or transcript
 for each result. Fix every FAIL, then judge the changed feature and any affected

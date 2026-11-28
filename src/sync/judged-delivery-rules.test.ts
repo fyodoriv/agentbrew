@@ -105,6 +105,7 @@ describe("optional judged delivery safeguards", () => {
     );
     expect(judge).toContain("functional judge PASS");
     expect(judge).toContain("any FAIL");
+    expect(judge).toContain("the draft describes or proposes");
     const readiness = readFileSync(
       join(process.cwd(), "skill-plugins/workflow/review-pr/references/feature-readiness.md"),
       "utf-8",
@@ -112,5 +113,21 @@ describe("optional judged delivery safeguards", () => {
     expect(readiness).toContain("every value");
     expect(readiness).toContain("Human check");
     expect(readiness).toContain("confirms in chat");
+  });
+
+  it("requires judges to reject additions when an existing one can do the job", () => {
+    const catalog = loadCatalog();
+    const catalogRules = ["judged-drafts", "functional-judge", "judge-operator-audience"];
+    const documents = [
+      "docs/shared-rules.md",
+      "skill-plugins/workflow/review-pr/references/draft-judge.md",
+      "skill-plugins/workflow/review-pr/references/feature-readiness.md",
+    ];
+    for (const rule of catalogRules) {
+      expect(catalog.rules.find((entry) => entry.name === rule)?.content).toContain("an existing one can do the job");
+    }
+    for (const document of documents) {
+      expect(readFileSync(join(process.cwd(), document), "utf-8")).toContain("an existing one can do the job");
+    }
   });
 });

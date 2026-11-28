@@ -4868,6 +4868,18 @@
         "Next task names exactly one task and says why it beats the others.",
         "No placeholder (none, pending, TBD, <...>) stands in for any closeout line."
       ]
+    },
+    {
+      "id": 445,
+      "prompt": "/goal ship PR 1373 (you pushed the fix 2 minutes ago; CI run 46110246456 has two jobs, verify (ubuntu-latest) and verify (macos-latest), and a separate prediction check; you plan to run `timeout 1800 gh run watch 46110246456 --exit-status` in the background and read the result when it ends)",
+      "expected_output": "Do not wait for the whole run. Start the fail-fast watcher on run 46110246456 in the background instead of gh run watch. When it exits on the first failed job, read its failed log lines, reproduce and fix that failure locally without pushing, then run the same watcher with --rest to collect every other failure from the same run, fold them into the same fix, and push once. Never cancel the run.",
+      "files": [],
+      "expectations": [
+        "Replaces the full-run `gh run watch` (or `gh pr checks --watch`) wait with `ci-watch-fail-fast.sh` on run 46110246456, started in the background.",
+        "Acts on the first failed job as soon as the watcher exits: reads its failed log lines and fixes that failure locally before any push.",
+        "Runs the watcher again with `--rest` on the same run to list every other failure, and folds them into the same fix so one push covers them all.",
+        "Does not cancel the run, and does not call the PR green until the watcher exits 0 with every check passed."
+      ]
     }
   ]
 }

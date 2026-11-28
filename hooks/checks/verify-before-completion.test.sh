@@ -99,6 +99,10 @@ check_result "a timeout inside the queue still gives verification" 0 "heavy-run 
 check_result "a completed repository check script gives verification" 0 "scripts/check.sh" test
 check_result "a blocking hosted check gives verification" 0 "gh run watch 123 --exit-status" test false "Run CI (123) has already completed with 'success'"
 check_result "a hosted check must propagate failure" 2 "gh run watch 123" test false "Run CI (123) completed with 'success'"
+check_result "the fail-fast watcher gives hosted verification" 0 "bash ~/.claude/codeassist/hooks-scripts/lib/ci-watch-fail-fast.sh --repo o/r 46110246456" test false "Run CI (46110246456) completed with 'success'"
+check_result "a failed fail-fast watch gives no verification" 2 "bash hooks/lib/ci-watch-fail-fast.sh 46110246456" test true "FAILED: verify (ubuntu-latest)"
+check_result "a fail-fast watch of another run gives no verification" 2 "bash hooks/lib/ci-watch-fail-fast.sh 46110246456" test false "Run CI (46110246457) completed with 'success'"
+check_result "a PR fail-fast watch is not a run proof" 2 "bash hooks/lib/ci-watch-fail-fast.sh 1373" test false "All 2 checks on PR 1373 passed."
 check_result "a hosted error gives no verification" 2 "gh run watch 123 --exit-status" test false "error connecting to github.com"
 check_result "a hosted result must match the explicit run ID" 2 "gh run watch 123 --exit-status" test false "Run CI (321) completed with 'success'"
 check_result "a hosted check needs a run ID" 2 "gh run watch --repo example/repo --exit-status" test false "Run CI (123) completed with 'success'"

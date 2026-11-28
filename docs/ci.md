@@ -217,7 +217,8 @@ uses local Git refs.
 
 Merge only when every hosted check on the pull request is green. Never merge on a pending or red check. Wait on the `CI` run for your head commit by its ID:
 `gh run list --repo fyodoriv/agentbrew --workflow CI --commit "$(git rev-parse HEAD)"`, then
-`gh run watch <run-id> --repo fyodoriv/agentbrew --exit-status`. `--commit` needs the full
+`bash hooks/lib/ci-watch-fail-fast.sh <run-id> --repo fyodoriv/agentbrew` in the background
+(deployed as `~/.claude/codeassist/hooks-scripts/lib/ci-watch-fail-fast.sh`). `--commit` needs the full
 SHA. If the list is empty, the run does not exist yet: wait and list again. Do not start
 `gh pr checks <n> --watch` right after a push: it can exit green while only the fast
 `OSS Readiness` check is listed and `CI` has not started. Before you merge, confirm with
@@ -228,9 +229,17 @@ one `gh pr checks <n>` that no check is pending.
 The volatile inventory checker accepts numeric durations. It still flags
 separate counts on the same line.
 
-1. Read the log first: `gh run view <run-id> --log-failed`.
-2. Reproduce it locally with the failing step's command.
-3. Fix the cause. Never push an empty commit to start the run again.
+Act on the first failure, not the end of the run. `gh run watch` returns only when the last
+job ends: on 17 failed runs that hid the first failure for a median 84 s and a p90 582 s
+(`bash scripts/ci-first-failure-lag.sh`). The hook `background-suite-fail-fast` blocks it and
+names the watcher.
+
+1. The watcher exits 1 on the first failed job and prints its failed log lines. It never
+   cancels the run, so the other jobs keep going.
+2. Reproduce that failure locally with the failing step's command, and fix the cause.
+3. Before you push, run the same watcher command with `--rest`. It waits for the other jobs
+   and lists every failure. Fold them into the same fix, then push once.
+4. Never push an empty commit to start the run again.
 
 ## Turn it off or on
 

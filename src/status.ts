@@ -360,9 +360,11 @@ function printMcpHealthSummary(prefix: string): void {
   printMcpFailingLine(prefix, unhealthyMcpEntries(snapshot));
   printMcpHealDeferredLine(prefix, healDeferredMcpEntries(snapshot));
   for (const entry of needsLoginMcpEntries(snapshot)) {
-    console.log(
-      `${prefix}MCP login:    ${chalk.yellow(`${entry.name}/${entry.agent}`)} ${chalk.dim(`needs login — run \`${mcpLoginCommand(entry.name)}\``)}`,
-    );
+    const hint =
+      entry.status === "needs_auth"
+        ? "probe runs separately. Check sign-in in this agent."
+        : `needs login — run \`${mcpLoginCommand(entry.name)}\``;
+    console.log(`${prefix}MCP login:    ${chalk.yellow(`${entry.name}/${entry.agent}`)} ${chalk.dim(hint)}`);
   }
   printClaudeDesktopMcpSummary(prefix);
 }

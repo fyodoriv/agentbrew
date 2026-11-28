@@ -65,14 +65,18 @@ After running, the agent's working context should contain:
 - Current milestone + roadmap (from `MILESTONES.md` or `ROADMAP.md`)
 - User stories (from `user-stories/` or `docs/user-stories/`)
 - Competitive landscape (from `competitors/` or `docs/competitors/` or `docs/competition/`)
-- Active work queue (from `TASKS.md` + `RECURRING.md` if present, or GitHub Issues if `.tasksmd.json` declares `backend: github-issues`)
+- Active work queue (from `TASKS.md` or GitHub Issues, as declared by the repo) and `RECURRING.md` if present
 - Process rules (from `AGENTS.md` + `CONTRIBUTING.md`)
 
 Any decision the agent makes should be traceable to one of those surfaces.
 
 ## Task Backend Detection
 
-When loading project context, also detect the repo's task backend by checking for `.tasksmd.json` at the git root. If it declares `backend: github-issues`, note that the repo uses GitHub Issues for task management instead of TASKS.md. This affects how you list, pick, and file tasks during the session.
+Use the helper's task backend line to list, pick, and file tasks. The shared
+resolver checks the Agentfile first, then `.agents/tasks.config.yaml` when no
+Agentfile supplies a descriptor. It defaults to `TASKS.md` when the descriptor
+does not declare a backend. When the helper omits the backend line, use
+`detect-task-backend` before working with the queue.
 
 ## Failure modes
 

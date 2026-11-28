@@ -104,6 +104,7 @@ const SMOKE_CALL_ID = 3;
 
 export type ProbeStatus =
   | "ok"
+  | "needs_auth"
   | "ok_deep_failed"
   | "launch_failed"
   | "init_timeout"
@@ -161,8 +162,14 @@ export interface ProbeResult {
   error?: string;
 }
 
-function httpProbeStatus(error: unknown): ProbeStatus {
+function httpProbeStatus(error: unknown, configuredHeaders?: Record<string, string>): ProbeStatus {
   if (!(error instanceof StreamableHttpError)) return "init_error";
+  if (error.stage === "initialize" && error.status === 401 && error.bearerChallenge) {
+    const hasAuthorization = Object.keys(configuredHeaders ?? {}).some(
+      (name) => name.toLowerCase() === "authorization",
+    );
+    if (!hasAuthorization) return "needs_auth";
+  }
   if (error.kind === "timeout") {
     return error.stage === "tools/list" ? "tools_list_timeout" : "init_timeout";
   }
@@ -216,12 +223,15 @@ async function probeHttpMcpServer(
     };
   } catch (error) {
     const offline = localAppOfflineMessage(spec.url, error);
+    const status = offline ? "skipped_local_app_offline" : httpProbeStatus(error, spec.headers);
     return {
       name,
       agent,
-      status: offline ? "skipped_local_app_offline" : httpProbeStatus(error),
+      status,
       latencyMs: Date.now() - t0,
-      error: offline ?? (error instanceof Error ? error.message : String(error)),
+      ...(status === "needs_auth"
+        ? {}
+        : { error: offline ?? (error instanceof Error ? error.message : String(error)) }),
     };
   }
 }

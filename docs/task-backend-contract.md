@@ -1,5 +1,11 @@
 # Task Backend Contract
 
+After `agentbrew sync`, the project-context helper reports the same backend
+as the shared resolver. It uses the bundled resolver from the Agentbrew
+installation. If that installation or its Node executable moves, run
+`agentbrew sync` to refresh the helper. When the backend line is absent,
+check the descriptor before adding or updating a task.
+
 ## Overview
 
 The task backend contract allows agentbrew-managed repositories to declare where their work items live: either in `TASKS.md` (the default) or in GitHub Issues/Projects. This enables skills and agents to branch on the backend without each one reinventing detection logic.

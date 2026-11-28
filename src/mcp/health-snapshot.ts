@@ -69,6 +69,7 @@ export interface McpHealthSnapshot {
 
 const PROBE_STATUSES: ReadonlySet<string> = new Set([
   "ok",
+  "needs_auth",
   "ok_deep_failed",
   "launch_failed",
   "init_timeout",
@@ -115,7 +116,9 @@ function isMcpHealthSnapshot(value: unknown): value is McpHealthSnapshot {
 
 /** A deferral marks only a failure, and only on the tick that deferred it. */
 function healDeferredField(result: SnapshotProbeResult): { healDeferred?: McpHealDeferral } {
-  return result.status !== "ok" && result.healDeferred ? { healDeferred: result.healDeferred } : {};
+  return result.status !== "ok" && result.status !== "needs_auth" && result.healDeferred
+    ? { healDeferred: result.healDeferred }
+    : {};
 }
 
 export function buildMcpHealthSnapshot(
@@ -148,7 +151,8 @@ export function buildMcpHealthSnapshot(
         status: result.status,
         lastCheckedAt: generatedAt,
         lastOkAt: isOk ? generatedAt : previousEntry?.lastOkAt,
-        firstFailedAt: isOk ? undefined : (previousEntry?.firstFailedAt ?? generatedAt),
+        firstFailedAt:
+          isOk || result.status === "needs_auth" ? undefined : (previousEntry?.firstFailedAt ?? generatedAt),
         lastError: isOk ? undefined : result.error,
         latencyMs: result.latencyMs,
         healHistory,
@@ -204,7 +208,11 @@ export function unhealthyMcpEntries(snapshot: McpHealthSnapshot | undefined): Mc
 
 function actionableFailures(snapshot: McpHealthSnapshot | undefined): McpHealthEntry[] {
   return (snapshot?.servers ?? []).filter(
-    (entry) => entry.status !== "ok" && !entry.status.startsWith("skipped_") && !entry.suppression,
+    (entry) =>
+      entry.status !== "ok" &&
+      entry.status !== "needs_auth" &&
+      !entry.status.startsWith("skipped_") &&
+      !entry.suppression,
   );
 }
 
@@ -215,9 +223,12 @@ export function isAuthErrorText(text: string | undefined): boolean {
   return AUTH_ERROR_PATTERN.test(text ?? "");
 }
 
-/** Failing pairs whose fix is a login, reported apart from real failures. */
+/** Pairs that require a login in the agent. */
 export function needsLoginMcpEntries(snapshot: McpHealthSnapshot | undefined): McpHealthEntry[] {
-  return actionableFailures(snapshot).filter((entry) => isAuthErrorText(entry.lastError));
+  const pendingSignIn = (snapshot?.servers ?? []).filter(
+    (entry) => entry.status === "needs_auth" && !entry.suppression,
+  );
+  return [...pendingSignIn, ...actionableFailures(snapshot).filter((entry) => isAuthErrorText(entry.lastError))];
 }
 
 export function mcpLoginCommand(name: string): string {

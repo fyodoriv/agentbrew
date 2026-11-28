@@ -397,6 +397,12 @@ bracketed reason keeps the judge check active. A reason that reports
 one completed step and states what remains can still mark the goal incomplete.
 Procedure: `skill-plugins/workflow/run-goal/references/goal-judges.md`.
 
+`goal-retro-before-stop` also checks the closeout. When the retro has a
+final `Goal result:` line (anything but `in progress`), it needs non-empty
+`Accomplished:`, `Why useful:` and `Next task:` lines. Bold labels and list
+markers are fine; a placeholder (`<...>`, pending, TBD, none, nothing, n/a)
+fails. It shares the three-block limit with the skills check.
+
 `goal-retro-before-stop` (Stop) closes the goal. While the session's
 contract file exists, it blocks Stop until `<session_id>.retro.md` has one
 line per skill used (each `Skill` call, plus each `skills/<name>/SKILL.md`

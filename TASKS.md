@@ -443,19 +443,6 @@
   - **Pivot**: if the diff cannot be found for more than 1 in 5 real goals, list unjudged files in the block message instead of blocking.
   - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge", arXiv:2306.05685.
 
-- [ ] A new /goal on the same contract cannot reset the judging-round cap
-  - **ID**: goal-judge-rounds-across-goals
-  - **Tags**: hooks, run-goal
-  - **Details**: Found 2026-11-23, judge round 6 (llm-evaluation-methodology). The round counter reads the transcript from the latest `/goal` line, so a runner can type a new `/goal` and get 3 fresh rounds on the same contract. Key the count to the contract hash instead.
-  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test file.
-  - **Output**: code
-  - **Acceptance**: a new `/goal` after 3 failing rounds on the same contract still blocks.
-  - **Hypothesis**: goals that pass after a `/goal` restart drop from possible to 0.
-  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with a named restart case.
-  - **Success**: the restart case blocks and the suite shows 0 failed.
-  - **Pivot**: if keying by contract hash breaks legitimate new goals in more than 1 fixture, key by contract file path instead.
-  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (gaming resistance).
-
 - [ ] A judge under the bar always leaves a complete Path to 8
   - **ID**: goal-judge-path-to-eight
   - **Tags**: hooks, run-goal

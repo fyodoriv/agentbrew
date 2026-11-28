@@ -18,3 +18,12 @@ On the fixed hook, all five controls passed. The restarted contract reported
 four full rounds even with a partial earlier panel that included an unrelated
 judge. A changed contract received a fresh budget. An owner approval after
 restart allowed round four, and the restarted goal still needed new verdicts.
+
+## Hosted results
+
+[The first candidate](https://github.com/fyodoriv/agentbrew/actions/runs/46084501187)
+passed all 297 hook checks on each hosted runner. Both
+[final-head gates](https://github.com/fyodoriv/agentbrew/actions/runs/46090989377)
+passed and reused the hook fixture result. The declared fixture inputs
+match byte for byte between the two heads. The five changed files merged
+as `460645bf`, with the tested tree and parent.

@@ -365,18 +365,18 @@
 
 ## P1
 
-- [ ] Report stale managed hook files during hook verification
-  - **ID**: hook-verify-deployed-content
-  - **Tags**: hooks, sync, verification
-  - **Details**: On 2026-11-27, `agentbrew hooks verify --agent claude-code --json` returned zero drift while the active Stop hook still matched the previous accepted source. The command checked its registration. A direct byte comparison found the stale deployed script. Keep the registration and file checks distinct in the result.
-  - **Files**: `src/drift-checks/hooks.ts`, `src/hooks/verify-cli.ts`, their tests, and the hook verification guide.
+- [ ] Keep native Cargo cache tests independent of Rustup update DNS
+  - **ID**: ci-native-cache-rustup-network
+  - **Tags**: ci, rust, reliability
+  - **Details**: Agentbrew PR #1374's macOS gate failed at `src/source-build-capability.test.ts:599`. Two scratch builds returned exit 1 instead of 0. Cargo invoked Rustup to sync the stable channel, then the runner could not resolve the Rust distribution host.
+  - **Files**: `src/source-build-capability.test.ts`, `.github/workflows/ci.yml`, and `docs/ci.md`.
   - **Output**: code
-  - **Acceptance**: A correctly registered managed script with stale bytes produces an actionable drift entry. A current managed script and a user-owned hook produce no content warning. A verified repair yields equal source and deployed bytes.
-  - **Hypothesis**: A correctly registered stale script goes from 0 reported content changes to 1. There are 0 content warnings for the current script and user-owned control.
-  - **Measurement**: In hosted CI run `npx vitest run src/drift-checks/hooks.test.ts src/hooks/verify-cli.test.ts`. Check the new exact stale-script case and both unchanged controls.
-  - **Success**: 1 actionable entry for the stale script, 0 false warnings, and 0 byte differences after a controlled sync.
-  - **Pivot**: If 1 user-owned hook is mistaken for a managed script, keep the existing registration check and require exact ownership before adding content detection.
-  - **Anchor**: [Agentbrew #1342](https://github.com/fyodoriv/agentbrew/pull/1342) and the [shipped verification check](https://github.com/fyodoriv/agentbrew/blob/662381a4402a970504a6a811b1a7cb6df63e222e/src/hooks/verify-cli.ts).
+  - **Acceptance**: Provision the required Rust toolchain before the fixtures, then run both existing native cache cases with the distribution host unavailable. They still build and verify both cache outcomes.
+  - **Hypothesis**: Using the provisioned toolchain cuts the number of failed native cache cases from 2 of 2 in the captured DNS outage to 0 of 2 under a test-only outage.
+  - **Measurement**: In hosted macOS CI, run `npm exec -- vitest run src/source-build-capability.test.ts -t 'actual Cargo cache'` with a fixture-only unavailable Rust distribution endpoint. Check the two assertions and count attempted update requests. Run the normal full gate.
+  - **Success**: Both native cache cases execute and pass. The measured builds make zero Rust distribution requests. The full gate passes.
+  - **Pivot**: If 1 or more cases skip, still invoke the distribution host, or change a cache assertion, keep the task open and trace how Cargo resolves the provisioned toolchain.
+  - **Anchor**: [macOS job 140912307095](https://github.com/fyodoriv/agentbrew/actions/runs/46123313265/job/140912307095) and the native cache fixture at line 599.
 
 - [ ] A stuck macOS CI gate stops in time and leaves a log that names the slow step
   - **ID**: ci-macos-gate-overrun
@@ -417,19 +417,6 @@
   - **Pivot**: if the one-call form misses any job the two-call form finds (more than 0 mismatches), keep two calls.
   - **Anchor**: GitHub REST API rate limits docs; Forsgren, Humble, Kim 2018.
 
-- [ ] Project entry reports the repository's declared task backend
-  - **ID**: context-helper-task-backend-parity
-  - **Tags**: session-entry, tasks, reliability
-  - **Details**: The global task-backend contract and detect-task-backend skill prefer `Agentfile.yaml`, then `.agents/tasks.config.yaml`, then tasks-md. The context helper still checks `.tasksmd.json` and the presence of `TASKS.md`; its skill contract pins that legacy behavior. The new startup adapter reuses this helper, so the existing mismatch can give an agent the wrong task destination. Reuse the canonical resolver rather than adding another parser. Preserve the startup hook's deadline and do not execute project-owned tools.
-  - **Files**: `templates/scripts/load-project-context.sh`, the load-project-context skill and contract tests, the canonical task-backend resolver.
-  - **Output**: code
-  - **Acceptance**: helper-invocation fixtures agree with the canonical resolver for an Agentfile declaration, the secondary config, no declaration, and conflicting legacy metadata. The startup path stays bounded and never creates a task file.
-  - **Hypothesis**: wrong task destinations shown at project entry drop from one source-confirmed precedence mismatch to zero across the registered descriptor matrix.
-  - **Measurement**: add real helper-invocation cases to `src/skills/load-project-context-contract.test.ts`, then run `npx vitest run src/skills/load-project-context-contract.test.ts` on hosted CI and compare each result with the canonical resolver. Check the startup hook's focused deadline fixture too.
-  - **Success**: zero destination mismatches across all four descriptor cases, zero task-file writes, and required CI passes.
-  - **Pivot**: any mismatch, project-code execution, or startup budget regression rejects the candidate; retain the original contract as unverified rather than inventing another backend parser.
-  - **Anchor**: [Task-backend contract](https://github.com/fyodoriv/agentbrew/blob/d0cca54d1ad13dc7c050ee4cfca35db4b356ab6e/templates/AGENTS.md#task-backend); `skill-plugins/dev/detect-task-backend/SKILL.md`; the current helper's legacy backend branch.
-
 - [ ] Judge reports that skip the Blocker or Follow-up labels are caught
   - **ID**: goal-judge-label-check
   - **Tags**: hooks, run-goal, evaluation
@@ -455,19 +442,6 @@
   - **Success**: the new case passes with 0 failed.
   - **Pivot**: if the diff cannot be found for more than 1 in 5 real goals, list unjudged files in the block message instead of blocking.
   - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge", arXiv:2306.05685.
-
-- [ ] A new /goal on the same contract cannot reset the judging-round cap
-  - **ID**: goal-judge-rounds-across-goals
-  - **Tags**: hooks, run-goal
-  - **Details**: Found 2026-11-23, judge round 6 (llm-evaluation-methodology). The round counter reads the transcript from the latest `/goal` line, so a runner can type a new `/goal` and get 3 fresh rounds on the same contract. Key the count to the contract hash instead.
-  - **Files**: `hooks/checks/goal-judges-before-stop.sh`, its test file.
-  - **Output**: code
-  - **Acceptance**: a new `/goal` after 3 failing rounds on the same contract still blocks.
-  - **Hypothesis**: goals that pass after a `/goal` restart drop from possible to 0.
-  - **Measurement**: `bash hooks/checks/goal-judges-before-stop.test.sh` with a named restart case.
-  - **Success**: the restart case blocks and the suite shows 0 failed.
-  - **Pivot**: if keying by contract hash breaks legitimate new goals in more than 1 fixture, key by contract file path instead.
-  - **Anchor**: Zheng et al. 2023, "Judging LLM-as-a-Judge" (gaming resistance).
 
 - [ ] A judge under the bar always leaves a complete Path to 8
   - **ID**: goal-judge-path-to-eight

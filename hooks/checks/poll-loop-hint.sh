@@ -64,7 +64,7 @@ if [ "$SIGNAL" != "until-while-sleep-v1" ]; then
   verdict_allow "$HOOK_ID" "no sleep-based poll loop"
 fi
 
-HINT="This command polls with a sleep loop, which holds you until it ends or times out. Cheaper waits: (1) run the long command with run_in_background: true and wait for its completion notice; (2) use a blocking wait such as gh run watch <run-id> on the CI run for your head commit, or wait <pid>; (3) if you must poll, raise the poll interval and cap the total time. Bypass: HOOK_BYPASS_POLL_LOOP_HINT=1."
+HINT="This command polls with a sleep loop, which holds you until it ends or times out. Cheaper waits: (1) run the long command with run_in_background: true and wait for its completion notice; (2) use a wait that ends on the first failure, such as bash $__HOOK_LIB_DIR/ci-watch-fail-fast.sh <run-id> on the CI run for your head commit, or wait <pid>; (3) if you must poll, raise the poll interval and cap the total time. Bypass: HOOK_BYPASS_POLL_LOOP_HINT=1."
 
 log_decision "$HOOK_ID" "warn" "sleep-based poll loop"
 hook_jq -nc --arg ctx "$HINT" \

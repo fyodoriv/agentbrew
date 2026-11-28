@@ -26,6 +26,8 @@ def gate:
        test("\\s--exit-status(?:=true)?(?:\\s|$)") and
        (test("\\s--exit-status=(?!true(?:\\s|$))") | not) then
       {run: capture("^gh\\s+run\\s+watch\\s+(?<id>[0-9]+)").id}
+    elif test("^(?:bash\\s+)?\\S*ci-watch-fail-fast\\.sh\\s") and test("\\s[0-9]{6,}(?:\\s|$)") then
+      {run: capture("\\s(?<id>[0-9]{6,})(?:\\s|$)").id}
     elif local_gate then
       {}
     else null end

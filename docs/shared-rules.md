@@ -236,6 +236,8 @@ The fresh reader can send its verdict back to the author without another review.
 
 Run this review in addition to all required reality and functional checks.
 
+**Review targets:** When you ask the user to check, review, or edit something, open the exact item as part of that reply, before you send the ask. Use the host's editor for a file and its browser for a page or PR. Give the separate live judge who checks the closing ask the observed result of opening the item. The live judge must return FAIL if the item did not open. If the host cannot open it, report the limitation and hold the ask.
+
 ## Long-run reports
 
 - At goal start, after the goal contract, create a plan Artifact in the task outputs before execution. Update the same Artifact at every milestone and reuse it on resume. Include evidence, blockers, and next actions. If the Artifact tool is unavailable or the content is private, use one private local HTML report, share its path, and state the output limitation; do not block the goal or claim publication.

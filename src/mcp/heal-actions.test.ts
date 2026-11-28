@@ -14,6 +14,7 @@ vi.mock("../sync/mcp-sync.js", () => ({
 
 const STATUSES: ProbeStatus[] = [
   "ok",
+  "needs_auth",
   "ok_deep_failed",
   "launch_failed",
   "init_timeout",

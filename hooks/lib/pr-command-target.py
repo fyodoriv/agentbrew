@@ -10,6 +10,8 @@ import re
 import shlex
 import subprocess
 import sys
+import time
+from urllib.parse import quote
 
 
 PUNCTUATION = ";&|<>()\n"
@@ -130,19 +132,30 @@ def check_ready(check):
     return check.get("__typename") == "StatusContext" and check.get("state") == "SUCCESS"
 
 
-def read_merge_readiness(argv, expected_url, number, head):
+def read_github_json(args, deadline):
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        return None
     try:
         probe = subprocess.run(
-            ["gh", "pr", "view", *argv, "--json",
-             "number,url,state,isDraft,mergeStateStatus,headRefOid,statusCheckRollup"],
+            ["gh", *args],
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-            check=True, timeout=5,
+            check=True, timeout=remaining,
         )
-        if len(probe.stdout) > 1024 * 1024:
-            return "unavailable"
-        info = json.loads(probe.stdout)
+        if len(probe.stdout) <= 1024 * 1024:
+            return json.loads(probe.stdout)
     except (OSError, UnicodeError, ValueError, subprocess.SubprocessError):
-        return "unavailable"
+        pass
+    return None
+
+
+def read_merge_readiness(argv, slug, expected_url, number, head):
+    deadline = time.monotonic() + 5
+    info = read_github_json(
+        ["pr", "view", *argv, "--json",
+         "number,url,state,isDraft,mergeStateStatus,headRefOid,baseRefName,baseRefOid,statusCheckRollup"],
+        deadline,
+    )
     if not isinstance(info, dict):
         return "unavailable"
     returned_url = info.get("url")
@@ -157,7 +170,25 @@ def read_merge_readiness(argv, expected_url, number, head):
     checks = info.get("statusCheckRollup")
     if not isinstance(checks, list) or not checks or not all(check_ready(check) for check in checks):
         return "checks-not-ready"
-    return "ready"
+    branch = info.get("baseRefName")
+    tested_base = info.get("baseRefOid")
+    if not isinstance(branch, str) or not branch or not isinstance(tested_base, str):
+        return "unavailable"
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", tested_base):
+        return "unavailable"
+    ref = read_github_json(
+        ["api", "--hostname", "github.com", f"repos/{slug}/git/ref/heads/{quote(branch, safe='')}"],
+        deadline,
+    )
+    if not isinstance(ref, dict) or ref.get("ref") != f"refs/heads/{branch}":
+        return "unavailable"
+    target = ref.get("object")
+    if not isinstance(target, dict) or target.get("type") != "commit":
+        return "unavailable"
+    live_base = target.get("sha")
+    if not isinstance(live_base, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", live_base):
+        return "unavailable"
+    return "ready" if live_base.lower() == tested_base.lower() else "changed-base"
 
 
 def merge_preflight(command):
@@ -200,7 +231,7 @@ def merge_preflight(command):
     if not number:
         return "unsupported"
     argv = [number, "--repo", f"github.com/{slug}"]
-    return read_merge_readiness(argv, f"https://github.com/{slug}/pull/{number}", number, head)
+    return read_merge_readiness(argv, slug, f"https://github.com/{slug}/pull/{number}", number, head)
 
 
 def reviewer_request(command):

@@ -37,6 +37,7 @@ case "$decision" in
   irrelevant) verdict_allow "$HOOK_ID" "no pull request merge to check" ;;
   unsupported) verdict_block "$HOOK_ID" "Use a direct github.com PR URL or a number with --repo github.com/OWNER/REPO. Include the full expected head commit." ;;
   changed-head) verdict_block "$HOOK_ID" "The pull request head changed. Check the current commit and its checks before merging." ;;
+  changed-base) verdict_block "$HOOK_ID" "The destination branch moved. Refresh the pull request and wait for checks before merging." ;;
   not-ready) verdict_block "$HOOK_ID" "The pull request is not ready to merge. Check its open state, review and base branch." ;;
   checks-not-ready) verdict_block "$HOOK_ID" "The pull request has missing, pending or failed checks. Check GitHub before merging." ;;
   *) verdict_block "$HOOK_ID" "Pull request readiness could not be verified. Check GitHub before merging." ;;

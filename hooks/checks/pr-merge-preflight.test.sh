@@ -12,18 +12,36 @@ cat > "$scratch/bin/gh" <<'MOCK'
 #!/bin/bash
 set -euo pipefail
 printf '%s\n' "$@" >> "$GH_FIXTURE_RECEIPT"
+if [ "$1" = api ]; then
+  [ "${2:-}" = --hostname ] && [ "${3:-}" = github.com ] || exit 96
+  case "$GH_FIXTURE_MODE" in
+    no-ref) exit 1 ;;
+    slow-ref) exec sleep 20 ;;
+  esac
+  case "${4:-}" in
+    repos/fixture/repo/git/ref/heads/main|repos/fixture/alternate/git/ref/heads/main) ref=main ;;
+    repos/fixture/repo/git/ref/heads/feat%2Fcheckout) ref=feat/checkout ;;
+    *) exit 95 ;;
+  esac
+  printf '{"ref":"refs/heads/%s","object":{"sha":"%s","type":"commit"}}' "$ref" "$GH_FIXTURE_BASE_SHA"
+  exit 0
+fi
 [ "$1" = pr ] && [ "$2" = view ] || exit 97
 case "$GH_FIXTURE_MODE" in
   unavailable) exit 1 ;;
   timeout) exec sleep 20 ;;
+  slow-ref) sleep 3 ;;
 esac
 printf '%s' "$GH_FIXTURE_RESPONSE"
 MOCK
 chmod +x "$scratch/bin/gh"
 
 head_sha=0123456789abcdef0123456789abcdef01234567
-ready="$(jq -nc --arg head "$head_sha" '{
+base_sha=1111111111111111111111111111111111111111
+advanced_sha=2222222222222222222222222222222222222222
+ready="$(jq -nc --arg head "$head_sha" --arg base "$base_sha" '{
   state: "OPEN", isDraft: false, mergeStateStatus: "CLEAN", headRefOid: $head,
+  baseRefName: "main", baseRefOid: $base,
   number: 42, url: "https://github.com/fixture/repo/pull/42",
   statusCheckRollup: [
     {__typename: "CheckRun", status: "COMPLETED", conclusion: "SUCCESS"},
@@ -42,7 +60,7 @@ check() {
   payload="$(jq -nc --arg command "$command" \
     '{hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {command: $command}}')"
   env -u BASH_ENV -u ENV DOTFILES_DIR="$scratch" \
-    GH_FIXTURE_MODE="$mode" GH_FIXTURE_RESPONSE="$response" bash "$script" \
+    GH_FIXTURE_MODE="$mode" GH_FIXTURE_RESPONSE="$response" GH_FIXTURE_BASE_SHA="${7:-$base_sha}" bash "$script" \
     <<< "$payload" > "$scratch/output" 2>&1 || status=$?
   if [ "$status" -ne "$expected" ] || [ "$(grep -Fxc view "$GH_FIXTURE_RECEIPT" || true)" -ne "$reads" ]; then
     printf '%s: expected status %s and %s read(s), got status %s.\n' "$name" "$expected" "$reads" "$status" >&2
@@ -90,3 +108,13 @@ check 'failed fetch' 2 1 "$explicit" '' unavailable
 started=$SECONDS
 check 'bounded timeout' 2 1 "$explicit" '' timeout
 [ "$((SECONDS-started))" -le 8 ]
+
+check 'base ref advanced beyond the passing PR snapshot' 2 1 "$explicit" "$ready" status "$advanced_sha"
+check 'current base with a slash' 0 1 "$explicit" "$(jq -c '.baseRefName = "feat/checkout"' <<< "$ready")"
+grep -Fxq repos/fixture/repo/git/ref/heads/feat%2Fcheckout "$GH_FIXTURE_RECEIPT"
+check 'ref lookup unavailable' 2 1 "$explicit" "$ready" no-ref
+check 'malformed live base' 2 1 "$explicit" "$ready" status bad-sha
+
+started=$SECONDS
+check 'both reads share the same timeout' 2 1 "$explicit" "$ready" slow-ref
+[ "$((SECONDS-started))" -le 7 ]

@@ -798,6 +798,18 @@
 
 ## P2
 
+- [ ] Goal closeout check rejects weak values and reads only the newest goal
+  - **ID**: closeout-value-strictness
+  - **Tags**: hooks, run-goal, reliability
+  - **Output**: code
+  - **Acceptance**: `goal-retro-before-stop` blocks a closeout value that only starts with a placeholder (`none yet`, `TBD later`, `n/a - none`) or is under a few words, reads the three closeout lines from the newest `Goal result:` section only, accepts an explicit `Next task: none, because <reason>`, and its test file fails fast with one clear line when the state folder is not writable.
+  - **Details**: Found 2026-11-28 by three goal judges on agentbrew PRs 1373 and 1376. Reproduced: `Next task: none yet` and `Accomplished: x` exit 0; an earlier goal's lines satisfy a later goal in a multi-goal retro (`head -n 1`); in the sandbox the test file shows about 50 false failures because bare `mktemp -d` ignores `$TMPDIR`. Also add cases for lowercase labels, a value on the next line, and a placeholder case that asserts which label the block names.
+  - **Hypothesis**: weak closeout values that pass the hook drop from 4 reproduced shapes to 0, with 0 regressions in the existing 86 cases.
+  - **Measurement**: `bash hooks/checks/goal-retro-before-stop.test.sh` plus one case per reproduced shape.
+  - **Success**: all 4 shapes exit 2, `Next task: none, because <reason>` exits 0, and the suite shows 0 failed.
+  - **Pivot**: if more than 1 legitimate closeout from the last 10 real retros would block, keep the whole-value placeholder match and only add the newest-section read.
+  - **Anchor**: Myers, "The Art of Software Testing" (equivalence classes and boundary values).
+
 - [ ] Allow a quoted-tag heredoc inside $() in the detached-start hook
   - **ID**: detached-start-heredoc-in-subst
   - **Tags**: hooks, devex

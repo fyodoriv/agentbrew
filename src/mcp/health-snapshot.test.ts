@@ -257,6 +257,20 @@ describe("needs-login entries", () => {
     expect(unhealthyMcpEntries(snapshotOf(loggedOut, unauthorized, timeout))).toEqual([timeout]);
   });
 
+  it("keeps a sign-in challenge visible without treating it as a failure", () => {
+    const previous = snapshotOf(entry({ name: "remote", agent: "kiro", firstFailedAt: "2026-06-04T12:00:00.000Z" }));
+    const snapshot = buildMcpHealthSnapshot(
+      previous,
+      [result({ name: "remote", status: "needs_auth" })],
+      [],
+      "2026-06-05T12:00:00.000Z",
+    );
+
+    expect(needsLoginMcpEntries(snapshot)).toEqual(snapshot.servers);
+    expect(unhealthyMcpEntries(snapshot)).toEqual([]);
+    expect(snapshot.servers[0].firstFailedAt).toBeUndefined();
+  });
+
   it("names the exact login command", () => {
     expect(mcpLoginCommand("github")).toBe("gh auth login");
     expect(mcpLoginCommand("railway")).toBe("agentbrew mcp setup railway");

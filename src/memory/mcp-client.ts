@@ -68,16 +68,21 @@ export interface McpJsonRpcResponse {
 }
 
 export class StreamableHttpError extends Error {
+  /** Socket error code behind a failed fetch, e.g. `ECONNREFUSED`. */
+  readonly networkCode?: string;
+  readonly bearerChallenge?: boolean;
+
   constructor(
     message: string,
     readonly stage: StreamableHttpHandshakeStage,
     readonly kind: StreamableHttpErrorKind,
     readonly status?: number,
-    /** Socket error code behind a failed fetch, e.g. `ECONNREFUSED`. */
-    readonly networkCode?: string,
+    details?: { networkCode?: string; bearerChallenge?: boolean },
   ) {
     super(message);
     this.name = "StreamableHttpError";
+    this.networkCode = details?.networkCode;
+    this.bearerChallenge = details?.bearerChallenge;
   }
 }
 
@@ -230,6 +235,15 @@ async function sendMcpRequest(options: {
   });
 }
 
+function hasBearerChallenge(response: Response): boolean {
+  const header = response.headers.get("www-authenticate");
+  if (!header) return false;
+  // A comma inside a quoted parameter cannot start another challenge.
+  const unquoted = header.replace(/"(?:[^"\\]|\\.)*"/g, "");
+  if (unquoted.includes('"')) return false;
+  return unquoted.split(",").some((part) => /^Bearer(?:[ \t]+(?=[^\s=])|$)/i.test(part.trim()));
+}
+
 function parseStreamableResponse(
   method: StreamableHttpHandshakeStage,
   response: Response,
@@ -242,6 +256,7 @@ function parseStreamableResponse(
       stage,
       "http",
       response.status,
+      { bearerChallenge: response.status === 401 && hasBearerChallenge(response) },
     );
   }
   // JSON-RPC notifications carry no response payload. Servers legitimately answer
@@ -334,7 +349,7 @@ export async function performStreamableHttpHandshake(
         stageForMethod(method),
         "http",
         undefined,
-        code,
+        { networkCode: code },
       );
     }
   };

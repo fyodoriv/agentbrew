@@ -223,6 +223,7 @@ For a plugin hook, check that each matcher in `hooks.json` has a manifest
 capability before release. After approval and install, read back the
 installed version, hook files, and registration and exercise the installed hook.
 Keep an operator-only capability prompt open until the operator acts.
+Put the action only the operator can take under `Needed from you`.
 
 For a managed-source deployment, retain each strict readback failure and its
 actual exit. If the source advanced, do not reset it or call the original

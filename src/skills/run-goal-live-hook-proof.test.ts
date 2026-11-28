@@ -14,6 +14,12 @@ describe("run-goal live hook proof", () => {
     expect(execution).toMatch(/operator-only step in the goal\s+contract as soon as you know it applies/);
   });
 
+  it("places the capability approval under the required operator action label", () => {
+    expect(execution).toMatch(
+      /Keep an operator-only capability prompt open until the operator acts\.\s+Put the action only the operator can take under `Needed from you`\./,
+    );
+  });
+
   it("exercises both decisions alongside the existing signed release checks", () => {
     const scenario = evals.find(({ id }) => id === 428);
     expect(scenario?.prompt).toContain("At intake you learn");

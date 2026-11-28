@@ -58,7 +58,7 @@ The reader fails a bare ID, a missing link, an unclear owner action, an
 unexplained choice, or a missing recommendation. Revise the ask until it
 passes. Use `**Needed from you:** nothing` when no user action is needed.
 
-The three closeout lines (`Accomplished:`, `Why useful:`, `Next task:`) end
+The closeout lines (`Accomplished:`, `Why useful:`, `Next task:`) end
 every finished goal: the report, the closing chat message, and the retro file.
 Name one next task, not a menu; pick the one with the most value per hour,
 and say why. The next-action picker below starts from it. A placeholder

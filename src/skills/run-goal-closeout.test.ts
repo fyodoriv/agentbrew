@@ -15,12 +15,12 @@ const evals = JSON.parse(readFileSync(join(SKILL_DIR, "evals", "evals.json"), "u
 const LABELS = ["Accomplished:", "Why useful:", "Next task:"];
 
 describe("run-goal closeout", () => {
-  it("the skill's final report asks for all three closeout lines and names the hook", () => {
+  it("the skill's final report asks for every closeout label and names the hook", () => {
     for (const label of LABELS) expect(skill).toContain(`\`${label}\``);
     expect(skill).toMatch(/goal-retro-before-stop/);
   });
 
-  it("the report template carries the three lines as its own rows", () => {
+  it("the report template carries each closeout label as its own row", () => {
     for (const label of LABELS) expect(report).toMatch(new RegExp(`^${label} <`, "m"));
   });
 

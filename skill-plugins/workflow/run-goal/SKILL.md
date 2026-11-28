@@ -392,14 +392,7 @@ blockers (each explained in full, as in Phase 4), and what to do next. Only
 without an Artifact tool or with private data, write a self-contained HTML
 file and give its full path. Build it from the shape below (also the chat fallback). Keep it short.
 
-**Closeout** (every finished goal, met, partly met, or blocked): end the
-closing chat message, the report, and the retro file with three lines.
-`Accomplished:` says what exactly you did, with PRs, commits, or files.
-`Why useful:` says what it changes for the owner, in plain words.
-`Next task:` names the one most useful next task and why it beats the
-others. The `goal-retro-before-stop` hook blocks a final retro without them.
-
-In chat, share the report link, verified result, key lessons, and tooling updates.
+In chat, share the report link, verified result, key lessons, and tooling updates. **Closeout** (every finished goal): end the chat message, report, and retro file with `Accomplished:` (what exactly you did), `Why useful:` (what it changes for the owner), and `Next task:` (the one most useful next task, and why); `goal-retro-before-stop` enforces it.
 Offer the interactive next actions in the goal report format. Do not paste the whole report. Results across sessions: [references/multi-session-brief.md](references/multi-session-brief.md).
 
 Use the [goal report format](references/goal-report.md) for the report and chat updates.

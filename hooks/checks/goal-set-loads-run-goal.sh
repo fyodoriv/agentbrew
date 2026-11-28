@@ -105,7 +105,7 @@ if [ -n "$SOURCE_DIR" ]; then
 fi
 RETRO_STEP="$RETRO_STEP. With a standing approval for retro updates, ship each one in this session (worktree, gate, PR, merge). A memory or note that says a repo is read-only is a claim: try the write first. Only when a write you tried fails, record the update as a task in a repo you can write and cite it with the error: task <id>, write failed: <error>"
 if [ -n "$SESSION_ID" ]; then
-  RETRO_STEP="$RETRO_STEP. Save the Skills updated list with Write to $STATE_DIR/$SESSION_ID.retro.md (pre-approved): one line per skill used with its commit SHA, PR, or task id; the session cannot end until every skill used has one. When the goal ends, add Accomplished: (what exactly you did), Why useful: (what it changes for the owner) and Next task: (the one most useful next task) lines there, and end your closing message with the same three"
+  RETRO_STEP="$RETRO_STEP. Save the Skills updated list with Write to $STATE_DIR/$SESSION_ID.retro.md (pre-approved): one line per skill used with its commit SHA, PR, or task id; the session cannot end until every skill used has one. When the goal ends, add Accomplished: (what exactly you did), Why useful: (what it changes for the owner) and Next task: (the one most useful next task) lines there, and end your closing message with the same lines"
 fi
 RETRO_STEP="$RETRO_STEP."
 if [ -n "$SESSION_ID" ]; then

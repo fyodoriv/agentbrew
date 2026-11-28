@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
 // Pins the safety contract of the hosted workflows (docs/ci.md): a public
@@ -99,9 +100,10 @@ describe("hosted workflows", () => {
   });
 
   it.each(workflows)("$name gives every job a time limit", ({ text }) => {
-    const jobs = codeLines(text).filter((line) => /^\s+runs-on:/.test(line)).length;
-    const limits = codeLines(text).filter((line) => /^\s+timeout-minutes:/.test(line)).length;
-    expect(limits).toBe(jobs);
+    const { jobs } = load(text) as { jobs: Record<string, Record<string, unknown>> };
+    for (const [name, job] of Object.entries(jobs)) {
+      if ("runs-on" in job) expect(job["timeout-minutes"], name).toBeDefined();
+    }
   });
 
   it("ci.yml runs the same gate as a local checkout", () => {

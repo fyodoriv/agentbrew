@@ -442,6 +442,11 @@ write a new draft for the user to review.
   request is up to date with its base. Wait for the other reported checks too.
   A green local test does not clear a pending or failed hosted check. Stop your
   own watchers after you confirm the merge.
+- Act on the first failed job, not the end of the run. Wait with
+  `ci-watch-fail-fast.sh <run-id>`: it exits on the first failure and never
+  cancels the run. Fix it, then run the same command with `--rest` to list
+  every other failure, and fold them into one push
+  ([external-waits.md](external-waits.md#act-on-the-first-failure)).
 - A test that fails only on the clean runner has a hidden need: a tool, a
   shell, a config file, or another operating system.
 - Read the job log first. `gh api repos/<o>/<r>/actions/jobs/<id>/logs`

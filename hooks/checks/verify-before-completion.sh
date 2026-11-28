@@ -77,7 +77,7 @@ if [ "$CODE_EDITS" = "0" ]; then
 fi
 
 if [ "$VERIFY_CMDS" = "0" ]; then
-  verdict_block "$HOOK_ID" "Verify Before Completion: found $CODE_EDITS code edit(s) and no successful check result. Use the gate in the project guide. For a hosted gate, wait for the exact run with gh run watch <run-id> --exit-status."
+  verdict_block "$HOOK_ID" "Verify Before Completion: found $CODE_EDITS code edit(s) and no successful check result. Use the gate in the project guide. For a hosted gate, read the exact run once it ends with bash $__HOOK_LIB_DIR/ci-watch-fail-fast.sh <run-id>."
 fi
 
 verdict_allow "$HOOK_ID" "verified ($VERIFY_CMDS verify cmd(s) for $CODE_EDITS code edit(s))"

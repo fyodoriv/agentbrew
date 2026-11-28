@@ -70,7 +70,7 @@ check 2 "AGENTBREW_ALLOW_LOCAL_TESTS=1 npm test"
 # The block message points at a CI watch by run ID, not a racy PR-checks watch.
 msg=$(jq -nc --arg d "$CHECKOUT" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"npm test"},cwd:$d}' | bash "$SCRIPT" 2>&1 >/dev/null)
 for want in 'gh run list --repo fyodoriv/agentbrew --workflow CI --commit "$(git rev-parse HEAD)"' \
-            'gh run watch <run-id> --repo fyodoriv/agentbrew --exit-status'; do
+            'ci-watch-fail-fast.sh <run-id> --repo fyodoriv/agentbrew'; do
   grep -Fq -- "$want" <<<"$msg" || { echo "FAIL: block message lacks: $want"; FAIL=1; }
 done
 if grep -Fq -- '--watch' <<<"$(grep -F 'gh pr checks' <<<"$msg")"; then echo "FAIL: block message still suggests gh pr checks --watch"; FAIL=1; fi

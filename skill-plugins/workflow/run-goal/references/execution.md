@@ -215,10 +215,15 @@ did not finish (an unset pattern, a grep error, or a diff grep skipped as binary
 
 ## Served output
 
+A criterion for a live hook, rule, or plugin stays open until you verify
+the installed copy. Record each required operator-only step in the goal
+contract as soon as you know it applies.
+
 For a plugin hook, check that each matcher in `hooks.json` has a manifest
 capability before release. After approval and install, read back the
 installed version, hook files, and registration and exercise the installed hook.
 Keep an operator-only capability prompt open until the operator acts.
+Put the action only the operator can take under `Needed from you`.
 
 For a managed-source deployment, retain each strict readback failure and its
 actual exit. If the source advanced, do not reset it or call the original

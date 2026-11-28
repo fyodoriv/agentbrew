@@ -406,6 +406,30 @@ describe("delegateMcpNew — argv construction", () => {
     );
   });
 
+  it("omits only bare same-name stdio environment bindings", () => {
+    const callLog = join(testRoot, "passthrough.log");
+    const fakeBin = join(testRoot, "fake-mcpm-passthrough.sh");
+    writeFileSync(fakeBin, `#!/bin/bash\nprintf '%s\\n' "$@" > "${callLog}"\n`, { mode: 0o755 });
+    process.env.AGENTBREW_MCPM_BIN = fakeBin;
+    const inherited = "${FIXTURE_ENDPOINT}";
+    const env = {
+      FIXTURE_ENDPOINT: inherited,
+      DIFFERENT_NAME: "${OTHER_FIXTURE}",
+      FALLBACK: "${FALLBACK:-example}",
+      MODE: "plain",
+    };
+    const opts = { serverName: "fixture", command: "node" };
+    expect(delegateMcpNew({ ...opts, env }).ok).toBe(true);
+    expect(readFileSync(callLog, "utf8")).toContain(
+      "--env\nDIFFERENT_NAME=${OTHER_FIXTURE},FALLBACK=${FALLBACK:-example},MODE=plain\n",
+    );
+    expect(readFileSync(callLog, "utf8")).not.toContain("FIXTURE_ENDPOINT=");
+    expect(env.FIXTURE_ENDPOINT).toBe(inherited);
+
+    expect(delegateMcpNew({ ...opts, env: { FIXTURE_ENDPOINT: inherited } }).ok).toBe(true);
+    expect(readFileSync(callLog, "utf8")).not.toContain("--env");
+  });
+
   it("builds the remote argv with url + headers", () => {
     const callLog = join(testRoot, "calls.log");
     writeFileSync(callLog, "");
@@ -678,6 +702,21 @@ describe("mcpServerConfigEquals", () => {
       source: "registry" as const,
     };
     expect(mcpServerConfigEquals(left, right)).toBe(true);
+  });
+
+  it("matches projected mcpm bindings but keeps exact native environment comparisons", () => {
+    const desired = {
+      name: "fixture",
+      command: "node",
+      args: [],
+      source: "agentfile" as const,
+      env: { FIXTURE_ENDPOINT: "${FIXTURE_ENDPOINT}", MODE: "plain" },
+    };
+    const runtime = { ...desired, source: "registry" as const, env: { MODE: "plain" } };
+    expect(mcpServerConfigEquals(desired, runtime, "mcpm-registry")).toBe(true);
+    expect(mcpServerConfigEquals(desired, desired, "mcpm-registry")).toBe(false);
+    expect(mcpServerConfigEquals(desired, runtime)).toBe(false);
+    expect(mcpServerConfigEquals(desired, desired)).toBe(true);
   });
 
   it("detects same-name backend drift", () => {

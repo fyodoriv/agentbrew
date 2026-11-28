@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestContext } from "../core/context.js";
 import type { Manifest } from "../manifest.js";
@@ -658,6 +659,46 @@ describe("syncMcpServers — bridgeStateMcpToMcpm", () => {
     mockLoadState.mockReturnValue({ ...state, mcpServers: [makeServer({ name: "time", args: ["changed"] })] });
     await syncMcpServers(undefined, { manifest });
     expect(mockDelegateMcpNew).toHaveBeenCalledTimes(2);
+  });
+
+  it("repairs a saved legacy MCPM environment fingerprint once", async () => {
+    const server = makeServer({ name: "time", env: { FIXTURE_ENDPOINT: "${FIXTURE_ENDPOINT}" } });
+    const registry = { ...server, source: "registry" as const };
+    const { name, command, args, env } = server;
+    // Preserve the old digest shape so this control also covers an upgrade.
+    const legacy = createHash("sha256")
+      .update(
+        JSON.stringify({
+          servers: [{ name, command, args, env }],
+          mcpm: [registry],
+          clients: [["claude-code", [[null, { command: "mcpm" }]]]],
+        }),
+      )
+      .digest("hex");
+    const manifest: Manifest = { hashes: {}, mcpmBridgeFingerprint: legacy };
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "claude-code", detected: true, skillsDir: "x", mcpConfig: "~/.claude.json" }],
+      sources: [],
+      mcpServers: [server],
+      catalogVersion: "0.1.0",
+    });
+    mockReadMcpmServer.mockReturnValue(registry);
+    mockMcpServerConfigEquals.mockImplementation((_desired, installed) => !installed?.env.FIXTURE_ENDPOINT);
+    mockDelegateMcpNew.mockImplementationOnce(() => {
+      mockReadMcpmServer.mockReturnValue({ ...registry, env: {} });
+      return { ok: true };
+    });
+
+    await syncMcpServers(undefined, { manifest });
+
+    expect(mockDelegateMcpNew).toHaveBeenCalledTimes(1);
+    expect(mockDelegateMcpClientEdit).toHaveBeenCalledTimes(1);
+    expect(manifest.mcpmBridgeFingerprint).not.toBe(legacy);
+
+    await syncMcpServers(undefined, { manifest });
+
+    expect(mockDelegateMcpNew).toHaveBeenCalledTimes(1);
+    expect(mockDelegateMcpClientEdit).toHaveBeenCalledTimes(1);
   });
 
   it("does not call the bridge on dry runs", async () => {

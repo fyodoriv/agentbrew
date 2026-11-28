@@ -22,7 +22,7 @@ if [ ! -d "$root" ]; then
   echo "load-project-context: not a directory: $root" >&2
   exit 2
 fi
-root=$(cd "$root" && pwd -P)
+root=$(CDPATH='' cd -- "$root" && pwd -P)
 
 entries=()
 
@@ -37,7 +37,7 @@ scan_dir() {
     NAMES+=("${path##*/}")
   done
   [ "${#NAMES[@]}" -eq 0 ] && return 0
-  lowered=$(printf '%s\n' "${NAMES[@]}" | tr '[:upper:]' '[:lower:]')
+  lowered=$(printf '%s\n' "${NAMES[@]}" | /usr/bin/tr '[:upper:]' '[:lower:]')
   while IFS= read -r line; do LOWERS+=("$line"); done <<EOF
 $lowered
 EOF
@@ -90,10 +90,8 @@ for want in $ROOT_FILES; do
 done
 add_doc_dirs ""
 
-find_entry "agentfile.yaml" f || find_entry "agentfile" f
+find_entry "agentfile.yaml" f || find_entry "agentfile.yml" f || find_entry "agentfile" f
 agentfile=$FOUND
-has_tasks_md=""
-find_entry "tasks.md" f && has_tasks_md=1
 docs_dir=""
 find_entry "docs" d && docs_dir=$FOUND
 
@@ -124,16 +122,24 @@ if [ -n "$docs_dir" ]; then
   add_doc_dirs "$docs_dir/"
 fi
 
-# Task backend: .tasksmd.json at the git root can move tasks to GitHub Issues.
-git_root=$(git -C "$root" rev-parse --show-toplevel 2>/dev/null) || git_root=$root
-backend=""
-if [ -f "$git_root/.tasksmd.json" ] && grep -Eq '"backend"[[:space:]]*:[[:space:]]*"github-issues"' "$git_root/.tasksmd.json"; then
-  backend="github-issues (.tasksmd.json) — list and file tasks as GitHub Issues, not in TASKS.md"
-elif [ -n "$has_tasks_md" ]; then
-  backend="TASKS.md"
+# Sync fills this with trusted absolute paths from the agentbrew installation.
+task_backend_resolver=()
+resolved_backend=""
+if [ -n "${task_backend_resolver[0]:-}" ]; then
+  git_root="$root"
+  while [ ! -e "$git_root/.git" ] && [ "$git_root" != / ]; do
+    git_root=${git_root%/*}
+    git_root=${git_root:-/}
+  done
+  [ -e "$git_root/.git" ] || git_root="$root"
+  resolved_backend=$(/usr/bin/env -i "${task_backend_resolver[@]}" "$git_root" 2>/dev/null) || resolved_backend=""
 fi
 
 echo "load-project-context @ $root"
+case "${resolved_backend:-}" in
+  github-issues) echo "  task backend: github-issues" ;;
+  tasks-md) echo "  task backend: TASKS.md" ;;
+esac
 total=${#entries[@]}
 if [ "$total" -eq 0 ]; then
   echo "  no canonical docs found — this may not be a project root, or the repo does not use the canonical doc layout."
@@ -151,7 +157,6 @@ if [ "$total" -gt "$MAX_ENTRIES" ]; then
   echo "  +$((total - MAX_ENTRIES)) more (capped at $MAX_ENTRIES entries)"
 fi
 [ -n "$agentfile" ] && echo "  Agentfile: $agentfile"
-[ -n "$backend" ] && echo "  task backend: $backend"
 echo ""
 echo "Read every listed file. Over 500 lines: read the table of contents, the first and last 100 lines, and the sections you need."
 echo "For a directory, read its index file, or its first 3 files. Follow markdown links and @imports to depth 2."

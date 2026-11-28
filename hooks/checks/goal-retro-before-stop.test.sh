@@ -280,6 +280,19 @@ done
 touch "$RUN_GOAL_STATE_DIR/close3.contract.md"
 printf -- '%b' "${SKILLS_OK}Goal result: in progress (waiting on CI)\n" >"$RUN_GOAL_STATE_DIR/close3.retro.md"
 expect "in-progress retro needs no closeout" 0 "$(run close3)"
+for variant in '**Goal result:** In progress (x)' 'Goal result: **in progress**' 'goal result: IN PROGRESS'; do
+  touch "$RUN_GOAL_STATE_DIR/close7.contract.md"; rm -f "$RUN_GOAL_STATE_DIR/close7.stopblocks"
+  printf -- '%b%s\n' "${SKILLS_OK}" "$variant" >"$RUN_GOAL_STATE_DIR/close7.retro.md"
+  expect "in-progress variant '$variant' needs no closeout" 0 "$(run close7)"
+done
+touch "$RUN_GOAL_STATE_DIR/close8.contract.md"; rm -f "$RUN_GOAL_STATE_DIR/close8.stopblocks"
+printf -- '%b' "${SKILLS_OK}**Goal result:** Met (3/3)\n" >"$RUN_GOAL_STATE_DIR/close8.retro.md"
+expect "bold final Goal result without closeout blocks" 2 "$(run close8)"
+for body in 'Accomplished:\nWhy useful: B\nNext task: C' 'Accomplished: A\nWhy useful: n/a\nNext task: C' 'Accomplished: TBD\nWhy useful: B\nNext task: C' 'Accomplished: A\nWhy useful: B\nNext tasks: C'; do
+  touch "$RUN_GOAL_STATE_DIR/close9.contract.md"; rm -f "$RUN_GOAL_STATE_DIR/close9.stopblocks"
+  printf -- '%bGoal result: met\n%b\n' "${SKILLS_OK}" "$body" >"$RUN_GOAL_STATE_DIR/close9.retro.md"
+  expect "empty, placeholder or near-miss closeout line blocks ($body)" 2 "$(run close9)"
+done
 touch "$RUN_GOAL_STATE_DIR/close4.contract.md"
 printf -- '%b' "${SKILLS_OK}" >"$RUN_GOAL_STATE_DIR/close4.retro.md"
 expect "retro with no Goal result line needs no closeout yet" 0 "$(run close4)"

@@ -253,13 +253,13 @@ done
 # task). Markdown bold and a leading list marker are fine. An empty value or
 # a placeholder (`<...>`, pending, TBD, none, nothing, n/a) does not count.
 CLOSEOUT_MISSING=""
-if [ -f "$RETRO" ] && awk '/^[-*[:space:]]*Goal result:/ && !/^[-*[:space:]]*Goal result:[[:space:]]*in progress/ { f = 1 } END { exit !f }' "$RETRO"; then
+if [ -f "$RETRO" ] && awk '{ l = tolower($0); gsub(/\*/, "", l) } l ~ /^[-[:space:]]*goal result:/ && l !~ /^[-[:space:]]*goal result:[[:space:]]*in progress/ { f = 1 } END { exit !f }' "$RETRO"; then
   for label in "Accomplished" "Why useful" "Next task"; do
     value="$(sed -E 's/\*//g; s/^[-[:space:]]*//' "$RETRO" | sed -nE "s/^$label:[[:space:]]*//p" | head -n 1)"
     value="$(sed -E 's/[[:space:].]*$//' <<<"$value")"
     empty=0
     [ -n "$value" ] || empty=1
-    if grep -qiE '^(<.*>|pending|tbd|none|nothing|n/a)$' <<<"$value"; then empty=1; fi
+    if grep -qiE '^(<.*>|pending|tbd|none|nothing|n/a|-+|—+|–+)$' <<<"$value"; then empty=1; fi
     [ "$empty" = 0 ] || CLOSEOUT_MISSING="$CLOSEOUT_MISSING $label:"
   done
 fi

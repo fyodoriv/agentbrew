@@ -246,7 +246,7 @@ describe("status", () => {
     expect(calls).toContain("unhealthy for");
   });
 
-  it("shows logged-out MCP servers with their login command instead of as failing", async () => {
+  it("shows the login method for each MCP sign-in result", async () => {
     mockLoadState.mockReturnValue({
       agents: [{ name: "claude-code", detected: true, skillsDir: "x" }],
       sources: [],
@@ -261,9 +261,10 @@ describe("status", () => {
       lastError: "Not logged in",
       healHistory: [],
     };
-    mockLoadMcpHealthSnapshot.mockReturnValue({ generatedAt: new Date().toISOString(), servers: [loggedOut] });
+    const oauth = { ...loggedOut, name: "remote-demo", status: "needs_auth" as const, lastError: undefined };
+    mockLoadMcpHealthSnapshot.mockReturnValue({ generatedAt: new Date().toISOString(), servers: [loggedOut, oauth] });
     vi.mocked(unhealthyMcpEntries).mockReturnValueOnce([]);
-    vi.mocked(needsLoginMcpEntries).mockReturnValueOnce([loggedOut]);
+    vi.mocked(needsLoginMcpEntries).mockReturnValueOnce([loggedOut, oauth]);
 
     await status();
 
@@ -271,6 +272,9 @@ describe("status", () => {
     expect(calls).toContain("MCP login");
     expect(calls).toContain("railway/claude-code");
     expect(calls).toContain("agentbrew mcp setup railway");
+    expect(calls).toContain("remote-demo/claude-code");
+    expect(calls).toContain("Check sign-in in this agent");
+    expect(calls).not.toContain("agentbrew mcp setup remote-demo");
     expect(calls).not.toContain("failing");
   });
 

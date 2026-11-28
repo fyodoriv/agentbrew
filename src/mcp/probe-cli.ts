@@ -10,8 +10,7 @@
  *   - **probe-cli.ts** (this file) reads the live agent configs, derives the
  *     deep-smoke map from the catalog (BUILTIN_DEEP_SMOKE + future catalog
  *     `smokeCall`), renders the table, decides exit code. Reads from disk,
- *     writes to stdout. Not unit-tested directly — its integration test is
- *     `agentbrew mcp probe --json` against a real machine.
+ *     writes to stdout. Tests use a scratch config and synthetic probe results.
  *
  * The split mirrors the existing cli-classify / repo-class pattern in
  * agentbrew where pure logic lives in src/<area>.ts and the CLI shell in
@@ -41,6 +40,7 @@ import { normalizeMcpProbeServerMap } from "./probe-spec.js";
 /** Status emoji + colour. Pure presentation. */
 const STATUS_RENDER: Record<ProbeStatus, { emoji: string; color: (s: string) => string }> = {
   ok: { emoji: "✓", color: chalk.green },
+  needs_auth: { emoji: "→", color: chalk.yellow },
   ok_deep_failed: { emoji: "○", color: chalk.yellow },
   launch_failed: { emoji: "✗", color: chalk.red },
   init_timeout: { emoji: "✗", color: chalk.red },
@@ -130,17 +130,19 @@ function buildSurfaces(options: ProbeCliOptions): Array<{ agent: string; servers
   return surfaces;
 }
 
-/** Categorize results into pass/fail/skipped counts for the summary line. */
-function tallyResults(results: ProbeResult[]): { ok: number; failed: number; skipped: number } {
+/** Count the statuses shown in the summary. */
+function tallyResults(results: ProbeResult[]) {
   let ok = 0;
   let failed = 0;
   let skipped = 0;
+  let needsAuth = 0;
   for (const r of results) {
     if (r.status === "ok") ok += 1;
+    else if (r.status === "needs_auth") needsAuth += 1;
     else if (r.status.startsWith("skipped_")) skipped += 1;
     else failed += 1;
   }
-  return { ok, failed, skipped };
+  return { ok, failed, skipped, needsAuth };
 }
 
 /** Print the run-start banner: how many probes against how many agents, tier. */
@@ -154,15 +156,18 @@ function renderHeader(surfaces: Array<{ servers: Record<string, McpProbeSpec> }>
 }
 
 /** Print the run-end summary: pass/fail counts + recovery hint. */
-function renderFooter(tally: { ok: number; failed: number; skipped: number }, total: number): void {
+function renderFooter(tally: ReturnType<typeof tallyResults>, total: number): void {
   console.log("");
+  const notes: string[] = [];
+  if (tally.skipped > 0) notes.push(`${tally.skipped} skipped`);
+  if (tally.needsAuth > 0) notes.push(`sign-in needed for ${tally.needsAuth}`);
   if (tally.failed === 0) {
-    const skipNote = tally.skipped > 0 ? chalk.gray(` (${tally.skipped} skipped)`) : "";
-    console.log(chalk.green(`✓ ${tally.ok}/${total} MCP probes passed`) + skipNote);
+    const summaryNote = notes.length > 0 ? chalk.gray(` (${notes.join(", ")})`) : "";
+    console.log(chalk.green(`✓ ${tally.ok}/${total} MCP probes passed`) + summaryNote);
     return;
   }
-  const skipNote = tally.skipped > 0 ? `, ${tally.skipped} skipped` : "";
-  console.log(chalk.red(`✗ ${tally.failed} MCP probe(s) failed`) + chalk.gray(`, ${tally.ok} passed${skipNote}`));
+  const summaryNote = notes.length > 0 ? `, ${notes.join(", ")}` : "";
+  console.log(chalk.red(`✗ ${tally.failed} MCP probe(s) failed`) + chalk.gray(`, ${tally.ok} passed${summaryNote}`));
   console.log(
     chalk.gray(
       "Run `agentbrew mcp probe --json` for machine-readable details, or `agentbrew status` for repair hints.",
@@ -226,6 +231,7 @@ function renderTable(results: ProbeResult[]): void {
   );
   for (const r of results) {
     const render = STATUS_RENDER[r.status] ?? { emoji: "?", color: chalk.gray };
+    const status = r.status === "needs_auth" ? "needs sign-in" : r.status;
     const tools = r.toolsCount != null ? String(r.toolsCount) : "-";
     const latency = `${r.latencyMs}ms`;
     console.log(
@@ -233,7 +239,7 @@ function renderTable(results: ProbeResult[]): void {
         "  " +
         chalk.dim(r.agent.padEnd(agentW)) +
         "  " +
-        render.color(`${render.emoji} ${r.status}`.padEnd(20)) +
+        render.color(`${render.emoji} ${status}`.padEnd(20)) +
         "  " +
         tools.padStart(5) +
         "  " +

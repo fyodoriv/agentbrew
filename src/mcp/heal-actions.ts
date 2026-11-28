@@ -16,6 +16,7 @@ export type HealAction = (result: ProbeResult) => Promise<HealActionResult>;
 
 export const PROBE_STATUS_DISPOSITION: Record<ProbeStatus, { category?: ProbeStatusCategory; skip?: string }> = {
   ok: { skip: "healthy" },
+  needs_auth: { skip: "Sign-in required in the agent" },
   ok_deep_failed: { category: "auth" },
   launch_failed: { category: "sync" },
   init_timeout: { category: "sync" },

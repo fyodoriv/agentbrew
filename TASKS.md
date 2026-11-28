@@ -365,6 +365,19 @@
 
 ## P1
 
+- [ ] Keep native Cargo cache tests independent of Rustup update DNS
+  - **ID**: ci-native-cache-rustup-network
+  - **Tags**: ci, rust, reliability
+  - **Details**: Agentbrew PR #1374's macOS gate failed at `src/source-build-capability.test.ts:599`. Two scratch builds returned exit 1 instead of 0. Cargo invoked Rustup to sync the stable channel, then the runner could not resolve the Rust distribution host.
+  - **Files**: `src/source-build-capability.test.ts`, `.github/workflows/ci.yml`, and `docs/ci.md`.
+  - **Output**: code
+  - **Acceptance**: Provision the required Rust toolchain before the fixtures, then run both existing native cache cases with the distribution host unavailable. They still build and verify both cache outcomes.
+  - **Hypothesis**: Using the provisioned toolchain cuts the number of failed native cache cases from 2 of 2 in the captured DNS outage to 0 of 2 under a test-only outage.
+  - **Measurement**: In hosted macOS CI, run `npm exec -- vitest run src/source-build-capability.test.ts -t 'actual Cargo cache'` with a fixture-only unavailable Rust distribution endpoint. Check the two assertions and count attempted update requests. Run the normal full gate.
+  - **Success**: Both native cache cases execute and pass. The measured builds make zero Rust distribution requests. The full gate passes.
+  - **Pivot**: If either case skips, still invokes the distribution host, or changes a cache assertion, keep it open and trace how Cargo resolves the provisioned toolchain.
+  - **Anchor**: [macOS job 140912307095](https://github.com/fyodoriv/agentbrew/actions/runs/46123313265/job/140912307095) and the native cache fixture at line 599.
+
 - [ ] A stuck macOS CI gate stops in time and leaves a log that names the slow step
   - **ID**: ci-macos-gate-overrun
   - **Tags**: ci, reliability, delivery
@@ -758,6 +771,18 @@
   - **Anchor**: Nielsen 1994, heuristic 9 (help users recognize, diagnose and recover from errors).
 
 ## P2
+
+- [ ] Goal closeout check rejects weak values and reads only the newest goal
+  - **ID**: closeout-value-strictness
+  - **Tags**: hooks, run-goal, reliability
+  - **Output**: code
+  - **Acceptance**: `goal-retro-before-stop` blocks a closeout value that only starts with a placeholder (`none yet`, `TBD later`, `n/a - none`) or is under a few words, reads the three closeout lines from the newest `Goal result:` section only, accepts an explicit `Next task: none, because <reason>`, and its test file fails fast with one clear line when the state folder is not writable.
+  - **Details**: Found 2026-11-28 by three goal judges on agentbrew PRs 1373 and 1376. Reproduced: `Next task: none yet` and `Accomplished: x` exit 0; an earlier goal's lines satisfy a later goal in a multi-goal retro (`head -n 1`); in the sandbox the test file shows about 50 false failures because bare `mktemp -d` ignores `$TMPDIR`. Also add cases for lowercase labels, a value on the next line, and a placeholder case that asserts which label the block names.
+  - **Hypothesis**: weak closeout values that pass the hook drop from 4 reproduced shapes to 0, with 0 regressions in the existing 86 cases.
+  - **Measurement**: `bash hooks/checks/goal-retro-before-stop.test.sh` plus one case per reproduced shape.
+  - **Success**: all 4 shapes exit 2, `Next task: none, because <reason>` exits 0, and the suite shows 0 failed.
+  - **Pivot**: if more than 1 legitimate closeout from the last 10 real retros would block, keep the whole-value placeholder match and only add the newest-section read.
+  - **Anchor**: Myers 1979, "The Art of Software Testing" (equivalence classes and boundary values).
 
 - [ ] Allow a quoted-tag heredoc inside $() in the detached-start hook
   - **ID**: detached-start-heredoc-in-subst

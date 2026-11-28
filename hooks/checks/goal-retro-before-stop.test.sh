@@ -263,7 +263,7 @@ touch "$RUN_GOAL_STATE_DIR/close1.contract.md"
 printf -- '%b' "${SKILLS_OK}Goal result: met (3/3 met)\n" >"$RUN_GOAL_STATE_DIR/close1.retro.md"
 expect "final Goal result without closeout blocks" 2 "$(run close1)"
 out="$(jq -cn --arg p "$TX" '{hook_event_name:"Stop",session_id:"close1",transcript_path:$p}' | bash "$SCRIPT" 2>&1)"
-case "$out" in *"Accomplished:"*"Why useful:"*"Next task:"*) r=1 ;; *) r=0 ;; esac
+case "$out" in *"Still missing: Accomplished: Why useful: Next task:"*) r=1 ;; *) r=0 ;; esac
 expect "closeout block names every missing line" 1 "$r"
 printf -- '%b' "${SKILLS_OK}Goal result: met (3/3 met)\nAccomplished: merged PR #9 that adds X\nWhy useful: the owner no longer does Y by hand\n" >"$RUN_GOAL_STATE_DIR/close1.retro.md"
 out="$(jq -cn --arg p "$TX" '{hook_event_name:"Stop",session_id:"close1",transcript_path:$p}' | bash "$SCRIPT" 2>&1)"
@@ -272,7 +272,7 @@ expect "closeout without Next task blocks and names only it" 1 "$r"
 rm -f "$RUN_GOAL_STATE_DIR/close1.stopblocks"
 printf -- '%b' "${SKILLS_OK}Goal result: met (3/3 met)\n**Accomplished**: merged PR #9 that adds X\n- **Why useful:** the owner no longer does Y by hand\nNext task: Z, because it unblocks W\n" >"$RUN_GOAL_STATE_DIR/close1.retro.md"
 expect "closeout with bold labels and list markers allows" 0 "$(run close1)"
-for placeholder in "<the next task>" "pending" "TBD" "none" "nothing." "N/A"; do
+for placeholder in "<the next task>" "pending" "TBD" "none" "nothing." "N/A" "-" "—" "–" "--"; do
   touch "$RUN_GOAL_STATE_DIR/close2.contract.md"; rm -f "$RUN_GOAL_STATE_DIR/close2.stopblocks"
   printf -- '%bNext task: %s\n' "${SKILLS_OK}Goal result: partly met (2/3)\nAccomplished: A\nWhy useful: B\n" "$placeholder" >"$RUN_GOAL_STATE_DIR/close2.retro.md"
   expect "placeholder Next task '$placeholder' blocks" 2 "$(run close2)"
@@ -293,6 +293,17 @@ for body in 'Accomplished:\nWhy useful: B\nNext task: C' 'Accomplished: A\nWhy u
   printf -- '%bGoal result: met\n%b\n' "${SKILLS_OK}" "$body" >"$RUN_GOAL_STATE_DIR/close9.retro.md"
   expect "empty, placeholder or near-miss closeout line blocks ($body)" 2 "$(run close9)"
 done
+touch "$RUN_GOAL_STATE_DIR/close10.contract.md"; rm -f "$RUN_GOAL_STATE_DIR/close10.stopblocks"
+printf -- 'Goal result: met\n' >"$RUN_GOAL_STATE_DIR/close10.retro.md"
+out="$(jq -cn --arg p "$TX" '{hook_event_name:"Stop",session_id:"close10",transcript_path:$p}' | bash "$SCRIPT" 2>&1)"
+case "$out" in *"closeout lines are missing too"*"Still missing:"*|*"Still missing:"*"closeout lines are missing too"*) r=1 ;; *) r=0 ;; esac
+expect "skills and closeout both missing names both" 1 "$r"
+touch "$RUN_GOAL_STATE_DIR/close11.contract.md"; rm -f "$RUN_GOAL_STATE_DIR/close11.stopblocks"
+printf -- '%b' "${SKILLS_OK}Goal result: in progress (waiting on CI)\nGoal result: met\n" >"$RUN_GOAL_STATE_DIR/close11.retro.md"
+expect "in progress then a final result still needs the closeout" 2 "$(run close11)"
+rm -f "$RUN_GOAL_STATE_DIR/close11.stopblocks"
+printf -- '%b' "${SKILLS_OK}Goal result: in progress (waiting on CI)\nGoal result: met\nAccomplished: A\nWhy useful: B\nNext task: C\n" >"$RUN_GOAL_STATE_DIR/close11.retro.md"
+expect "in progress then a final result with closeout allows" 0 "$(run close11)"
 touch "$RUN_GOAL_STATE_DIR/close4.contract.md"
 printf -- '%b' "${SKILLS_OK}" >"$RUN_GOAL_STATE_DIR/close4.retro.md"
 expect "retro with no Goal result line needs no closeout yet" 0 "$(run close4)"

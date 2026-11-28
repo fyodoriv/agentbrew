@@ -259,7 +259,7 @@ if [ -f "$RETRO" ] && awk '{ l = tolower($0); gsub(/\*/, "", l) } l ~ /^[-[:spac
     value="$(sed -E 's/[[:space:].]*$//' <<<"$value")"
     empty=0
     [ -n "$value" ] || empty=1
-    if grep -qiE '^(<.*>|pending|tbd|none|nothing|n/a)$' <<<"$value"; then empty=1; fi
+    if grep -qiE '^(<.*>|pending|tbd|none|nothing|n/a|-+|—+|–+)$' <<<"$value"; then empty=1; fi
     [ "$empty" = 0 ] || CLOSEOUT_MISSING="$CLOSEOUT_MISSING $label:"
   done
 fi

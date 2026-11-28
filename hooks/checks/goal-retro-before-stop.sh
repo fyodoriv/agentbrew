@@ -4,6 +4,8 @@
 # **Hook**: goal-retro-before-stop
 # **Event**: Stop
 # **Verdict**: block (gives up after three blocks per goal)
+# **Closeout**: a final Goal result also needs Accomplished:, Why useful:
+# and Next task: lines (see "Closeout" below).
 # **Source rule**: skill-plugins/workflow/run-goal/SKILL.md Phase 6 "Update every one of those skills"
 #
 # run-goal ends every goal with a retro that updates every skill used. Live
@@ -244,7 +246,25 @@ EOF_RETRO
   MISSING="$MISSING $skill"
 done
 
-if [ -z "$MISSING" ]; then
+# **Closeout** (every finished goal): once the retro holds a final Goal
+# result (any `Goal result:` line that is not `in progress`), it also needs
+# the closeout the owner reads first: `Accomplished:` (what exactly was done),
+# `Why useful:` (why it mattered), and `Next task:` (the one most useful next
+# task). Markdown bold and a leading list marker are fine. An empty value or
+# a placeholder (`<...>`, pending, TBD, none, nothing, n/a) does not count.
+CLOSEOUT_MISSING=""
+if [ -f "$RETRO" ] && awk '/^[-*[:space:]]*Goal result:/ && !/^[-*[:space:]]*Goal result:[[:space:]]*in progress/ { f = 1 } END { exit !f }' "$RETRO"; then
+  for label in "Accomplished" "Why useful" "Next task"; do
+    value="$(sed -E 's/\*//g; s/^[-[:space:]]*//' "$RETRO" | sed -nE "s/^$label:[[:space:]]*//p" | head -n 1)"
+    value="$(sed -E 's/[[:space:].]*$//' <<<"$value")"
+    empty=0
+    [ -n "$value" ] || empty=1
+    if grep -qiE '^(<.*>|pending|tbd|none|nothing|n/a)$' <<<"$value"; then empty=1; fi
+    [ "$empty" = 0 ] || CLOSEOUT_MISSING="$CLOSEOUT_MISSING $label:"
+  done
+fi
+
+if [ -z "$MISSING" ] && [ -z "$CLOSEOUT_MISSING" ]; then
   rm -f "$COUNTER"
   verdict_allow "$HOOK_ID" "retro lists every skill used"
 fi
@@ -258,4 +278,9 @@ if [ "$blocks" -ge "$MAX_BLOCKS" ]; then
 fi
 echo $((blocks + 1)) >"$COUNTER"
 
-verdict_block "$HOOK_ID" "The goal's retro is not done. Update every skill used (run-goal Phase 6), then save the Skills updated list with the Write tool to $RETRO (pre-approved): one line per skill with its commit SHA or PR (#123 or URL); a skill with no local SKILL.md may say <skill>: host-served, no source. A task counts only with the quoted error of a write you tried (task <id>, write failed: <error>): with a standing approval, ship the update instead. Still missing:$MISSING."
+if [ -z "$MISSING" ]; then
+  verdict_block "$HOOK_ID" "The goal is finished, but its closeout is missing. Add these lines to $RETRO (Write tool, pre-approved) and say the same in your closing chat message: Accomplished: <what exactly you did, with PRs or commits>; Why useful: <what it changes for the owner>; Next task: <the one most useful next task and why>. Still missing:$CLOSEOUT_MISSING"
+fi
+CLOSEOUT_NOTE=""
+[ -n "$CLOSEOUT_MISSING" ] && CLOSEOUT_NOTE=" The closeout lines are missing too (run-goal Final report):$CLOSEOUT_MISSING"
+verdict_block "$HOOK_ID" "The goal's retro is not done. Update every skill used (run-goal Phase 6), then save the Skills updated list with the Write tool to $RETRO (pre-approved): one line per skill with its commit SHA or PR (#123 or URL); a skill with no local SKILL.md may say <skill>: host-served, no source. A task counts only with the quoted error of a write you tried (task <id>, write failed: <error>): with a standing approval, ship the update instead. Still missing:$MISSING.$CLOSEOUT_NOTE"

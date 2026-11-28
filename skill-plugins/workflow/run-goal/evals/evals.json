@@ -4858,6 +4858,18 @@
       ]
     },
     {
+      "id": 439,
+      "prompt": "/goal make the export button download a CSV, with tests, and ship it (the PR is merged, the judges scored 9, 8 and 9, and the retro file lists every skill used with its PR)",
+      "expected_output": "Before the last Stop, add the closeout to the retro file and end the closing chat message with the same closeout lines: Accomplished: the merged PR and what it changed; Why useful: what the owner can now do that they could not before; Next task: one named task with the reason it is the most useful next step. Do not write a placeholder such as 'none' or 'pending', and do not list a menu instead of one task.",
+      "files": [],
+      "expectations": [
+        "The retro file gets non-empty Accomplished:, Why useful: and Next task: lines once the Goal result is final.",
+        "The closing chat message ends with the same closeout lines.",
+        "Next task names exactly one task and says why it beats the others.",
+        "No placeholder (none, pending, TBD, <...>) stands in for any closeout line."
+      ]
+    },
+    {
       "id": 445,
       "prompt": "/goal ship PR 1373 (you pushed the fix 2 minutes ago; CI run 46110246456 has two jobs, verify (ubuntu-latest) and verify (macos-latest), and a separate prediction check; you plan to run `timeout 1800 gh run watch 46110246456 --exit-status` in the background and read the result when it ends)",
       "expected_output": "Do not wait for the whole run. Start the fail-fast watcher on run 46110246456 in the background instead of gh run watch. When it exits on the first failed job, read its failed log lines, reproduce and fix that failure locally without pushing, then run the same watcher with --rest to collect every other failure from the same run, fold them into the same fix, and push once. Never cancel the run.",

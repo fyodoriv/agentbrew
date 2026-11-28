@@ -556,6 +556,12 @@ listed in `~/.config/agent-gh-allowlist.txt` pass `gh pr create` and
 ## Timing and safety
 
 - Deterministic hooks should complete in under 2 seconds.
+- A blocking hook fixture should finish well within the deployed timeout.
+  Set a shorter deadline in the fixture. Report a missing decision as a
+  test failure. Measure the external commands you expect the hook to use
+  with recording shims and set a launch budget for those commands.
+  Keep a passing allow case and a passing block case.
+  Use `src/hooks/runtime-startup.test.ts` for an example.
 - Hooks must not call a model. A blocking hook that waits on an LLM stalls the tool loop.
 - Scripts must not mutate the repository unless their manifest verdict is
   `mutate` and the target event supports mutation.

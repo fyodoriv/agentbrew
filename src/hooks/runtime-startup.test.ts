@@ -49,7 +49,7 @@ describe("managed hook startup", () => {
     return path;
   }
 
-  function bash(args: string[], input = "", overrides: NodeJS.ProcessEnv = {}) {
+  function bash(args: string[], input = "", overrides: NodeJS.ProcessEnv = {}, deadlineMs = 5000) {
     return spawnSync("/bin/bash", args, {
       cwd: scratch,
       env: {
@@ -61,7 +61,8 @@ describe("managed hook startup", () => {
         ...overrides,
       },
       input,
-      timeout: 5000,
+      timeout: deadlineMs,
+      killSignal: "SIGKILL",
       encoding: "utf8",
     });
   }
@@ -74,6 +75,54 @@ describe("managed hook startup", () => {
     installStub("dirname", 'printf "dirname\\n" >> "$HOOK_PROCESS_RECEIPT"\nexec /usr/bin/dirname "$@"\n');
     installStub("cat", 'printf "cat\\n" >> "$HOOK_PROCESS_RECEIPT"\nexec /bin/cat "$@"\n');
   }
+
+  const guardBudget = { deadlineMs: 1000, recordedLaunches: 2 };
+
+  function runGuardFixture(args: string[], input: string, budget: typeof guardBudget): number {
+    writeFileSync(recording, "");
+    const result = bash(args, input, { HOME: scratch }, budget.deadlineMs);
+    if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT") {
+      throw new Error(`Guard fixture timed out after ${budget.deadlineMs} ms`);
+    }
+    if (result.error) throw result.error;
+    if (result.status === null) throw new Error(`Guard fixture stopped without a decision (${result.signal})`);
+
+    const count = readFileSync(recording, "utf8").split("\n").filter(Boolean).length;
+    if (count > budget.recordedLaunches) {
+      throw new Error(`Guard fixture recorded ${count} launches (limit ${budget.recordedLaunches})`);
+    }
+    return result.status;
+  }
+
+  it("keeps a timely fixture result", () => {
+    expect(runGuardFixture(["-c", "exit 2"], "", guardBudget)).toBe(2);
+  });
+
+  it("reports a missing guard decision at the fixture deadline", () => {
+    expect(() => runGuardFixture(["-c", "exec /bin/sleep 2"], "", guardBudget)).toThrow(
+      "Guard fixture timed out after 1000 ms",
+    );
+  });
+
+  it("reports a guard fixture that exceeds its recorded launch budget", () => {
+    installStub("record-step", 'printf "%s\\n" step >> "$HOOK_PROCESS_RECEIPT"');
+    expect(() => runGuardFixture(["-c", "record-step; record-step; record-step"], "", guardBudget)).toThrow(
+      "Guard fixture recorded 3 launches (limit 2)",
+    );
+  });
+
+  it.each([
+    ["export const sample = 1;", 0],
+    ["// 2026-05-27 sample\nexport const sample = 1;", 2],
+  ])("preserves a real PreToolUse guard verdict", (content, expected) => {
+    const input = JSON.stringify({
+      hook_event_name: "PreToolUse",
+      tool_name: "Write",
+      tool_input: { file_path: join(scratch, "sample.ts"), content },
+    });
+    expect(runGuardFixture([join(hooks, "checks", "code-no-timestamps.sh")], input, guardBudget)).toBe(expected);
+    expect(existsSync(join(scratch, "sample.ts"))).toBe(false);
+  });
 
   it.each([
     "tests-adapt-to-production",

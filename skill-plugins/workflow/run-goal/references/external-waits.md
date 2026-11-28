@@ -52,7 +52,10 @@ Do not invent a goal-update tool, edit host storage, or spoof user origin.
    run for the full head SHA with
    `gh run list --repo <OWNER/REPO> --workflow <name> --commit <full-sha>`
    (empty means it does not exist yet: wait and list again), then
-   `timeout 1800 gh run watch <run-id> --repo <OWNER/REPO> --interval 60 --exit-status`.
+   `bash ~/.claude/codeassist/hooks-scripts/lib/ci-watch-fail-fast.sh <run-id> --repo <OWNER/REPO>`.
+   It ends on the first failed job (see "Act on the first failure" below).
+   Do not wait with `gh run watch` or `gh pr checks --watch`: they return only
+   when the last job ends, and the hook `background-suite-fail-fast` blocks them.
    A `gh pr checks <PR> --watch` started right after a push can exit green
    while only a fast side check is listed and the main run has not started.
    Record the accepted task handle, exact target, bounded deadline and next
@@ -116,6 +119,28 @@ Do not claim that a skill changes the host's evaluator scheduling.
 Do not clear a goal, pause it, use blocked status as a CI-wait shortcut,
 disable hooks, or append an "or watcher armed" success condition. A passing
 metric does not finish a goal whose original shipping criteria are pending.
+
+## Act on the first failure
+
+A full-run wait hides a failed job until the last job ends. On PR 1373 one
+check had failed while the agent still waited. On 17 failed agentbrew CI runs
+the hidden time was a median 84 s and a p90 582 s
+(`bash scripts/ci-first-failure-lag.sh` in agentbrew). Use this loop:
+
+1. **First failure.** The watcher exits 1 on the first failed job. It prints
+   the job name, its link and its failed log lines. It never cancels the run.
+2. **Fix.** Reproduce that failure locally and fix the cause. Do not push yet.
+3. **More failures.** Run the same watcher command with `--rest`. It waits
+   for the other jobs and lists every failure in one list.
+4. **Fold or push.** Fold each listed failure into the same fix, then push
+   once. If `--rest` lists nothing new, push the fix.
+
+The watcher exits 0 only when every check passed, and 124 at its hard
+timeout (`--timeout`, default 2700 s). In run mode its success line matches
+`gh run watch --exit-status`, so `verify-before-completion` accepts it.
+For local suites, use the runner's fail-fast flag (`vitest --bail`,
+`pytest -x`, `--maxfail`), fix the first failure, then rerun once with a
+higher limit to list the rest.
 
 ## Changes, failures and expiry
 
